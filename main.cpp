@@ -1,25 +1,36 @@
-#include <iostream>
-#include "SimplicialComplex.hpp"
+#include<TempUtils.hpp>
+#include<AbaqusInput.hpp>
 
 int main()
 {
-    std::cout << "Hello World" << std::endl;
+    // const SweepInput sweep_input = twoTets();
+    // const SweepInput sweep_input = twelveTetCube();
+    // const SweepInput sweep_input = refinedCube( {3,4, 2} );
+    // const SweepInput sweep_input = bentRefinedCube( {3, 3, 30 } );
+    // const SweepInput sweep_input = loadINPFile( "/Users/caleb/sweeps/attempt-sweep/test/simple_mesh.inp", "Surface1", "Surface28" );
+    const SweepInput sweep_input = loadINPFile( "/Users/caleb/Downloads/TorusPipe.inp", "Surface3", "Surface4" );
+    cgogn::CMap3 map;
+    mapFromInput( sweep_input, map );
 
-    std::vector<Simplex> simplices;
-    simplices.push_back({1, 2, 3, 9});
-    simplices.push_back({2, 4, 3, 9});
-    simplices.push_back({1, 6, 2, 9});
-    simplices.push_back({1, 5, 6, 9});
-    simplices.push_back({3, 4, 8, 9});
-    simplices.push_back({7, 3, 8, 9});
-    simplices.push_back({2, 6, 4, 9});
-    simplices.push_back({6, 8, 4, 9});
-    simplices.push_back({3, 7, 5, 9});
-    simplices.push_back({1, 3, 5, 9});
-    simplices.push_back({6, 5, 8, 9});
-    simplices.push_back({8, 5, 7, 9});
+    /*
+        TODO:
+      X - build laplace operator
+      X - solve laplace equation for harmonic function
+      X - Tests of cgogn import
+        - Tests of Laplace solve
+        - Mesh input from gmsh with floor/ceiling specs
+    */
 
-    const SimplicialComplex tets( simplices );
+    const Eigen::VectorXd ans = solvelaplace( map, sweep_input.zero_bcs, sweep_input.one_bcs );
 
-    std::cout << simplices.size() << std::endl;
+    std::cout << ans.transpose() << std::endl;
+    io::outputSimplicialFieldToVTK( map, ans, "test.vtu" );
+
+    std::cout << "dimension: " << (int)map.dimension << std::endl;
+    std::cout << "Simplicial? " << cgogn::is_simplicial( map ) << std::endl;
+
+    std::cout << "Tets: " << cgogn::nb_cells<cgogn::CMap3::Volume>( map ) << std::endl;
+    std::cout << "Tris: " << cgogn::nb_cells<cgogn::CMap3::Face>( map ) << std::endl;
+    std::cout << "Edges: " << cgogn::nb_cells<cgogn::CMap3::Edge>( map ) << std::endl;
+    std::cout << "Vertices: " << cgogn::nb_cells<cgogn::CMap3::Vertex>( map ) << std::endl;
 }
