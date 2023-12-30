@@ -1,6 +1,6 @@
 #pragma once
 #include <iostream>
-#include <SimplicialComplex.hpp>
+#include <Simplex.hpp>
 #include <VTKOutput.hpp>
 #include<set>
 #include <cgogn/core/types/cell_marker.h>
@@ -42,7 +42,7 @@ double dihedralCotangent( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e )
 {
     const Eigen::Vector3d n1 = triangleNormal( map, cgogn::CMap3::Face( e.dart_ ) );
     const Eigen::Vector3d n2 = triangleNormal( map, cgogn::CMap3::Face( cgogn::phi2( map, e.dart_ ) ) );
-    //LOG( LOG_LAPLACE ) << "Dihedral angle between " << n1.transpose() << " and " << n2.transpose() << std::endl;
+    LOG( LOG_LAPLACE ) << "Dihedral angle between " << n1.transpose() << " and " << n2.transpose() << std::endl;
 
     const double cos_theta = abs( n1.dot( n2 ) );
     return cos_theta / std::sqrt( 1 - cos_theta * cos_theta );
@@ -52,7 +52,7 @@ double edgeWeight( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e )
 {
     double weight = 0;
     const double factor = edgeLength( map, e ) / 12;
-    //LOG( LOG_LAPLACE ) << "Edge " << e << " Factor: " << factor << std::endl;
+    LOG( LOG_LAPLACE ) << "Edge " << e << " Factor: " << factor << std::endl;
     cgogn::foreach_incident_volume( map, e, [&]( cgogn::CMap3::Volume v ){
         weight += factor * dihedralCotangent( map, cgogn::CMap3::Edge( v.dart_ ) );
         // weight += factor * dihedralCotangent( map, cgogn::CMap3::Edge( cgogn::phi<1,2,-1>(map, v.dart_) ) );
@@ -126,22 +126,11 @@ Eigen::VectorXd solvelaplace( const cgogn::CMap3& map, const std::set<VertexId>&
         {
             LOG( LOG_LAPLACE ) << "interior: " << interior_verts.size() << "\n";
             LOG( LOG_LAPLACE ) << interior_verts << std::endl;
-            L_top.row( interior_verts.size() ) = laplaceOperatorRow( map, v );// <- This guy is getting too full...
+            L_top.row( interior_verts.size() ) = laplaceOperatorRow( map, v );
             interior_verts.push_back( vid.id() );
         }
         return true;
     } );
-
-    std::vector<Eigen::Index> all_verts( interior_verts.begin(), interior_verts.end() );
-    for( const auto& a : boundary_verts ) all_verts.push_back( a );
-    LOG( LOG_LAPLACE ) << all_verts << std::endl;
-    LOG( LOG_LAPLACE ) << std::endl;
-
-    LOG( LOG_LAPLACE ) << "L_top_prev:\n" << L_top << std::endl;
-
-    // Permute to match reordered vertex indexing
-    // TODO: Find a way to make this more explicit and readable?
-    //L_top = L_top( Eigen::indexing::all, all_verts ).eval();
 
     LOG( LOG_LAPLACE ) << "L_top: " << std::endl << L_top << std::endl << std::endl;
     LOG( LOG_LAPLACE ) << "BCs: " << std::endl << BCs << std::endl << std::endl;

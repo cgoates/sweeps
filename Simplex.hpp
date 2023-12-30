@@ -1,7 +1,6 @@
 #pragma once
 #include<array>
-#include<vector>
-#include<Eigen/Dense>
+#include<ostream>
 
 class VertexId
 {
@@ -22,7 +21,6 @@ class VertexId
     const Type mId;
 };
 
-// TODO: I don't love the constructors here.  It would be nice to be able to use initializer lists.
 class Simplex
 {
     public:
@@ -47,27 +45,4 @@ class Simplex
     private:
     size_t mDim;
     std::array<VertexId, 4> mVertexIds;
-};
-
-class SimplicialComplex
-{
-    public:
-    SimplicialComplex( const std::vector<Simplex>& simplices ) : mSimplices( simplices ) {}
-
-    const Simplex& simplex( const size_t simplex_id ) const;
-    size_t numSimplices() const { return mSimplices.size(); }
-    const std::vector<Simplex>& simplices() const { return mSimplices; }
-    private:
-    std::vector<Simplex> mSimplices;
-};
-
-struct LinearField
-{
-    LinearField( const SimplicialComplex& complex, const Eigen::MatrixXd& field ) :
-        mComplex( complex ),
-        mVertexFieldValues( field )
-    {}
-
-    const SimplicialComplex& mComplex;
-    Eigen::MatrixXd mVertexFieldValues;
 };

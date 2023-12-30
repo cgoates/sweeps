@@ -1,5 +1,5 @@
-#include <SimplicialComplex.hpp>
-
+#include <Simplex.hpp>
+#include <cassert>
 
 VertexId::VertexId( const VertexId::Type& id ) : mId( id ) {}
 
@@ -17,9 +17,4 @@ const VertexId& Simplex::vertex( const size_t n ) const
 {
     assert( n <= mDim );
     return mVertexIds.at( n );
-}
-
-const Simplex& SimplicialComplex::simplex( const size_t simplex_id ) const
-{
-    return mSimplices.at( simplex_id );
 }

@@ -1,6 +1,6 @@
 #include <VTKOutput.hpp>
 #include <fstream>
-#include <SimplicialComplex.hpp>
+#include <Simplex.hpp>
 #include <cgogn/core/types/cell_marker.h>
 #include <cgogn/core/types/maps/cmap/cmap3.h>
 #include <cgogn/core/functions/traversals/vertex.h>

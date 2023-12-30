@@ -6,7 +6,7 @@
 #include <Logging.hpp>
 
 TEST_CASE( "Importing a 12-tet hex into cgogn has correct number of elements", "[single-file]" ) {
-    const SweepInput sweep_input = twelveTetCube();
+    const SweepInput sweep_input = SweepInputTestCases::twelveTetCube();
 
     cgogn::CMap3 map;
     mapFromInput( sweep_input, map );
@@ -20,7 +20,7 @@ TEST_CASE( "Importing a 12-tet hex into cgogn has correct number of elements", "
 }
 
 TEST_CASE( "Importing two tets gives correct number of cells", "[single-file]" ) {
-    const SweepInput sweep_input = twoTets();
+    const SweepInput sweep_input = SweepInputTestCases::twoTets();
 
     cgogn::CMap3 map;
     mapFromInput( sweep_input, map );
@@ -34,7 +34,7 @@ TEST_CASE( "Importing two tets gives correct number of cells", "[single-file]" )
 }
 
 TEST_CASE( "1x1x2 hex each divided into 5 tets", "[single-file]" ) {
-    const SweepInput sweep_input = refinedCube( {1, 1, 2} );
+    const SweepInput sweep_input = SweepInputTestCases::refinedCube( {1, 1, 2} );
     cgogn::CMap3 map;
     mapFromInput( sweep_input, map );
 
@@ -47,7 +47,7 @@ TEST_CASE( "1x1x2 hex each divided into 5 tets", "[single-file]" ) {
 }
 
 TEST_CASE( "Simplest gmsh mesh", "[single-file]" ) {
-    const SweepInput sweep_input = loadINPFile( "/Users/caleb/sweeps/attempt-sweep/test/simple_mesh.inp", "Surface1", "Surface28" );
+    const SweepInput sweep_input = io::loadINPFile( "/Users/caleb/sweeps/attempt-sweep/test/simple_mesh.inp", "Surface1", "Surface28" );
     cgogn::CMap3 map;
     mapFromInput( sweep_input, map );
 

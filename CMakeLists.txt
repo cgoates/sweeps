@@ -5,9 +5,10 @@ project(attempt)
 add_executable( attempt main.cpp )
 
 add_library( attemptlib
-  SimplicialComplex.cpp
-  TetMeshCombinatorialMap.cpp
+  Simplex.cpp
   VTKOutput.cpp
+  AbaqusInput.cpp
+  Logging.cpp
 )
 
 include_directories( ${CMAKE_SOURCE_DIR}/../thirdparty/eigen )
@@ -18,9 +19,9 @@ find_package(cgogn_core REQUIRED)
 find_package(cgogn_io REQUIRED)
 find_dependency(Meshb REQUIRED)
 
-target_link_libraries( attemptlib PUBLIC cgogn::core cgogn::io )
+target_link_libraries( attemptlib PUBLIC cgogn::io cgogn::core )
 
-target_link_libraries( attempt PUBLIC attemptlib Eigen3::Eigen cgogn::core cgogn::io )
+target_link_libraries( attempt PUBLIC attemptlib Eigen3::Eigen cgogn::io cgogn::core )
 target_include_directories( attemptlib PUBLIC ${CMAKE_SOURCE_DIR} )
 target_include_directories( attempt PUBLIC ${CMAKE_SOURCE_DIR} )
 
