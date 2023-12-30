@@ -23,3 +23,9 @@ target_link_libraries( attemptlib PUBLIC cgogn::core cgogn::io )
 target_link_libraries( attempt PUBLIC attemptlib Eigen3::Eigen cgogn::core cgogn::io )
 target_include_directories( attemptlib PUBLIC ${CMAKE_SOURCE_DIR} )
 target_include_directories( attempt PUBLIC ${CMAKE_SOURCE_DIR} )
+
+find_package(Catch2 REQUIRED)
+
+include(CTest)
+include(Catch)
+add_subdirectory(test)
