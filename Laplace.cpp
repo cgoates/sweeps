@@ -1,61 +1,19 @@
-#pragma once
-#include <iostream>
-#include <Simplex.hpp>
-#include <VTKOutput.hpp>
-#include<set>
-#include <cgogn/core/types/cell_marker.h>
-#include <cgogn/core/types/maps/cmap/cmap3.h>
-#include <cgogn/core/functions/traversals/vertex.h>
-#include <cgogn/core/functions/mesh_info.h>
-#include <cgogn/core/functions/attributes.h>
-#include <cgogn/io/volume/volume_import.h>
-#include <SweepInput.hpp>
+#include<Laplace.hpp>
+#include<Simplex.hpp>
 #include<Logging.hpp>
+#include <cgogn/core/types/cell_marker.h>
+#include<SimplexUtilities.hpp>
 
 #define LOG_LAPLACE 0
-
-Eigen::Vector3d triangleNormal( const Eigen::Vector3d& v1, const Eigen::Vector3d& v2, const Eigen::Vector3d& v3 )
-{
-    return ( v2 - v1 ).cross( v3 - v1 ).normalized();
-}
-
-Eigen::Vector3d triangleNormal( const cgogn::CMap3& map, const cgogn::CMap3::Face& f )
-{
-    const auto position = cgogn::get_attribute<Eigen::Vector3d, cgogn::CMap3::Vertex>( map, "position" );
-    const cgogn::Dart& d = f.dart_;
-    const Eigen::Vector3d& pos1 = cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( d ) );
-    const Eigen::Vector3d& pos2 = cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( cgogn::phi1( map, d ) ) );
-    const Eigen::Vector3d& pos3 = cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( cgogn::phi_1( map, d ) ) );
-    return triangleNormal( pos1, pos2, pos3 );
-}
-
-double edgeLength( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e )
-{
-    const auto position = cgogn::get_attribute<Eigen::Vector3d, cgogn::CMap3::Vertex>( map, "position" );
-    const cgogn::Dart& d = e.dart_;
-    const Eigen::Vector3d& pos1 = cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( d ) );
-    const Eigen::Vector3d& pos2 = cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( cgogn::phi1( map, d ) ) );
-    return ( pos2 - pos1 ).norm();
-}
-
-double dihedralCotangent( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e )
-{
-    const Eigen::Vector3d n1 = triangleNormal( map, cgogn::CMap3::Face( e.dart_ ) );
-    const Eigen::Vector3d n2 = triangleNormal( map, cgogn::CMap3::Face( cgogn::phi2( map, e.dart_ ) ) );
-    LOG( LOG_LAPLACE ) << "Dihedral angle between " << n1.transpose() << " and " << n2.transpose() << std::endl;
-
-    const double cos_theta = abs( n1.dot( n2 ) );
-    return cos_theta / std::sqrt( 1 - cos_theta * cos_theta );
-}
 
 double edgeWeight( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e )
 {
     double weight = 0;
-    const double factor = edgeLength( map, e ) / 12;
+    const double factor = SimplexUtilities::edgeLength( map, e ) / 12;
     LOG( LOG_LAPLACE ) << "Edge " << e << " Factor: " << factor << std::endl;
     cgogn::foreach_incident_volume( map, e, [&]( cgogn::CMap3::Volume v ){
-        weight += factor * dihedralCotangent( map, cgogn::CMap3::Edge( v.dart_ ) );
-        // weight += factor * dihedralCotangent( map, cgogn::CMap3::Edge( cgogn::phi<1,2,-1>(map, v.dart_) ) );
+        weight += factor * SimplexUtilities::dihedralCotangent( map, cgogn::CMap3::Edge( v.dart_ ) );
+        // weight += factor * SimplexUtilities::dihedralCotangent( map, cgogn::CMap3::Edge( cgogn::phi<1,2,-1>(map, v.dart_) ) );
         return true;
     } );
 
@@ -95,7 +53,7 @@ Eigen::MatrixXd laplaceOperator( const cgogn::CMap3& map )
     return out;
 }
 
-Eigen::VectorXd solvelaplace( const cgogn::CMap3& map, const std::set<VertexId>& zero_bcs, const std::set<VertexId>& one_bcs )
+Eigen::VectorXd solveLaplace( const cgogn::CMap3& map, const std::set<VertexId>& zero_bcs, const std::set<VertexId>& one_bcs )
 {
     std::vector<Eigen::Index> interior_verts;
     std::vector<Eigen::Index> boundary_verts;
@@ -149,23 +107,4 @@ Eigen::VectorXd solvelaplace( const cgogn::CMap3& map, const std::set<VertexId>&
     result( boundary_verts ) = BCs;
 
     return result;
-}
-
-void mapFromInput( const SweepInput& sweep_input, cgogn::CMap3& map )
-{
-    cgogn::io::VolumeImportData import;
-    import.reserve( sweep_input.points.size(), sweep_input.simplices.size() );
-
-    for( const auto& tet : sweep_input.simplices )
-    {
-        import.volumes_types_.push_back( cgogn::io::VolumeType::Tetra );
-        for( size_t i = 0; i < 4; i++ )
-        {
-            import.volumes_vertex_indices_.push_back( tet.vertex( i ).id() );
-        }
-    }
-
-    import.vertex_position_ = sweep_input.points;
-
-    import_volume_data( map, import );
 }

@@ -9,6 +9,7 @@ add_library( attemptlib
   VTKOutput.cpp
   AbaqusInput.cpp
   Logging.cpp
+  Laplace.cpp
 )
 
 include_directories( ${CMAKE_SOURCE_DIR}/../thirdparty/eigen )

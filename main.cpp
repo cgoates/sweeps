@@ -1,5 +1,6 @@
-#include<TempUtils.hpp>
+#include<SimplexUtilities.hpp>
 #include<AbaqusInput.hpp>
+#include<Laplace.hpp>
 
 int main()
 {
@@ -10,7 +11,7 @@ int main()
     // const SweepInput sweep_input = loadINPFile( "/Users/caleb/sweeps/attempt-sweep/test/simple_mesh.inp", "Surface1", "Surface28" );
     const SweepInput sweep_input = io::loadINPFile( "/Users/caleb/Downloads/TorusPipe.inp", "Surface3", "Surface4" );
     cgogn::CMap3 map;
-    mapFromInput( sweep_input, map );
+    SimplexUtilities::mapFromInput( sweep_input, map );
 
     /*
         TODO:
@@ -21,7 +22,7 @@ int main()
         - Mesh input from gmsh with floor/ceiling specs
     */
 
-    const Eigen::VectorXd ans = solvelaplace( map, sweep_input.zero_bcs, sweep_input.one_bcs );
+    const Eigen::VectorXd ans = solveLaplace( map, sweep_input.zero_bcs, sweep_input.one_bcs );
 
     std::cout << ans.transpose() << std::endl;
     io::outputSimplicialFieldToVTK( map, ans, "test.vtu" );
