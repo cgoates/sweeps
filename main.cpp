@@ -24,6 +24,11 @@ int main()
 
     const Eigen::VectorXd ans = solveLaplace( map, sweep_input.zero_bcs, sweep_input.one_bcs );
 
+    const auto iso = SimplexUtilities::isosurface(
+        map,
+        0.3,
+        [&]( const VertexId& vid ){ return ans( vid.id() ); } );
+
     std::cout << ans.transpose() << std::endl;
     io::outputSimplicialFieldToVTK( map, ans, "test.vtu" );
 
