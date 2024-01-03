@@ -1,10 +1,14 @@
 #pragma once
 #include<iostream>
 #include<Eigen/Dense>
+#include<Eigen/Sparse>
 #include<set>
 #include<vector>
 
 #define LOG( COND ) if( COND ) std::cout
+
+
+std::ostream& operator<<( std::ostream& o, const Eigen::Triplet<double>& t );
 
 template<typename T>
 std::ostream& operator<<( std::ostream& o, const std::vector<T>& v )
