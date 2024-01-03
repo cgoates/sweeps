@@ -22,7 +22,8 @@ int main()
         - Mesh input from gmsh with floor/ceiling specs
     */
 
-    const Eigen::VectorXd ans = solveLaplace( map, sweep_input.zero_bcs, sweep_input.one_bcs );
+    // const Eigen::VectorXd ans1 = solveLaplace( map, sweep_input.zero_bcs, sweep_input.one_bcs );
+    const Eigen::VectorXd ans = solveLaplaceSparse( map, sweep_input.zero_bcs, sweep_input.one_bcs );
 
     std::cout << ans.transpose() << std::endl;
     io::outputSimplicialFieldToVTK( map, ans, "test.vtu" );
