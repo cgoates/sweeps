@@ -66,5 +66,7 @@ class SimplexUtilities
         import.vertex_position_ = sweep_input.points;
 
         import_volume_data( map, import );
+
+        cgogn::index_cells<cgogn::CMap3::Edge>( map );
     }
 };

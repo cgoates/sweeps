@@ -21,13 +21,28 @@ double edgeWeight( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e )
     return weight;
 }
 
-Eigen::SparseVector<double> laplaceOperatorRowSparse( const cgogn::CMap3& map, const cgogn::CMap3::Vertex& v1, const int n_verts )
+std::vector<double> edgeWeights( const cgogn::CMap3& map )
+{
+    const int n_edges = cgogn::nb_cells<cgogn::CMap3::Edge>( map );
+    std::vector<double> weights( n_edges, 0 );
+
+    cgogn::foreach_cell( map, [&]( cgogn::CMap3::Edge e ) {
+        weights.at( cgogn::index_of( map, e ) ) = edgeWeight( map, e );
+        return true;
+    } );
+    return weights;
+}
+
+Eigen::SparseVector<double> laplaceOperatorRowSparse( const cgogn::CMap3& map,
+                                                      const cgogn::CMap3::Vertex& v1,
+                                                      const std::vector<double>& edge_weights,
+                                                      const int n_verts )
 {
     Eigen::SparseVector<double> out( n_verts );
     out.reserve( 10 );// FIXME
     const VertexId vid1 = cgogn::index_of( map, v1 );
     cgogn::foreach_incident_edge( map, v1, [&]( cgogn::CMap3::Edge e ){
-        const double edge_weight = edgeWeight( map, e );
+        const double edge_weight = edge_weights.at( cgogn::index_of( map, e ) );
         const VertexId vid2 = cgogn::index_of( map, cgogn::CMap3::Vertex( cgogn::phi1( map, e.dart_ ) ) );
         // LOG( LOG_LAPLACE ) << vid1.id() << "->" << vid2.id() << " : " << edge_weight << std::endl;
 
@@ -59,6 +74,9 @@ Eigen::VectorXd solveLaplaceSparse( const cgogn::CMap3& map, const std::set<Vert
 
     LOG( LOG_LAPLACE ) << "zeros: " << zero_bcs << std::endl;
     LOG( LOG_LAPLACE ) << "ones: " << one_bcs << std::endl;
+
+    const std::vector<double> edge_weights = edgeWeights( map );
+
     cgogn::foreach_cell( map, [&]( cgogn::CMap3::Vertex v ) {
         const VertexId vid = cgogn::index_of( map, v );
         if( zero_bcs.contains( vid ) )
@@ -78,7 +96,7 @@ Eigen::VectorXd solveLaplaceSparse( const cgogn::CMap3& map, const std::set<Vert
         {
             // LOG( LOG_LAPLACE ) << "interior: " << interior_verts.size() << "\n";
             // LOG( LOG_LAPLACE ) << interior_verts << std::endl;
-            const SparseVectorXd row = laplaceOperatorRowSparse( map, v, n_verts );
+            const SparseVectorXd row = laplaceOperatorRowSparse( map, v, edge_weights, n_verts );
             const Eigen::Index i = interior_verts.size();
             for( SparseVectorXd::InnerIterator it( row ); it; ++it )
             {
