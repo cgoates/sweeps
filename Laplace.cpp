@@ -21,10 +21,8 @@ double edgeWeight( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e )
     return weight;
 }
 
-Eigen::SparseVector<double> laplaceOperatorRowSparse( const cgogn::CMap3& map, const cgogn::CMap3::Vertex& v1 )
+Eigen::SparseVector<double> laplaceOperatorRowSparse( const cgogn::CMap3& map, const cgogn::CMap3::Vertex& v1, const int n_verts )
 {
-    const int n_verts = cgogn::nb_cells<cgogn::CMap3::Vertex>( map );
-    LOG( LOG_LAPLACE ) << n_verts << std::endl;
     Eigen::SparseVector<double> out( n_verts );
     out.reserve( 10 );// FIXME
     const VertexId vid1 = cgogn::index_of( map, v1 );
@@ -80,7 +78,7 @@ Eigen::VectorXd solveLaplaceSparse( const cgogn::CMap3& map, const std::set<Vert
         {
             // LOG( LOG_LAPLACE ) << "interior: " << interior_verts.size() << "\n";
             // LOG( LOG_LAPLACE ) << interior_verts << std::endl;
-            const SparseVectorXd row = laplaceOperatorRowSparse( map, v );
+            const SparseVectorXd row = laplaceOperatorRowSparse( map, v, n_verts );
             const Eigen::Index i = interior_verts.size();
             for( SparseVectorXd::InnerIterator it( row ); it; ++it )
             {
