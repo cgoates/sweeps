@@ -4,6 +4,7 @@
 #include<Eigen/Sparse>
 #include<set>
 #include<vector>
+#include<chrono>
 
 #define LOG( COND ) if( COND ) std::cout
 
@@ -37,3 +38,35 @@ std::ostream& operator<<( std::ostream& o, const std::set<T>& v )
     }
     return o;
 }
+
+class Timer
+{
+    public:
+    Timer( const size_t n = 10 ) :
+        mAccumulated( n, std::chrono::microseconds::zero() ),
+        mStartTimes( n, std::chrono::high_resolution_clock::now() ),
+        mStarted( n, false )
+    {}
+
+    void start( const size_t i )
+    {
+        mStartTimes.at( i ) = std::chrono::high_resolution_clock::now();
+        mStarted.at( i ) = true;
+    }
+
+    double stop( const size_t i )
+    {
+        if( mStarted.at( i ) )
+        {
+            mAccumulated.at( i ) += std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::high_resolution_clock::now() - mStartTimes.at( i ) );
+            mStarted.at( i ) = false;
+        }
+        return mAccumulated.at( i ).count() * 1e-6;
+    }
+
+    private:
+    std::vector< std::chrono::microseconds > mAccumulated;
+    std::vector< std::chrono::time_point< std::chrono::high_resolution_clock > > mStartTimes;
+    std::vector< bool > mStarted;
+};
