@@ -4,6 +4,25 @@
 
 struct SweepInput;
 
+class Normal
+{
+    public:
+    Normal( const cgogn::CMap3& map, const cgogn::Dart& dart, const Eigen::Vector3d& normal ) :
+        mOppositeDarts( { cgogn::phi2( map, dart ), cgogn::phi<2, 1>( map, dart ), cgogn::phi<2, -1>( map, dart ) } ),
+        mNormal( normal )
+    {}
+    Normal() {}
+
+    Eigen::Vector3d get( const cgogn::Dart& dart ) const
+    {
+        if( std::find( mOppositeDarts.begin(), mOppositeDarts.end(), dart ) != mOppositeDarts.end() ) return -1 * mNormal;
+        return mNormal;
+    }
+
+    private:
+    std::array<cgogn::Dart, 3> mOppositeDarts;
+    Eigen::Vector3d mNormal;
+};
 class SimplexUtilities
 {
     public:
@@ -11,9 +30,11 @@ class SimplexUtilities
 
     static Eigen::Vector3d triangleNormal( const cgogn::CMap3& map, const cgogn::CMap3::Face& f );
 
+    static std::vector<Normal> faceNormals( const cgogn::CMap3& map );
+
     static double edgeLength( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e );
 
-    static double dihedralCotangent( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e );
+    static double dihedralCotangent( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e, const std::vector<Normal>& normals );
 
     static Eigen::Vector3d gradient( const cgogn::CMap3& map,
                                      const cgogn::CMap3::Volume& v,

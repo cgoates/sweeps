@@ -7,13 +7,14 @@
 
 #define LOG_LAPLACE 0
 
-double edgeWeight( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e )
+
+double edgeWeight( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e, const std::vector<Normal>& normals )
 {
     double weight = 0;
     const double factor = SimplexUtilities::edgeLength( map, e ) / 12;
-    LOG( LOG_LAPLACE ) << "Edge " << e << " Factor: " << factor << std::endl;
+    // LOG( LOG_LAPLACE ) << "Edge " << e << " Factor: " << factor << std::endl;
     cgogn::foreach_incident_volume( map, e, [&]( cgogn::CMap3::Volume v ){
-        weight += factor * SimplexUtilities::dihedralCotangent( map, cgogn::CMap3::Edge( v.dart_ ) );
+        weight += factor * SimplexUtilities::dihedralCotangent( map, cgogn::CMap3::Edge( v.dart_ ), normals );
         // weight += factor * SimplexUtilities::dihedralCotangent( map, cgogn::CMap3::Edge( cgogn::phi<1,2,-1>(map, v.dart_) ) );
         return true;
     } );
@@ -21,13 +22,13 @@ double edgeWeight( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e )
     return weight;
 }
 
-std::vector<double> edgeWeights( const cgogn::CMap3& map )
+std::vector<double> edgeWeights( const cgogn::CMap3& map, const std::vector<Normal>& normals )
 {
     const int n_edges = cgogn::nb_cells<cgogn::CMap3::Edge>( map );
     std::vector<double> weights( n_edges, 0 );
 
     cgogn::foreach_cell( map, [&]( cgogn::CMap3::Edge e ) {
-        weights.at( cgogn::index_of( map, e ) ) = edgeWeight( map, e );
+        weights.at( cgogn::index_of( map, e ) ) = edgeWeight( map, e, normals );
         return true;
     } );
     return weights;
@@ -44,7 +45,6 @@ Eigen::SparseVector<double> laplaceOperatorRowSparse( const cgogn::CMap3& map,
     cgogn::foreach_incident_edge( map, v1, [&]( cgogn::CMap3::Edge e ){
         const double edge_weight = edge_weights.at( cgogn::index_of( map, e ) );
         const VertexId vid2 = cgogn::index_of( map, cgogn::CMap3::Vertex( cgogn::phi1( map, e.dart_ ) ) );
-        // LOG( LOG_LAPLACE ) << vid1.id() << "->" << vid2.id() << " : " << edge_weight << std::endl;
 
         out.coeffRef( vid1.id() ) -= edge_weight;
         out.coeffRef( vid2.id() ) += edge_weight;
@@ -75,7 +75,8 @@ Eigen::VectorXd solveLaplaceSparse( const cgogn::CMap3& map, const std::set<Vert
     LOG( LOG_LAPLACE ) << "zeros: " << zero_bcs << std::endl;
     LOG( LOG_LAPLACE ) << "ones: " << one_bcs << std::endl;
 
-    const std::vector<double> edge_weights = edgeWeights( map );
+    const std::vector<Normal> normals = SimplexUtilities::faceNormals( map );
+    const std::vector<double> edge_weights = edgeWeights( map, normals );
 
     cgogn::foreach_cell( map, [&]( cgogn::CMap3::Vertex v ) {
         const VertexId vid = cgogn::index_of( map, v );

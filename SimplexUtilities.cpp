@@ -27,6 +27,19 @@ Eigen::Vector3d SimplexUtilities::triangleNormal( const cgogn::CMap3& map, const
     return triangleNormal( pos1, pos2, pos3 );
 }
 
+std::vector<Normal> SimplexUtilities::faceNormals( const cgogn::CMap3& map )
+{
+    const size_t n_faces = cgogn::nb_cells<cgogn::CMap3::Face>( map );
+    std::vector<Normal> normals( n_faces );
+
+    cgogn::foreach_cell( map, [&]( cgogn::CMap3::Face f ) {
+        const auto fid = cgogn::index_of( map, f );
+        normals[ fid ] = Normal( map, f.dart_, triangleNormal( map, f ) );
+        return true;
+    } );
+    return normals;
+}
+
 double SimplexUtilities::edgeLength( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e )
 {
     const auto position = cgogn::get_attribute<Eigen::Vector3d, cgogn::CMap3::Vertex>( map, "position" );
@@ -36,10 +49,14 @@ double SimplexUtilities::edgeLength( const cgogn::CMap3& map, const cgogn::CMap3
     return ( pos2 - pos1 ).norm();
 }
 
-double SimplexUtilities::dihedralCotangent( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e )
+double SimplexUtilities::dihedralCotangent( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e, const std::vector<Normal>& normals )
 {
-    const Eigen::Vector3d n1 = triangleNormal( map, cgogn::CMap3::Face( e.dart_ ) );
-    const Eigen::Vector3d n2 = triangleNormal( map, cgogn::CMap3::Face( cgogn::phi2( map, e.dart_ ) ) );
+    const auto get_normal = [&]( cgogn::CMap3::Face f ) {
+        const auto fid = cgogn::index_of( map, f );
+        return normals.at( fid ).get( f.dart_ );
+    };
+    const Eigen::Vector3d n1 = get_normal( cgogn::CMap3::Face( e.dart_ ) );
+    const Eigen::Vector3d n2 = get_normal( cgogn::CMap3::Face( cgogn::phi2( map, e.dart_ ) ) );
 
     const double cos_theta = abs( n1.dot( n2 ) );
     return cos_theta / std::sqrt( 1 - cos_theta * cos_theta );
@@ -83,4 +100,5 @@ void SimplexUtilities::mapFromInput( const SweepInput& sweep_input, cgogn::CMap3
     import_volume_data( map, import );
 
     cgogn::index_cells<cgogn::CMap3::Edge>( map );
+    cgogn::index_cells<cgogn::CMap3::Face>( map );
 }
