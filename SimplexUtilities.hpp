@@ -48,6 +48,25 @@ class SimplexUtilities
         return cos_theta / std::sqrt( 1 - cos_theta * cos_theta );
     }
 
+    static Eigen::Vector3d gradient( const cgogn::CMap3& map,
+                                     const cgogn::CMap3::Volume& v,
+                                     const std::function<double(const cgogn::CMap3::Vertex&)>& field_values,
+                                     const std::function<const Eigen::Vector3d&(const cgogn::CMap3::Face&)>& inward_normals )
+    {
+        const auto position = cgogn::get_attribute<Eigen::Vector3d, cgogn::CMap3::Vertex>( map, "position" );
+        Eigen::Vector3d gradient = Eigen::Vector3d::Zero();
+        cgogn::foreach_incident_face( map, v, [&]( cgogn::CMap3::Face f ){
+            const cgogn::CMap3::Vertex op_vert( cgogn::phi<2, -1>( map, f.dart_ ) );
+            const Eigen::Vector3d& op_vert_pos = cgogn::value<Eigen::Vector3d>( map, position, op_vert );
+            const Eigen::Vector3d& face_vert_pos = cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( f.dart_ ) );
+            const Eigen::Vector3d& normal = inward_normals( f );
+            gradient += field_values( op_vert ) * normal.dot( op_vert_pos - face_vert_pos ) * normal;
+            return true;
+        } );
+
+        return gradient;
+    }
+
     // FIXME: This doesn't belong here
     static void mapFromInput( const SweepInput& sweep_input, cgogn::CMap3& map )
     {
