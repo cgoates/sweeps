@@ -10,6 +10,7 @@ add_library( attemptlib
   AbaqusInput.cpp
   Logging.cpp
   Laplace.cpp
+  SimplexUtilities.cpp
 )
 
 include_directories( ${CMAKE_SOURCE_DIR}/../thirdparty/eigen )

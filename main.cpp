@@ -1,6 +1,9 @@
 #include<SimplexUtilities.hpp>
 #include<AbaqusInput.hpp>
 #include<Laplace.hpp>
+#include <cgogn/core/types/cell_marker.h>
+#include <cgogn/core/functions/traversals/vertex.h>
+#include<VTKOutput.hpp>
 
 int main()
 {
