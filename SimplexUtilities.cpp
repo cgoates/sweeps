@@ -56,9 +56,9 @@ double SimplexUtilities::dihedralCotangent( const cgogn::CMap3& map, const cgogn
         return normals.at( fid ).get( f.dart_ );
     };
     const Eigen::Vector3d n1 = get_normal( cgogn::CMap3::Face( e.dart_ ) );
-    const Eigen::Vector3d n2 = get_normal( cgogn::CMap3::Face( cgogn::phi2( map, e.dart_ ) ) );
+    const Eigen::Vector3d n2 = get_normal( cgogn::CMap3::Face( cgogn::phi<2,3>( map, e.dart_ ) ) );
 
-    const double cos_theta = abs( n1.dot( n2 ) );
+    const double cos_theta = n1.dot( n2 );
     return cos_theta / std::sqrt( 1 - cos_theta * cos_theta );
 }
 

@@ -8,7 +8,7 @@ class Normal
 {
     public:
     Normal( const cgogn::CMap3& map, const cgogn::Dart& dart, const Eigen::Vector3d& normal ) :
-        mOppositeDarts( { cgogn::phi2( map, dart ), cgogn::phi<2, 1>( map, dart ), cgogn::phi<2, -1>( map, dart ) } ),
+        mOppositeDarts( { cgogn::phi3( map, dart ), cgogn::phi<3, 1>( map, dart ), cgogn::phi<3, -1>( map, dart ) } ),
         mNormal( normal )
     {}
     Normal() {}
