@@ -1,7 +1,6 @@
 #include<Laplace.hpp>
 #include<Simplex.hpp>
 #include<Logging.hpp>
-#include <cgogn/core/types/cell_marker.h>
 #include<SimplexUtilities.hpp>
 #include<Eigen/Sparse>
 

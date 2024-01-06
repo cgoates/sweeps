@@ -1,11 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <SweepInput.hpp>
-#include <cgogn/core/functions/mesh_info.h>
-#include <cgogn/core/types/cell_marker.h>
-#include <cgogn/core/functions/traversals/vertex.h>
 #include <SimplexUtilities.hpp>
-#include <AbaqusInput.hpp>
-#include <Logging.hpp>
 
 TEST_CASE( "Dihedral angle cotangent", "[single-file]" ) {
     SweepInput sweep_input = { {{0, 1, 2, 3}}, { {0, 0, 0}, {0, 0, 1}, {1, 0, 0} }, {}, {} };

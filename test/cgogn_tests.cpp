@@ -1,7 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <SweepInput.hpp>
 #include <cgogn/core/functions/mesh_info.h>
-#include <cgogn/core/types/cell_marker.h>
 #include <cgogn/core/functions/traversals/vertex.h>
 #include <SimplexUtilities.hpp>
 #include <AbaqusInput.hpp>
