@@ -5,3 +5,4 @@ function(add_my_test arg)
 endfunction()
 
 add_my_test(cgogn_tests)
+add_my_test(simplex_utility_tests)
