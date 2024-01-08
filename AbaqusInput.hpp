@@ -1,6 +1,6 @@
 #pragma once
-#include<string>
-#include<SweepInput.hpp>
+#include <string>
+#include <SweepInput.hpp>
 
 namespace io
 {

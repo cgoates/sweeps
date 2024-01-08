@@ -9,5 +9,7 @@ namespace cgogn
 
 namespace io
 {
-    void outputSimplicialFieldToVTK( const cgogn::CMap3& map, const Eigen::MatrixXd& data, const std::string& filename );
+    void outputSimplicialFieldToVTK( const cgogn::CMap3& map,
+                                     const Eigen::MatrixXd& data,
+                                     const std::string& filename );
 }

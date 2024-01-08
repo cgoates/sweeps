@@ -1,6 +1,6 @@
 #pragma once
-#include<array>
-#include<ostream>
+#include <array>
+#include <ostream>
 
 class VertexId
 {
@@ -8,15 +8,13 @@ class VertexId
     using Type = uint64_t;
     VertexId( const Type& id );
     Type id() const { return mId; }
-    bool operator<( const VertexId& o ) const
-    {
-        return id() < o.id();
-    }
+    bool operator<( const VertexId& o ) const { return id() < o.id(); }
     friend std::ostream& operator<<( std::ostream& o, const VertexId& vid )
     {
         o << vid.mId;
         return o;
     }
+
     private:
     const Type mId;
 };

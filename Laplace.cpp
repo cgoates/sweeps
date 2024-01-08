@@ -1,8 +1,8 @@
-#include<Laplace.hpp>
-#include<Simplex.hpp>
-#include<Logging.hpp>
-#include<SimplexUtilities.hpp>
-#include<Eigen/Sparse>
+#include <Laplace.hpp>
+#include <Simplex.hpp>
+#include <Logging.hpp>
+#include <SimplexUtilities.hpp>
+#include <Eigen/Sparse>
 
 #define LOG_LAPLACE 0
 
@@ -14,12 +14,10 @@ double edgeWeight( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e, const s
     t.start( 8 );
     const double factor = SimplexUtilities::edgeLength( map, e ) / 12;
     t.stop( 8 );
-    // LOG( LOG_LAPLACE ) << "Edge " << e << " Factor: " << factor << std::endl;
-    cgogn::foreach_incident_volume( map, e, [&]( cgogn::CMap3::Volume v ){
+    cgogn::foreach_incident_volume( map, e, [&]( cgogn::CMap3::Volume v ) {
         t.start( 6 );
         weight += factor * SimplexUtilities::dihedralCotangent( map, cgogn::CMap3::Edge( v.dart_ ), normals );
         t.stop( 6 );
-        // weight += factor * SimplexUtilities::dihedralCotangent( map, cgogn::CMap3::Edge( cgogn::phi<1,2,-1>(map, v.dart_) ) );
         return true;
     } );
 
@@ -44,10 +42,10 @@ Eigen::SparseVector<double> laplaceOperatorRowSparse( const cgogn::CMap3& map,
                                                       const int n_verts )
 {
     Eigen::SparseVector<double> out( n_verts );
-    out.reserve( 10 );// FIXME
+    out.reserve( 10 ); // FIXME
     const VertexId vid1 = cgogn::index_of( map, v1 );
     t.start( 7 );
-    cgogn::foreach_incident_edge( map, v1, [&]( cgogn::CMap3::Edge e ){
+    cgogn::foreach_incident_edge( map, v1, [&]( cgogn::CMap3::Edge e ) {
         const double edge_weight = edge_weights.at( cgogn::index_of( map, e ) );
         const VertexId vid2 = cgogn::index_of( map, cgogn::CMap3::Vertex( cgogn::phi1( map, e.dart_ ) ) );
 
@@ -60,7 +58,9 @@ Eigen::SparseVector<double> laplaceOperatorRowSparse( const cgogn::CMap3& map,
     return out;
 }
 
-Eigen::VectorXd solveLaplaceSparse( const cgogn::CMap3& map, const std::set<VertexId>& zero_bcs, const std::set<VertexId>& one_bcs )
+Eigen::VectorXd solveLaplaceSparse( const cgogn::CMap3& map,
+                                    const std::set<VertexId>& zero_bcs,
+                                    const std::set<VertexId>& one_bcs )
 {
     t.start( 0 );
 
@@ -72,8 +72,8 @@ Eigen::VectorXd solveLaplaceSparse( const cgogn::CMap3& map, const std::set<Vert
     const int n_verts = cgogn::nb_cells<cgogn::CMap3::Vertex>( map );
     const size_t n_bcs = zero_bcs.size() + one_bcs.size();
 
-    std::vector< Eigen::Triplet<double> > L_triplets;
-    L_triplets.reserve( n_verts * n_verts );// overkill but definitely enough
+    std::vector<Eigen::Triplet<double>> L_triplets;
+    L_triplets.reserve( n_verts * n_verts ); // overkill but definitely enough
 
     SparseVectorXd BCs( n_bcs );
     BCs.reserve( one_bcs.size() );
@@ -91,21 +91,17 @@ Eigen::VectorXd solveLaplaceSparse( const cgogn::CMap3& map, const std::set<Vert
         const VertexId vid = cgogn::index_of( map, v );
         if( zero_bcs.contains( vid ) )
         {
-            // LOG( LOG_LAPLACE ) << "zero bc\n";
             const Eigen::Index i = boundary_verts.size();
             boundary_verts.emplace( vid.id(), i );
         }
         else if( one_bcs.contains( vid ) )
         {
-            // LOG( LOG_LAPLACE ) << "one bc\n";
             const Eigen::Index i = boundary_verts.size();
             BCs.insert( i ) = 1.0;
             boundary_verts.emplace( vid.id(), i );
         }
         else
         {
-            // LOG( LOG_LAPLACE ) << "interior: " << interior_verts.size() << "\n";
-            // LOG( LOG_LAPLACE ) << interior_verts << std::endl;
             t.start( 2 );
             const SparseVectorXd row = laplaceOperatorRowSparse( map, v, edge_weights, n_verts );
             t.stop( 2 );
@@ -121,7 +117,7 @@ Eigen::VectorXd solveLaplaceSparse( const cgogn::CMap3& map, const std::set<Vert
     t.stop( 1 );
 
     t.start( 3 );
-    std::vector< Eigen::Triplet<double> > L_II_triplets;
+    std::vector<Eigen::Triplet<double>> L_II_triplets;
     L_II_triplets.reserve( L_triplets.size() );
     for( const auto& t : L_triplets )
     {
@@ -134,7 +130,7 @@ Eigen::VectorXd solveLaplaceSparse( const cgogn::CMap3& map, const std::set<Vert
     SparseMatrixXd L_II( n_verts - n_bcs, n_verts - n_bcs );
     L_II.setFromTriplets( L_II_triplets.begin(), L_II_triplets.end() );
 
-    std::vector< Eigen::Triplet<double> > L_IB_triplets;
+    std::vector<Eigen::Triplet<double>> L_IB_triplets;
     L_IB_triplets.reserve( L_triplets.size() );
     for( const auto& t : L_triplets )
     {
@@ -155,8 +151,7 @@ Eigen::VectorXd solveLaplaceSparse( const cgogn::CMap3& map, const std::set<Vert
     LOG( LOG_LAPLACE ) << "About to solve\n";
 
     t.start( 4 );
-    //Eigen::SparseQR<SparseMatrixXd, Eigen::COLAMDOrdering<int> > solver( L_II );
-    Eigen::ConjugateGradient<SparseMatrixXd, Eigen::Lower|Eigen::Upper> solver( L_II );
+    Eigen::ConjugateGradient<SparseMatrixXd, Eigen::Lower | Eigen::Upper> solver( L_II );
     const Eigen::VectorXd ans = solver.solve( rhs );
     t.stop( 4 );
 

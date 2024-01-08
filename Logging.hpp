@@ -1,22 +1,23 @@
 #pragma once
-#include<iostream>
-#include<Eigen/Dense>
-#include<Eigen/Sparse>
-#include<set>
-#include<vector>
-#include<chrono>
+#include <iostream>
+#include <Eigen/Dense>
+#include <Eigen/Sparse>
+#include <set>
+#include <vector>
+#include <chrono>
 
+// clang-format off
 #define LOG( COND ) if( COND ) std::cout
-
+// clang-format on
 
 std::ostream& operator<<( std::ostream& o, const Eigen::Triplet<double>& t );
 
-template<typename T>
-std::ostream& operator<<( std::ostream& o, const std::vector<T>& v )
+template <typename T> std::ostream& operator<<( std::ostream& o, const std::vector<T>& v )
 {
-    if( v.size() == 0 ) o << "{}";
+    if( v.size() == 0 )
+        o << "{}";
     else
-    {    
+    {
         o << "{ ";
         for( auto it = v.begin(); it != v.end() - 1; it++ ) o << *it << ", ";
         o << v.back() << " }";
@@ -26,10 +27,10 @@ std::ostream& operator<<( std::ostream& o, const std::vector<T>& v )
 
 std::ostream& operator<<( std::ostream& o, const std::vector<Eigen::Vector3d>& v );
 
-template<typename T>
-std::ostream& operator<<( std::ostream& o, const std::set<T>& v )
+template <typename T> std::ostream& operator<<( std::ostream& o, const std::set<T>& v )
 {
-    if( v.size() == 0 ) o << "{}";
+    if( v.size() == 0 )
+        o << "{}";
     else
     {
         o << "{ ";
@@ -42,10 +43,10 @@ std::ostream& operator<<( std::ostream& o, const std::set<T>& v )
 class Timer
 {
     public:
-    Timer( const size_t n = 10 ) :
-        mAccumulated( n, std::chrono::microseconds::zero() ),
-        mStartTimes( n, std::chrono::high_resolution_clock::now() ),
-        mStarted( n, false )
+    Timer( const size_t n = 10 )
+        : mAccumulated( n, std::chrono::microseconds::zero() ),
+          mStartTimes( n, std::chrono::high_resolution_clock::now() ),
+          mStarted( n, false )
     {}
 
     void start( const size_t i )
@@ -66,7 +67,7 @@ class Timer
     }
 
     private:
-    std::vector< std::chrono::microseconds > mAccumulated;
-    std::vector< std::chrono::time_point< std::chrono::high_resolution_clock > > mStartTimes;
-    std::vector< bool > mStarted;
+    std::vector<std::chrono::microseconds> mAccumulated;
+    std::vector<std::chrono::time_point<std::chrono::high_resolution_clock>> mStartTimes;
+    std::vector<bool> mStarted;
 };

@@ -1,4 +1,4 @@
-#include<Logging.hpp>
+#include <Logging.hpp>
 
 std::ostream& operator<<( std::ostream& o, const Eigen::Triplet<double>& t )
 {
@@ -8,7 +8,8 @@ std::ostream& operator<<( std::ostream& o, const Eigen::Triplet<double>& t )
 
 std::ostream& operator<<( std::ostream& o, const std::vector<Eigen::Vector3d>& v )
 {
-    if( v.size() == 0 ) o << "{}";
+    if( v.size() == 0 )
+        o << "{}";
     else
     {
         o << "{ ";
