@@ -11,7 +11,8 @@ int main()
     cgogn::CMap3 map;
     SimplexUtilities::mapFromInput( sweep_input, map );
 
-    const Eigen::VectorXd ans = solveLaplaceSparse( map, sweep_input.zero_bcs, sweep_input.one_bcs );
+    const std::vector<Normal> normals = SimplexUtilities::faceNormals( map );
+    const Eigen::VectorXd ans = solveLaplaceSparse( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
 
     std::cout << ans.transpose() << std::endl;
     io::outputSimplicialFieldToVTK( map, ans, "test.vtu" );

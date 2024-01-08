@@ -60,7 +60,8 @@ Eigen::SparseVector<double> laplaceOperatorRowSparse( const cgogn::CMap3& map,
 
 Eigen::VectorXd solveLaplaceSparse( const cgogn::CMap3& map,
                                     const std::set<VertexId>& zero_bcs,
-                                    const std::set<VertexId>& one_bcs )
+                                    const std::set<VertexId>& one_bcs,
+                                    const std::vector<Normal>& normals )
 {
     t.start( 0 );
 
@@ -82,7 +83,6 @@ Eigen::VectorXd solveLaplaceSparse( const cgogn::CMap3& map,
     LOG( LOG_LAPLACE ) << "ones: " << one_bcs << std::endl;
 
     t.start( 9 );
-    const std::vector<Normal> normals = SimplexUtilities::faceNormals( map );
     const std::vector<double> edge_weights = edgeWeights( map, normals );
     t.stop( 9 );
 
