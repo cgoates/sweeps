@@ -42,11 +42,14 @@ class SimplexUtilities
                                      const cgogn::CMap3::Edge& e,
                                      const std::vector<Normal>& normals );
 
-    static Eigen::Vector3d
-        gradient( const cgogn::CMap3& map,
-                  const cgogn::CMap3::Volume& v,
-                  const std::function<double( const cgogn::CMap3::Vertex& )>& field_values,
-                  const std::function<const Eigen::Vector3d&( const cgogn::CMap3::Face& )>& inward_normals );
+    static Eigen::Vector3d gradient( const cgogn::CMap3& map,
+                                     const cgogn::CMap3::Volume& v,
+                                     const Eigen::VectorXd& field_values,
+                                     const std::vector<Normal>& normals );
+
+    static Eigen::MatrixX3d gradients( const cgogn::CMap3& map,
+                                       const Eigen::VectorXd& field_values,
+                                       const std::vector<Normal>& normals );
 
     // FIXME: This doesn't belong here
     static void mapFromInput( const SweepInput& sweep_input, cgogn::CMap3& map );

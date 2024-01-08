@@ -67,25 +67,39 @@ double SimplexUtilities::dihedralCotangent( const cgogn::CMap3& map,
     return cos_theta / std::sqrt( 1 - cos_theta * cos_theta );
 }
 
-Eigen::Vector3d SimplexUtilities::gradient(
-    const cgogn::CMap3& map,
-    const cgogn::CMap3::Volume& v,
-    const std::function<double( const cgogn::CMap3::Vertex& )>& field_values,
-    const std::function<const Eigen::Vector3d&( const cgogn::CMap3::Face& )>& inward_normals )
+Eigen::Vector3d SimplexUtilities::gradient( const cgogn::CMap3& map,
+                                            const cgogn::CMap3::Volume& v,
+                                            const Eigen::VectorXd& field_values,
+                                            const std::vector<Normal>& normals )
 {
-    const auto position = cgogn::get_attribute<Eigen::Vector3d, cgogn::CMap3::Vertex>( map, "position" );
+    using Vertex = cgogn::CMap3::Vertex;
+    const auto position = cgogn::get_attribute<Eigen::Vector3d, Vertex>( map, "position" );
     Eigen::Vector3d gradient = Eigen::Vector3d::Zero();
     cgogn::foreach_incident_face( map, v, [&]( cgogn::CMap3::Face f ) {
-        const cgogn::CMap3::Vertex op_vert( cgogn::phi<2, -1>( map, f.dart_ ) );
+        const Vertex op_vert( cgogn::phi<2, -1>( map, f.dart_ ) );
+        const VertexId op_vert_id( cgogn::index_of( map, op_vert ) );
         const Eigen::Vector3d& op_vert_pos = cgogn::value<Eigen::Vector3d>( map, position, op_vert );
-        const Eigen::Vector3d& face_vert_pos =
-            cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( f.dart_ ) );
-        const Eigen::Vector3d& normal = inward_normals( f );
-        gradient += field_values( op_vert ) * normal.dot( op_vert_pos - face_vert_pos ) * normal;
+        const Eigen::Vector3d& face_vert_pos = cgogn::value<Eigen::Vector3d>( map, position, Vertex( f.dart_ ) );
+        const auto fid = cgogn::index_of( map, f );
+        const Eigen::Vector3d& normal = normals.at( fid ).get( f.dart_ );
+        gradient += field_values( op_vert_id.id() ) * normal.dot( op_vert_pos - face_vert_pos ) * normal;
         return true;
     } );
 
     return gradient;
+}
+
+Eigen::MatrixX3d SimplexUtilities::gradients( const cgogn::CMap3& map,
+                                              const Eigen::VectorXd& field_values,
+                                              const std::vector<Normal>& normals )
+{
+    Eigen::MatrixX3d result( cgogn::nb_cells<cgogn::CMap3::Volume>( map ), 3 );
+    cgogn::foreach_cell( map, [&]( cgogn::CMap3::Volume v ) {
+        result.row( cgogn::index_of( map, v ) ) = gradient( map, v, field_values, normals ).transpose();
+        return true;
+    } );
+
+    return result;
 }
 
 void SimplexUtilities::mapFromInput( const SweepInput& sweep_input, cgogn::CMap3& map )
