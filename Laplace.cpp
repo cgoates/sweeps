@@ -6,14 +6,19 @@
 
 #define LOG_LAPLACE 0
 
+Timer t;
 
 double edgeWeight( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e, const std::vector<Normal>& normals )
 {
     double weight = 0;
+    t.start( 8 );
     const double factor = SimplexUtilities::edgeLength( map, e ) / 12;
+    t.stop( 8 );
     // LOG( LOG_LAPLACE ) << "Edge " << e << " Factor: " << factor << std::endl;
     cgogn::foreach_incident_volume( map, e, [&]( cgogn::CMap3::Volume v ){
+        t.start( 6 );
         weight += factor * SimplexUtilities::dihedralCotangent( map, cgogn::CMap3::Edge( v.dart_ ), normals );
+        t.stop( 6 );
         // weight += factor * SimplexUtilities::dihedralCotangent( map, cgogn::CMap3::Edge( cgogn::phi<1,2,-1>(map, v.dart_) ) );
         return true;
     } );
@@ -41,6 +46,7 @@ Eigen::SparseVector<double> laplaceOperatorRowSparse( const cgogn::CMap3& map,
     Eigen::SparseVector<double> out( n_verts );
     out.reserve( 10 );// FIXME
     const VertexId vid1 = cgogn::index_of( map, v1 );
+    t.start( 7 );
     cgogn::foreach_incident_edge( map, v1, [&]( cgogn::CMap3::Edge e ){
         const double edge_weight = edge_weights.at( cgogn::index_of( map, e ) );
         const VertexId vid2 = cgogn::index_of( map, cgogn::CMap3::Vertex( cgogn::phi1( map, e.dart_ ) ) );
@@ -49,13 +55,14 @@ Eigen::SparseVector<double> laplaceOperatorRowSparse( const cgogn::CMap3& map,
         out.coeffRef( vid2.id() ) += edge_weight;
         return true;
     } );
+    t.stop( 7 );
 
     return out;
 }
 
 Eigen::VectorXd solveLaplaceSparse( const cgogn::CMap3& map, const std::set<VertexId>& zero_bcs, const std::set<VertexId>& one_bcs )
 {
-
+    t.start( 0 );
 
     using SparseVectorXd = Eigen::SparseVector<double>;
     using SparseMatrixXd = Eigen::SparseMatrix<double>;
@@ -74,9 +81,12 @@ Eigen::VectorXd solveLaplaceSparse( const cgogn::CMap3& map, const std::set<Vert
     LOG( LOG_LAPLACE ) << "zeros: " << zero_bcs << std::endl;
     LOG( LOG_LAPLACE ) << "ones: " << one_bcs << std::endl;
 
+    t.start( 9 );
     const std::vector<Normal> normals = SimplexUtilities::faceNormals( map );
     const std::vector<double> edge_weights = edgeWeights( map, normals );
+    t.stop( 9 );
 
+    t.start( 1 );
     cgogn::foreach_cell( map, [&]( cgogn::CMap3::Vertex v ) {
         const VertexId vid = cgogn::index_of( map, v );
         if( zero_bcs.contains( vid ) )
@@ -96,7 +106,9 @@ Eigen::VectorXd solveLaplaceSparse( const cgogn::CMap3& map, const std::set<Vert
         {
             // LOG( LOG_LAPLACE ) << "interior: " << interior_verts.size() << "\n";
             // LOG( LOG_LAPLACE ) << interior_verts << std::endl;
+            t.start( 2 );
             const SparseVectorXd row = laplaceOperatorRowSparse( map, v, edge_weights, n_verts );
+            t.stop( 2 );
             const Eigen::Index i = interior_verts.size();
             for( SparseVectorXd::InnerIterator it( row ); it; ++it )
             {
@@ -106,7 +118,9 @@ Eigen::VectorXd solveLaplaceSparse( const cgogn::CMap3& map, const std::set<Vert
         }
         return true;
     } );
+    t.stop( 1 );
 
+    t.start( 3 );
     std::vector< Eigen::Triplet<double> > L_II_triplets;
     L_II_triplets.reserve( L_triplets.size() );
     for( const auto& t : L_triplets )
@@ -133,17 +147,40 @@ Eigen::VectorXd solveLaplaceSparse( const cgogn::CMap3& map, const std::set<Vert
     LOG( LOG_LAPLACE ) << "BCs: " << std::endl << BCs << std::endl << std::endl;
 
     const SparseVectorXd rhs = -L_IB * BCs;
+    t.stop( 3 );
 
     LOG( LOG_LAPLACE ) << "L_II:\n" << Eigen::MatrixXd( L_II ) << std::endl << std::endl;
     LOG( LOG_LAPLACE ) << "rhs:\n" << Eigen::VectorXd( rhs ).transpose() << std::endl << std::endl;
 
+    LOG( LOG_LAPLACE ) << "About to solve\n";
+
+    t.start( 4 );
     //Eigen::SparseQR<SparseMatrixXd, Eigen::COLAMDOrdering<int> > solver( L_II );
     Eigen::ConjugateGradient<SparseMatrixXd, Eigen::Lower|Eigen::Upper> solver( L_II );
     const Eigen::VectorXd ans = solver.solve( rhs );
+    t.stop( 4 );
 
+    LOG( LOG_LAPLACE ) << "Assembling result\n";
+
+    t.start( 5 );
     Eigen::VectorXd result( n_verts );
     for( const auto& pr : interior_verts ) result( pr.first ) = ans.coeffRef( pr.second );
     for( const auto& pr : boundary_verts ) result( pr.first ) = BCs.coeffRef( pr.second );
+    t.stop( 5 );
+    t.stop( 0 );
+
+    LOG( LOG_LAPLACE ) << "returning result\n";
+
+    LOG( LOG_LAPLACE ) << "Total time: " << t.stop( 0 ) << std::endl;
+    LOG( LOG_LAPLACE ) << "| Weights time: " << t.stop( 9 ) << std::endl;
+    LOG( LOG_LAPLACE ) << "| | Edge length time: " << t.stop( 8 ) << std::endl;
+    LOG( LOG_LAPLACE ) << "| | cot time: " << t.stop( 6 ) << std::endl;
+    LOG( LOG_LAPLACE ) << "| Loop time: " << t.stop( 1 ) << std::endl;
+    LOG( LOG_LAPLACE ) << "| | Row time: " << t.stop( 2 ) << std::endl;
+    LOG( LOG_LAPLACE ) << "| | | Loop time: " << t.stop( 7 ) << std::endl;
+    LOG( LOG_LAPLACE ) << "| Assembly time: " << t.stop( 3 ) << std::endl;
+    LOG( LOG_LAPLACE ) << "| Solve time: " << t.stop( 4 ) << std::endl;
+    LOG( LOG_LAPLACE ) << "| Format time: " << t.stop( 5 ) << std::endl;
 
     return result;
 }
