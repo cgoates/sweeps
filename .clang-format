@@ -42,4 +42,3 @@ SpaceBeforeInheritanceColon: true
 SpaceBeforeRangeBasedForLoopColon: true
 SpaceInEmptyParentheses: false
 PenaltyReturnTypeOnItsOwnLine: 75
-AlignEscapedNewLines: DontAlign
