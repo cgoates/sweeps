@@ -10,9 +10,9 @@
 #include <SweepInput.hpp>
 #include <Logging.hpp>
 
-Eigen::Vector3d triangleNormal( const Eigen::Vector3d& v1, const Eigen::Vector3d& v2, const Eigen::Vector3d& v3 )
+Eigen::Vector3d triangleNormal( const Triangle& tri )
 {
-    return ( v2 - v1 ).cross( v3 - v1 ).normalized();
+    return ( tri.v2 - tri.v1 ).cross( tri.v3 - tri.v1 ).normalized();
 }
 
 Eigen::Vector3d triangleNormal( const cgogn::CMap3& map, const cgogn::CMap3::Face& f )
@@ -24,7 +24,7 @@ Eigen::Vector3d triangleNormal( const cgogn::CMap3& map, const cgogn::CMap3::Fac
         cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( cgogn::phi1( map, d ) ) );
     const Eigen::Vector3d& pos3 =
         cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( cgogn::phi_1( map, d ) ) );
-    return triangleNormal( pos1, pos2, pos3 );
+    return triangleNormal( { pos1, pos2, pos3 } );
 }
 
 std::vector<Normal> faceNormals( const cgogn::CMap3& map )

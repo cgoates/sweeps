@@ -26,7 +26,14 @@ class Normal
     Eigen::Vector3d mNormal;
 };
 
-Eigen::Vector3d triangleNormal( const Eigen::Vector3d& v1, const Eigen::Vector3d& v2, const Eigen::Vector3d& v3 );
+struct Triangle
+{
+    const Eigen::Ref<const Eigen::Vector3d>& v1;
+    const Eigen::Ref<const Eigen::Vector3d>& v2;
+    const Eigen::Ref<const Eigen::Vector3d>& v3;
+};
+
+Eigen::Vector3d triangleNormal( const Triangle& tri );
 
 Eigen::Vector3d triangleNormal( const cgogn::CMap3& map, const cgogn::CMap3::Face& f );
 
