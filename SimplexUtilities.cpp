@@ -98,6 +98,21 @@ Eigen::MatrixX3d gradients( const cgogn::CMap3& map,
     return result;
 }
 
+std::optional<Eigen::Vector3d> intersectionOf( const Ray& ray,
+                                               const Triangle& tri,
+                                               std::optional<const Eigen::Vector3d> maybe_normal )
+{
+    const Eigen::Vector3d normal = maybe_normal.value_or( triangleNormal( tri ) );
+    const Eigen::Vector3d intersection_point =
+        ray.start_pos + normal.dot( tri.v1 - ray.start_pos ) / normal.dot( ray.dir ) * ray.dir;
+
+    const bool inside = normal.dot( ( tri.v2 - tri.v1 ).cross( intersection_point - tri.v1 ) ) >= 0 and
+                        normal.dot( ( tri.v3 - tri.v2 ).cross( intersection_point - tri.v2 ) ) >= 0 and
+                        normal.dot( ( tri.v1 - tri.v3 ).cross( intersection_point - tri.v3 ) ) >= 0;
+
+    return inside ? std::optional<Eigen::Vector3d>( intersection_point ) : std::nullopt;
+}
+
 void mapFromInput( const SweepInput& sweep_input, cgogn::CMap3& map )
 {
     cgogn::io::VolumeImportData import;

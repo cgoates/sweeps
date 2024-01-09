@@ -33,6 +33,12 @@ struct Triangle
     const Eigen::Ref<const Eigen::Vector3d>& v3;
 };
 
+struct Ray
+{
+    const Eigen::Ref<const Eigen::Vector3d>& start_pos;
+    const Eigen::Ref<const Eigen::Vector3d>& dir;
+};
+
 Eigen::Vector3d triangleNormal( const Triangle& tri );
 
 Eigen::Vector3d triangleNormal( const cgogn::CMap3& map, const cgogn::CMap3::Face& f );
@@ -51,6 +57,10 @@ Eigen::Vector3d gradient( const cgogn::CMap3& map,
 Eigen::MatrixX3d gradients( const cgogn::CMap3& map,
                             const Eigen::VectorXd& field_values,
                             const std::vector<Normal>& normals );
+
+std::optional<Eigen::Vector3d> intersectionOf( const Ray& ray,
+                                               const Triangle& tri,
+                                               std::optional<const Eigen::Vector3d> maybe_normal = {} );
 
 // FIXME: This doesn't belong here
 void mapFromInput( const SweepInput& sweep_input, cgogn::CMap3& map );
