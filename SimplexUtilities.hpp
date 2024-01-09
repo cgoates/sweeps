@@ -25,32 +25,25 @@ class Normal
     std::array<cgogn::Dart, 3> mOppositeDarts;
     Eigen::Vector3d mNormal;
 };
-class SimplexUtilities
-{
-    public:
-    static Eigen::Vector3d triangleNormal( const Eigen::Vector3d& v1,
-                                           const Eigen::Vector3d& v2,
-                                           const Eigen::Vector3d& v3 );
 
-    static Eigen::Vector3d triangleNormal( const cgogn::CMap3& map, const cgogn::CMap3::Face& f );
+Eigen::Vector3d triangleNormal( const Eigen::Vector3d& v1, const Eigen::Vector3d& v2, const Eigen::Vector3d& v3 );
 
-    static std::vector<Normal> faceNormals( const cgogn::CMap3& map );
+Eigen::Vector3d triangleNormal( const cgogn::CMap3& map, const cgogn::CMap3::Face& f );
 
-    static double edgeLength( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e );
+std::vector<Normal> faceNormals( const cgogn::CMap3& map );
 
-    static double dihedralCotangent( const cgogn::CMap3& map,
-                                     const cgogn::CMap3::Edge& e,
-                                     const std::vector<Normal>& normals );
+double edgeLength( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e );
 
-    static Eigen::Vector3d gradient( const cgogn::CMap3& map,
-                                     const cgogn::CMap3::Volume& v,
-                                     const Eigen::VectorXd& field_values,
-                                     const std::vector<Normal>& normals );
+double dihedralCotangent( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e, const std::vector<Normal>& normals );
 
-    static Eigen::MatrixX3d gradients( const cgogn::CMap3& map,
-                                       const Eigen::VectorXd& field_values,
-                                       const std::vector<Normal>& normals );
+Eigen::Vector3d gradient( const cgogn::CMap3& map,
+                          const cgogn::CMap3::Volume& v,
+                          const Eigen::VectorXd& field_values,
+                          const std::vector<Normal>& normals );
 
-    // FIXME: This doesn't belong here
-    static void mapFromInput( const SweepInput& sweep_input, cgogn::CMap3& map );
-};
+Eigen::MatrixX3d gradients( const cgogn::CMap3& map,
+                            const Eigen::VectorXd& field_values,
+                            const std::vector<Normal>& normals );
+
+// FIXME: This doesn't belong here
+void mapFromInput( const SweepInput& sweep_input, cgogn::CMap3& map );

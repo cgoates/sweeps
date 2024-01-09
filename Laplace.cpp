@@ -12,11 +12,11 @@ double edgeWeight( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e, const s
 {
     double weight = 0;
     t.start( 8 );
-    const double factor = SimplexUtilities::edgeLength( map, e ) / 12;
+    const double factor = edgeLength( map, e ) / 12;
     t.stop( 8 );
     cgogn::foreach_incident_volume( map, e, [&]( cgogn::CMap3::Volume v ) {
         t.start( 6 );
-        weight += factor * SimplexUtilities::dihedralCotangent( map, cgogn::CMap3::Edge( v.dart_ ), normals );
+        weight += factor * dihedralCotangent( map, cgogn::CMap3::Edge( v.dart_ ), normals );
         t.stop( 6 );
         return true;
     } );

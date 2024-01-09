@@ -9,9 +9,9 @@ int main()
     // const SweepInput sweep_input = io::loadINPFile( "/Users/caleb/sweeps/attempt-sweep/test/simple_mesh.inp", "Surface1", "Surface28" );
     const SweepInput sweep_input = io::loadINPFile( "/Users/caleb/Downloads/TorusPipe3.inp", "Surface3", "Surface4" );
     cgogn::CMap3 map;
-    SimplexUtilities::mapFromInput( sweep_input, map );
+    mapFromInput( sweep_input, map );
 
-    const std::vector<Normal> normals = SimplexUtilities::faceNormals( map );
+    const std::vector<Normal> normals = faceNormals( map );
     const Eigen::VectorXd ans = solveLaplaceSparse( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
 
     std::cout << ans.transpose() << std::endl;

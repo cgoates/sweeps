@@ -10,14 +10,12 @@
 #include <SweepInput.hpp>
 #include <Logging.hpp>
 
-Eigen::Vector3d SimplexUtilities::triangleNormal( const Eigen::Vector3d& v1,
-                                                  const Eigen::Vector3d& v2,
-                                                  const Eigen::Vector3d& v3 )
+Eigen::Vector3d triangleNormal( const Eigen::Vector3d& v1, const Eigen::Vector3d& v2, const Eigen::Vector3d& v3 )
 {
     return ( v2 - v1 ).cross( v3 - v1 ).normalized();
 }
 
-Eigen::Vector3d SimplexUtilities::triangleNormal( const cgogn::CMap3& map, const cgogn::CMap3::Face& f )
+Eigen::Vector3d triangleNormal( const cgogn::CMap3& map, const cgogn::CMap3::Face& f )
 {
     const auto position = cgogn::get_attribute<Eigen::Vector3d, cgogn::CMap3::Vertex>( map, "position" );
     const cgogn::Dart& d = f.dart_;
@@ -29,7 +27,7 @@ Eigen::Vector3d SimplexUtilities::triangleNormal( const cgogn::CMap3& map, const
     return triangleNormal( pos1, pos2, pos3 );
 }
 
-std::vector<Normal> SimplexUtilities::faceNormals( const cgogn::CMap3& map )
+std::vector<Normal> faceNormals( const cgogn::CMap3& map )
 {
     const size_t n_faces = cgogn::nb_cells<cgogn::CMap3::Face>( map );
     std::vector<Normal> normals( n_faces );
@@ -42,7 +40,7 @@ std::vector<Normal> SimplexUtilities::faceNormals( const cgogn::CMap3& map )
     return normals;
 }
 
-double SimplexUtilities::edgeLength( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e )
+double edgeLength( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e )
 {
     const auto position = cgogn::get_attribute<Eigen::Vector3d, cgogn::CMap3::Vertex>( map, "position" );
     const cgogn::Dart& d = e.dart_;
@@ -52,9 +50,7 @@ double SimplexUtilities::edgeLength( const cgogn::CMap3& map, const cgogn::CMap3
     return ( pos2 - pos1 ).norm();
 }
 
-double SimplexUtilities::dihedralCotangent( const cgogn::CMap3& map,
-                                            const cgogn::CMap3::Edge& e,
-                                            const std::vector<Normal>& normals )
+double dihedralCotangent( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e, const std::vector<Normal>& normals )
 {
     const auto get_normal = [&]( cgogn::CMap3::Face f ) {
         const auto fid = cgogn::index_of( map, f );
@@ -67,10 +63,10 @@ double SimplexUtilities::dihedralCotangent( const cgogn::CMap3& map,
     return cos_theta / std::sqrt( 1 - cos_theta * cos_theta );
 }
 
-Eigen::Vector3d SimplexUtilities::gradient( const cgogn::CMap3& map,
-                                            const cgogn::CMap3::Volume& v,
-                                            const Eigen::VectorXd& field_values,
-                                            const std::vector<Normal>& normals )
+Eigen::Vector3d gradient( const cgogn::CMap3& map,
+                          const cgogn::CMap3::Volume& v,
+                          const Eigen::VectorXd& field_values,
+                          const std::vector<Normal>& normals )
 {
     using Vertex = cgogn::CMap3::Vertex;
     const auto position = cgogn::get_attribute<Eigen::Vector3d, Vertex>( map, "position" );
@@ -89,9 +85,9 @@ Eigen::Vector3d SimplexUtilities::gradient( const cgogn::CMap3& map,
     return gradient;
 }
 
-Eigen::MatrixX3d SimplexUtilities::gradients( const cgogn::CMap3& map,
-                                              const Eigen::VectorXd& field_values,
-                                              const std::vector<Normal>& normals )
+Eigen::MatrixX3d gradients( const cgogn::CMap3& map,
+                            const Eigen::VectorXd& field_values,
+                            const std::vector<Normal>& normals )
 {
     Eigen::MatrixX3d result( cgogn::nb_cells<cgogn::CMap3::Volume>( map ), 3 );
     cgogn::foreach_cell( map, [&]( cgogn::CMap3::Volume v ) {
@@ -102,7 +98,7 @@ Eigen::MatrixX3d SimplexUtilities::gradients( const cgogn::CMap3& map,
     return result;
 }
 
-void SimplexUtilities::mapFromInput( const SweepInput& sweep_input, cgogn::CMap3& map )
+void mapFromInput( const SweepInput& sweep_input, cgogn::CMap3& map )
 {
     cgogn::io::VolumeImportData import;
     import.reserve( sweep_input.points.size(), sweep_input.simplices.size() );

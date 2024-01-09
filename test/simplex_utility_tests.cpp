@@ -13,9 +13,9 @@ TEST_CASE( "Dihedral angle cotangent", "[single-file]" )
             sweep_input.points.push_back( { std::cos( angle ), std::sin( angle ), 0 } );
 
             cgogn::CMap3 map;
-            SimplexUtilities::mapFromInput( sweep_input, map );
+            mapFromInput( sweep_input, map );
 
-            const auto normals = SimplexUtilities::faceNormals( map );
+            const auto normals = faceNormals( map );
 
             cgogn::foreach_cell( map, [&]( cgogn::CMap3::Edge e ) {
                 const auto vid1 = cgogn::index_of( map, cgogn::CMap3::Vertex( e.dart_ ) );
@@ -33,7 +33,7 @@ TEST_CASE( "Dihedral angle cotangent", "[single-file]" )
     {
         test_angle( std::numbers::pi / 2,
                     [&]( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e, const std::vector<Normal>& normals ) {
-                        REQUIRE( SimplexUtilities::dihedralCotangent( map, e, normals ) < 1e-5 );
+                        REQUIRE( dihedralCotangent( map, e, normals ) < 1e-5 );
                     } );
     }
 
@@ -41,7 +41,7 @@ TEST_CASE( "Dihedral angle cotangent", "[single-file]" )
     {
         test_angle( std::numbers::pi / 4,
                     [&]( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e, const std::vector<Normal>& normals ) {
-                        REQUIRE( std::abs( SimplexUtilities::dihedralCotangent( map, e, normals ) - 1.0 ) < 1e-5 );
+                        REQUIRE( std::abs( dihedralCotangent( map, e, normals ) - 1.0 ) < 1e-5 );
                     } );
     }
 
@@ -49,7 +49,7 @@ TEST_CASE( "Dihedral angle cotangent", "[single-file]" )
     {
         test_angle( std::numbers::pi / 6,
                     [&]( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e, const std::vector<Normal>& normals ) {
-                        REQUIRE( std::abs( SimplexUtilities::dihedralCotangent( map, e, normals ) -
+                        REQUIRE( std::abs( dihedralCotangent( map, e, normals ) -
                                            1.0 / std::tan( std::numbers::pi / 6 ) ) < 1e-5 );
                     } );
     }
@@ -58,7 +58,7 @@ TEST_CASE( "Dihedral angle cotangent", "[single-file]" )
     {
         test_angle( 2 * std::numbers::pi / 3,
                     [&]( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e, const std::vector<Normal>& normals ) {
-                        REQUIRE( std::abs( SimplexUtilities::dihedralCotangent( map, e, normals ) -
+                        REQUIRE( std::abs( dihedralCotangent( map, e, normals ) -
                                            1.0 / std::tan( 2 * std::numbers::pi / 3 ) ) < 1e-5 );
                     } );
     }
