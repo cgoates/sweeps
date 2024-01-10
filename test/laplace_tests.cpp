@@ -6,7 +6,7 @@
 TEST_CASE( "Laplace patch test", "[single-file]" )
 {
     SweepInput sweep_input = SweepInputTestCases::twelveTetCube();
-    sweep_input.points.back() = Eigen::Vector3d( 0.37, 0.49, 0.55 );
+    sweep_input.mesh.points.back() = Eigen::Vector3d( 0.37, 0.49, 0.55 );
 
     cgogn::CMap3 map;
     mapFromInput( sweep_input, map );
@@ -15,5 +15,5 @@ TEST_CASE( "Laplace patch test", "[single-file]" )
 
     // NOTE: I don't love that this is only within five percent, but I'm not sure if I should expect better...
     // At least this is a smoke test for now.
-    REQUIRE( std::abs( sol( 8 ) - sweep_input.points.back()( 2 ) ) < sweep_input.points.back()( 2 ) * 0.05 );
+    REQUIRE( std::abs( sol( 8 ) - sweep_input.mesh.points.back()( 2 ) ) < sweep_input.mesh.points.back()( 2 ) * 0.05 );
 }

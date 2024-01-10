@@ -5,10 +5,15 @@
 #include <numbers>
 #include <Eigen/Dense>
 
-struct SweepInput
+struct SimplicialComplex
 {
     std::vector<Simplex> simplices;
     std::vector<Eigen::Vector3d> points;
+};
+
+struct SweepInput
+{
+    SimplicialComplex mesh;
     std::set<VertexId> zero_bcs;
     std::set<VertexId> one_bcs;
 };
@@ -29,7 +34,7 @@ class SweepInputTestCases
         points.push_back( { 0.5, 0.5, 0.5 } );
         points.push_back( { 1, 1, 0 } );
 
-        const SweepInput out = { simplices, points, { 0 }, { 1 } };
+        const SweepInput out = { { simplices, points }, { 0 }, { 1 } };
 
         return out;
     }
@@ -61,7 +66,7 @@ class SweepInputTestCases
         points.push_back( { 1, 1, 1 } );
         points.push_back( { 0.5, 0.5, 0.5 } );
 
-        const SweepInput out = { simplices, points, { 0, 1, 2, 3 }, { 4, 5, 6, 7 } };
+        const SweepInput out = { { simplices, points }, { 0, 1, 2, 3 }, { 4, 5, 6, 7 } };
 
         return out;
     }
@@ -159,7 +164,7 @@ class SweepInputTestCases
             }
         }
 
-        const SweepInput out = { simplices, points, zero_bcs, one_bcs };
+        const SweepInput out = { { simplices, points }, zero_bcs, one_bcs };
 
         return out;
     }
@@ -171,13 +176,16 @@ class SweepInputTestCases
 
         std::vector<Eigen::Vector3d> new_points;
         std::transform(
-            cube.points.begin(), cube.points.end(), std::back_inserter( new_points ), [&]( const Eigen::Vector3d& pt ) {
+            cube.mesh.points.begin(),
+            cube.mesh.points.end(),
+            std::back_inserter( new_points ),
+            [&]( const Eigen::Vector3d& pt ) {
                 return Eigen::Vector3d( 0.1 * pt( 0 ),
                                         ( 1 + 0.1 * pt( 1 ) ) * sin( pi * pt( 2 ) / 2 ),
                                         ( 1 + 0.1 * pt( 1 ) ) * cos( pi * pt( 2 ) / 2 ) );
             } );
 
-        const SweepInput out = { cube.simplices, new_points, cube.zero_bcs, cube.one_bcs };
+        const SweepInput out = { { cube.mesh.simplices, new_points }, cube.zero_bcs, cube.one_bcs };
 
         return out;
     }

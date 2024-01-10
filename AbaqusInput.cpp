@@ -106,7 +106,7 @@ namespace io
             }
         }
 
-        return SweepInput( { tets, points, zero_bcs, one_bcs } );
+        return SweepInput( { { tets, points }, zero_bcs, one_bcs } );
     }
 
 } // namespace io

@@ -1,16 +1,17 @@
 #include <catch2/catch_test_macros.hpp>
 #include <SweepInput.hpp>
 #include <SimplexUtilities.hpp>
+#include <Logging.hpp>
 
 TEST_CASE( "Dihedral angle cotangent", "[single-file]" )
 {
-    SweepInput sweep_input = { { { 0, 1, 2, 3 } }, { { 0, 0, 0 }, { 0, 0, 1 }, { 1, 0, 0 } }, {}, {} };
+    SweepInput sweep_input = { { { { 0, 1, 2, 3 } }, { { 0, 0, 0 }, { 0, 0, 1 }, { 1, 0, 0 } } }, {}, {} };
 
     const auto test_angle =
         [&]( const double angle,
              const std::function<void( const cgogn::CMap3&, const cgogn::CMap3::Edge&, const std::vector<Normal>& )>&
                  test ) {
-            sweep_input.points.push_back( { std::cos( angle ), std::sin( angle ), 0 } );
+            sweep_input.mesh.points.push_back( { std::cos( angle ), std::sin( angle ), 0 } );
 
             cgogn::CMap3 map;
             mapFromInput( sweep_input, map );

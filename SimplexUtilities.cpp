@@ -122,9 +122,9 @@ std::optional<Eigen::Vector3d> intersectionOf( const Ray& ray,
 void mapFromInput( const SweepInput& sweep_input, cgogn::CMap3& map )
 {
     cgogn::io::VolumeImportData import;
-    import.reserve( sweep_input.points.size(), sweep_input.simplices.size() );
+    import.reserve( sweep_input.mesh.points.size(), sweep_input.mesh.simplices.size() );
 
-    for( const auto& tet : sweep_input.simplices )
+    for( const auto& tet : sweep_input.mesh.simplices )
     {
         import.volumes_types_.push_back( cgogn::io::VolumeType::Tetra );
         for( size_t i = 0; i < 4; i++ )
@@ -133,7 +133,7 @@ void mapFromInput( const SweepInput& sweep_input, cgogn::CMap3& map )
         }
     }
 
-    import.vertex_position_ = sweep_input.points;
+    import.vertex_position_ = sweep_input.mesh.points;
 
     import_volume_data( map, import );
 
