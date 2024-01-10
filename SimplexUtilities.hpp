@@ -28,15 +28,15 @@ class Normal
 
 struct Triangle
 {
-    const Eigen::Ref<const Eigen::Vector3d>& v1;
-    const Eigen::Ref<const Eigen::Vector3d>& v2;
-    const Eigen::Ref<const Eigen::Vector3d>& v3;
+    const Eigen::Ref<const Eigen::Vector3d> v1;
+    const Eigen::Ref<const Eigen::Vector3d> v2;
+    const Eigen::Ref<const Eigen::Vector3d> v3;
 };
 
 struct Ray
 {
-    const Eigen::Ref<const Eigen::Vector3d>& start_pos;
-    const Eigen::Ref<const Eigen::Vector3d>& dir;
+    const Eigen::Ref<const Eigen::Vector3d> start_pos;
+    const Eigen::Ref<const Eigen::Vector3d> dir;
 };
 
 Eigen::Vector3d triangleNormal( const Triangle& tri );

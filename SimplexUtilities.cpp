@@ -15,7 +15,7 @@ Eigen::Vector3d triangleNormal( const Triangle& tri )
     return ( tri.v2 - tri.v1 ).cross( tri.v3 - tri.v1 ).normalized();
 }
 
-Eigen::Vector3d triangleNormal( const cgogn::CMap3& map, const cgogn::CMap3::Face& f )
+Triangle triangleOfFace( const cgogn::CMap3& map, const cgogn::CMap3::Face& f )
 {
     const auto position = cgogn::get_attribute<Eigen::Vector3d, cgogn::CMap3::Vertex>( map, "position" );
     const cgogn::Dart& d = f.dart_;
@@ -24,7 +24,13 @@ Eigen::Vector3d triangleNormal( const cgogn::CMap3& map, const cgogn::CMap3::Fac
         cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( cgogn::phi1( map, d ) ) );
     const Eigen::Vector3d& pos3 =
         cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( cgogn::phi_1( map, d ) ) );
-    return triangleNormal( { pos1, pos2, pos3 } );
+
+    return Triangle{ pos1, pos2, pos3 };
+}
+
+Eigen::Vector3d triangleNormal( const cgogn::CMap3& map, const cgogn::CMap3::Face& f )
+{
+    return triangleNormal( triangleOfFace( map, f ) );
 }
 
 std::vector<Normal> faceNormals( const cgogn::CMap3& map )
