@@ -119,6 +119,33 @@ std::optional<Eigen::Vector3d> intersectionOf( const Ray& ray,
     return inside ? std::optional<Eigen::Vector3d>( intersection_point ) : std::nullopt;
 }
 
+std::pair<cgogn::CMap3::Face, Eigen::Vector3d> traceRayOnTet( const cgogn::CMap3& map,
+                                                              const cgogn::CMap3::Volume& v,
+                                                              const Ray& ray,
+                                                              const std::vector<Normal>& normals )
+{
+    // The face on the input dart is the location that we start from.
+    // Check all the other faces for intersection with the ray.
+    std::pair<cgogn::CMap3::Face, Eigen::Vector3d> out;
+    foreach_incident_edge( map, cgogn::CMap3::Face( v.dart_ ), [&]( cgogn::CMap3::Edge e ) {
+        const cgogn::CMap3::Face adj_face( phi2( map, e.dart_ ) );
+        const Triangle tri = triangleOfFace( map, adj_face );
+
+        const std::optional<Eigen::Vector3d> intersection =
+            intersectionOf( ray, tri, normals.at( index_of( map, adj_face ) ).get( adj_face.dart_ ) );
+
+        if( intersection.has_value() )
+        {
+            out.first = cgogn::CMap3::Face( phi3( map, adj_face.dart_ ) );
+            out.second = intersection.value();
+            return false;
+        }
+        return true;
+    } );
+    // FIXME: Throw an error if there is no match
+    return out;
+}
+
 void mapFromInput( const SweepInput& sweep_input, cgogn::CMap3& map )
 {
     cgogn::io::VolumeImportData import;
