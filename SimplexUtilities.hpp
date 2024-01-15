@@ -62,10 +62,11 @@ std::optional<Eigen::Vector3d> intersectionOf( const Ray& ray,
                                                const Triangle& tri,
                                                std::optional<const Eigen::Vector3d> maybe_normal = {} );
 
-std::pair<cgogn::CMap3::Face, Eigen::Vector3d> traceRayOnTet( const cgogn::CMap3& map,
-                                                              const cgogn::CMap3::Volume& v,
-                                                              const Ray& ray,
-                                                              const std::vector<Normal>& normals );
+using TracePoint = std::pair<cgogn::CMap3::Face, Eigen::Vector3d>;
+std::optional<TracePoint> traceRayOnTet( const cgogn::CMap3& map,
+                                         const cgogn::CMap3::Volume& v,
+                                         const Ray& ray,
+                                         const std::vector<Normal>& normals );
 
 // FIXME: This doesn't belong here
 void mapFromInput( const SweepInput& sweep_input, cgogn::CMap3& map );
