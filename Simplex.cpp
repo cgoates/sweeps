@@ -3,6 +3,14 @@
 
 VertexId::VertexId( const VertexId::Type& id ) : mId( id ) {}
 
+Simplex::Simplex( const VertexId& v0 )
+    : mDim( 0 ), mVertexIds( { v0, 0, 0, 0 } )
+{}
+
+Simplex::Simplex( const VertexId& v0, const VertexId& v1 )
+    : mDim( 1 ), mVertexIds( { v0, v1, 0, 0 } )
+{}
+
 Simplex::Simplex( const VertexId& v0, const VertexId& v1, const VertexId& v2 )
     : mDim( 2 ), mVertexIds( { v0, v1, v2, 0 } )
 {}

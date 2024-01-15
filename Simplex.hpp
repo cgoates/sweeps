@@ -9,6 +9,7 @@ class VertexId
     VertexId( const Type& id );
     Type id() const { return mId; }
     bool operator<( const VertexId& o ) const { return id() < o.id(); }
+    bool operator==( const VertexId& o ) const { return id() == o.id(); }
     friend std::ostream& operator<<( std::ostream& o, const VertexId& vid )
     {
         o << vid.mId;
@@ -22,6 +23,8 @@ class VertexId
 class Simplex
 {
     public:
+    Simplex( const VertexId& v0 );
+    Simplex( const VertexId& v0, const VertexId& v1 );
     Simplex( const VertexId& v0, const VertexId& v1, const VertexId& v2 );
     Simplex( const VertexId& v0, const VertexId& v1, const VertexId& v2, const VertexId& v3 );
 

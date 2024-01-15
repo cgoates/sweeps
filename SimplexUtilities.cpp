@@ -3,6 +3,7 @@
 #include <Simplex.hpp>
 #include <VTKOutput.hpp>
 #include <set>
+#include <iomanip>
 #include <cgogn/core/functions/traversals/vertex.h>
 #include <cgogn/core/functions/mesh_info.h>
 #include <cgogn/core/functions/attributes.h>
@@ -159,6 +160,77 @@ std::optional<TracePoint> traceRayOnTet( const cgogn::CMap3& map,
     return out;
 }
 
+void tracingDebugOutput( const cgogn::CMap3& map,
+                         const cgogn::CMap3::Volume& v,
+                         const Ray& ray,
+                         const SimplicialComplex& line,
+                         SimplicialComplex& tets,
+                         const size_t n )
+{
+    // Add the triangles of the current tet to tets
+    foreach_incident_face( map, v, [&]( cgogn::CMap3::Face f ) {
+        const Triangle from_face = triangleOfFace( map, f );
+        const size_t next_vid = tets.points.size();
+        tets.simplices.push_back( { next_vid + 0, next_vid + 1, next_vid + 2 } );
+        tets.points.push_back( from_face.v1 );
+        tets.points.push_back( from_face.v2 );
+        tets.points.push_back( from_face.v3 );
+        return true;
+    } );
+
+    // Create a simplicial complex with just one face: the triangle it's coming from
+    const Triangle from_face = triangleOfFace( map, cgogn::CMap3::Face( v.dart_ ) );
+    const SimplicialComplex from_face_complex( { { {0, 1, 2} }, { from_face.v1, from_face.v2, from_face.v3 } } );
+    const io::VTKOutputObject from_face_output( from_face_complex );
+
+    // Create a simplicial complex for the ray
+    const SimplicialComplex ray_complex( { { {0} }, { ray.start_pos } } );
+    io::VTKOutputObject ray_output( ray_complex );
+    ray_output.addVertexField( "ray", ray.dir.transpose() );
+
+    const io::VTKOutputObject line_output( line );
+    const io::VTKOutputObject tets_output( tets );
+
+    std::stringstream ss;
+    ss << std::setw(3) << std::setfill('0') << n;
+    std::string n_str(ss.str());
+
+    io::outputSimplicialFieldToVTK( from_face_output, "from_face_" + n_str + ".vtu" );
+    io::outputSimplicialFieldToVTK( ray_output, "ray_" + n_str + ".vtu" );
+    io::outputSimplicialFieldToVTK( line_output, "line_" + n_str + ".vtu" );
+    io::outputSimplicialFieldToVTK( tets_output, "tets_" + n_str + ".vtu" );
+}
+
+SimplicialComplex traceField( const cgogn::CMap3& map,
+                              const cgogn::CMap3::Face& f,
+                              const Eigen::Vector3d& start_point,
+                              const Eigen::MatrixX3d& field,
+                              const std::vector<Normal>& normals )
+{
+    cgogn::CMap3::Face curr_face = f;
+    Eigen::Vector3d curr_point = start_point;
+
+    SimplicialComplex complex;
+    SimplicialComplex debug_tets;
+    size_t n = 0;
+
+    complex.points.push_back( curr_point );
+    while( not is_boundary( map, curr_face.dart_ ) )
+    {
+        const cgogn::CMap3::Volume curr_vol( curr_face.dart_ );
+        const Ray search_ray( {curr_point, field.row( index_of( map, curr_vol ) )} );
+        if( LOG_TRACING ) tracingDebugOutput( map, curr_vol, search_ray, complex, debug_tets, n++ );
+        const std::optional<TracePoint> next_point = traceRayOnTet( map, curr_vol, search_ray, normals );
+        if( not next_point.has_value() ) break;
+        curr_face = next_point.value().first;
+        curr_point = next_point.value().second;
+        complex.points.push_back( curr_point );
+        complex.simplices.push_back( { complex.points.size() - 2, complex.points.size() - 1 } );
+    }
+
+    return complex;
+}
+
 void mapFromInput( const SweepInput& sweep_input, cgogn::CMap3& map )
 {
     cgogn::io::VolumeImportData import;
@@ -179,4 +251,5 @@ void mapFromInput( const SweepInput& sweep_input, cgogn::CMap3& map )
 
     cgogn::index_cells<cgogn::CMap3::Edge>( map );
     cgogn::index_cells<cgogn::CMap3::Face>( map );
+    cgogn::index_cells<cgogn::CMap3::Volume>( map );
 }
