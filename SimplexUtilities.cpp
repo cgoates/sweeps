@@ -84,7 +84,7 @@ Eigen::Vector3d gradient( const cgogn::CMap3& map,
         const Eigen::Vector3d& face_vert_pos = cgogn::value<Eigen::Vector3d>( map, position, Vertex( f.dart_ ) );
         const auto fid = cgogn::index_of( map, f );
         const Eigen::Vector3d& normal = normals.at( fid ).get( f.dart_ );
-        gradient += field_values( op_vert_id.id() ) * normal.dot( op_vert_pos - face_vert_pos ) * normal;
+        gradient += field_values( op_vert_id.id() ) * normal / normal.dot( op_vert_pos - face_vert_pos );
         return true;
     } );
 
