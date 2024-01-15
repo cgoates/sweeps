@@ -43,6 +43,10 @@ Eigen::Vector3d triangleNormal( const Triangle& tri );
 
 Eigen::Vector3d triangleNormal( const cgogn::CMap3& map, const cgogn::CMap3::Face& f );
 
+Eigen::Vector3d centroid( const Triangle& tri );
+
+Eigen::Vector3d centroid( const cgogn::CMap3& map, const cgogn::CMap3::Face& f );
+
 std::vector<Normal> faceNormals( const cgogn::CMap3& map );
 
 double edgeLength( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e );

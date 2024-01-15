@@ -34,6 +34,16 @@ Eigen::Vector3d triangleNormal( const cgogn::CMap3& map, const cgogn::CMap3::Fac
     return triangleNormal( triangleOfFace( map, f ) );
 }
 
+Eigen::Vector3d centroid( const Triangle& tri )
+{
+    return 0.33 * ( tri.v1 + tri.v2 + tri.v3 );
+}
+
+Eigen::Vector3d centroid( const cgogn::CMap3& map, const cgogn::CMap3::Face& f )
+{
+    return centroid( triangleOfFace( map, f ) );
+}
+
 std::vector<Normal> faceNormals( const cgogn::CMap3& map )
 {
     const size_t n_faces = cgogn::nb_cells<cgogn::CMap3::Face>( map );
