@@ -76,7 +76,8 @@ SimplicialComplex traceField( const cgogn::CMap3& map,
                               const cgogn::CMap3::Face& f,
                               const Eigen::Vector3d& start_point,
                               const Eigen::MatrixX3d& field,
-                              const std::vector<Normal>& normals );
+                              const std::vector<Normal>& normals,
+                              const bool debug_output = false );
 
 // FIXME: This doesn't belong here
 void mapFromInput( const SweepInput& sweep_input, cgogn::CMap3& map );

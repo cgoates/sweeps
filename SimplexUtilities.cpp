@@ -115,7 +115,7 @@ Eigen::MatrixX3d gradients( const cgogn::CMap3& map,
     return result;
 }
 
-constexpr bool LOG_TRACING = 1;
+constexpr bool LOG_TRACING = 0;
 
 std::optional<Eigen::Vector3d> intersectionOf( const Ray& ray,
                                                const Triangle& tri,
@@ -215,7 +215,8 @@ SimplicialComplex traceField( const cgogn::CMap3& map,
                               const cgogn::CMap3::Face& f,
                               const Eigen::Vector3d& start_point,
                               const Eigen::MatrixX3d& field,
-                              const std::vector<Normal>& normals )
+                              const std::vector<Normal>& normals,
+                              const bool debug_output )
 {
     cgogn::CMap3::Face curr_face = f;
     Eigen::Vector3d curr_point = start_point;
@@ -229,7 +230,7 @@ SimplicialComplex traceField( const cgogn::CMap3& map,
     {
         const cgogn::CMap3::Volume curr_vol( curr_face.dart_ );
         const Ray search_ray( {curr_point, field.row( index_of( map, curr_vol ) )} );
-        if( LOG_TRACING ) tracingDebugOutput( map, curr_vol, search_ray, complex, debug_tets, n++ );
+        if( debug_output ) tracingDebugOutput( map, curr_vol, search_ray, complex, debug_tets, n++ );
         const std::optional<TracePoint> next_point = traceRayOnTet( map, curr_vol, search_ray, normals );
         if( not next_point.has_value() ) break;
         curr_face = next_point.value().first;
