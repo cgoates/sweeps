@@ -13,7 +13,5 @@ TEST_CASE( "Laplace patch test", "[single-file]" )
     const std::vector<Normal> normals = faceNormals( map );
     const Eigen::VectorXd sol = solveLaplaceSparse( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
 
-    // NOTE: I don't love that this is only within five percent, but I'm not sure if I should expect better...
-    // At least this is a smoke test for now.
-    REQUIRE( std::abs( sol( 8 ) - sweep_input.mesh.points.back()( 2 ) ) < sweep_input.mesh.points.back()( 2 ) * 0.05 );
+    REQUIRE( std::abs( sol( 8 ) - sweep_input.mesh.points.back()( 2 ) ) < sweep_input.mesh.points.back()( 2 ) * 1e-15 );
 }
