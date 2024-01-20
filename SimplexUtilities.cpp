@@ -35,7 +35,7 @@ Eigen::Vector3d triangleNormal( const cgogn::CMap3& map, const cgogn::CMap3::Fac
 
 Eigen::Vector3d centroid( const Triangle& tri )
 {
-    return 0.33 * ( tri.v1 + tri.v2 + tri.v3 );
+    return ( tri.v1 + tri.v2 + tri.v3 ) / 3;
 }
 
 Eigen::Vector3d centroid( const cgogn::CMap3& map, const cgogn::CMap3::Face& f )
