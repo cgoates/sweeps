@@ -12,6 +12,7 @@ add_library( attemptlib
   Logging.cpp
   Laplace.cpp
   SimplexUtilities.cpp
+  Tracing.cpp
 )
 
 include_directories( ${CMAKE_SOURCE_DIR}/../thirdparty/eigen )
