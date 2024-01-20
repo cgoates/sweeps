@@ -63,7 +63,11 @@ std::optional<TracePoint> traceRayOnTet( const cgogn::CMap3& map,
         }
         return true;
     } );
-    if( not found_it ) return std::nullopt;
+    if( not found_it )
+    {
+        LOG( LOG_TRACING ) << "| | NO INTERSECTION\n";
+        return std::nullopt;
+    }
     return out;
 }
 
@@ -108,6 +112,21 @@ void tracingDebugOutput( const cgogn::CMap3& map,
     io::outputSimplicialFieldToVTK( tets_output, "tets_" + n_str + ".vtu" );
 }
 
+std::optional<TracePoint> traceFaceAverageField( const cgogn::CMap3& map,
+                                                 const cgogn::CMap3::Face& f,
+                                                 const Eigen::Vector3d& start_point,
+                                                 const Eigen::MatrixX3d& field,
+                                                 const std::vector<Normal>& normals )
+{
+    const cgogn::CMap3::Face f_opp( phi3( map, f.dart_ ) );
+    const cgogn::CMap3::Volume vol( f.dart_ );
+    const cgogn::CMap3::Volume vol_opp( f_opp.dart_ );
+    const auto average_field = 0.5 * ( field.row( index_of( map, vol ) ) + field.row( index_of( map, vol_opp ) ) );
+    const double field_dir = normals.at( index_of( map, f ) ).get( f.dart_ ).dot( average_field );
+    if( field_dir > 0 ) return traceRayOnTet( map, vol, {start_point, average_field}, normals );
+    else return traceRayOnTet( map, vol_opp, {start_point, average_field}, normals );
+}
+
 SimplicialComplex traceField( const cgogn::CMap3& map,
                               const cgogn::CMap3::Face& f,
                               const Eigen::Vector3d& start_point,
@@ -128,8 +147,12 @@ SimplicialComplex traceField( const cgogn::CMap3& map,
         const cgogn::CMap3::Volume curr_vol( curr_face.dart_ );
         const Ray search_ray( {curr_point, field.row( index_of( map, curr_vol ) )} );
         if( debug_output ) tracingDebugOutput( map, curr_vol, search_ray, complex, debug_tets, n++ );
-        const std::optional<TracePoint> next_point = traceRayOnTet( map, curr_vol, search_ray, normals );
-        if( not next_point.has_value() ) break;
+        std::optional<TracePoint> next_point = traceRayOnTet( map, curr_vol, search_ray, normals );
+        if( not next_point.has_value() )
+        {
+            next_point = traceFaceAverageField( map, cgogn::CMap3::Face( curr_vol.dart_ ), curr_point, field, normals );
+            if( not next_point.has_value() ) throw( "Untraceable field" );
+        }
         curr_face = next_point.value().first;
         curr_point = next_point.value().second;
         complex.points.push_back( curr_point );
