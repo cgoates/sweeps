@@ -114,12 +114,12 @@ Eigen::MatrixX3d gradients( const cgogn::CMap3& map,
     return result;
 }
 
-void mapFromInput( const SweepInput& sweep_input, cgogn::CMap3& map )
+void mapFromInput( const SimplicialComplex& mesh, cgogn::CMap3& map )
 {
     cgogn::io::VolumeImportData import;
-    import.reserve( sweep_input.mesh.points.size(), sweep_input.mesh.simplices.size() );
+    import.reserve( mesh.points.size(), mesh.simplices.size() );
 
-    for( const auto& tet : sweep_input.mesh.simplices )
+    for( const auto& tet : mesh.simplices )
     {
         import.volumes_types_.push_back( cgogn::io::VolumeType::Tetra );
         for( size_t i = 0; i < 4; i++ )
@@ -128,7 +128,7 @@ void mapFromInput( const SweepInput& sweep_input, cgogn::CMap3& map )
         }
     }
 
-    import.vertex_position_ = sweep_input.mesh.points;
+    import.vertex_position_ = mesh.points;
 
     import_volume_data( map, import );
 

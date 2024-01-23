@@ -3,8 +3,6 @@
 #include <cgogn/core/types/cell_marker.h>
 #include <SweepInput.hpp>
 
-struct SweepInput;
-
 class Normal
 {
     public:
@@ -55,4 +53,4 @@ Eigen::Vector3d gradient( const cgogn::CMap3& map,
                           const std::vector<Normal>& normals );
 
 // FIXME: This doesn't belong here
-void mapFromInput( const SweepInput& sweep_input, cgogn::CMap3& map );
+void mapFromInput( const SimplicialComplex& mesh, cgogn::CMap3& map );

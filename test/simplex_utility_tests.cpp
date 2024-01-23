@@ -5,16 +5,16 @@
 
 TEST_CASE( "Dihedral angle cotangent", "[single-file]" )
 {
-    SweepInput sweep_input = { { { { 0, 1, 2, 3 } }, { { 0, 0, 0 }, { 0, 0, 1 }, { 1, 0, 0 } } }, {}, {} };
+    SimplicialComplex simplicial_complex = { { { 0, 1, 2, 3 } }, { { 0, 0, 0 }, { 0, 0, 1 }, { 1, 0, 0 } } };
 
     const auto test_angle =
         [&]( const double angle,
              const std::function<void( const cgogn::CMap3&, const cgogn::CMap3::Edge&, const std::vector<Normal>& )>&
                  test ) {
-            sweep_input.mesh.points.push_back( { std::cos( angle ), std::sin( angle ), 0 } );
+            simplicial_complex.points.push_back( { std::cos( angle ), std::sin( angle ), 0 } );
 
             cgogn::CMap3 map;
-            mapFromInput( sweep_input, map );
+            mapFromInput( simplicial_complex, map );
 
             const auto normals = faceNormals( map );
 
