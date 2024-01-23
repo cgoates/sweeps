@@ -34,7 +34,7 @@ TEST_CASE( "Dihedral angle cotangent", "[single-file]" )
     {
         test_angle( std::numbers::pi / 2,
                     [&]( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e, const std::vector<Normal>& normals ) {
-                        REQUIRE( dihedralCotangent( map, e, normals ) < 1e-5 );
+                        REQUIRE( equals( dihedralCotangent( map, e, normals ), 0, 1e-5 ) );
                     } );
     }
 
@@ -42,25 +42,25 @@ TEST_CASE( "Dihedral angle cotangent", "[single-file]" )
     {
         test_angle( std::numbers::pi / 4,
                     [&]( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e, const std::vector<Normal>& normals ) {
-                        REQUIRE( std::abs( dihedralCotangent( map, e, normals ) - 1.0 ) < 1e-5 );
+                        REQUIRE( equals( dihedralCotangent( map, e, normals ), 1.0, 1e-5 ) );
                     } );
     }
 
     SECTION( "30 degrees" )
     {
-        test_angle( std::numbers::pi / 6,
-                    [&]( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e, const std::vector<Normal>& normals ) {
-                        REQUIRE( std::abs( dihedralCotangent( map, e, normals ) -
-                                           1.0 / std::tan( std::numbers::pi / 6 ) ) < 1e-5 );
-                    } );
+        test_angle(
+            std::numbers::pi / 6,
+            [&]( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e, const std::vector<Normal>& normals ) {
+                REQUIRE( equals( dihedralCotangent( map, e, normals ), 1.0 / std::tan( std::numbers::pi / 6 ), 1e-5 ) );
+            } );
     }
 
     SECTION( "120 degrees" )
     {
         test_angle( 2 * std::numbers::pi / 3,
                     [&]( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e, const std::vector<Normal>& normals ) {
-                        REQUIRE( std::abs( dihedralCotangent( map, e, normals ) -
-                                           1.0 / std::tan( 2 * std::numbers::pi / 3 ) ) < 1e-5 );
+                        REQUIRE( equals(
+                            dihedralCotangent( map, e, normals ), 1.0 / std::tan( 2 * std::numbers::pi / 3 ), 1e-5 ) );
                     } );
     }
 }

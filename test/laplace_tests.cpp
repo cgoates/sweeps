@@ -2,6 +2,7 @@
 #include <SweepInput.hpp>
 #include <SimplexUtilities.hpp>
 #include <Laplace.hpp>
+#include <Logging.hpp>
 
 TEST_CASE( "Laplace patch test", "[single-file]" )
 {
@@ -13,5 +14,5 @@ TEST_CASE( "Laplace patch test", "[single-file]" )
     const std::vector<Normal> normals = faceNormals( map );
     const Eigen::VectorXd sol = solveLaplaceSparse( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
 
-    REQUIRE( std::abs( sol( 8 ) - sweep_input.mesh.points.back()( 2 ) ) < sweep_input.mesh.points.back()( 2 ) * 1e-15 );
+    REQUIRE( equals( sol( 8 ), sweep_input.mesh.points.back()( 2 ), sweep_input.mesh.points.back()( 2 ) * 1e-15 ) );
 }
