@@ -14,7 +14,7 @@
 
 constexpr bool LOG_TRACING = 0;
 
-std::optional<Eigen::Vector3d> intersectionOf( const Ray& ray,
+std::optional<Eigen::Vector3d> intersectionOf( const Ray<3>& ray,
                                                const Triangle& tri,
                                                std::optional<const Eigen::Vector3d> maybe_normal )
 {
@@ -34,7 +34,7 @@ std::optional<Eigen::Vector3d> intersectionOf( const Ray& ray,
 
 std::optional<TracePoint> traceRayOnTet( const cgogn::CMap3& map,
                                          const cgogn::CMap3::Volume& v,
-                                         const Ray& ray,
+                                         const Ray<3>& ray,
                                          const std::vector<Normal>& normals )
 {
     // The face on the input dart is the location that we start from.
@@ -73,7 +73,7 @@ std::optional<TracePoint> traceRayOnTet( const cgogn::CMap3& map,
 
 void tracingDebugOutput( const cgogn::CMap3& map,
                          const cgogn::CMap3::Volume& v,
-                         const Ray& ray,
+                         const Ray<3>& ray,
                          const SimplicialComplex& line,
                          SimplicialComplex& tets,
                          const size_t n )
@@ -145,7 +145,7 @@ SimplicialComplex traceField( const cgogn::CMap3& map,
     while( not is_boundary( map, curr_face.dart_ ) )
     {
         const cgogn::CMap3::Volume curr_vol( curr_face.dart_ );
-        const Ray search_ray( {curr_point, field.row( index_of( map, curr_vol ) )} );
+        const Ray<3> search_ray( {curr_point, field.row( index_of( map, curr_vol ) )} );
         if( debug_output ) tracingDebugOutput( map, curr_vol, search_ray, complex, debug_tets, n++ );
         std::optional<TracePoint> next_point = traceRayOnTet( map, curr_vol, search_ray, normals );
         if( not next_point.has_value() )
