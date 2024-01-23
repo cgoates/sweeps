@@ -12,6 +12,14 @@ struct Ray
     const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> start_pos;
     const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> dir;
 };
+
+template<unsigned int DIM>
+struct Segment
+{
+    const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> start_pos;
+    const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> end_pos;
+};
+
 Eigen::MatrixX3d gradients( const cgogn::CMap3& map,
                             const Eigen::VectorXd& field_values,
                             const std::vector<Normal>& normals );
@@ -32,3 +40,6 @@ SimplicialComplex traceField( const cgogn::CMap3& map,
                               const Eigen::MatrixX3d& field,
                               const std::vector<Normal>& normals,
                               const bool debug_output = false );
+
+std::optional<Eigen::Vector2d> intersectionOf( const Ray<2>& ray,
+                                               const Segment<2>& line );

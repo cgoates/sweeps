@@ -162,3 +162,25 @@ SimplicialComplex traceField( const cgogn::CMap3& map,
 
     return complex;
 }
+
+std::optional<Eigen::Vector2d> intersectionOf( const Ray<2>& ray, const Segment<2>& line )
+{
+    const Ray<2> line_as_ray( { line.start_pos, line.end_pos - line.start_pos } );
+    const Eigen::Ref<const Eigen::Vector2d> start_pos_diff = line.start_pos - ray.start_pos;
+
+    const double ray_multiplier_numerator =
+        start_pos_diff( 1 ) * line_as_ray.dir( 0 ) - start_pos_diff( 0 ) * line_as_ray.dir( 1 );
+
+    const double line_multiplier_numerator = start_pos_diff( 1 ) * ray.dir( 0 ) - start_pos_diff( 0 ) * ray.dir( 1 );
+
+    const double line_multiplier_denominator =
+        line_as_ray.dir( 0 ) * ray.dir( 1 ) - line_as_ray.dir( 1 ) * ray.dir( 0 );
+
+    if( ray_multiplier_numerator * line_multiplier_denominator < 0 ) return std::nullopt;
+    if( line_multiplier_numerator * line_multiplier_denominator < 0 ) return std::nullopt;
+    if( std::abs( line_multiplier_denominator ) < std::abs( line_multiplier_numerator ) ) return std::nullopt;
+
+    const double u = line_multiplier_numerator / line_multiplier_denominator;
+
+    return line_as_ray.start_pos + line_as_ray.dir * u;
+}
