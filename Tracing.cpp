@@ -22,8 +22,7 @@ std::optional<Eigen::Vector3d> intersectionOf( const Ray<3>& ray,
     const double ray_scaling = normal.dot( tri.v1 - ray.start_pos ) / normal.dot( ray.dir );
     LOG( LOG_TRACING ) << "| | Ray scaling: " << ray_scaling << std::endl;
     if( ray_scaling <= 0 ) return std::nullopt;
-    const Eigen::Vector3d intersection_point =
-        ray.start_pos + ray_scaling * ray.dir;
+    const Eigen::Vector3d intersection_point = ray.start_pos + ray_scaling * ray.dir;
 
     const bool inside = normal.dot( ( tri.v2 - tri.v1 ).cross( intersection_point - tri.v1 ) ) >= 0 and
                         normal.dot( ( tri.v3 - tri.v2 ).cross( intersection_point - tri.v2 ) ) >= 0 and
@@ -91,11 +90,11 @@ void tracingDebugOutput( const cgogn::CMap3& map,
 
     // Create a simplicial complex with just one face: the triangle it's coming from
     const Triangle from_face = triangleOfFace( map, cgogn::CMap3::Face( v.dart_ ) );
-    const SimplicialComplex from_face_complex( { { {0, 1, 2} }, { from_face.v1, from_face.v2, from_face.v3 } } );
+    const SimplicialComplex from_face_complex( { { { 0, 1, 2 } }, { from_face.v1, from_face.v2, from_face.v3 } } );
     const io::VTKOutputObject from_face_output( from_face_complex );
 
     // Create a simplicial complex for the ray
-    const SimplicialComplex ray_complex( { { {0} }, { ray.start_pos } } );
+    const SimplicialComplex ray_complex( { { { 0 } }, { ray.start_pos } } );
     io::VTKOutputObject ray_output( ray_complex );
     ray_output.addVertexField( "ray", ray.dir.transpose() );
 
@@ -103,8 +102,8 @@ void tracingDebugOutput( const cgogn::CMap3& map,
     const io::VTKOutputObject tets_output( tets );
 
     std::stringstream ss;
-    ss << std::setw(3) << std::setfill('0') << n;
-    std::string n_str(ss.str());
+    ss << std::setw( 3 ) << std::setfill( '0' ) << n;
+    std::string n_str( ss.str() );
 
     io::outputSimplicialFieldToVTK( from_face_output, "from_face_" + n_str + ".vtu" );
     io::outputSimplicialFieldToVTK( ray_output, "ray_" + n_str + ".vtu" );
@@ -123,8 +122,10 @@ std::optional<TracePoint> traceFaceAverageField( const cgogn::CMap3& map,
     const cgogn::CMap3::Volume vol_opp( f_opp.dart_ );
     const auto average_field = 0.5 * ( field.row( index_of( map, vol ) ) + field.row( index_of( map, vol_opp ) ) );
     const double field_dir = normals.at( index_of( map, f ) ).get( f.dart_ ).dot( average_field );
-    if( field_dir > 0 ) return traceRayOnTet( map, vol, {start_point, average_field}, normals );
-    else return traceRayOnTet( map, vol_opp, {start_point, average_field}, normals );
+    if( field_dir > 0 )
+        return traceRayOnTet( map, vol, { start_point, average_field }, normals );
+    else
+        return traceRayOnTet( map, vol_opp, { start_point, average_field }, normals );
 }
 
 SimplicialComplex traceField( const cgogn::CMap3& map,
@@ -145,7 +146,7 @@ SimplicialComplex traceField( const cgogn::CMap3& map,
     while( not is_boundary( map, curr_face.dart_ ) )
     {
         const cgogn::CMap3::Volume curr_vol( curr_face.dart_ );
-        const Ray<3> search_ray( {curr_point, field.row( index_of( map, curr_vol ) )} );
+        const Ray<3> search_ray( { curr_point, field.row( index_of( map, curr_vol ) ) } );
         if( debug_output ) tracingDebugOutput( map, curr_vol, search_ray, complex, debug_tets, n++ );
         std::optional<TracePoint> next_point = traceRayOnTet( map, curr_vol, search_ray, normals );
         if( not next_point.has_value() )
