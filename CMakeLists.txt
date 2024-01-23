@@ -2,6 +2,14 @@ cmake_minimum_required(VERSION 3.22)
 set(CMAKE_CXX_STANDARD 23)
 add_compile_options(-Wall -Wextra -Wpedantic)
 set(CMAKE_LINKER_TYPE mold)
+
+set(Meshb_DIR ${CMAKE_SOURCE_DIR}/../thirdparty/cgogn_build/lib/cmake/Meshb)
+set(cgogn_core_DIR ${CMAKE_SOURCE_DIR}/../thirdparty/cgogn_build/lib/cmake/cgogn_core)
+set(cgogn_geometry_DIR ${CMAKE_SOURCE_DIR}/../thirdparty/cgogn_build/lib/cmake/cgogn_geometry)
+set(cgogn_io_DIR ${CMAKE_SOURCE_DIR}/../thirdparty/cgogn_build/lib/cmake/cgogn_io)
+set(Catch2_DIR ${CMAKE_SOURCE_DIR}/../thirdparty/Catch2/install/lib/cmake/Catch2)
+
+
 project(attempt)
 add_executable( attempt main.cpp )
 
