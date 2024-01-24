@@ -24,20 +24,21 @@ class Normal
     Eigen::Vector3d mNormal;
 };
 
+template<unsigned int DIM>
 struct Triangle
 {
-    const Eigen::Ref<const Eigen::Vector3d> v1;
-    const Eigen::Ref<const Eigen::Vector3d> v2;
-    const Eigen::Ref<const Eigen::Vector3d> v3;
+    const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> v1;
+    const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> v2;
+    const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> v3;
 };
 
-Triangle triangleOfFace( const cgogn::CMap3& map, const cgogn::CMap3::Face& f );
+Triangle<3> triangleOfFace( const cgogn::CMap3& map, const cgogn::CMap3::Face& f );
 
-Eigen::Vector3d triangleNormal( const Triangle& tri );
+Eigen::Vector3d triangleNormal( const Triangle<3>& tri );
 
 Eigen::Vector3d triangleNormal( const cgogn::CMap3& map, const cgogn::CMap3::Face& f );
 
-Eigen::Vector3d centroid( const Triangle& tri );
+Eigen::Vector3d centroid( const Triangle<3>& tri );
 
 Eigen::Vector3d centroid( const cgogn::CMap3& map, const cgogn::CMap3::Face& f );
 

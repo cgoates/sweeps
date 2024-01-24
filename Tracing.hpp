@@ -3,7 +3,7 @@
 #include <cgogn/core/types/cell_marker.h>
 #include <SweepInput.hpp>
 
-struct Triangle;
+template <unsigned int DIM> struct Triangle;
 class Normal;
 
 template<unsigned int DIM>
@@ -25,7 +25,7 @@ Eigen::MatrixX3d gradients( const cgogn::CMap3& map,
                             const std::vector<Normal>& normals );
 
 std::optional<Eigen::Vector3d> intersectionOf( const Ray<3>& ray,
-                                               const Triangle& tri,
+                                               const Triangle<3>& tri,
                                                std::optional<const Eigen::Vector3d> maybe_normal = {} );
 
 using TracePoint = std::pair<cgogn::CMap3::Face, Eigen::Vector3d>;

@@ -15,7 +15,7 @@
 constexpr bool LOG_TRACING = 0;
 
 std::optional<Eigen::Vector3d> intersectionOf( const Ray<3>& ray,
-                                               const Triangle& tri,
+                                               const Triangle<3>& tri,
                                                std::optional<const Eigen::Vector3d> maybe_normal )
 {
     const Eigen::Vector3d normal = maybe_normal.value_or( triangleNormal( tri ) );
@@ -45,8 +45,8 @@ std::optional<TracePoint> traceRayOnTet( const cgogn::CMap3& map,
     foreach_incident_edge( map, cgogn::CMap3::Face( v.dart_ ), [&]( cgogn::CMap3::Edge e ) {
         LOG( LOG_TRACING ) << "| Edge " << e << std::endl;
         const cgogn::CMap3::Face adj_face( phi2( map, e.dart_ ) );
-        const Triangle tri = triangleOfFace( map, adj_face );
-        LOG( LOG_TRACING ) << "| | Triangle: " << tri.v1.transpose() << " | " << tri.v2.transpose() << " | "
+        const Triangle<3> tri = triangleOfFace( map, adj_face );
+        LOG( LOG_TRACING ) << "| | Triangle<3>: " << tri.v1.transpose() << " | " << tri.v2.transpose() << " | "
                            << tri.v3.transpose() << std::endl;
 
         const std::optional<Eigen::Vector3d> intersection =
@@ -79,7 +79,7 @@ void tracingDebugOutput( const cgogn::CMap3& map,
 {
     // Add the triangles of the current tet to tets
     foreach_incident_face( map, v, [&]( cgogn::CMap3::Face f ) {
-        const Triangle from_face = triangleOfFace( map, f );
+        const Triangle<3> from_face = triangleOfFace( map, f );
         const size_t next_vid = tets.points.size();
         tets.simplices.push_back( { next_vid + 0, next_vid + 1, next_vid + 2 } );
         tets.points.push_back( from_face.v1 );
@@ -89,7 +89,7 @@ void tracingDebugOutput( const cgogn::CMap3& map,
     } );
 
     // Create a simplicial complex with just one face: the triangle it's coming from
-    const Triangle from_face = triangleOfFace( map, cgogn::CMap3::Face( v.dart_ ) );
+    const Triangle<3> from_face = triangleOfFace( map, cgogn::CMap3::Face( v.dart_ ) );
     const SimplicialComplex from_face_complex( { { { 0, 1, 2 } }, { from_face.v1, from_face.v2, from_face.v3 } } );
     const io::VTKOutputObject from_face_output( from_face_complex );
 
