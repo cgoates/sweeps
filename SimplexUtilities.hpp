@@ -53,5 +53,9 @@ Eigen::Vector3d gradient( const cgogn::CMap3& map,
                           const Eigen::VectorXd& field_values,
                           const std::vector<Normal>& normals );
 
+Eigen::MatrixX3d gradients( const cgogn::CMap3& map,
+                            const Eigen::VectorXd& field_values,
+                            const std::vector<Normal>& normals );
+
 // FIXME: This doesn't belong here
 void mapFromInput( const SimplicialComplex& mesh, cgogn::CMap3& map );

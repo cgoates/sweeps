@@ -20,10 +20,6 @@ struct Segment
     const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> end_pos;
 };
 
-Eigen::MatrixX3d gradients( const cgogn::CMap3& map,
-                            const Eigen::VectorXd& field_values,
-                            const std::vector<Normal>& normals );
-
 std::optional<Eigen::Vector3d> intersectionOf( const Ray<3>& ray,
                                                const Triangle<3>& tri,
                                                std::optional<const Eigen::Vector3d> maybe_normal = {} );
