@@ -39,3 +39,12 @@ SimplicialComplex traceField( const cgogn::CMap3& map,
 
 std::optional<Eigen::Vector2d> intersectionOf( const Ray<2>& ray,
                                                const Segment<2>& line );
+
+std::optional<std::pair<bool, double>> traceGradientOnTri( const Triangle<3>& tri3d,
+                                                           const double edge_barycentric_coord,
+                                                           const Eigen::Ref<const Eigen::Vector3d> field_values );
+
+std::optional<std::pair<cgogn::CMap3::Edge, double>> traceGradientOnTri( const cgogn::CMap3& map,
+                                                                         const cgogn::CMap3::Face& f,
+                                                                         const double edge_barycentric_coord,
+                                                                         const Eigen::VectorXd& field_values );

@@ -163,7 +163,7 @@ SimplicialComplex traceField( const cgogn::CMap3& map,
     return complex;
 }
 
-std::optional<Eigen::Vector2d> intersectionOf( const Ray<2>& ray, const Segment<2>& line )
+std::optional<double> barycentricIntersectionOf( const Ray<2>& ray, const Segment<2>& line )
 {
     const Ray<2> line_as_ray( { line.start_pos, line.end_pos - line.start_pos } );
     const Eigen::Ref<const Eigen::Vector2d> start_pos_diff = line.start_pos - ray.start_pos;
@@ -182,5 +182,77 @@ std::optional<Eigen::Vector2d> intersectionOf( const Ray<2>& ray, const Segment<
 
     const double u = line_multiplier_numerator / line_multiplier_denominator;
 
-    return line_as_ray.start_pos + line_as_ray.dir * u;
+    return u;
+}
+
+std::optional<Eigen::Vector2d> intersectionOf( const Ray<2>& ray, const Segment<2>& line )
+{
+    return barycentricIntersectionOf( ray, line ).and_then( [&]( const double& u ) -> std::optional<Eigen::Vector2d> {
+        return ( 1 - u ) * line.start_pos + u * line.end_pos;
+    } );
+}
+
+constexpr bool FORWARD = true;
+constexpr bool BACKWARD = false;
+std::optional<std::pair<bool, double>> traceGradientOnTri( const Triangle<3>& tri3d,
+                                                           const double edge_barycentric_coord,
+                                                           const Eigen::Ref<const Eigen::Vector3d> field_values )
+{
+    // move the triangle into the xy plane
+    const Eigen::Vector3d e1 = ( tri3d.v2 - tri3d.v1 ).normalized();
+    const Eigen::Vector3d e2 = ( tri3d.v3 - tri3d.v1 - e1.dot( tri3d.v3 - tri3d.v1 ) * e1 ).normalized();
+
+    const Eigen::Vector2d v1_2d( 0, 0 );
+    const Eigen::Vector2d v2_2d( ( tri3d.v2 - tri3d.v1 ).norm(), 0 );
+    const Eigen::Vector2d v3_2d( e1.dot( tri3d.v3 - tri3d.v1 ), e2.dot( tri3d.v3 - tri3d.v1 ) );
+
+    // calculate the gradient in the xy plane
+    const double& f1 = field_values( 0 );
+    const double& f2 = field_values( 1 );
+    const double& f3 = field_values( 2 );
+
+    const Eigen::Rotation2Dd rot90( std::numbers::pi / 2.0 );
+    const double area = 0.5 * v2_2d( 0 ) * v3_2d( 1 );
+
+    const auto grad_s_i = [&]( const Segment<2>& edge_i ) -> Eigen::Vector2d {
+        const auto edge_diff = edge_i.end_pos - edge_i.start_pos;
+        return area / edge_diff.norm() * ( rot90 * edge_diff );
+    };
+
+    const Eigen::Vector2d gradient =
+        f1 * grad_s_i( { v2_2d, v3_2d } ) + f2 * grad_s_i( { v3_2d, v1_2d } ) + f3 * grad_s_i( { v1_2d, v2_2d } );
+
+    // iterate the edges and perform line ray intersections
+    const Ray<2> ray( { edge_barycentric_coord * v2_2d, gradient } );
+
+    const auto run_intersection = [&]( const bool i, const Segment<2>& line ) {
+        return barycentricIntersectionOf( ray, line )
+            .and_then( [&]( const double& u ) -> std::optional<std::pair<unsigned int, double>> {
+                return std::pair<bool, double>{ i, u };
+            } );
+    };
+
+    return run_intersection( FORWARD, { v2_2d, v3_2d } ).or_else( [&]() {
+        return run_intersection( BACKWARD, { v3_2d, v1_2d } );
+    } );
+}
+
+std::optional<std::pair<cgogn::CMap3::Edge, double>> traceGradientOnTri( const cgogn::CMap3& map,
+                                                                         const cgogn::CMap3::Face& f,
+                                                                         const double edge_barycentric_coord,
+                                                                         const Eigen::VectorXd& field_values )
+{
+    const Triangle<3> tri3d = triangleOfFace( map, f );
+
+    // calculate the gradient in the xy plane
+    const cgogn::Dart& d = f.dart_;
+    const auto field = field_values( { index_of( map, cgogn::CMap3::Vertex( d ) ),
+                                       index_of( map, cgogn::CMap3::Vertex( cgogn::phi1( map, d ) ) ),
+                                       index_of( map, cgogn::CMap3::Vertex( cgogn::phi_1( map, d ) ) ) } );
+
+
+    return traceGradientOnTri( tri3d, edge_barycentric_coord, field ).and_then( [&]( const std::pair<bool, double>& pr ) {
+        cgogn::CMap3::Edge e( pr.first ? phi1( map, f.dart_ ) : phi_1( map, f.dart_ ) );
+        return std::optional<std::pair<cgogn::CMap3::Edge, double>>( { e, pr.second } );
+    } );
 }
