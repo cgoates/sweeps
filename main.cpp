@@ -7,11 +7,11 @@
 #include <Tracing.hpp>
 
 void foreachFaceWithVertsInSet( const cgogn::CMap3& map,
-                                const std::set<VertexId>& set,
+                                const std::vector<bool>& set,
                                 const std::function<bool( const cgogn::CMap3::Face&, const size_t n )>& callback )
 {
     const auto contains = [&]( const VertexId& vid ) {
-        return std::find( set.begin(), set.end(), vid ) != set.end();
+        return set.at( vid.id() );
     };
     size_t i = 0;
     foreach_cell( map, [&]( cgogn::CMap3::Face f ) {

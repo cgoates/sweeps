@@ -13,9 +13,25 @@ struct SimplicialComplex
 
 struct SweepInput
 {
+    SweepInput( const SimplicialComplex& m, const std::vector<bool>& z, const std::vector<bool>& o )
+        : mesh( m ), zero_bcs( z ), one_bcs( o )
+    {
+        if( z.size() != m.points.size() or o.size() != m.points.size() )
+            throw( "Bad arguments to sweep input constructor" );
+    }
+
+    static SweepInput fromSets( const SimplicialComplex& m, const std::set<VertexId>& z, const std::set<VertexId>& o )
+    {
+        std::vector<bool> zero_bcs( m.points.size(), false );
+        std::vector<bool> one_bcs( m.points.size(), false );
+        for( const VertexId& vid : z ) zero_bcs.at( vid.id() ) = true;
+        for( const VertexId& vid : o ) one_bcs.at( vid.id() ) = true;
+        return SweepInput( m, zero_bcs, one_bcs );
+    }
+
     SimplicialComplex mesh;
-    std::set<VertexId> zero_bcs;
-    std::set<VertexId> one_bcs;
+    std::vector<bool> zero_bcs;
+    std::vector<bool> one_bcs;
 };
 
 class SweepInputTestCases
@@ -34,9 +50,7 @@ class SweepInputTestCases
         points.push_back( { 0.5, 0.5, 0.5 } );
         points.push_back( { 1, 1, 0 } );
 
-        const SweepInput out = { { simplices, points }, { 0 }, { 1 } };
-
-        return out;
+        return SweepInput::fromSets( { simplices, points }, { 0 }, { 1 } );
     }
 
     static SweepInput twelveTetCube()
@@ -66,9 +80,7 @@ class SweepInputTestCases
         points.push_back( { 1, 1, 1 } );
         points.push_back( { 0.5, 0.5, 0.5 } );
 
-        const SweepInput out = { { simplices, points }, { 0, 1, 2, 3 }, { 4, 5, 6, 7 } };
-
-        return out;
+        return SweepInput::fromSets( { simplices, points }, { 0, 1, 2, 3 }, { 4, 5, 6, 7 } );
     }
 
     static SweepInput refinedCube( const Eigen::Vector3i& n_refinements )
@@ -164,9 +176,7 @@ class SweepInputTestCases
             }
         }
 
-        const SweepInput out = { { simplices, points }, zero_bcs, one_bcs };
-
-        return out;
+        return SweepInput::fromSets( { simplices, points }, zero_bcs, one_bcs );
     }
 
     static SweepInput bentRefinedCube( const Eigen::Vector3i& n_refinements )
@@ -185,7 +195,7 @@ class SweepInputTestCases
                                         ( 1 + 0.1 * pt( 1 ) ) * cos( pi * pt( 2 ) / 2 ) );
             } );
 
-        const SweepInput out = { { cube.mesh.simplices, new_points }, cube.zero_bcs, cube.one_bcs };
+        const SweepInput out( { cube.mesh.simplices, new_points }, cube.zero_bcs, cube.one_bcs );
 
         return out;
     }

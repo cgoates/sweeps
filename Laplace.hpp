@@ -11,6 +11,6 @@ namespace cgogn
 }
 
 Eigen::VectorXd solveLaplaceSparse( const cgogn::CMap3& map,
-                                    const std::set<VertexId>& zero_bcs,
-                                    const std::set<VertexId>& one_bcs,
+                                    const std::vector<bool>& zero_bcs,
+                                    const std::vector<bool>& one_bcs,
                                     const std::vector<Normal>& normals );

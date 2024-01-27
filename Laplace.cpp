@@ -61,8 +61,8 @@ Eigen::SparseVector<double> laplaceOperatorRowSparse( const cgogn::CMap3& map,
 }
 
 Eigen::VectorXd solveLaplaceSparse( const cgogn::CMap3& map,
-                                    const std::set<VertexId>& zero_bcs,
-                                    const std::set<VertexId>& one_bcs,
+                                    const std::vector<bool>& zero_bcs,
+                                    const std::vector<bool>& one_bcs,
                                     const std::vector<Normal>& normals )
 {
     t.start( 0 );
@@ -73,7 +73,8 @@ Eigen::VectorXd solveLaplaceSparse( const cgogn::CMap3& map,
     std::map<Eigen::Index, Eigen::Index> boundary_verts;
 
     const int n_verts = cgogn::nb_cells<cgogn::CMap3::Vertex>( map );
-    const size_t n_bcs = zero_bcs.size() + one_bcs.size();
+    const size_t n_bcs = std::accumulate( zero_bcs.begin(), zero_bcs.end(), 0 ) +
+                         std::accumulate( one_bcs.begin(), one_bcs.end(), 0 );
 
     std::vector<Eigen::Triplet<double>> L_triplets;
     L_triplets.reserve( n_verts * n_verts ); // overkill but definitely enough
@@ -91,12 +92,12 @@ Eigen::VectorXd solveLaplaceSparse( const cgogn::CMap3& map,
     t.start( 1 );
     cgogn::foreach_cell( map, [&]( cgogn::CMap3::Vertex v ) {
         const VertexId vid = cgogn::index_of( map, v );
-        if( zero_bcs.contains( vid ) )
+        if( zero_bcs.at( vid.id() ) )
         {
             const Eigen::Index i = boundary_verts.size();
             boundary_verts.emplace( vid.id(), i );
         }
-        else if( one_bcs.contains( vid ) )
+        else if( one_bcs.at( vid.id() ) )
         {
             const Eigen::Index i = boundary_verts.size();
             BCs.insert( i ) = 1.0;
