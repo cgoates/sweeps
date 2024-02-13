@@ -32,6 +32,13 @@ struct Triangle
     const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> v3;
 };
 
+template<unsigned int DIM>
+struct Segment
+{
+    const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> start_pos;
+    const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> end_pos;
+};
+
 Triangle<3> triangleOfFace( const cgogn::CMap3& map, const cgogn::CMap3::Face& f );
 
 Eigen::Vector3d triangleNormal( const Triangle<3>& tri );
@@ -41,6 +48,9 @@ Eigen::Vector3d triangleNormal( const cgogn::CMap3& map, const cgogn::CMap3::Fac
 Eigen::Vector3d centroid( const Triangle<3>& tri );
 
 Eigen::Vector3d centroid( const cgogn::CMap3& map, const cgogn::CMap3::Face& f );
+
+template <unsigned int DIM>
+double area( const Triangle<DIM>& tri );
 
 std::vector<Normal> faceNormals( const cgogn::CMap3& map );
 
@@ -56,6 +66,9 @@ Eigen::Vector3d gradient( const cgogn::CMap3& map,
 Eigen::MatrixX3d gradients( const cgogn::CMap3& map,
                             const Eigen::VectorXd& field_values,
                             const std::vector<Normal>& normals );
+
+Eigen::Vector3d gradient( const Triangle<3>& tri3d,
+                          const Eigen::Ref<const Eigen::Vector3d> field_values );
 
 // FIXME: This doesn't belong here
 void mapFromInput( const SimplicialComplex& mesh, cgogn::CMap3& map );

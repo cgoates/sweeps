@@ -4,6 +4,7 @@
 #include <SweepInput.hpp>
 
 template <unsigned int DIM> struct Triangle;
+template <unsigned int DIM> struct Segment;
 class Normal;
 
 template<unsigned int DIM>
@@ -11,13 +12,6 @@ struct Ray
 {
     const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> start_pos;
     const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> dir;
-};
-
-template<unsigned int DIM>
-struct Segment
-{
-    const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> start_pos;
-    const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> end_pos;
 };
 
 std::optional<Eigen::Vector3d> intersectionOf( const Ray<3>& ray,
@@ -48,3 +42,10 @@ std::optional<std::pair<cgogn::CMap3::Edge, double>> traceGradientOnTri( const c
                                                                          const cgogn::CMap3::Face& f,
                                                                          const double edge_barycentric_coord,
                                                                          const Eigen::VectorXd& field_values );
+
+SimplicialComplex traceBoundaryField( const cgogn::CMap3& map,
+                                      const cgogn::CMap3::Edge& e,
+                                      const double& start_point,
+                                      const Eigen::VectorXd& field,
+                                      const std::vector<bool>& target_vertex_marker,
+                                      const bool debug_output = false );

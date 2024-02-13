@@ -40,6 +40,30 @@ template <typename T> std::ostream& operator<<( std::ostream& o, const std::set<
     return o;
 }
 
+template <typename T> std::ostream& operator<<( std::ostream& o, const std::optional<T>& v )
+{
+    if( not v.has_value() )
+        o << "{}";
+    else
+    {
+        o << v.value();
+    }
+    return o;
+}
+
+template <typename T, typename U> std::ostream& operator<<( std::ostream& o, const std::map<T, U>& v )
+{
+    if( v.size() == 0 )
+        o << "{}";
+    else
+    {
+        o << "{ ";
+        for( auto it = v.begin(); it != v.end(); it++ ) o << "{ " << it->first << ", " << it->second << " }" << ", ";
+        o << " }";
+    }
+    return o;
+}
+
 class Timer
 {
     public:

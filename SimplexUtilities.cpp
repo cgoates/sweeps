@@ -114,6 +114,49 @@ Eigen::MatrixX3d gradients( const cgogn::CMap3& map,
     return result;
 }
 
+Eigen::Vector3d gradient( const Triangle<3>& tri3d,
+                          const Eigen::Ref<const Eigen::Vector3d> field_values )
+{
+    // std::cout << "Triangle: " << tri3d.v1.transpose() << " | " << tri3d.v2.transpose() << " | " << tri3d.v3.transpose() << std::endl;
+    // std::cout << field_values.transpose() << std::endl;
+    // Basis for the plane of the triangle
+    const Eigen::Vector3d e1 = ( tri3d.v2 - tri3d.v1 ).normalized();
+    const Eigen::Vector3d e2 = ( tri3d.v3 - tri3d.v1 - e1.dot( tri3d.v3 - tri3d.v1 ) * e1 ).normalized();
+    // std::cout << std::setprecision(10) << "e1: " << e1.transpose() << std::endl << "e2: " << e2.transpose() << std::endl;
+
+    const Eigen::Vector2d v1_2d( 0, 0 );
+    const Eigen::Vector2d v2_2d( ( tri3d.v2 - tri3d.v1 ).norm(), 0 );
+    const Eigen::Vector2d v3_2d( e1.dot( tri3d.v3 - tri3d.v1 ), e2.dot( tri3d.v3 - tri3d.v1 ) );
+
+    // calculate the gradient in the xy plane
+    const double& f1 = field_values( 0 );
+    const double& f2 = field_values( 1 );
+    const double& f3 = field_values( 2 );
+
+    const Eigen::Rotation2Dd rot90( std::numbers::pi / 2.0 );
+
+    // std::cout << Eigen::Matrix2d( rot90 ) << std::endl << std::endl;
+    const double twice_area = v2_2d( 0 ) * v3_2d( 1 );
+
+    const auto grad_s_i = [&]( const Segment<2>& edge_i ) -> Eigen::Vector2d {
+        const auto edge_diff = edge_i.end_pos - edge_i.start_pos;
+        return 1.0 / twice_area * ( rot90 * edge_diff );
+    };
+
+    // std::cout << "Edge 1: " << grad_s_i( { v1_2d, v2_2d } ).transpose() << std::endl;
+    // std::cout << "Edge 2: " << grad_s_i( { v2_2d, v3_2d } ).transpose() << std::endl;
+    // std::cout << "Edge 3: " << grad_s_i( { v3_2d, v1_2d } ).transpose() << std::endl;
+
+    const Eigen::Vector2d gradient =
+        f1 * grad_s_i( { v2_2d, v3_2d } ) + f2 * grad_s_i( { v3_2d, v1_2d } ) + f3 * grad_s_i( { v1_2d, v2_2d } );
+
+    // std::cout << "2d Gradient: " << gradient.transpose() << std::endl;
+
+    const Eigen::Vector3d grad_3d = gradient( 0 ) * e1 + gradient( 1 ) * e2;
+    // std::cout << "Gradient: " << grad_3d.transpose() << std::endl << std::endl;
+    return grad_3d;
+}
+
 void mapFromInput( const SimplicialComplex& mesh, cgogn::CMap3& map )
 {
     cgogn::io::VolumeImportData import;
