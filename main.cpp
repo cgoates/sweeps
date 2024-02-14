@@ -25,30 +25,58 @@ void foreachFaceWithVertsInSet( const cgogn::CMap3& map,
     } );
 }
 
-void foreachEdgeOnBoundaryOfSet( const cgogn::CMap3& map,
-                                 const std::vector<bool>& set,
-                                 const std::function<bool( const cgogn::CMap3::Edge&, const size_t n )>& callback )
+std::optional<cgogn::CMap3::Edge> boundaryTracingEdge( const cgogn::CMap3& map,
+                                                       const std::vector<bool>& set,
+                                                       const cgogn::CMap3::Edge& start_e )
 {
     const auto contains = [&]( const VertexId& vid ) {
         return set.at( vid.id() );
     };
-    
+ 
+    std::optional<cgogn::CMap3::Edge> out = std::nullopt;
+    foreach_dart_of_orbit( map, start_e, [&]( cgogn::Dart d ) {
+        const cgogn::CMap3::Edge e( d );
+        if( not is_boundary( map, d ) ) return true;
+        const VertexId vid1 = index_of( map, cgogn::CMap3::Vertex( d ) );
+        const VertexId vid2 = index_of( map, cgogn::CMap3::Vertex( cgogn::phi1( map, d ) ) );
+        const VertexId vid3 = index_of( map, cgogn::CMap3::Vertex( cgogn::phi_1( map, d ) ) );
+        if( contains( vid1 ) and contains( vid2 ) and not contains( vid3 ) )
+        {
+            out.emplace( e );
+            return false;
+        }
+        const VertexId vid4 = index_of( map, cgogn::CMap3::Vertex( cgogn::phi<2, -1>( map, d ) ) );
+        if( contains( vid1 ) and contains( vid2 ) and not contains( vid4 ) )
+        {
+            out.emplace( cgogn::CMap3::Edge( cgogn::phi2( map, d ) ) );
+            return false;
+        }
+        return false;
+    } );
+    return out;
+}
+
+std::optional<cgogn::CMap3::Edge> boundaryTracingEdgeOnFace( const cgogn::CMap3& map,
+                                                             const std::vector<bool>& set,
+                                                             const cgogn::CMap3::Face& f )
+{
+    return boundaryTracingEdge( map, set, cgogn::CMap3::Edge( f.dart_ ) ).or_else( [&]() {
+        return boundaryTracingEdge( map, set, cgogn::CMap3::Edge( phi1( map, f.dart_ ) ) ).or_else( [&]() {
+            return boundaryTracingEdge( map, set, cgogn::CMap3::Edge( phi_1( map, f.dart_ ) ) );
+        } );
+    } );
+}
+
+void foreachEdgeOnBoundaryOfSet( const cgogn::CMap3& map,
+                                 const std::vector<bool>& set,
+                                 const std::function<bool( const cgogn::CMap3::Edge&, const size_t n )>& callback )
+{   
     size_t i = 0;
     foreach_cell( map, [&]( cgogn::CMap3::Edge e ) {
-        bool keep_iterating = true;
-        foreach_dart_of_orbit( map, e, [&]( cgogn::Dart d ) {
-            const cgogn::CMap3::Edge e( d );
-            if( not is_boundary( map, d ) ) return true;
-            const VertexId vid1 = index_of( map, cgogn::CMap3::Vertex( d ) );
-            const VertexId vid2 = index_of( map, cgogn::CMap3::Vertex( cgogn::phi1( map, d ) ) );
-            const VertexId vid3 = index_of( map, cgogn::CMap3::Vertex( cgogn::phi_1( map, d ) ) );
-            if( contains( vid1 ) and contains( vid2 ) and not contains( vid3 ) ) keep_iterating = callback( e, i++ );
-            const VertexId vid4 = index_of( map, cgogn::CMap3::Vertex( cgogn::phi<2, -1>( map, d ) ) );
-            if( contains( vid1 ) and contains( vid2 ) and not contains( vid4 ) )
-                keep_iterating = callback( cgogn::CMap3::Edge( cgogn::phi2( map, d ) ), i++ );
-            return false;
-        } );
-        return keep_iterating;
+        const std::optional<cgogn::CMap3::Edge> boundary_e = boundaryTracingEdge( map, set, e );
+        if( boundary_e.has_value() )
+            return callback( boundary_e.value(), i++ );
+        return true;
     } );
 }
 
@@ -88,31 +116,35 @@ void foreachBaryCoordOnSet( const cgogn::CMap3& map,
             4. Remove any of those barycoords from the list so that they aren't duplicated.
         */
         const cgogn::Dart& d = f.dart_;
+        cgogn::Dart d1 = f.dart_;
+        cgogn::Dart d2 = cgogn::phi1( map, d );
+        cgogn::Dart d3 = cgogn::phi_1( map, d );
         VertexId vid1 = index_of( map, cgogn::CMap3::Vertex( d ) );
-        VertexId vid2 = index_of( map, cgogn::CMap3::Vertex( cgogn::phi1( map, d ) ) );
-        VertexId vid3 = index_of( map, cgogn::CMap3::Vertex( cgogn::phi_1( map, d ) ) );
+        VertexId vid2 = index_of( map, cgogn::CMap3::Vertex( d2 ) );
+        VertexId vid3 = index_of( map, cgogn::CMap3::Vertex( d3 ) );
 
         const auto position = cgogn::get_attribute<Eigen::Vector3d, cgogn::CMap3::Vertex>( map, "position" );
         Eigen::Vector3d pos1 = cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( d ) );
-        Eigen::Vector3d pos2 =
-            cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( cgogn::phi1( map, d ) ) );
-        Eigen::Vector3d pos3 =
-            cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( cgogn::phi_1( map, d ) ) );
+        Eigen::Vector3d pos2 = cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( d2 ) );
+        Eigen::Vector3d pos3 = cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( d3 ) );
 
         if( vid1 > vid2 )
         {
             std::swap( vid1, vid2 );
             std::swap( pos1, pos2 );
+            std::swap( d1, d2 );
         }
         if( vid1 > vid3 )
         {
             std::swap( vid1, vid3 );
             std::swap( pos1, pos3 );
+            std::swap( d1, d3 );
         }
         if( vid2 > vid3 )
         {
             std::swap( vid2, vid3 );
             std::swap( pos2, pos3 );
+            std::swap( d2, d3 );
         }
 
         {
@@ -133,7 +165,6 @@ void foreachBaryCoordOnSet( const cgogn::CMap3& map,
                 bary_coords.begin(), bary_coords.end(), [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
             if( it != bary_coords.end() )
             {
-                std::cout << "out vertex 1" << std::endl;
                 std::erase_if( bary_coords, [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
                 if( not callback( f, 0.99999 * pos1 + 5e-6 * pos2 + 5e-6 * pos3 ) ) return false;
             }
@@ -145,7 +176,6 @@ void foreachBaryCoordOnSet( const cgogn::CMap3& map,
                 bary_coords.begin(), bary_coords.end(), [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
             if( it != bary_coords.end() )
             {
-                std::cout << "out vertex 2" << std::endl;
                 std::erase_if( bary_coords, [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
                 if( not callback( f, 5e-6 * pos1 + 0.99999 * pos2 + 5e-6 * pos3 ) ) return false;
             }
@@ -157,7 +187,6 @@ void foreachBaryCoordOnSet( const cgogn::CMap3& map,
                 bary_coords.begin(), bary_coords.end(), [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
             if( it != bary_coords.end() )
             {
-                std::cout << "out vertex 3" << std::endl;
                 std::erase_if( bary_coords, [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
                 if( not callback( f, 5e-6 * pos1 + 5e-6 * pos2 + 0.99999 * pos3 ) ) return false;
             }
@@ -169,10 +198,10 @@ void foreachBaryCoordOnSet( const cgogn::CMap3& map,
                 bary_coords.begin(), bary_coords.end(), [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
             if( it != bary_coords.end() )
             {
+                std::cout << "1,2|";
                 const auto pt = it->point;
-                std::cout << "out edge 1" << std::endl;
                 std::erase_if( bary_coords, [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
-                if( not callback( f, 0.999998 * pt(0) * pos1 + 0.999998 * pt(1) * pos2 + 2e-6 * pos3 ) ) return false;
+                if( not callback( cgogn::CMap3::Face( d1 ), 0.999998 * pt(0) * pos1 + 0.999998 * pt(1) * pos2 + 2e-6 * pos3 ) ) return false;
             }
         }
 
@@ -182,10 +211,10 @@ void foreachBaryCoordOnSet( const cgogn::CMap3& map,
                 bary_coords.begin(), bary_coords.end(), [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
             if( it != bary_coords.end() )
             {
+                std::cout << "1,3|";
                 const auto pt = it->point;
-                std::cout << "out edge 2" << std::endl;
                 std::erase_if( bary_coords, [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
-                if( not callback( f, 0.999998 * pt(0) * pos1 + 0.999998 * pt(1) * pos3 + 2e-6 * pos2 ) ) return false;
+                if( not callback( cgogn::CMap3::Face( d3 ), 0.999998 * pt(0) * pos1 + 0.999998 * pt(1) * pos3 + 2e-6 * pos2 ) ) return false;
             }
         }
 
@@ -195,10 +224,10 @@ void foreachBaryCoordOnSet( const cgogn::CMap3& map,
                 bary_coords.begin(), bary_coords.end(), [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
             if( it != bary_coords.end() )
             {
+                std::cout << "2,3|";
                 const auto pt = it->point;
-                std::cout << "out edge 3" << std::endl;
                 std::erase_if( bary_coords, [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
-                if( not callback( f, 0.999998 * pt(0) * pos2 + 0.999998 * pt(1) * pos3 + 2e-6 * pos1 ) ) return false;
+                if( not callback( cgogn::CMap3::Face( d2 ), 0.999998 * pt(0) * pos2 + 0.999998 * pt(1) * pos3 + 2e-6 * pos1 ) ) return false;
             }
         }
 
@@ -227,8 +256,6 @@ void accumulateTrianglesFromParallelLines( SimplicialComplex& append_to,
 
     double size_ratio = (double)long_line.size() / (double)short_line.size();
 
-    std::cout << "Sizes: " << short_line.size() << " " << long_line.size() << std::endl;
-
     const auto short_point = [&]( const size_t i ) {
         return short_offset + i;
     };
@@ -238,18 +265,14 @@ void accumulateTrianglesFromParallelLines( SimplicialComplex& append_to,
 
     for( size_t j = 0, i = 1; i < short_line.size(); i++ )
     {
-        std::cout << "iij: {" << i - 1 << ", " << i << ", " << j << " }" << std::endl;
         append_to.simplices.push_back( Simplex( short_point( i - 1 ), short_point( i ), long_point( j++ ) ) );
-        std::cout << "ijj: {" << i << ", " << j - 1 << ", " << j << " }" << std::endl;
         if( j < long_line.size() )
         {
             append_to.simplices.push_back( Simplex( short_point( i ), long_point( j - 1 ), long_point( j ) ) );
-            std::cout << "j comp: " << j << " " << (size_t)std::ceil( i * size_ratio ) << std::endl;
             if( j <= (size_t)std::ceil( i * size_ratio ) )
             {
                 j++;
-                std::cout << "ijj2: {" << i << ", " << j - 1 << ", " << j << " }" << std::endl;
-                append_to.simplices.push_back( Simplex( short_point( i ), long_point( j - 1 ), long_point( j ) ) );
+                if( j < long_line.size() ) append_to.simplices.push_back( Simplex( short_point( i ), long_point( j - 1 ), long_point( j ) ) );
             }
         }
     }
@@ -270,7 +293,7 @@ int main( int argc, char* argv[] )
     const Eigen::VectorXd ans = solveLaplaceSparse( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
 
     const Eigen::MatrixX3d grad = gradients( map, ans, normals );
-    if( argc > 0 )
+    if( argc > 1 )
     {
         std::vector<BarycentricPoint> coords = io::loadBaryCoords( "/Users/caleb/Downloads/macaroni_layout_bary_coords_00", {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40} );
         SimplicialComplex boundary_lines;
@@ -290,24 +313,61 @@ int main( int argc, char* argv[] )
         {
             std::vector<BarycentricPoint> coords = io::loadBaryCoords( "/Users/caleb/Downloads/macaroni_layout_bary_coords_00", {i} );
             coords.erase(std::unique(coords.begin(), coords.end()), coords.end());
+            std::cout << std::endl << i << std::endl;
 
             std::vector<std::vector<Eigen::Vector3d>> lines;
             SimplicialComplex sep_tris;
 
+            size_t coord_ii = 0;
             for( const auto& bc : coords )
             {
                 std::vector<BarycentricPoint> coord{ bc };
                 foreachBaryCoordOnSet( map, sweep_input.zero_bcs, coord, [&]( const cgogn::CMap3::Face& start_face, const Eigen::Vector3d& pt ) {
-                    std::cout << "FOUND ONE FACE " << start_face << " a " << index_of( map, start_face ) << "\n";
-                    const SimplicialComplex field_line = traceField( map, start_face, pt, grad, normals, true );
-                    if( lines.size() > 0 )
+
+                    const double distance_from_major_axis = ( pt - Eigen::Vector3d( -15.5, 0, 0 ) ).norm();
+
+                    const bool on_boundary = equals( distance_from_major_axis, 10.5, 1e-2 ) or
+                          equals( distance_from_major_axis, 5, 1e-2 );
+
+
+                    // const std::optional<cgogn::CMap3::Edge> boundary_e = boundaryTracingEdge( map, sweep_input.zero_bcs, cgogn::CMap3::Edge( start_face.dart_ ) );
+                    const std::optional<cgogn::CMap3::Edge> boundary_e =
+                        on_boundary
+                        ? boundaryTracingEdgeOnFace( map, sweep_input.zero_bcs, start_face ) : std::nullopt;
+                    const SimplicialComplex field_line = boundary_e.and_then( [&]( cgogn::CMap3::Edge start_edge ) -> std::optional<SimplicialComplex> {
+                        const auto position =
+                            cgogn::get_attribute<Eigen::Vector3d, cgogn::CMap3::Vertex>( map, "position" );
+                        const Eigen::Vector3d pos1 =
+                            cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( start_edge.dart_ ) );
+                        const Eigen::Vector3d pos2 =
+                            cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( phi1( map, start_edge.dart_ ) ) );
+
+                        const double b = ( pt - pos1 ).norm() / ( pos2 - pos1 ).norm();
+
+                        std::cout << "ON BOUNDARY " << i << "\n";
+
+                        return traceBoundaryField( map, start_edge, b, ans, sweep_input.one_bcs, false );
+                    } ).value_or( traceField( map, start_face, pt, grad, normals, true ) );
+
+                    if( i != 2 or coord_ii != 2 )
                     {
-                        if( field_line.points.size() > lines.back().size() )
-                            accumulateTrianglesFromParallelLines( sep_tris, lines.back(), field_line.points );
-                        else
-                            accumulateTrianglesFromParallelLines( sep_tris, field_line.points, lines.back() );
+                        if( lines.size() > 0 )
+                        {
+                            if( field_line.points.size() > lines.back().size() )
+                                accumulateTrianglesFromParallelLines( sep_tris, lines.back(), field_line.points );
+                            else
+                                accumulateTrianglesFromParallelLines( sep_tris, field_line.points, lines.back() );
+                        }
+
+                        if( on_boundary )
+                        {
+                            std::cout << "num_points: " << sep_tris.points.size() << " last point: " << field_line.points.back() << std::endl;
+                            std::cout << "last tri: " << sep_tris.simplices.back() << std::endl;
+                        }
+                        lines.push_back( field_line.points );
                     }
-                    lines.push_back( field_line.points );
+
+                    coord_ii++;
                     return true;
                 } );
             }
