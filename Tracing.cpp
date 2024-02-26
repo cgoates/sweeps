@@ -21,7 +21,7 @@ std::optional<Eigen::Vector3d> intersectionOf( const Ray<3>& ray,
     const Eigen::Vector3d normal = maybe_normal.value_or( triangleNormal( tri ) );
     const double ray_scaling = normal.dot( tri.v1 - ray.start_pos ) / normal.dot( ray.dir );
     LOG( LOG_TRACING ) << "| | Ray scaling: " << ray_scaling << std::endl;
-    if( ray_scaling <= 0 ) return std::nullopt;
+    if( ray_scaling < 0 ) return std::nullopt;
     const Eigen::Vector3d intersection_point = ray.start_pos + ray_scaling * ray.dir;
 
     const bool inside = normal.dot( ( tri.v2 - tri.v1 ).cross( intersection_point - tri.v1 ) ) >= 0 and
@@ -212,11 +212,11 @@ std::optional<std::pair<bool, double>> traceGradientOnTri( const Triangle<3>& tr
     const double& f3 = field_values( 2 );
 
     const Eigen::Rotation2Dd rot90( std::numbers::pi / 2.0 );
-    const double area = 0.5 * v2_2d( 0 ) * v3_2d( 1 );
+    const double twice_area = v2_2d( 0 ) * v3_2d( 1 );
 
     const auto grad_s_i = [&]( const Segment<2>& edge_i ) -> Eigen::Vector2d {
         const auto edge_diff = edge_i.end_pos - edge_i.start_pos;
-        return area / edge_diff.norm() * ( rot90 * edge_diff );
+        return 1.0 / twice_area * ( rot90 * edge_diff );
     };
 
     const Eigen::Vector2d gradient =
@@ -250,9 +250,10 @@ std::optional<std::pair<cgogn::CMap3::Edge, double>> traceGradientOnTri( const c
                                        index_of( map, cgogn::CMap3::Vertex( cgogn::phi1( map, d ) ) ),
                                        index_of( map, cgogn::CMap3::Vertex( cgogn::phi_1( map, d ) ) ) } );
 
+    return traceGradientOnTri( tri3d, edge_barycentric_coord, field )
+        .and_then( [&]( const std::pair<bool, double>& pr ) {
+            const cgogn::CMap3::Edge e( pr.first ? phi<1, 2>( map, f.dart_ ) : phi<-1, 2>( map, f.dart_ ) );
+            return std::optional<std::pair<cgogn::CMap3::Edge, double>>( { e, 1.0 - pr.second } );
+        } );
 
-    return traceGradientOnTri( tri3d, edge_barycentric_coord, field ).and_then( [&]( const std::pair<bool, double>& pr ) {
-        cgogn::CMap3::Edge e( pr.first ? phi1( map, f.dart_ ) : phi_1( map, f.dart_ ) );
-        return std::optional<std::pair<cgogn::CMap3::Edge, double>>( { e, pr.second } );
-    } );
 }
