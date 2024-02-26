@@ -18,7 +18,7 @@ class VertexId
     }
 
     private:
-    const Type mId;
+    Type mId;
 };
 
 class Simplex
@@ -28,6 +28,14 @@ class Simplex
     Simplex( const VertexId& v0, const VertexId& v1 );
     Simplex( const VertexId& v0, const VertexId& v1, const VertexId& v2 );
     Simplex( const VertexId& v0, const VertexId& v1, const VertexId& v2, const VertexId& v3 );
+    template< typename It > requires std::input_iterator< It >
+    Simplex( const It& v_list_begin, const size_t size ) :
+        mDim( size - 1 ),
+        mVertexIds( {0,0,0,0} )
+    {
+        if( size < 1 or size > 4 ) throw( "Bad Simplex size" );
+        for( size_t i = 0; i < size; i++ ) mVertexIds.at( i ) = *std::next( v_list_begin, i );
+    }
 
     const VertexId& vertex( const size_t n ) const;
     size_t dim() const { return mDim; }
@@ -76,3 +84,5 @@ class BarycentricPoint
         return o.simplex == simplex;
     }
 };
+
+BarycentricPoint addVertex( const BarycentricPoint lower_dim_pt, const VertexId& vid, const size_t new_point_pos );
