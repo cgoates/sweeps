@@ -395,7 +395,8 @@ SimplicialComplex traceBoundaryField( const cgogn::CMap3& map,
                                       const double& start_point,
                                       const Eigen::VectorXd& field,
                                       const std::vector<bool>& target_vertex_marker,
-                                      const bool debug_output )
+                                      const bool debug_output,
+                                      const std::function<void( const cgogn::CMap3::Face& )>& face_callback )
 {
     const auto is_target = [&map, &target_vertex_marker]( const cgogn::CMap3::Edge& e ) {
         return target_vertex_marker.at( index_of( map, cgogn::CMap3::Vertex( e.dart_ ) ) ) and
@@ -424,6 +425,7 @@ SimplicialComplex traceBoundaryField( const cgogn::CMap3& map,
     while( not is_target( curr_edge ) )
     {
         const cgogn::CMap3::Face curr_face( curr_edge.dart_ );
+        face_callback( curr_face );
         if( debug_output ) tracingDebugOutput( map, curr_face, curr_point, field, traced_line, debug_tris, debug_field_values, n++ );
         std::optional<std::pair<cgogn::CMap3::Edge, double>> next_point = traceGradientOnTri( map, curr_face, curr_point, field );
 

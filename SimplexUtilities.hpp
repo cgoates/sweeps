@@ -39,6 +39,8 @@ struct Segment
     const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> end_pos;
 };
 
+void addTriangleNoDuplicateChecking( SimplicialComplex& complex, const Triangle<3>& tri );
+
 Triangle<3> triangleOfFace( const cgogn::CMap3& map, const cgogn::CMap3::Face& f );
 
 Eigen::Vector3d triangleNormal( const Triangle<3>& tri );

@@ -278,6 +278,32 @@ void accumulateTrianglesFromParallelLines( SimplicialComplex& append_to,
     }
 }
 
+void flood2d( const cgogn::CMap3& map,
+              const cgogn::CMap3::Face& f,
+              const std::function<bool( const cgogn::CMap3::Face& )>& stop_condition,
+              const std::function<void( const cgogn::CMap3::Face& )>& mark_callback,
+              const std::function<void( const cgogn::CMap3::Face& )>& callback )
+{
+    std::queue<cgogn::CMap3::Face> to_process;
+    to_process.push( f );
+
+    for( ; not to_process.empty(); to_process.pop() )
+    {
+        const cgogn::CMap3::Face& curr_face = to_process.front();
+        if( stop_condition( curr_face ) ) continue;
+        callback( curr_face );
+        mark_callback( curr_face );
+        for( const auto& d :
+             { phi2( map, curr_face.dart_ ), phi<1, 2>( map, curr_face.dart_ ), phi<-1, 2>( map, curr_face.dart_ ) } )
+        {
+            if( not stop_condition( cgogn::CMap3::Face( d ) ) )
+            {
+                to_process.push( cgogn::CMap3::Face( d ) );
+            }
+        }
+    }
+}
+
 int main( int argc, char* argv[] )
 {
     const SweepInput sweep_input = io::loadINPFile( "/Users/caleb/sweeps/attempt-sweep/test/data/macaroni.inp", "Surface3", "Surface4" );
@@ -295,21 +321,67 @@ int main( int argc, char* argv[] )
     const Eigen::MatrixX3d grad = gradients( map, ans, normals );
     if( argc > 1 )
     {
+        cgogn::CellMarker<cgogn::CMap3, cgogn::CMap3::Face> crossed_faces( map );
+        cgogn::CellMarker<cgogn::CMap3, cgogn::CMap3::Face> source_or_target( map );
+        cgogn::CellMarker<cgogn::CMap3, cgogn::CMap3::Face> flooded_faces( map );
+        foreachFaceWithVertsInSet( map, sweep_input.zero_bcs, [&]( const cgogn::CMap3::Face& f, const auto ) {
+            source_or_target.mark( f );
+            return true;
+        } );
+        foreachFaceWithVertsInSet( map, sweep_input.one_bcs, [&]( const cgogn::CMap3::Face& f, const auto ) {
+            source_or_target.mark( f );
+            return true;
+        } );
+
+        /*
+            Mark every face that is crossed by a trace.
+            Flood from every face that isn't marked, marking them and storing in a simplicial complex.
+        */
+
+        const auto is_marked = [&]( cgogn::CMap3::Face f ) {
+            return crossed_faces.is_marked( f ) or source_or_target.is_marked( f ) or flooded_faces.is_marked( f );
+        };
         std::vector<BarycentricPoint> coords = io::loadBaryCoords( "/Users/caleb/Downloads/macaroni_layout_bary_coords_00", {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40} );
         SimplicialComplex boundary_lines;
         foreachBaryCoordOnSetBoundary( map, sweep_input.zero_bcs, coords, [&]( const cgogn::CMap3::Edge& start_edge, const double b ) {
             std::cout << "FOUND ONE EDGE\n";
-            const SimplicialComplex field_line = traceBoundaryField( map, start_edge, b, ans, sweep_input.one_bcs, false );
+            const SimplicialComplex field_line = traceBoundaryField(
+                map, start_edge, b, ans, sweep_input.one_bcs, false, [&]( const cgogn::CMap3::Face& f ) {
+                    crossed_faces.mark( f );
+                } );
             append( boundary_lines, field_line );
             return true;
         } );
 
         io::VTKOutputObject boundary_output( boundary_lines );
         io::outputSimplicialFieldToVTK( boundary_output, "boundary_traces.vtu" );
+
+        size_t k = 0;
+        foreach_cell( map, [&]( cgogn::CMap3::Face f ) {
+            f = cgogn::CMap3::Face( phi3( map, f.dart_ ) );
+            if( is_boundary( map, f.dart_ ) and not is_marked( f ) )
+            {
+                // Flood from here
+                SimplicialComplex surface_component;
+                flood2d(
+                    map,
+                    f,
+                    is_marked,
+                    [&]( const cgogn::CMap3::Face& f ) { flooded_faces.mark( f ); },
+                    [&]( const cgogn::CMap3::Face& f ) {
+                        // Convert face to triangle, add to simplicial complex, mark as visited
+                        const auto tri = triangleOfFace( map, f );
+                        addTriangleNoDuplicateChecking( surface_component, tri );
+                    } );
+                io::VTKOutputObject surface_output( surface_component );
+                io::outputSimplicialFieldToVTK( surface_output, "outer_surface" + std::to_string( k++ ) + ".vtu" );
+            }
+            return true;
+        } );
     }
     else
     {
-        for( size_t i = 1; i < 40; i++ )
+        for( size_t i = 1; i < 41; i++ )
         {
             std::vector<BarycentricPoint> coords = io::loadBaryCoords( "/Users/caleb/Downloads/macaroni_layout_bary_coords_00", {i} );
             coords.erase(std::unique(coords.begin(), coords.end()), coords.end());
