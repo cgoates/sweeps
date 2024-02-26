@@ -17,6 +17,7 @@ add_library( attemptlib
   Simplex.cpp
   VTKOutput.cpp
   AbaqusInput.cpp
+  QuadLayoutInput.cpp
   Logging.cpp
   Laplace.cpp
   SimplexUtilities.cpp
