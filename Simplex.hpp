@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <ostream>
+#include <Eigen/Dense>
 
 class VertexId
 {
@@ -43,7 +44,35 @@ class Simplex
         return os;
     }
 
+    bool operator==( const Simplex& o ) const
+    {
+        if( dim() != o.dim() ) return false;
+        for( size_t i = 0; i <= o.dim(); i++ )
+        {
+            if( vertex( i ) != o.vertex( i ) ) return false;
+        }
+        return true;
+    }
+
     private:
     size_t mDim;
     std::array<VertexId, 4> mVertexIds;
+};
+
+class BarycentricPoint
+{
+    public:
+    BarycentricPoint( const Simplex& s, const Eigen::Matrix<double, Eigen::Dynamic, 1, 0, 3>& pt ) :
+        simplex( s ),
+        point( pt )
+    {}
+
+    Simplex simplex;
+    Eigen::Matrix<double, Eigen::Dynamic, 1, 0, 3> point;
+
+    // HACK
+    bool operator==( const BarycentricPoint& o ) const
+    {
+        return o.simplex == simplex;
+    }
 };
