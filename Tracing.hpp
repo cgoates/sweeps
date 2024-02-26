@@ -4,6 +4,7 @@
 #include <SweepInput.hpp>
 
 template <unsigned int DIM> struct Triangle;
+template <unsigned int DIM> struct Segment;
 class Normal;
 
 template<unsigned int DIM>
@@ -11,13 +12,6 @@ struct Ray
 {
     const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> start_pos;
     const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> dir;
-};
-
-template<unsigned int DIM>
-struct Segment
-{
-    const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> start_pos;
-    const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> end_pos;
 };
 
 std::optional<Eigen::Vector3d> intersectionOf( const Ray<3>& ray,
