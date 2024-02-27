@@ -10,6 +10,7 @@ class VertexId
     VertexId( const Type& id );
     Type id() const { return mId; }
     bool operator<( const VertexId& o ) const { return id() < o.id(); }
+    bool operator>( const VertexId& o ) const { return id() > o.id(); }
     bool operator==( const VertexId& o ) const { return id() == o.id(); }
     friend std::ostream& operator<<( std::ostream& o, const VertexId& vid )
     {
