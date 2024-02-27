@@ -42,3 +42,12 @@ std::optional<std::pair<cgogn::CMap3::Edge, double>> traceGradientOnTri( const c
                                                                          const cgogn::CMap3::Face& f,
                                                                          const double edge_barycentric_coord,
                                                                          const Eigen::VectorXd& field_values );
+
+SimplicialComplex traceBoundaryField(
+    const cgogn::CMap3& map,
+    const cgogn::CMap3::Edge& e,
+    const double& start_point,
+    const Eigen::VectorXd& field,
+    const std::vector<bool>& target_vertex_marker,
+    const bool debug_output = false,
+    const std::function<void( const cgogn::CMap3::Face& )>& face_callback = []( const auto& ) {} );
