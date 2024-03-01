@@ -300,222 +300,204 @@ void flood2d( const cgogn::CMap3& map,
 
 int main( int argc, char* argv[] )
 {
-    const SweepInput sweep_input =
-        io::loadINPFile( "/Users/caleb/sweeps/attempt-sweep/test/data/macaroni.inp", "Surface3", "Surface4" );
+    const std::vector<std::string> input_args(argv + 1, argv + argc);
 
-    io::rewriteBaryCoordFile( sweep_input.mesh,
-                              "/Users/caleb/Downloads/macaroni_layout_cutmesh.obj",
-                              "/Users/caleb/Downloads/macaroni_layout_barycoords",
-                              "/Users/caleb/Downloads/macaroni_layout_bary_coords_00" );
-
-    cgogn::CMap3 map;
-    mapFromInput( sweep_input.mesh, map );
-
-    const std::vector<Normal> normals = faceNormals( map );
-    const Eigen::VectorXd ans = solveLaplaceSparse( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
-
-    const Eigen::MatrixX3d grad = gradients( map, ans, normals );
-    if( argc > 1 )
+    if( input_args.size() > 0 )
     {
-        cgogn::CellMarker<cgogn::CMap3, cgogn::CMap3::Face> crossed_faces( map );
-        cgogn::CellMarker<cgogn::CMap3, cgogn::CMap3::Face> source_or_target( map );
-        cgogn::CellMarker<cgogn::CMap3, cgogn::CMap3::Face> flooded_faces( map );
-        foreachFaceWithVertsInSet( map, sweep_input.zero_bcs, [&]( const cgogn::CMap3::Face& f, const auto ) {
-            source_or_target.mark( f );
-            return true;
-        } );
-        foreachFaceWithVertsInSet( map, sweep_input.one_bcs, [&]( const cgogn::CMap3::Face& f, const auto ) {
-            source_or_target.mark( f );
-            return true;
-        } );
+        const SweepInput sweep_input =
+            io::loadINPFile( "/Users/caleb/sweeps/attempt-sweep/test/data/macaroni.inp", "Surface3", "Surface4" );
 
-        /*
-            Mark every face that is crossed by a trace.
-            Flood from every face that isn't marked, marking them and storing in a simplicial complex.
-        */
+        if( input_args.front() == "transpose-barycoords" )
+        {
+            if( input_args.size() < 4 ) throw( "Bad input to transpose-barycoords" );
 
-        const auto is_marked = [&]( cgogn::CMap3::Face f ) {
-            return crossed_faces.is_marked( f ) or source_or_target.is_marked( f ) or flooded_faces.is_marked( f );
-        };
-        std::vector<BarycentricPoint> coords =
-            io::loadBaryCoords( "/Users/caleb/Downloads/macaroni_layout_bary_coords_00",
-                                { 1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-                                  21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40 } );
-        SimplicialComplex boundary_lines;
-        foreachBaryCoordOnSetBoundary(
-            map, sweep_input.zero_bcs, coords, [&]( const cgogn::CMap3::Edge& start_edge, const double b ) {
-                std::cout << "FOUND ONE EDGE\n";
-                const SimplicialComplex field_line = traceBoundaryField(
-                    map, start_edge, b, ans, sweep_input.one_bcs, false, [&]( const cgogn::CMap3::Face& f ) {
-                        crossed_faces.mark( f );
-                    } );
+            io::rewriteBaryCoordFile( sweep_input.mesh, input_args.at( 1 ), input_args.at( 2 ), input_args.at( 3 ) );
+
+            std::cout << "Successfully rewrote " << input_args.at( 2 ) << " to " << input_args.at( 3 ) << std::endl;
+            return 0;
+        }
+
+        cgogn::CMap3 map;
+        mapFromInput( sweep_input.mesh, map );
+
+        const std::vector<Normal> normals = faceNormals( map );
+        const Eigen::VectorXd ans = solveLaplaceSparse( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
+
+        const Eigen::MatrixX3d grad = gradients( map, ans, normals );
+
+        if( std::find( input_args.begin(), input_args.end(), "output-laplace" ) != input_args.end() )
+        {
+            std::cout << "Outputting Laplace field...\n";
+            io::VTKOutputObject output( sweep_input.mesh );
+            output.addVertexField( "laplace", ans );
+            output.addCellField( "gradients", grad );
+            io::outputSimplicialFieldToVTK( output, "test.vtu" );
+        }
+
+        if( input_args.front() == "inner-traces" )
+        {
+            std::cout << "Outputting centroid traces for all base faces...\n";
+            SimplicialComplex all_lines;
+            foreachFaceWithVertsInSet( map, sweep_input.zero_bcs, [&]( const cgogn::CMap3::Face& start_face, const size_t ){
+                const SimplicialComplex field_line = traceField( map, start_face, centroid( map, start_face ), grad, normals );
+                append( all_lines, field_line );
+                return true;
+            } );
+
+            io::VTKOutputObject output( all_lines );
+            io::outputSimplicialFieldToVTK( output, "centroid_traces.vtu" );
+        }
+        if( input_args.front() == "outer-traces" )
+        {
+            std::cout << "Outputting all boundary traces...\n";
+            SimplicialComplex boundary_lines;
+            foreachEdgeOnBoundaryOfSet( map, sweep_input.zero_bcs, [&]( const cgogn::CMap3::Edge& start_edge, const size_t ) {
+                const SimplicialComplex field_line = traceBoundaryField( map, start_edge, 0.5, ans, sweep_input.one_bcs, false );
                 append( boundary_lines, field_line );
                 return true;
             } );
 
-        io::VTKOutputObject boundary_output( boundary_lines );
-        io::outputSimplicialFieldToVTK( boundary_output, "boundary_traces.vtu" );
+            io::VTKOutputObject boundary_output( boundary_lines );
+            io::outputSimplicialFieldToVTK( boundary_output, "boundary_lines.vtu" );
+        }
+        if( input_args.front() == "outer-surfaces" )
+        {
+            std::cout << "Generating outer surfaces\n";
+            cgogn::CellMarker<cgogn::CMap3, cgogn::CMap3::Face> crossed_faces( map );
+            cgogn::CellMarker<cgogn::CMap3, cgogn::CMap3::Face> source_or_target( map );
+            cgogn::CellMarker<cgogn::CMap3, cgogn::CMap3::Face> flooded_faces( map );
+            foreachFaceWithVertsInSet( map, sweep_input.zero_bcs, [&]( const cgogn::CMap3::Face& f, const auto ) {
+                source_or_target.mark( f );
+                return true;
+            } );
+            foreachFaceWithVertsInSet( map, sweep_input.one_bcs, [&]( const cgogn::CMap3::Face& f, const auto ) {
+                source_or_target.mark( f );
+                return true;
+            } );
 
-        size_t k = 0;
-        foreach_cell( map, [&]( cgogn::CMap3::Face f ) {
-            f = cgogn::CMap3::Face( phi3( map, f.dart_ ) );
-            if( is_boundary( map, f.dart_ ) and not is_marked( f ) )
+            /*
+                Mark every face that is crossed by a trace.
+                Flood from every face that isn't marked, marking them and storing in a simplicial complex.
+            */
+
+            const auto is_marked = [&]( cgogn::CMap3::Face f ) {
+                return crossed_faces.is_marked( f ) or source_or_target.is_marked( f ) or flooded_faces.is_marked( f );
+            };
+            std::vector<BarycentricPoint> coords =
+                io::loadBaryCoords( "/Users/caleb/Downloads/macaroni_layout_bary_coords_00",
+                                    { 1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+                                    21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40 } );
+            SimplicialComplex boundary_lines;
+            foreachBaryCoordOnSetBoundary(
+                map, sweep_input.zero_bcs, coords, [&]( const cgogn::CMap3::Edge& start_edge, const double b ) {
+                    std::cout << "FOUND ONE EDGE\n";
+                    const SimplicialComplex field_line = traceBoundaryField(
+                        map, start_edge, b, ans, sweep_input.one_bcs, false, [&]( const cgogn::CMap3::Face& f ) {
+                            crossed_faces.mark( f );
+                        } );
+                    append( boundary_lines, field_line );
+                    return true;
+                } );
+
+            io::VTKOutputObject boundary_output( boundary_lines );
+            io::outputSimplicialFieldToVTK( boundary_output, "boundary_traces.vtu" );
+
+            size_t k = 0;
+            foreach_cell( map, [&]( cgogn::CMap3::Face f ) {
+                f = cgogn::CMap3::Face( phi3( map, f.dart_ ) );
+                if( is_boundary( map, f.dart_ ) and not is_marked( f ) )
+                {
+                    // Flood from here
+                    SimplicialComplex surface_component;
+                    flood2d(
+                        map,
+                        f,
+                        is_marked,
+                        [&]( const cgogn::CMap3::Face& f ) { flooded_faces.mark( f ); },
+                        [&]( const cgogn::CMap3::Face& f ) {
+                            // Convert face to triangle, add to simplicial complex, mark as visited
+                            const auto tri = triangleOfFace( map, f );
+                            addTriangleNoDuplicateChecking( surface_component, tri );
+                        } );
+                    io::VTKOutputObject surface_output( surface_component );
+                    io::outputSimplicialFieldToVTK( surface_output, "outer_surface" + std::to_string( k++ ) + ".vtu" );
+                }
+                return true;
+            } );
+        }
+        else if( input_args.at( 0 ) == "inner-surfaces" )
+        {
+            for( size_t i = 1; i < 41; i++ )
             {
-                // Flood from here
-                SimplicialComplex surface_component;
-                flood2d(
-                    map,
-                    f,
-                    is_marked,
-                    [&]( const cgogn::CMap3::Face& f ) { flooded_faces.mark( f ); },
-                    [&]( const cgogn::CMap3::Face& f ) {
-                        // Convert face to triangle, add to simplicial complex, mark as visited
-                        const auto tri = triangleOfFace( map, f );
-                        addTriangleNoDuplicateChecking( surface_component, tri );
+                std::vector<BarycentricPoint> coords =
+                    io::loadBaryCoords( "/Users/caleb/Downloads/macaroni_layout_bary_coords_00", { i } );
+                coords.erase( std::unique( coords.begin(), coords.end() ), coords.end() );
+                std::cout << std::endl << i << std::endl;
+
+                std::vector<std::vector<Eigen::Vector3d>> lines;
+                SimplicialComplex sep_tris;
+
+                size_t coord_ii = 0;
+                for( const auto& bc : coords )
+                {
+                    std::vector<BarycentricPoint> coord{ bc };
+                    foreachBaryCoordOnSet( map, sweep_input.zero_bcs, coord, [&]( const cgogn::CMap3::Face& start_face, const Eigen::Vector3d& pt ) {
+
+                        const double distance_from_major_axis = ( pt - Eigen::Vector3d( -15.5, 0, 0 ) ).norm();
+
+                        const bool on_boundary = equals( distance_from_major_axis, 10.5, 1e-2 ) or
+                            equals( distance_from_major_axis, 5, 1e-2 );
+
+
+                        // const std::optional<cgogn::CMap3::Edge> boundary_e = boundaryTracingEdge( map, sweep_input.zero_bcs, cgogn::CMap3::Edge( start_face.dart_ ) );
+                        const std::optional<cgogn::CMap3::Edge> boundary_e =
+                            on_boundary
+                            ? boundaryTracingEdgeOnFace( map, sweep_input.zero_bcs, start_face ) : std::nullopt;
+                        const SimplicialComplex field_line = boundary_e.and_then( [&]( cgogn::CMap3::Edge start_edge ) -> std::optional<SimplicialComplex> {
+                            const auto position =
+                                cgogn::get_attribute<Eigen::Vector3d, cgogn::CMap3::Vertex>( map, "position" );
+                            const Eigen::Vector3d pos1 =
+                                cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( start_edge.dart_ ) );
+                            const Eigen::Vector3d pos2 =
+                                cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( phi1( map, start_edge.dart_ ) ) );
+
+                            const double b = ( pt - pos1 ).norm() / ( pos2 - pos1 ).norm();
+
+                            std::cout << "ON BOUNDARY " << i << "\n";
+
+                            return traceBoundaryField( map, start_edge, b, ans, sweep_input.one_bcs, false );
+                        } ).value_or( traceField( map, start_face, pt, grad, normals, true ) );
+
+                        if( i != 2 or coord_ii != 2 )
+                        {
+                            if( lines.size() > 0 )
+                            {
+                                if( field_line.points.size() > lines.back().size() )
+                                    accumulateTrianglesFromParallelLines( sep_tris, lines.back(), field_line.points );
+                                else
+                                    accumulateTrianglesFromParallelLines( sep_tris, field_line.points, lines.back() );
+                            }
+
+                            if( on_boundary )
+                            {
+                                std::cout << "num_points: " << sep_tris.points.size() << " last point: " << field_line.points.back() << std::endl;
+                                std::cout << "last tri: " << sep_tris.simplices.back() << std::endl;
+                            }
+                            lines.push_back( field_line.points );
+                        }
+
+                        coord_ii++;
+                        return true;
                     } );
-                io::VTKOutputObject surface_output( surface_component );
-                io::outputSimplicialFieldToVTK( surface_output, "outer_surface" + std::to_string( k++ ) + ".vtu" );
+                }
+
+                io::VTKOutputObject boundary_output( sep_tris );
+                io::outputSimplicialFieldToVTK( boundary_output, "hex_layout_skeleton" + std::to_string( i ) + ".vtu" );
             }
-            return true;
-        } );
+        }
     }
     else
     {
-        for( size_t i = 1; i < 41; i++ )
-        {
-            std::vector<BarycentricPoint> coords =
-                io::loadBaryCoords( "/Users/caleb/Downloads/macaroni_layout_bary_coords_00", { i } );
-            coords.erase( std::unique( coords.begin(), coords.end() ), coords.end() );
-            std::cout << std::endl << i << std::endl;
-
-            std::vector<std::vector<Eigen::Vector3d>> lines;
-            SimplicialComplex sep_tris;
-
-            size_t coord_ii = 0;
-            for( const auto& bc : coords )
-            {
-                std::vector<BarycentricPoint> coord{ bc };
-                foreachBaryCoordOnSet( map, sweep_input.zero_bcs, coord, [&]( const cgogn::CMap3::Face& start_face, const Eigen::Vector3d& pt ) {
-
-                    const double distance_from_major_axis = ( pt - Eigen::Vector3d( -15.5, 0, 0 ) ).norm();
-
-                    const bool on_boundary = equals( distance_from_major_axis, 10.5, 1e-2 ) or
-                          equals( distance_from_major_axis, 5, 1e-2 );
-
-
-                    // const std::optional<cgogn::CMap3::Edge> boundary_e = boundaryTracingEdge( map, sweep_input.zero_bcs, cgogn::CMap3::Edge( start_face.dart_ ) );
-                    const std::optional<cgogn::CMap3::Edge> boundary_e =
-                        on_boundary
-                        ? boundaryTracingEdgeOnFace( map, sweep_input.zero_bcs, start_face ) : std::nullopt;
-                    const SimplicialComplex field_line = boundary_e.and_then( [&]( cgogn::CMap3::Edge start_edge ) -> std::optional<SimplicialComplex> {
-                        const auto position =
-                            cgogn::get_attribute<Eigen::Vector3d, cgogn::CMap3::Vertex>( map, "position" );
-                        const Eigen::Vector3d pos1 =
-                            cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( start_edge.dart_ ) );
-                        const Eigen::Vector3d pos2 =
-                            cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( phi1( map, start_edge.dart_ ) ) );
-
-                        const double b = ( pt - pos1 ).norm() / ( pos2 - pos1 ).norm();
-
-                        std::cout << "ON BOUNDARY " << i << "\n";
-
-                        return traceBoundaryField( map, start_edge, b, ans, sweep_input.one_bcs, false );
-                    } ).value_or( traceField( map, start_face, pt, grad, normals, true ) );
-
-                    if( i != 2 or coord_ii != 2 )
-                    {
-                        if( lines.size() > 0 )
-                        {
-                            if( field_line.points.size() > lines.back().size() )
-                                accumulateTrianglesFromParallelLines( sep_tris, lines.back(), field_line.points );
-                            else
-                                accumulateTrianglesFromParallelLines( sep_tris, field_line.points, lines.back() );
-                        }
-
-                        if( on_boundary )
-                        {
-                            std::cout << "num_points: " << sep_tris.points.size() << " last point: " << field_line.points.back() << std::endl;
-                            std::cout << "last tri: " << sep_tris.simplices.back() << std::endl;
-                        }
-                        lines.push_back( field_line.points );
-                    }
-
-                    coord_ii++;
-                    return true;
-                } );
-            }
-
-            io::VTKOutputObject boundary_output( sep_tris );
-            io::outputSimplicialFieldToVTK( boundary_output, "hex_layout_skeleton" + std::to_string( i ) + ".vtu" );
-        }
+        std::cout << "No action specified" << std::endl;
     }
 }
-
-// int main()
-// {
-//     // const SweepInput sweep_input = SweepInputTestCases::twelveTetCube();//io::loadINPFile( "/Users/caleb/sweeps/attempt-sweep/test/simple_mesh.inp", "Surface1", "Surface28" );
-//     // const SweepInput sweep_input = SweepInputTestCases::refinedCube( { 3, 3, 7 } );
-//     // const SweepInput sweep_input = io::loadINPFile( "/Users/caleb/Downloads/TorusPipe3.inp", "Surface3", "Surface4" );
-//     const SweepInput sweep_input = io::loadINPFile( "/Users/caleb/sweeps/attempt-sweep/test/data/macaroni.inp", "Surface3", "Surface4" );
-//     cgogn::CMap3 map;
-//     mapFromInput( sweep_input.mesh, map );
-
-//     const std::vector<Normal> normals = faceNormals( map );
-//     const Eigen::VectorXd ans = solveLaplaceSparse( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
-
-//     const Eigen::MatrixX3d grad = gradients( map, ans, normals );
-
-//     io::VTKOutputObject output( sweep_input.mesh );
-//     output.addVertexField( "laplace", ans );
-//     output.addCellField( "gradients", grad );
-
-//     // std::cout << ans.transpose() << std::endl;
-//     io::outputSimplicialFieldToVTK( output, "test.vtu" );
-
-//     // SimplicialComplex all_lines;
-
-//     foreachFaceWithVertsInSet( map, sweep_input.zero_bcs, [&]( const cgogn::CMap3::Face& start_face, const size_t i ){
-//         const SimplicialComplex field_line = traceField( map, start_face, centroid( map, start_face ), grad, normals );
-//         // std::cout << "field_line: " << field_line.points << std::endl << std::endl;
-//         // if( field_line.simplices.size() < 40 )std::cout << "Line: " << i << " Length: " << field_line.simplices.size() << std::endl;
-//         // append( all_lines, field_line );
-//         io::VTKOutputObject boundary_output( field_line );
-//         io::outputSimplicialFieldToVTK( boundary_output, "lines_individual_" + std::to_string( i ) + ".vtu" );
-//         return true;
-//     } );
-
-//     // io::VTKOutputObject line_output( all_lines );
-//     // io::outputSimplicialFieldToVTK( line_output, "line_full.vtu" );
-
-//     // foreachFaceWithVertsInSet( map, sweep_input.zero_bcs, [&]( const cgogn::CMap3::Face& start_face, const size_t i ){
-//     //     if( i == 184 )
-//     //     {
-//     //         const SimplicialComplex field_line = traceField( map, start_face, centroid( map, start_face ), grad, normals, true );
-//     //         // std::cout << "field_line: " << field_line.points << std::endl << std::endl;
-//     //     }
-//     //     return true;
-//     // } );
-
-//     SimplicialComplex boundary_lines;
-//     foreachEdgeOnBoundaryOfSet( map, sweep_input.zero_bcs, [&]( const cgogn::CMap3::Edge& start_edge, const size_t i ) {
-//         const SimplicialComplex field_line = traceBoundaryField( map, start_edge, 0.5, ans, sweep_input.one_bcs, false );
-//         append( boundary_lines, field_line );
-//         io::VTKOutputObject boundary_output( field_line );
-//         io::outputSimplicialFieldToVTK( boundary_output, "boundary_lines_individual_" + std::to_string( i ) + ".vtu" );
-//         return true;
-//     } );
-
-//     io::VTKOutputObject boundary_output( boundary_lines );
-//     io::outputSimplicialFieldToVTK( boundary_output, "boundary_lines.vtu" );
-
-//     const SimplicialComplex boundary_line =
-//         traceBoundaryField( map, cgogn::CMap3::Edge( cgogn::Dart( /*4213156*/4237780 ) ), 0.5, ans, sweep_input.one_bcs, true );
-
-//     std::cout << "dimension: " << (int)map.dimension << std::endl;
-//     std::cout << "Simplicial? " << cgogn::is_simplicial( map ) << std::endl;
-
-//     std::cout << "Tets: " << cgogn::nb_cells<cgogn::CMap3::Volume>( map ) << std::endl;
-//     std::cout << "Tris: " << cgogn::nb_cells<cgogn::CMap3::Face>( map ) << std::endl;
-//     std::cout << "Edges: " << cgogn::nb_cells<cgogn::CMap3::Edge>( map ) << std::endl;
-//     std::cout << "Vertices: " << cgogn::nb_cells<cgogn::CMap3::Vertex>( map ) << std::endl;
-// }
