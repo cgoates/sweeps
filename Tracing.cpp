@@ -358,8 +358,6 @@ std::optional<std::pair<cgogn::CMap3::Edge, double>> traceGradientOnTriPair( con
 
     const Eigen::Vector2d gradient = ( gradient_1 + gradient_2 ) * 0.5;
 
-    std::cout << "Grad 1: " << gradient_1.transpose() << " Grad 2: " << gradient_2.transpose() << " Ave Grad: " << gradient.transpose() << std::endl;
-
     // iterate the edges and perform line ray intersections
     const Ray<2> ray( { edge_barycentric_coord * v2_2d, gradient } );
 
@@ -440,8 +438,7 @@ SimplicialComplex traceBoundaryField( const cgogn::CMap3& map,
             next_point = traceGradientOnTriPair( map, curr_face, curr_point, field );
             if( not next_point.has_value() )
             {
-                std::cout << "NO INTERSECTION ON BOUNDARY TRACING\n-\n-\n-\n-\n-\n-\n-\n-\n-\n-\n";
-                std::cout << e << " | " << is_boundary( map, e.dart_ ) << ": " << traced_line.simplices.size() << std::endl;
+                throw( "No intersection on boundary tracing" );
                 break;
             }
         }
