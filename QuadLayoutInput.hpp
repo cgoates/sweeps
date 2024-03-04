@@ -13,7 +13,6 @@ namespace io
                                const std::string& bary_filename_in,
                                const std::string& bary_filename_out );
 
-    /// \brief Loads the barycentric coordinates in the edges in edges_to_load from a barycentric file.
-    std::vector<BarycentricPoint> loadBaryCoords( const std::string& bary_filename_in,
-                                                  const std::set<size_t>& edges_to_load );
+    /// \brief Loads curves consisting of barycentric coordinate in from a barycentric file.
+    std::vector<std::vector<BarycentricPoint>> loadBaryCoords( const std::string& bary_filename_in );
 } // namespace io

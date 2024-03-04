@@ -79,11 +79,12 @@ namespace io
         }
     }
 
-    std::vector<BarycentricPoint> loadBaryCoords( const std::string& bary_filename_in, const std::set<size_t>& edge_ii )
+    std::vector<std::vector<BarycentricPoint>> loadBaryCoords( const std::string& bary_filename_in )
     {
-        std::vector<BarycentricPoint> output;
+        std::vector<std::vector<BarycentricPoint>> output;
+        output.push_back({});
 
-        const auto process_vertex_line = [&output]( const std::string& line ) {
+        const auto process_vertex_line = []( const std::string& line, std::vector<BarycentricPoint>& output ) {
             /*
             Split the string by spaces and check each resulting piece to see if it's a v.
             If it is then the next one needs to be changed.
@@ -139,27 +140,32 @@ namespace io
         std::ifstream read( bary_filename_in );
 
         std::string end_location_line = "";
-        size_t n_edges = 0;
         for( std::string line; std::getline( read, line ); )
         {
-            if( std::find( edge_ii.begin(), edge_ii.end(), n_edges ) != edge_ii.end() and line.rfind( "End Location", 0 ) == 0 )
+            if( line.rfind( "End Location", 0 ) == 0 )
             {
                 std::getline( read, end_location_line );
             }
-            if( std::find( edge_ii.begin(), edge_ii.end(), n_edges ) != edge_ii.end() and line.rfind( "v ", 0 ) == 0 )
+            if( line.rfind( "v ", 0 ) == 0 )
             {
-                process_vertex_line( line );
+                process_vertex_line( line, output.back() );
             }
             else if( line.rfind( "#contouredge", 0 ) == 0 )
             {
                 if( end_location_line.size() > 0 )
                 {
-                    process_vertex_line( end_location_line );
+                    process_vertex_line( end_location_line, output.back() );
                     end_location_line = "";
-                    // FIXME: If we load all lines, the last end location will be dropped...
+                    output.back().erase( std::unique( output.back().begin(), output.back().end() ), output.back().end() );
+                    output.push_back({});
                 }
-                n_edges++;
             }
+        }
+
+        if( end_location_line.size() > 0 )
+        {
+            process_vertex_line( end_location_line, output.back() );
+            output.back().erase( std::unique( output.back().begin(), output.back().end() ), output.back().end() );
         }
 
         return output;

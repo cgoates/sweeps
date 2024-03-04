@@ -383,13 +383,18 @@ int main( int argc, char* argv[] )
             const auto is_marked = [&]( cgogn::CMap3::Face f ) {
                 return crossed_faces.is_marked( f ) or source_or_target.is_marked( f ) or flooded_faces.is_marked( f );
             };
-            std::vector<BarycentricPoint> coords =
-                io::loadBaryCoords( "/Users/caleb/Downloads/macaroni_layout_bary_coords_00",
-                                    { 1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-                                    21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40 } );
+            const std::vector<std::vector<BarycentricPoint>> coords =
+                io::loadBaryCoords( "/Users/caleb/Downloads/macaroni_layout_bary_coords_00" );
+
+            std::vector<BarycentricPoint> endpoints;
+            for( size_t i = 0; i < 40; i++ )
+            {
+                endpoints.push_back( coords.at( i ).front() );
+                endpoints.push_back( coords.at( i ).back() );
+            }
             SimplicialComplex boundary_lines;
             foreachBaryCoordOnSetBoundary(
-                map, sweep_input.zero_bcs, coords, [&]( const cgogn::CMap3::Edge& start_edge, const double b ) {
+                map, sweep_input.zero_bcs, endpoints, [&]( const cgogn::CMap3::Edge& start_edge, const double b ) {
                     std::cout << "FOUND ONE EDGE\n";
                     const SimplicialComplex field_line = traceBoundaryField(
                         map, start_edge, b, ans, sweep_input.one_bcs, false, [&]( const cgogn::CMap3::Face& f ) {
@@ -427,11 +432,11 @@ int main( int argc, char* argv[] )
         }
         else if( input_args.at( 0 ) == "inner-surfaces" )
         {
-            for( size_t i = 1; i < 41; i++ )
+            const std::vector<std::vector<BarycentricPoint>> bary_curves =
+                io::loadBaryCoords( "/Users/caleb/Downloads/macaroni_layout_bary_coords_00" );
+            for( size_t i = 0; i < 40; i++ )
             {
-                std::vector<BarycentricPoint> coords =
-                    io::loadBaryCoords( "/Users/caleb/Downloads/macaroni_layout_bary_coords_00", { i } );
-                coords.erase( std::unique( coords.begin(), coords.end() ), coords.end() );
+                const std::vector<BarycentricPoint>& coords = bary_curves.at( i );
                 std::cout << std::endl << i << std::endl;
 
                 std::vector<std::vector<Eigen::Vector3d>> lines;
@@ -441,6 +446,7 @@ int main( int argc, char* argv[] )
                 for( const auto& bc : coords )
                 {
                     std::vector<BarycentricPoint> coord{ bc };
+                    // FIXME: Iterate the points in the barycentric curve by looking for adjacencies
                     foreachBaryCoordOnSet( map, sweep_input.zero_bcs, coord, [&]( const cgogn::CMap3::Face& start_face, const Eigen::Vector3d& pt ) {
 
                         const double distance_from_major_axis = ( pt - Eigen::Vector3d( -15.5, 0, 0 ) ).norm();
@@ -468,7 +474,7 @@ int main( int argc, char* argv[] )
                             return traceBoundaryField( map, start_edge, b, ans, sweep_input.one_bcs, false );
                         } ).value_or( traceField( map, start_face, pt, grad, normals, true ) );
 
-                        if( i != 2 or coord_ii != 2 )
+                        if( i != 1 or coord_ii != 2 )
                         {
                             if( lines.size() > 0 )
                             {
