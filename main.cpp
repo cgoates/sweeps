@@ -233,6 +233,77 @@ void foreachBaryCoordOnSet( const cgogn::CMap3& map,
     } );
 }
 
+/*
+void foreachBaryCoordInCurve( const cgogn::CMap3& map,
+                              const std::vector<BarycentricPoint>& bary_coord_curve,
+                              const std::function<bool( const cgogn::CMap3::Face&, const Eigen::Vector3d& )>& callback )
+{
+    //    1. Find the cgogn cell corresponding to the first point.
+    //    2. Callback on first point.
+    //    3. Iterate adjacent cells to find the one corresponding to the next point.
+    //    4. Callback on the next point.
+    //    5. Repeat 3 and 4 until there are no more points.
+
+
+    if( bary_coord_curve.size() == 0 ) return;
+
+    const VertexId vid1 = bary_coord_curve.front().simplex.vertex( 0 );
+    const cgogn::CMap3::Vertex vertex1 = of_index<cgogn::CMap3::Vertex>( map, vid1.id() );
+
+    const auto cell_has_vertices = [&]( const auto& cell, const std::set<VertexId>& vertices ) {
+        bool has_them = true;
+        cgogn::foreach_incident_vertex( map, cell, [&]( cgogn::CMap3::Vertex& v ){
+            if( not vertices.contains( VertexId( index_of( v ) ) ) ) has_them = false;
+            return has_them;
+        } );
+        return has_them;
+    };
+
+
+    switch( simplex.dim() )
+    {
+        case 0: return v;
+        case 1:
+        {
+            std::optional<cgogn::CMap3::Edge> e = std::nullopt;
+            foreach_incident_edge( map, v, [&]( cgogn::CMap3::Edge possible_e ) {
+                if( cell_has_vertices( e, { simplex.vertex( 0 ), simplex.vertex( 1 ) } ) )
+                {
+                    e.emplace( possible_e );
+                    return false;
+                }
+                return true;
+            } );
+            if( e.has_value() ) return e.value();
+            else
+            {
+                throw( "Bad adjacency relationships?" );
+                return cgogn::CMap3::Edge();
+            }
+        }
+        case 2:
+        {
+            std::optional<cgogn::CMap3::Face> f = std::nullopt;
+            foreach_incident_face( map, v, [&]( cgogn::CMap3::Face possible_f ) {
+                if( cell_has_vertices( f, { simplex.vertex( 0 ), simplex.vertex( 1 ), simplex.vertex( 2 ) } ) )
+                {
+                    f.emplace( possible_f );
+                    return false;
+                }
+                return true;
+            } );
+            if( f.has_value() ) return f.value();
+            else
+            {
+                throw( "Bad adjacency relationships?" );
+                return cgogn::CMap3::Face();
+            }
+        }
+        default: throw( "Unsupported cell type" );
+    }
+}
+*/
+
 void append( SimplicialComplex& append_to, const SimplicialComplex& to_append )
 {
     const size_t offset = append_to.points.size();
