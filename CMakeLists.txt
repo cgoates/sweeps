@@ -22,6 +22,7 @@ add_library( attemptlib
   Laplace.cpp
   SimplexUtilities.cpp
   Tracing.cpp
+  CombinatorialMapMethods.cpp
 )
 
 include_directories( ${CMAKE_SOURCE_DIR}/../thirdparty/eigen )
