@@ -1,15 +1,9 @@
 #pragma once
 #include <vector>
 #include <set>
-#include <Simplex.hpp>
 #include <numbers>
 #include <Eigen/Dense>
-
-struct SimplicialComplex
-{
-    std::vector<Simplex> simplices;
-    std::vector<Eigen::Vector3d> points;
-};
+#include <SimplicialComplex.hpp>
 
 struct SweepInput
 {
