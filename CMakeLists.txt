@@ -22,6 +22,7 @@ add_library( attemptlib
   Laplace.cpp
   SimplexUtilities.cpp
   Tracing.cpp
+  TetMeshCombinatorialMap.cpp
   CombinatorialMapMethods.cpp
 )
 
