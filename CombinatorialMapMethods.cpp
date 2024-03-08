@@ -65,10 +65,23 @@ namespace topology
         return true;
     }
 
+    bool iterateCellsWhile( const CombinatorialMap& map,
+                            const uint cell_dim,
+                            const std::function<bool( const Cell& )>& callback )
+    {
+        return map.iterateCellsWhile( cell_dim, callback );
+    }
+
+    bool iterateDartsWhile( const CombinatorialMap& map,
+                            const std::function<bool( const Dart& )>& callback )
+    {
+        return map.iterateDartsWhile( callback );
+    }
+
     size_t cellCount( const CombinatorialMap& map, const uint cell_dim )
     {
         size_t i = 0;
-        map.iterateCellsWhile( cell_dim, [&]( const auto& ) {
+        iterateCellsWhile( map, cell_dim, [&]( const auto& ) {
             i++;
             return true;
         } );

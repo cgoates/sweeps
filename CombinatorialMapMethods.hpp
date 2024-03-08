@@ -11,5 +11,12 @@ namespace topology
                              const Cell& c,
                              const std::function<bool( const Dart& )>& callback );
 
+    bool iterateCellsWhile( const CombinatorialMap& map,
+                            const uint cell_dim,
+                            const std::function<bool( const Cell& )>& callback );
+
+    bool iterateDartsWhile( const CombinatorialMap& map,
+                            const std::function<bool( const Dart& )>& callback );
+
     size_t cellCount( const CombinatorialMap& map, const uint cell_dim );
 } // namespace topology
