@@ -52,17 +52,17 @@ TEST_CASE( "Simplest gmsh mesh", "[single-file]" )
     REQUIRE( cellCount( map, 3 ) == 24 );
     REQUIRE( cellCount( map, 0 ) == 14 );
 
-    // size_t n_boundary_faces = 0;
-    // cgogn::foreach_cell( map, [&]( cgogn::CMap3::Face f ) {
-    //     if( cgogn::is_incident_to_boundary( map, f ) ) n_boundary_faces++;
-    //     return true;
-    // } );
-    // REQUIRE( n_boundary_faces == 24 );
+    size_t n_boundary_faces = 0;
+    iterateCellsWhile( map, 2, [&]( const Face& f ) {
+        if( boundaryAdjacent( map, f ) ) n_boundary_faces++;
+        return true;
+    } );
+    REQUIRE( n_boundary_faces == 24 );
 
-    // size_t n_boundary_edge = 0;
-    // cgogn::foreach_cell( map, [&]( cgogn::CMap3::Edge e ) {
-    //     if( cgogn::is_incident_to_boundary( map, e ) ) n_boundary_edge++;
-    //     return true;
-    // } );
-    // REQUIRE( n_boundary_edge == 36 );
+    size_t n_boundary_edge = 0;
+    iterateCellsWhile( map, 1, [&]( const Edge& e ) {
+        if( boundaryAdjacent( map, e ) ) n_boundary_edge++;
+        return true;
+    } );
+    REQUIRE( n_boundary_edge == 36 );
 }
