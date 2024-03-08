@@ -19,4 +19,8 @@ namespace topology
                             const std::function<bool( const Dart& )>& callback );
 
     size_t cellCount( const CombinatorialMap& map, const uint cell_dim );
+
+    bool onBoundary( const CombinatorialMap& map, const Dart& d );
+
+    bool boundaryAdjacent( const CombinatorialMap& map, const Cell& c );
 } // namespace topology

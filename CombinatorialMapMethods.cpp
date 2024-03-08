@@ -88,4 +88,15 @@ namespace topology
         return i;
     }
 
+    bool onBoundary( const CombinatorialMap& map, const Dart& d )
+    {
+        return not phi( map, map.dim(), d ).has_value();
+    }
+
+    bool boundaryAdjacent( const CombinatorialMap& map, const Cell& c )
+    {
+        return not iterateDartsOfCell( map, c, [&map]( const Dart& d ) {
+            return not onBoundary( map, d );
+        } );
+    }
 } // namespace topology
