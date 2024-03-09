@@ -1,6 +1,9 @@
 #include <CombinatorialMapMethods.hpp>
 #include <queue>
+#include <set>
 #include <GlobalDartMarker.hpp>
+#include <CombinatorialMapBoundary.hpp>
+#include <Logging.hpp>
 
 namespace topology
 {
@@ -98,5 +101,24 @@ namespace topology
         return not iterateDartsOfCell( map, c, [&map]( const Dart& d ) {
             return not onBoundary( map, d );
         } );
+    }
+
+    std::set<Dart> boundaryComponentDarts( const CombinatorialMap& map )
+    {
+        std::set<Dart> out;
+        GlobalDartMarker m( map );
+        iterateDartsWhile( map, [&]( const Dart& d ) {
+            if( onBoundary( map, d ) and not m.isMarked( d ) )
+            {
+                out.insert( d );
+                CombinatorialMapBoundary bdry( map, {d} );
+                iterateDartsWhile( bdry, [&]( const Dart& bdry_d ) {
+                    m.mark( bdry_d );
+                    return true;
+                } );
+            }
+            return true;
+        } );
+        return out;
     }
 } // namespace topology
