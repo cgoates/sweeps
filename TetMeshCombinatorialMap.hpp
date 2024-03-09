@@ -52,6 +52,8 @@ namespace topology
         virtual bool iterateCellsWhile( const uint cell_dim, const std::function<bool( const Cell& )>& callback ) const override;
 
         size_t elementId( const Volume& c ) const;
+        size_t faceId( const Face& f ) const;
+        size_t edgeId( const Edge& e ) const;
         VertexId vertexId( const Vertex& c ) const;
 
         private:
@@ -62,12 +64,15 @@ namespace topology
         /// e.g. phi2( 0 ) = 3, as seen in the diagram above.
         static constexpr std::array<Dart::IndexType, 12> mPhi2s = { 3, 6, 9, 0, 11, 7, 1, 5, 10, 2, 8, 4 };
 
+        static constexpr std::array<VertexId::Type, 12> mLocalVertices = { 0, 1, 2, 1, 0, 3, 2, 1, 3, 0, 2, 3 };
+        static constexpr std::array<Dart::IndexType, 4> mLocalFaceDarts = { 0, 3, 6, 9 };
+
         /// Stores one phi3 for each half face.  The other phi3s can be
         /// calculated using these and phi1 operations.
         std::map<Dart, Dart> mPhi3s;
 
-        static constexpr std::array<VertexId::Type, 12> mLocalVertices = { 0, 1, 2, 1, 0, 3, 2, 1, 3, 0, 2, 3 };
-        static constexpr std::array<Dart::IndexType, 4> mLocalFaceDarts = { 0, 3, 6, 9 };
+        std::vector<size_t> mFaceIds;
+        std::vector<size_t> mEdgeIds;
 
         Dart dartOfTet( const uint tet_id ) const;
     };

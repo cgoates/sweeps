@@ -69,6 +69,27 @@ TetMeshCombinatorialMap::TetMeshCombinatorialMap( const SimplicialComplex& compl
             }
         }
     }
+
+    // Build face and edge indexing
+    mFaceIds = std::vector<size_t>( maxDartId() + 1 );
+    mEdgeIds = std::vector<size_t>( maxDartId() + 1 );
+    size_t face_ii = 0;
+    iterateCellsWhile( 2, [&]( const Face& f ) {
+        iterateDartsOfCell( *this, f, [&]( const Dart& d ) {
+            mFaceIds.at( d.id() ) = face_ii;
+            return true;
+        } );
+        return true;
+    } );
+
+    size_t edge_ii = 0;
+    iterateCellsWhile( 1, [&]( const Edge& e ) {
+        iterateDartsOfCell( *this, e, [&]( const Dart& d ) {
+            mEdgeIds.at( d.id() ) = edge_ii;
+            return true;
+        } );
+        return true;
+    } );
 }
 
 Dart::IndexType TetMeshCombinatorialMap::maxDartId() const
@@ -156,6 +177,16 @@ VertexId TetMeshCombinatorialMap::vertexId( const Vertex& c ) const
     const Simplex& simp = mSimplicialComplex.simplices.at( simplex_id );
     const VertexId::Type local_vert = mLocalVertices.at( c.dart().id() % darts_per_tet );
     return simp.vertex( local_vert );
+}
+
+size_t TetMeshCombinatorialMap::faceId( const Face& f ) const
+{
+    return mFaceIds.at( f.dart().id() );
+}
+
+size_t TetMeshCombinatorialMap::edgeId( const Edge& e ) const
+{
+    return mEdgeIds.at( e.dart().id() );
 }
 
 }
