@@ -25,6 +25,7 @@ add_library( attemptlib
   TetMeshCombinatorialMap.cpp
   CombinatorialMapMethods.cpp
   CombinatorialMapBoundary.cpp
+  CombinatorialMapRestriction.cpp
 )
 
 include_directories( ${CMAKE_SOURCE_DIR}/../thirdparty/eigen )
