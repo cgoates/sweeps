@@ -11,7 +11,7 @@ namespace topology
 
         void mark( const Dart& d ) { mMarkedDarts.at( d.id() ) = true; }
 
-        bool isMarked( const Dart& d ) { return mMarkedDarts.at( d.id() ); }
+        bool isMarked( const Dart& d ) const { return mMarkedDarts.at( d.id() ); }
 
         private:
         std::vector<bool> mMarkedDarts;

@@ -20,7 +20,7 @@ namespace topology
             } );
         }
 
-        bool isMarked( const Cell& c )
+        bool isMarked( const Cell& c ) const
         {
             if( c.dim() != mCellDim ) throw( "Bad cell dimension!" );
             return mDartMarker.isMarked( c.dart() );
