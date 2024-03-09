@@ -20,18 +20,20 @@ CombinatorialMapBoundary::CombinatorialMapBoundary( const CombinatorialMap& map,
 
 std::optional<Dart> CombinatorialMapBoundary::phi( const int i, const Dart& d ) const
 {
-    if( i < (int)dim() ) return topology::phi( mInteriorMap, i, d );
+    const int effective_i = std::abs( i ) == 1 ? -i : i;
+    if( i < (int)dim() ) return topology::phi( mInteriorMap, effective_i, d );
     else if( i > (int)dim() ) return std::nullopt;
     else
     {
+        const std::vector<int> phi_ops = { effective_i, std::abs( i ) + 1 };
         Dart curr_dart = d;
         std::optional<Dart> next_dart = d;
         while( next_dart.has_value() )
         {
             curr_dart = next_dart.value();
-            next_dart = topology::phi( mInteriorMap, { i, i + 1 }, curr_dart );
+            next_dart = topology::phi( mInteriorMap, phi_ops, curr_dart );
         }
-        return topology::phi( mInteriorMap, i, curr_dart );
+        return topology::phi( mInteriorMap, effective_i, curr_dart );
     }
 }
 
