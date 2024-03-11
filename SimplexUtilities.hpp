@@ -1,26 +1,52 @@
 #pragma once
 #include <cgogn/core/types/maps/cmap/cmap3.h>
 #include <cgogn/core/types/cell_marker.h>
+#include <CombinatorialMapMethods.hpp>
 #include <SweepInput.hpp>
 
 class Normal
 {
     public:
     Normal( const cgogn::CMap3& map, const cgogn::Dart& dart, const Eigen::Vector3d& normal )
-        : mOppositeDarts( { cgogn::phi3( map, dart ), cgogn::phi<3, 1>( map, dart ), cgogn::phi<3, -1>( map, dart ) } ),
+        : mAlignedDarts( { topology::Dart( dart.index_ ),
+                           topology::Dart( phi<1>( map, dart ).index_ ),
+                           topology::Dart( phi<-1>( map, dart ).index_ ) } ),
           mNormal( normal )
     {}
-    Normal() {}
+    Normal( const topology::CombinatorialMap& map, const topology::Dart& dart, const Eigen::Vector3d& normal )
+        : mAlignedDarts( { dart, phi( map, 1, dart ).value(), phi( map, -1, dart ).value() } ),
+          mNormal( normal )
+    {}
+    Normal() : mAlignedDarts( { 0, 0, 0 } ) {}
 
     Eigen::Vector3d get( const cgogn::Dart& dart ) const
     {
-        if( std::find( mOppositeDarts.begin(), mOppositeDarts.end(), dart ) != mOppositeDarts.end() )
+        if( std::find( mAlignedDarts.begin(), mAlignedDarts.end(), topology::Dart( dart.index_ ) ) ==
+            mAlignedDarts.end() )
+        {
             return -1 * mNormal;
+        }
         return mNormal;
+    }
+    Eigen::Vector3d get( const topology::Dart& dart ) const
+    {
+        if( std::find( mAlignedDarts.begin(), mAlignedDarts.end(), dart ) == mAlignedDarts.end() )
+        {
+            return -1 * mNormal;
+        }
+        return mNormal;
+    }
+    Eigen::Vector3d reversed( const topology::Dart& dart ) const
+    {
+        if( std::find( mAlignedDarts.begin(), mAlignedDarts.end(), dart ) == mAlignedDarts.end() )
+        {
+            return mNormal;
+        }
+        return -1 * mNormal;
     }
 
     private:
-    std::array<cgogn::Dart, 3> mOppositeDarts;
+    std::array<topology::Dart, 3> mAlignedDarts;
     Eigen::Vector3d mNormal;
 };
 
