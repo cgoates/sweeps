@@ -79,6 +79,7 @@ TetMeshCombinatorialMap::TetMeshCombinatorialMap( const SimplicialComplex& compl
             mFaceIds.at( d.id() ) = face_ii;
             return true;
         } );
+        face_ii++;
         return true;
     } );
 
@@ -88,6 +89,7 @@ TetMeshCombinatorialMap::TetMeshCombinatorialMap( const SimplicialComplex& compl
             mEdgeIds.at( d.id() ) = edge_ii;
             return true;
         } );
+        edge_ii++;
         return true;
     } );
 }
