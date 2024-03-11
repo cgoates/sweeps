@@ -2,6 +2,7 @@
 #include <queue>
 #include <set>
 #include <GlobalDartMarker.hpp>
+#include <GlobalCellMarker.hpp>
 #include <CombinatorialMapBoundary.hpp>
 #include <Logging.hpp>
 
@@ -66,6 +67,24 @@ namespace topology
             }
         }
         return true;
+    }
+
+    bool iterateAdjacentCells( const CombinatorialMap& map,
+                               const Cell& c,
+                               const uint cell_dim,
+                               const std::function<bool( const Cell& )>& callback )
+    {
+        // FIXME: create a local dart marker
+        GlobalCellMarker m( map, cell_dim );
+        return iterateDartsOfCell( map, c, [&]( const Dart& d ){
+            const Cell c_adj( d, cell_dim );
+            if( not m.isMarked( c_adj ) )
+            {
+                m.mark( map, c_adj );
+                if( not callback( c_adj ) ) return false;
+            }
+            return true;
+        } );
     }
 
     bool iterateCellsWhile( const CombinatorialMap& map,
