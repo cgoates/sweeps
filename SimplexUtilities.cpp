@@ -7,6 +7,8 @@
 #include <cgogn/core/functions/mesh_info.h>
 #include <cgogn/core/functions/attributes.h>
 #include <cgogn/io/volume/volume_import.h>
+#include <TetMeshCombinatorialMap.hpp>
+#include <CombinatorialMapMethods.hpp>
 #include <SweepInput.hpp>
 #include <Logging.hpp>
 
@@ -28,7 +30,26 @@ Triangle<3> triangleOfFace( const cgogn::CMap3& map, const cgogn::CMap3::Face& f
     return Triangle<3>{ pos1, pos2, pos3 };
 }
 
+Triangle<3> triangleOfFace( const topology::TetMeshCombinatorialMap& map, const topology::Face& f )
+{
+    const SimplicialComplex& complex = map.simplicialComplex();
+    const topology::Dart& d = f.dart();
+    const auto vertex_position = [&]( const topology::Vertex& v ) {
+        return complex.points.at( map.vertexId( v ).id() );
+    };
+    const Eigen::Vector3d& pos1 = vertex_position( topology::Vertex( d ) );
+    const Eigen::Vector3d& pos2 = vertex_position( topology::Vertex( phi( map, 1, d ).value() ) );
+    const Eigen::Vector3d& pos3 = vertex_position( topology::Vertex( phi( map, -1, d ).value() ) );
+
+    return Triangle<3>{ pos1, pos2, pos3 };
+}
+
 Eigen::Vector3d triangleNormal( const cgogn::CMap3& map, const cgogn::CMap3::Face& f )
+{
+    return triangleNormal( triangleOfFace( map, f ) );
+}
+
+Eigen::Vector3d triangleNormal( const topology::TetMeshCombinatorialMap& map, const topology::Face& f )
 {
     return triangleNormal( triangleOfFace( map, f ) );
 }
@@ -39,6 +60,11 @@ Eigen::Vector3d centroid( const Triangle<3>& tri )
 }
 
 Eigen::Vector3d centroid( const cgogn::CMap3& map, const cgogn::CMap3::Face& f )
+{
+    return centroid( triangleOfFace( map, f ) );
+}
+
+Eigen::Vector3d centroid( const topology::TetMeshCombinatorialMap& map, const topology::Face& f )
 {
     return centroid( triangleOfFace( map, f ) );
 }
@@ -56,6 +82,19 @@ std::vector<Normal> faceNormals( const cgogn::CMap3& map )
     return normals;
 }
 
+std::vector<Normal> faceNormals( const topology::TetMeshCombinatorialMap& map )
+{
+    const size_t n_faces = cellCount( map, 2 );
+    std::vector<Normal> normals( n_faces );
+
+    iterateCellsWhile( map, 2, [&]( const topology::Face& f ) {
+        const auto fid = map.faceId( f );
+        normals[fid] = Normal( map, f.dart(), triangleNormal( map, f ) );
+        return true;
+    } );
+    return normals;
+}
+
 double edgeLength( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e )
 {
     const auto position = cgogn::get_attribute<Eigen::Vector3d, cgogn::CMap3::Vertex>( map, "position" );
@@ -63,6 +102,18 @@ double edgeLength( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e )
     const Eigen::Vector3d& pos1 = cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( d ) );
     const Eigen::Vector3d& pos2 =
         cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( cgogn::phi1( map, d ) ) );
+    return ( pos2 - pos1 ).norm();
+}
+
+double edgeLength( const topology::TetMeshCombinatorialMap& map, const topology::Edge& e )
+{
+    const SimplicialComplex& complex = map.simplicialComplex();
+    const topology::Dart& d = e.dart();
+    const auto vertex_position = [&]( const topology::Vertex& v ) {
+        return complex.points.at( map.vertexId( v ).id() );
+    };
+    const Eigen::Vector3d& pos1 = vertex_position( topology::Vertex( d ) );
+    const Eigen::Vector3d& pos2 = vertex_position( topology::Vertex( phi( map, 1, d ).value() ) );
     return ( pos2 - pos1 ).norm();
 }
 
@@ -74,6 +125,17 @@ double dihedralCotangent( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e, 
     };
     const Eigen::Vector3d n1 = get_normal( cgogn::CMap3::Face( e.dart_ ) );
     const Eigen::Vector3d n2 = get_normal( cgogn::CMap3::Face( cgogn::phi<2, 3>( map, e.dart_ ) ) );
+
+    const double cos_theta = n1.dot( n2 );
+    return cos_theta / std::sqrt( 1 - cos_theta * cos_theta );
+}
+
+double dihedralCotangent( const topology::TetMeshCombinatorialMap& map, const topology::Edge& e, const std::vector<Normal>& normals )
+{
+    const topology::Dart& d1 = e.dart();
+    const topology::Dart d2 = phi( map, 2, e.dart() ).value();
+    const Eigen::Vector3d n1 = normals.at( map.faceId( topology::Face( d1 ) ) ).get( d1 );
+    const Eigen::Vector3d n2 = normals.at( map.faceId( topology::Face( d2 ) ) ).reversed( d2 );
 
     const double cos_theta = n1.dot( n2 );
     return cos_theta / std::sqrt( 1 - cos_theta * cos_theta );
@@ -101,6 +163,31 @@ Eigen::Vector3d gradient( const cgogn::CMap3& map,
     return gradient;
 }
 
+Eigen::Vector3d gradient( const topology::TetMeshCombinatorialMap& map,
+                          const topology::Volume& v,
+                          const Eigen::VectorXd& field_values,
+                          const std::vector<Normal>& normals )
+{
+    using namespace topology;
+    const SimplicialComplex& complex = map.simplicialComplex();
+    const auto vertex_position = [&]( const topology::Vertex& v ) {
+        return complex.points.at( map.vertexId( v ).id() );
+    };
+    Eigen::Vector3d gradient = Eigen::Vector3d::Zero();
+    iterateAdjacentCells( map, v, 2, [&]( const Face& f ) {
+        const Vertex op_vert( phi( map, {2, -1}, f.dart() ).value() );
+        const VertexId op_vert_id = map.vertexId( op_vert );
+        const Eigen::Vector3d& op_vert_pos = vertex_position( op_vert );
+        const Eigen::Vector3d& face_vert_pos = vertex_position( Vertex( f.dart() ) );
+        const auto fid = map.faceId( f );
+        const Eigen::Vector3d& normal = normals.at( fid ).get( f.dart() );
+        gradient += field_values( op_vert_id.id() ) * normal / normal.dot( op_vert_pos - face_vert_pos );
+        return true;
+    } );
+
+    return gradient;
+}
+
 Eigen::MatrixX3d gradients( const cgogn::CMap3& map,
                             const Eigen::VectorXd& field_values,
                             const std::vector<Normal>& normals )
@@ -108,6 +195,19 @@ Eigen::MatrixX3d gradients( const cgogn::CMap3& map,
     Eigen::MatrixX3d result( cgogn::nb_cells<cgogn::CMap3::Volume>( map ), 3 );
     cgogn::foreach_cell( map, [&]( cgogn::CMap3::Volume v ) {
         result.row( cgogn::index_of( map, v ) ) = gradient( map, v, field_values, normals ).transpose();
+        return true;
+    } );
+
+    return result;
+}
+
+Eigen::MatrixX3d gradients( const topology::TetMeshCombinatorialMap& map,
+                            const Eigen::VectorXd& field_values,
+                            const std::vector<Normal>& normals )
+{
+    Eigen::MatrixX3d result( cellCount( map, 3 ), 3 );
+    iterateCellsWhile( map, 3, [&]( const topology::Volume& v ) {
+        result.row( map.elementId( v ) ) = gradient( map, v, field_values, normals ).transpose();
         return true;
     } );
 

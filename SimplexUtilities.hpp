@@ -4,6 +4,11 @@
 #include <CombinatorialMapMethods.hpp>
 #include <SweepInput.hpp>
 
+namespace topology
+{
+    class TetMeshCombinatorialMap;
+}
+
 class Normal
 {
     public:
@@ -67,27 +72,39 @@ template <unsigned int DIM> struct Segment
 void addTriangleNoDuplicateChecking( SimplicialComplex& complex, const Triangle<3>& tri );
 
 Triangle<3> triangleOfFace( const cgogn::CMap3& map, const cgogn::CMap3::Face& f );
+Triangle<3> triangleOfFace( const topology::TetMeshCombinatorialMap& map, const topology::Face& f );
 
 Eigen::Vector3d triangleNormal( const Triangle<3>& tri );
 
 Eigen::Vector3d triangleNormal( const cgogn::CMap3& map, const cgogn::CMap3::Face& f );
+Eigen::Vector3d triangleNormal( const topology::TetMeshCombinatorialMap& map, const topology::Face& f );
 
 Eigen::Vector3d centroid( const Triangle<3>& tri );
 
 Eigen::Vector3d centroid( const cgogn::CMap3& map, const cgogn::CMap3::Face& f );
 
 std::vector<Normal> faceNormals( const cgogn::CMap3& map );
+std::vector<Normal> faceNormals( const topology::TetMeshCombinatorialMap& map );
 
 double edgeLength( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e );
+double edgeLength( const topology::TetMeshCombinatorialMap& map, const topology::Edge& e );
 
 double dihedralCotangent( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e, const std::vector<Normal>& normals );
+double dihedralCotangent( const topology::TetMeshCombinatorialMap& map, const topology::Edge& e, const std::vector<Normal>& normals );
 
 Eigen::Vector3d gradient( const cgogn::CMap3& map,
                           const cgogn::CMap3::Volume& v,
                           const Eigen::VectorXd& field_values,
                           const std::vector<Normal>& normals );
+Eigen::Vector3d gradient( const topology::TetMeshCombinatorialMap& map,
+                          const topology::Volume& v,
+                          const Eigen::VectorXd& field_values,
+                          const std::vector<Normal>& normals );
 
 Eigen::MatrixX3d gradients( const cgogn::CMap3& map,
+                            const Eigen::VectorXd& field_values,
+                            const std::vector<Normal>& normals );
+Eigen::MatrixX3d gradients( const topology::TetMeshCombinatorialMap& map,
                             const Eigen::VectorXd& field_values,
                             const std::vector<Normal>& normals );
 

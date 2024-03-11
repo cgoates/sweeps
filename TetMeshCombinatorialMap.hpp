@@ -56,6 +56,8 @@ namespace topology
         size_t edgeId( const Edge& e ) const;
         VertexId vertexId( const Vertex& c ) const;
 
+        const SimplicialComplex& simplicialComplex() const { return mSimplicialComplex; }
+
         private:
         const SimplicialComplex& mSimplicialComplex;
 
