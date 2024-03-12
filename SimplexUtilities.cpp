@@ -34,7 +34,7 @@ Triangle<3> triangleOfFace( const topology::TetMeshCombinatorialMap& map, const 
 {
     const SimplicialComplex& complex = map.simplicialComplex();
     const topology::Dart& d = f.dart();
-    const auto vertex_position = [&]( const topology::Vertex& v ) {
+    const auto vertex_position = [&]( const topology::Vertex& v ) -> const Eigen::Vector3d& {
         return complex.points.at( map.vertexId( v ).id() );
     };
     const Eigen::Vector3d& pos1 = vertex_position( topology::Vertex( d ) );
