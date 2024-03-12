@@ -1,6 +1,7 @@
 #include<TetMeshCombinatorialMap.hpp>
 #include<queue>
 #include<GlobalCellMarker.hpp>
+#include <Logging.hpp>
 
 namespace topology
 {
@@ -47,6 +48,9 @@ TetMeshCombinatorialMap::TetMeshCombinatorialMap( const SimplicialComplex& compl
 
     std::map< std::array< VertexId, 3 >, std::pair< Dart, VertexId > > to_be_paired;
 
+    mFaceIds = std::vector<size_t>( maxDartId() + 1 );
+    size_t face_ii = 0;
+
     for( size_t i = 0; i < complex.simplices.size(); i++ )
     {
         const Simplex& simplex = complex.simplices.at( i );
@@ -61,35 +65,41 @@ TetMeshCombinatorialMap::TetMeshCombinatorialMap( const SimplicialComplex& compl
                                                                      simplex.vertex( mLocalVertices.at( local_dart_id + 2 ) ) );
             
             const auto [it, inserted] = to_be_paired.try_emplace( sorted_tri, d, end_of_dart_vertex );
-            if( not inserted )
+            size_t face_id;
+            if( inserted )
             {
+                face_id = face_ii++;
+            }
+            else
+            {
+                face_id = mFaceIds.at( it->second.first.id() );
                 // do the magic to connect two phis
                 mPhi3s.emplace( d, make_connection( end_of_dart_vertex, it->second.first ) );
                 mPhi3s.emplace( it->second.first, make_connection( it->second.second, d ) );
             }
+
+            mFaceIds.at( d.id() ) = face_id;
+            mFaceIds.at( d.id() + 1 ) = face_id;
+            mFaceIds.at( d.id() + 2 ) = face_id;
         }
     }
 
-    // Build face and edge indexing
-    mFaceIds = std::vector<size_t>( maxDartId() + 1 );
-    mEdgeIds = std::vector<size_t>( maxDartId() + 1 );
-    size_t face_ii = 0;
-    iterateCellsWhile( 2, [&]( const Face& f ) {
-        iterateDartsOfCell( *this, f, [&]( const Dart& d ) {
-            mFaceIds.at( d.id() ) = face_ii;
-            return true;
-        } );
-        face_ii++;
-        return true;
-    } );
 
+    // Build edge indexing.
+    mEdgeIds = std::vector<size_t>( maxDartId() + 1 );
     size_t edge_ii = 0;
-    iterateCellsWhile( 1, [&]( const Edge& e ) {
-        iterateDartsOfCell( *this, e, [&]( const Dart& d ) {
-            mEdgeIds.at( d.id() ) = edge_ii;
-            return true;
-        } );
-        edge_ii++;
+    // Using iterateDartsWhile here instead of iterateCellsWhile for better performance.
+    GlobalDartMarker m( *this );
+    iterateDartsWhile( [&]( const Dart& d ){
+        if( not m.isMarked( d ) )
+        {
+            const Edge e( d );
+            iterateDartsOfCell( *this, e, m, [&]( const Dart& d ) {
+                mEdgeIds.at( d.id() ) = edge_ii;
+                return true;
+            } );
+            edge_ii++;
+        }
         return true;
     } );
 }

@@ -71,7 +71,7 @@ namespace topology
 
         /// Stores one phi3 for each half face.  The other phi3s can be
         /// calculated using these and phi1 operations.
-        std::map<Dart, Dart> mPhi3s;
+        std::unordered_map<Dart, Dart> mPhi3s;
 
         std::vector<size_t> mFaceIds;
         std::vector<size_t> mEdgeIds;

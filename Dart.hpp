@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <string> // For hash
 
 namespace topology
 {
@@ -20,3 +21,12 @@ namespace topology
         IndexType mIndex;
     };
 }; // namespace topology
+
+template <>
+struct std::hash<topology::Dart>
+{
+    std::size_t operator()(const topology::Dart& d) const
+    {
+        return hash<topology::Dart::IndexType>()( d.id() );
+    }
+};
