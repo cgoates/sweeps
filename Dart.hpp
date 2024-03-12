@@ -10,6 +10,7 @@ namespace topology
         using IndexType = uint64_t;
 
         Dart( const IndexType& id ) : mIndex( id ) {}
+        Dart() {}
 
         IndexType id() const { return mIndex; }
 

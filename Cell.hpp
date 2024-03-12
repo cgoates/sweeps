@@ -9,6 +9,7 @@ namespace topology
     {
         public:
         Cell( const Dart& d, const uint dim ) : mDart( d ), mDim( dim ) {}
+        Cell() {}
 
         const Dart& dart() const { return mDart; }
         uint dim() const { return mDim; }
@@ -26,6 +27,7 @@ namespace topology
         {
             if( c.dim() != 0 ) throw( "Cannot convert cell with incorrect dimension to Vertex" );
         }
+        Vertex() {}
     };
 
     class Edge : public Cell
@@ -36,6 +38,7 @@ namespace topology
         {
             if( c.dim() != 1 ) throw( "Cannot convert cell with incorrect dimension to Edge" );
         }
+        Edge() {}
     };
 
     class Face : public Cell
@@ -46,6 +49,7 @@ namespace topology
         {
             if( c.dim() != 2 ) throw( "Cannot convert cell with incorrect dimension to Face" );
         }
+        Face() {}
     };
 
     class Volume : public Cell
@@ -56,5 +60,6 @@ namespace topology
         {
             if( c.dim() != 3 ) throw( "Cannot convert cell with incorrect dimension to Volume" );
         }
+        Volume() {}
     };
 } // namespace topology
