@@ -26,14 +26,16 @@ namespace topology
 
     bool iterateDartsOfCell( const CombinatorialMap& map,
                              const Cell& c,
+                             DartMarker auto& m,
                              const std::function<bool( const Dart& )>& callback )
     {
         // for each of the phi ops in the orbit, take that phi op and push it back into the queue.
         const int cell_dim = c.dim();
-        constexpr int max_topo_dim = 3; // Maximum supported topology dimension
+        const int topo_dim = map.dim();
+
         std::queue<Dart> dart_queue;
         dart_queue.push( c.dart() );
-        GlobalDartMarker m( map );
+        m.mark( c.dart() );
 
         const auto add_to_queue = [&]( const std::optional<Dart>& d ) {
             if( d.has_value() )
@@ -52,7 +54,7 @@ namespace topology
             if( not callback( curr_d ) ) return false;
             if( cell_dim == 0 )
             {
-                for( int j = 2; j <= max_topo_dim; j++ )
+                for( int j = 2; j <= topo_dim; j++ )
                 {
                     add_to_queue( phi( map, { j, 1 }, curr_d ) );
                     add_to_queue( phi( map, { -1, j }, curr_d ) );
@@ -60,7 +62,7 @@ namespace topology
             }
             else
             {
-                for( int j = 1; j <= max_topo_dim; j++ )
+                for( int j = 1; j <= topo_dim; j++ )
                 {
                     if( j != cell_dim ) add_to_queue( phi( map, j, curr_d ) );
                 }
@@ -68,14 +70,32 @@ namespace topology
         }
         return true;
     }
+    template
+    bool iterateDartsOfCell( const CombinatorialMap& map,
+                             const Cell& c,
+                             GlobalDartMarker& m,
+                             const std::function<bool( const Dart& )>& callback );
+    template
+    bool iterateDartsOfCell( const CombinatorialMap& map,
+                             const Cell& c,
+                             LocalDartMarker& m,
+                             const std::function<bool( const Dart& )>& callback );
+
+    bool iterateDartsOfCell( const CombinatorialMap& map,
+                             const Cell& c,
+                             const std::function<bool( const Dart& )>& callback )
+    {
+        LocalDartMarker m;
+        return iterateDartsOfCell( map, c, m, callback );
+    }
 
     bool iterateAdjacentCells( const CombinatorialMap& map,
                                const Cell& c,
                                const uint cell_dim,
                                const std::function<bool( const Cell& )>& callback )
     {
-        // FIXME: create a local dart marker
-        GlobalCellMarker m( map, cell_dim );
+        // FIXME: This fails for edges of a vertex in 2d
+        LocalCellMarker m( cell_dim );
         return iterateDartsOfCell( map, c, [&]( const Dart& d ){
             const Cell c_adj( d, cell_dim );
             if( not m.isMarked( c_adj ) )

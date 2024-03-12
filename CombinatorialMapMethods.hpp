@@ -1,15 +1,28 @@
 #pragma once
 #include <CombinatorialMap.hpp>
 #include <set>
+#include <concepts>
 
 namespace topology
 {
+    template<typename M>
+    concept DartMarker = requires( M m, const Dart& d )
+    {
+        { m.isMarked( d ) } -> std::same_as<bool>;
+        { m.mark( d ) } -> std::same_as<void>;
+    };
+
     std::optional<Dart> phi( const CombinatorialMap& map, const int phi_op, const Dart& d );
 
     std::optional<Dart> phi( const CombinatorialMap& map, const std::vector<int>& phi_ops, const Dart& d );
 
     bool iterateDartsOfCell( const CombinatorialMap& map,
                              const Cell& c,
+                             const std::function<bool( const Dart& )>& callback );
+
+    bool iterateDartsOfCell( const CombinatorialMap& map,
+                             const Cell& c,
+                             DartMarker auto& m,
                              const std::function<bool( const Dart& )>& callback );
 
     bool iterateAdjacentCells( const CombinatorialMap& map,
