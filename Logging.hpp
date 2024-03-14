@@ -69,7 +69,7 @@ class Timer
 {
     public:
     Timer( const size_t n = 10 )
-        : mAccumulated( n, std::chrono::microseconds::zero() ),
+        : mAccumulated( n, std::chrono::nanoseconds::zero() ),
           mStartTimes( n, std::chrono::high_resolution_clock::now() ),
           mStarted( n, false )
     {}
@@ -84,15 +84,15 @@ class Timer
     {
         if( mStarted.at( i ) )
         {
-            mAccumulated.at( i ) += std::chrono::duration_cast<std::chrono::microseconds>(
+            mAccumulated.at( i ) += std::chrono::duration_cast<std::chrono::nanoseconds>(
                 std::chrono::high_resolution_clock::now() - mStartTimes.at( i ) );
             mStarted.at( i ) = false;
         }
-        return mAccumulated.at( i ).count() * 1e-6;
+        return mAccumulated.at( i ).count() * 1e-9;
     }
 
     private:
-    std::vector<std::chrono::microseconds> mAccumulated;
+    std::vector<std::chrono::nanoseconds> mAccumulated;
     std::vector<std::chrono::time_point<std::chrono::high_resolution_clock>> mStartTimes;
     std::vector<bool> mStarted;
 };
