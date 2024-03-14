@@ -82,6 +82,7 @@ Eigen::Vector3d triangleNormal( const topology::TetMeshCombinatorialMap& map, co
 Eigen::Vector3d centroid( const Triangle<3>& tri );
 
 Eigen::Vector3d centroid( const cgogn::CMap3& map, const cgogn::CMap3::Face& f );
+Eigen::Vector3d centroid( const topology::TetMeshCombinatorialMap& map, const topology::Face& f );
 
 std::vector<Normal> faceNormals( const cgogn::CMap3& map );
 std::vector<Normal> faceNormals( const topology::TetMeshCombinatorialMap& map );

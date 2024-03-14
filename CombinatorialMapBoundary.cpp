@@ -54,7 +54,6 @@ bool CombinatorialMapBoundary::iterateDartsWhile( const std::function<bool( cons
 
     for( const Dart& d : mStartDarts )
     {
-        std::cout << "Start: " << d.id() << std::endl;
         to_flood.push( d );
         m.mark( d );
     }
