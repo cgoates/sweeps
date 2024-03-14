@@ -3,6 +3,14 @@
 #include <cgogn/core/types/cell_marker.h>
 #include <SweepInput.hpp>
 
+namespace topology
+{
+    class TetMeshCombinatorialMap;
+    class Volume;
+    class Face;
+    class Edge;
+}
+
 template <unsigned int DIM> struct Triangle;
 template <unsigned int DIM> struct Segment;
 class Normal;
@@ -19,13 +27,25 @@ std::optional<Eigen::Vector3d> intersectionOf( const Ray<3>& ray,
                                                std::optional<const Eigen::Vector3d> maybe_normal = {} );
 
 using TracePoint = std::pair<cgogn::CMap3::Face, Eigen::Vector3d>;
+using TracePoint2 = std::pair<topology::Face, Eigen::Vector3d>;
 std::optional<TracePoint> traceRayOnTet( const cgogn::CMap3& map,
                                          const cgogn::CMap3::Volume& v,
                                          const Ray<3>& ray,
                                          const std::vector<Normal>& normals );
+std::optional<TracePoint2> traceRayOnTet( const topology::TetMeshCombinatorialMap& map,
+                                          const topology::Volume& v,
+                                          const Ray<3>& ray,
+                                          const std::vector<Normal>& normals );
 
 SimplicialComplex traceField( const cgogn::CMap3& map,
                               const cgogn::CMap3::Face& f,
+                              const Eigen::Vector3d& start_point,
+                              const Eigen::MatrixX3d& field,
+                              const std::vector<Normal>& normals,
+                              const bool debug_output = false );
+
+SimplicialComplex traceField( const topology::TetMeshCombinatorialMap& map,
+                              const topology::Face& f,
                               const Eigen::Vector3d& start_point,
                               const Eigen::MatrixX3d& field,
                               const std::vector<Normal>& normals,
