@@ -4,6 +4,9 @@
 #include <Laplace.hpp>
 #include <cgogn/core/functions/traversals/vertex.h>
 #include <cgogn/core/functions/attributes.h>
+#include <TetMeshCombinatorialMap.hpp>
+#include <CombinatorialMapBoundary.hpp>
+#include <CombinatorialMapRestriction.hpp>
 #include <VTKOutput.hpp>
 #include <Logging.hpp>
 #include <Tracing.hpp>
@@ -24,6 +27,21 @@ void foreachFaceWithVertsInSet( const cgogn::CMap3& map,
         if( contains( vid1 ) and contains( vid2 ) and contains( vid3 ) ) return callback( f, i++ );
         return true;
     } );
+}
+
+void foreachFaceWithVertsInSet( const topology::TetMeshCombinatorialMap& map,
+                                const std::vector<bool>& set,
+                                const std::function<bool( const topology::Face&, const size_t n )>& callback )
+{
+    const topology::CombinatorialMapBoundary bdry( map );
+    const auto contains = [&]( const topology::Face& f ) {
+        return set.at( map.vertexId( topology::Vertex( f.dart() ) ).id() ) and
+               set.at( map.vertexId( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ).id() ) and
+               set.at( map.vertexId( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ).id() );
+    };
+    const topology::CombinatorialMapRestriction base_surf( bdry, contains );
+    size_t i = 0;
+    iterateCellsWhile( base_surf, 2, [&]( const topology::Face& f ) { return callback( f, i++ ); } );
 }
 
 std::optional<cgogn::CMap3::Edge> boundaryTracingEdge( const cgogn::CMap3& map,
@@ -75,6 +93,24 @@ void foreachEdgeOnBoundaryOfSet( const cgogn::CMap3& map,
         const std::optional<cgogn::CMap3::Edge> boundary_e = boundaryTracingEdge( map, set, e );
         if( boundary_e.has_value() ) return callback( boundary_e.value(), i++ );
         return true;
+    } );
+}
+
+void foreachEdgeOnBoundaryOfSet( const topology::CombinatorialMapBoundary& map,
+                                 const std::vector<bool>& set,
+                                 const std::function<bool( const topology::Edge&, const size_t n )>& callback )
+{
+    const auto contains = [&]( const topology::Face& f ) {
+        return set.at( map.vertexId( topology::Vertex( f.dart() ) ).id() ) and
+               set.at( map.vertexId( topology::Vertex( phi( map, 1, f.dart() ).value() ) ).id() ) and
+               set.at( map.vertexId( topology::Vertex( phi( map, -1, f.dart() ).value() ) ).id() );
+    };
+    const topology::CombinatorialMapRestriction base_surf( map, contains );
+    const topology::CombinatorialMapBoundary edges( base_surf );
+    size_t i = 0;
+    iterateCellsWhile( edges, 1, [&]( const topology::Edge& e ) {
+        const topology::Dart phi2 = phi( map, 2, e.dart() ).value();
+        return callback( topology::Edge( phi2 ), i++ );
     } );
 }
 
@@ -388,48 +424,152 @@ int main( int argc, char* argv[] )
             return 0;
         }
 
+        Timer t;
+        t.start( 0 );
         cgogn::CMap3 map;
         mapFromInput( sweep_input.mesh, map );
-
+        std::cout << "cgogn construct time: " << t.stop( 0 ) << std::endl;
+        t.start( 2 );
         const std::vector<Normal> normals = faceNormals( map );
+        std::cout << "Normals time: " << t.stop( 2 ) << std::endl;
+        t.start( 5 );
         const Eigen::VectorXd ans = solveLaplaceSparse( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
+        std::cout << "]laplace time 1: " << t.stop( 5 ) << std::endl;
 
         const Eigen::MatrixX3d grad = gradients( map, ans, normals );
+
+        std::cout << "output-laplace\n";
+        t.start( 1 );
+        const topology::TetMeshCombinatorialMap tet_map( sweep_input.mesh );
+        std::cout << "tet mesh construct time: " << t.stop( 1 ) << std::endl;
+
+        std::cout << "Built map\n";
+        t.start( 3 );
+        const std::vector<Normal> normals_2 = faceNormals( tet_map );
+        std::cout << "Normals time: " << t.stop( 3 ) << std::endl;
+        t.start( 4 );
+        const Eigen::VectorXd ans_2 =
+            solveLaplaceSparse( tet_map, sweep_input.zero_bcs, sweep_input.one_bcs, normals_2 );
+        std::cout << "Laplace time 2: " << t.stop( 4 ) << std::endl;
+
+        const Eigen::MatrixX3d grad2 = gradients( tet_map, ans_2, normals_2 );
+
+        double maxdiff = 0;
+        for( Eigen::Index i = 0; i < ans.size(); i++ )
+        {
+            maxdiff = std::max( maxdiff, std::abs( ans_2( i ) - ans( i ) ) );
+        }
+
+        std::cout << "Max difference: " << maxdiff << std::endl;
 
         if( std::find( input_args.begin(), input_args.end(), "output-laplace" ) != input_args.end() )
         {
             std::cout << "Outputting Laplace field...\n";
             io::VTKOutputObject output( sweep_input.mesh );
             output.addVertexField( "laplace", ans );
+            output.addVertexField( "laplace2", ans_2 );
             output.addCellField( "gradients", grad );
             io::outputSimplicialFieldToVTK( output, "test.vtu" );
         }
 
         if( input_args.front() == "inner-traces" )
         {
+            t.start( 6 );
             std::cout << "Outputting centroid traces for all base faces...\n";
             SimplicialComplex all_lines;
-            foreachFaceWithVertsInSet( map, sweep_input.zero_bcs, [&]( const cgogn::CMap3::Face& start_face, const size_t ){
-                const SimplicialComplex field_line = traceField( map, start_face, centroid( map, start_face ), grad, normals );
-                append( all_lines, field_line );
-                return true;
-            } );
+            foreachFaceWithVertsInSet(
+                map, sweep_input.zero_bcs, [&]( const cgogn::CMap3::Face& start_face, const size_t ) {
+                    t.start( 8 );
+                    const SimplicialComplex field_line =
+                        traceField( map, start_face, centroid( map, start_face ), grad, normals );
+                    append( all_lines, field_line );
+                    t.stop( 8 );
+                    return true;
+                } );
 
             io::VTKOutputObject output( all_lines );
-            io::outputSimplicialFieldToVTK( output, "centroid_traces.vtu" );
+            io::outputSimplicialFieldToVTK( output, "centroid_traces_00.vtu" );
+            std::cout << "Time to trace each face: " << t.stop( 6 ) << " inner time: " << t.stop( 8 ) << std::endl;
+
+            t.start( 7 );
+            std::cout << "Outputting centroid traces for all base faces...\n";
+            SimplicialComplex all_lines2;
+            foreachFaceWithVertsInSet(
+                tet_map, sweep_input.zero_bcs, [&]( const topology::Face& start_face, const size_t ) {
+                    t.start( 9 );
+                    const SimplicialComplex field_line =
+                        traceField( tet_map, start_face, centroid( tet_map, start_face ), grad2, normals_2 );
+                    append( all_lines2, field_line );
+                    t.stop( 9 );
+                    return true;
+                } );
+
+            io::VTKOutputObject output2( all_lines2 );
+            io::outputSimplicialFieldToVTK( output2, "centroid_traces_01.vtu" );
+            std::cout << "Time to trace each face: " << t.stop( 7 ) << " inner time: " << t.stop( 9 ) << std::endl;
         }
         if( input_args.front() == "outer-traces" )
         {
-            std::cout << "Outputting all boundary traces...\n";
-            SimplicialComplex boundary_lines;
-            foreachEdgeOnBoundaryOfSet( map, sweep_input.zero_bcs, [&]( const cgogn::CMap3::Edge& start_edge, const size_t ) {
-                const SimplicialComplex field_line = traceBoundaryField( map, start_edge, 0.5, ans, sweep_input.one_bcs, false );
-                append( boundary_lines, field_line );
-                return true;
-            } );
+            if( std::find( input_args.begin(), input_args.end(), "old" ) != input_args.end() )
+            {
+                std::cout << "Outputting all boundary traces...\n";
+                t.start( 6 );
+                SimplicialComplex boundary_lines;
+                foreachEdgeOnBoundaryOfSet(
+                    map, sweep_input.zero_bcs, [&]( const cgogn::CMap3::Edge& start_edge, const size_t ) {
+                        t.start( 8 );
+                        const SimplicialComplex field_line =
+                            traceBoundaryField( map, start_edge, 0.5, ans, sweep_input.one_bcs, false );
+                        append( boundary_lines, field_line );
+                        t.stop( 8 );
+                        return true;
+                    } );
+                std::cout << "Time to trace each edge: " << t.stop( 6 ) << " inner time: " << t.stop( 8 ) << std::endl;
 
-            io::VTKOutputObject boundary_output( boundary_lines );
-            io::outputSimplicialFieldToVTK( boundary_output, "boundary_lines.vtu" );
+                io::VTKOutputObject boundary_output( boundary_lines );
+                io::outputSimplicialFieldToVTK( boundary_output, "boundary_lines_00.vtu" );
+            }
+
+            if( std::find( input_args.begin(), input_args.end(), "new" ) != input_args.end() )
+            {
+                std::cout << "Outputting all boundary traces...\n";
+                const topology::CombinatorialMapBoundary bdry( tet_map );
+
+                const auto keep_face = [&]( const topology::Face& f ) {
+                    return ( not sweep_input.zero_bcs.at( bdry.vertexId( topology::Vertex( f.dart() ) ).id() ) or
+                             not sweep_input.zero_bcs.at(
+                                 bdry.vertexId( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ).id() ) or
+                             not sweep_input.zero_bcs.at(
+                                 bdry.vertexId( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ).id() ) ) and
+                           ( not sweep_input.one_bcs.at( bdry.vertexId( topology::Vertex( f.dart() ) ).id() ) or
+                             not sweep_input.one_bcs.at(
+                                 bdry.vertexId( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ).id() ) or
+                             not sweep_input.one_bcs.at(
+                                 bdry.vertexId( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ).id() ) );
+                };
+
+                const topology::CombinatorialMapRestriction sides( bdry, keep_face );
+
+                const auto vertex_positions = [&]( const topology::Vertex& v ) -> const Eigen::Vector3d& {
+                    return sweep_input.mesh.points.at( bdry.vertexId( v ).id() );
+                };
+
+                SimplicialComplex boundary_lines;
+                t.start( 7 );
+                foreachEdgeOnBoundaryOfSet(
+                    bdry, sweep_input.zero_bcs, [&]( const topology::Edge& start_edge, const size_t ) {
+                        t.start( 9 );
+                        const SimplicialComplex field_line =
+                            traceBoundaryField( sides, start_edge, 0.5, ans_2, vertex_positions, true );
+                        append( boundary_lines, field_line );
+                        t.stop( 9 );
+                        return true;
+                    } );
+                std::cout << "Time to trace each edge: " << t.stop( 7 ) << " inner time: " << t.stop( 9 ) << std::endl;
+
+                io::VTKOutputObject boundary_output( boundary_lines );
+                io::outputSimplicialFieldToVTK( boundary_output, "boundary_lines_01.vtu" );
+            }
         }
         if( input_args.front() == "outer-surfaces" )
         {
