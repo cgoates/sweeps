@@ -73,6 +73,9 @@ void addTriangleNoDuplicateChecking( SimplicialComplex& complex, const Triangle<
 
 Triangle<3> triangleOfFace( const cgogn::CMap3& map, const cgogn::CMap3::Face& f );
 Triangle<3> triangleOfFace( const topology::TetMeshCombinatorialMap& map, const topology::Face& f );
+Triangle<3> triangleOfFace( const topology::CombinatorialMap& map,
+                            const std::function<const Eigen::Vector3d&( const topology::Vertex& )>& vertex_position,
+                            const topology::Face& f );
 
 Eigen::Vector3d triangleNormal( const Triangle<3>& tri );
 

@@ -33,10 +33,19 @@ Triangle<3> triangleOfFace( const cgogn::CMap3& map, const cgogn::CMap3::Face& f
 Triangle<3> triangleOfFace( const topology::TetMeshCombinatorialMap& map, const topology::Face& f )
 {
     const SimplicialComplex& complex = map.simplicialComplex();
-    const topology::Dart& d = f.dart();
     const auto vertex_position = [&]( const topology::Vertex& v ) -> const Eigen::Vector3d& {
         return complex.points.at( map.vertexId( v ).id() );
     };
+
+    return triangleOfFace( map, vertex_position, f );
+}
+
+Triangle<3> triangleOfFace( const topology::CombinatorialMap& map,
+                            const std::function<const Eigen::Vector3d&( const topology::Vertex& )>& vertex_position,
+                            const topology::Face& f )
+{
+    const topology::Dart& d = f.dart();
+
     const Eigen::Vector3d& pos1 = vertex_position( topology::Vertex( d ) );
     const Eigen::Vector3d& pos2 = vertex_position( topology::Vertex( phi( map, 1, d ).value() ) );
     const Eigen::Vector3d& pos3 = vertex_position( topology::Vertex( phi( map, -1, d ).value() ) );
