@@ -412,7 +412,7 @@ int main( int argc, char* argv[] )
     if( input_args.size() > 0 )
     {
         const SweepInput sweep_input =
-            io::loadINPFile( "/Users/caleb/sweeps/attempt-sweep/test/data/macaroni.inp", "Surface3", "Surface4" );
+            io::loadINPFile( SRC_HOME "/test/data/macaroni.inp", "Surface3", "Surface4" );
 
         if( input_args.front() == "transpose-barycoords" )
         {

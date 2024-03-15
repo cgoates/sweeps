@@ -62,7 +62,7 @@ TEST_CASE( "1x1x2 hex each divided into 12 tets", "[single-file]" )
 TEST_CASE( "Simplest gmsh mesh", "[single-file]" )
 {
     const SweepInput sweep_input =
-        io::loadINPFile( "/Users/caleb/sweeps/attempt-sweep/test/simple_mesh.inp", "Surface1", "Surface28" );
+        io::loadINPFile( SRC_HOME "/test/simple_mesh.inp", "Surface1", "Surface28" );
     const TetMeshCombinatorialMap interior_map( sweep_input.mesh );
     const CombinatorialMapBoundary map( interior_map );
 
