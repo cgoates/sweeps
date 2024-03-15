@@ -4,6 +4,7 @@
 #include <GlobalCellMarker.hpp>
 #include <queue>
 #include <Logging.hpp>
+#include <Simplex.hpp>
 
 using namespace topology;
 
@@ -89,4 +90,9 @@ bool CombinatorialMapBoundary::iterateCellsWhile( const uint cell_dim, const std
         }
         return true;
     } );
+}
+
+VertexId CombinatorialMapBoundary::vertexId( const Vertex& v ) const
+{
+    return mInteriorMap.vertexId( Vertex( topology::phi( mInteriorMap, 1, v.dart() ).value() ) );
 }

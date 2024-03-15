@@ -1,5 +1,6 @@
 #include <CombinatorialMapRestriction.hpp>
 #include <CombinatorialMapMethods.hpp>
+#include <Simplex.hpp>
 
 using namespace topology;
 
@@ -60,4 +61,9 @@ bool CombinatorialMapRestriction::iterateCellsWhile( const uint cell_dim, const 
         }
         return true;
     } );
+}
+
+VertexId CombinatorialMapRestriction::vertexId( const Vertex& v ) const
+{
+    return mUnrestrictedMap.vertexId( v );
 }
