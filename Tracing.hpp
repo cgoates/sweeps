@@ -5,10 +5,12 @@
 
 namespace topology
 {
+    class CombinatorialMap;
     class TetMeshCombinatorialMap;
     class Volume;
     class Face;
     class Edge;
+    class Vertex;
 }
 
 template <unsigned int DIM> struct Triangle;
@@ -63,6 +65,13 @@ std::optional<std::pair<cgogn::CMap3::Edge, double>> traceGradientOnTri( const c
                                                                          const double edge_barycentric_coord,
                                                                          const Eigen::VectorXd& field_values );
 
+using VertexPositionsFunc = std::function<const Eigen::Vector3d&( const topology::Vertex& )>;
+std::optional<std::pair<topology::Edge, double>> traceGradientOnTri( const topology::CombinatorialMap& map,
+                                                                     const VertexPositionsFunc& positions,
+                                                                     const topology::Face& f,
+                                                                     const double edge_barycentric_coord,
+                                                                     const Eigen::VectorXd& field_values );
+
 SimplicialComplex traceBoundaryField(
     const cgogn::CMap3& map,
     const cgogn::CMap3::Edge& e,
@@ -71,3 +80,11 @@ SimplicialComplex traceBoundaryField(
     const std::vector<bool>& target_vertex_marker,
     const bool debug_output = false,
     const std::function<void( const cgogn::CMap3::Face& )>& face_callback = []( const auto& ) {} );
+
+SimplicialComplex traceBoundaryField( const topology::CombinatorialMap& map,
+                                      const topology::Edge& e,
+                                      const double& start_point,
+                                      const Eigen::VectorXd& field,
+                                      const std::function<const Eigen::Vector3d&( const topology::Vertex& )>& positions,
+                                      const bool debug_output,
+                                      const std::function<void( const topology::Face& )>& face_callback = []( const auto& ) {} );
