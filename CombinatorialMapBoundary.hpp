@@ -9,7 +9,7 @@ namespace topology
     class CombinatorialMapBoundary : public CombinatorialMap
     {
         public:
-        CombinatorialMapBoundary( const CombinatorialMap& map );
+        explicit CombinatorialMapBoundary( const CombinatorialMap& map );
         CombinatorialMapBoundary( const CombinatorialMap& map, const std::set<Dart>& boundary_component_darts );
         virtual std::optional<Dart> phi( const int i, const Dart& d ) const override;
         virtual Dart::IndexType maxDartId() const override;
