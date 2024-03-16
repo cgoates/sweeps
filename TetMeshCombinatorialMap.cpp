@@ -32,7 +32,10 @@ inline Dart phi1_1( const int i, const Dart& d )
 }
 
 TetMeshCombinatorialMap::TetMeshCombinatorialMap( const SimplicialComplex& complex ) :
-    mSimplicialComplex( complex )
+    mSimplicialComplex( complex ),
+    mPhi3s( ( maxDartId() + 1 ) / darts_per_tri, maxDartId() + 1 ),
+    mFaceIds( maxDartId() + 1 ),
+    mEdgeIds( maxDartId() + 1 )
 {
     // Loop through all tets
     // Loop through four faces of tet
@@ -48,9 +51,7 @@ TetMeshCombinatorialMap::TetMeshCombinatorialMap( const SimplicialComplex& compl
 
     std::map< std::array< VertexId, 3 >, std::pair< Dart, VertexId > > to_be_paired;
 
-    mFaceIds = std::vector<size_t>( maxDartId() + 1 );
     size_t face_ii = 0;
-
     for( size_t i = 0; i < complex.simplices.size(); i++ )
     {
         const Simplex& simplex = complex.simplices.at( i );
@@ -74,8 +75,8 @@ TetMeshCombinatorialMap::TetMeshCombinatorialMap( const SimplicialComplex& compl
             {
                 face_id = mFaceIds.at( it->second.first.id() );
                 // do the magic to connect two phis
-                mPhi3s.emplace( d, make_connection( end_of_dart_vertex, it->second.first ) );
-                mPhi3s.emplace( it->second.first, make_connection( it->second.second, d ) );
+                mPhi3s.at( d.id() / darts_per_tri ) = make_connection( end_of_dart_vertex, it->second.first );
+                mPhi3s.at( it->second.first.id() / darts_per_tri ) = make_connection( it->second.second, d );
             }
 
             mFaceIds.at( d.id() ) = face_id;
@@ -86,7 +87,6 @@ TetMeshCombinatorialMap::TetMeshCombinatorialMap( const SimplicialComplex& compl
 
 
     // Build edge indexing.
-    mEdgeIds = std::vector<size_t>( maxDartId() + 1 );
     size_t edge_ii = 0;
     // Using iterateDartsWhile here instead of iterateCellsWhile for better performance.
     GlobalDartMarker m( *this );
@@ -125,12 +125,10 @@ std::optional<Dart> TetMeshCombinatorialMap::phi( const int i, const Dart& d ) c
         {
             // The key dart on each face is the lowest dart number on the face.
             const Dart::IndexType face_local_id = d.id() % darts_per_tri;
-            const Dart key_dart = d.id() - face_local_id;
 
-            const auto it = mPhi3s.find( key_dart );
-            if( it == mPhi3s.end() ) return {};
+            Dart out = mPhi3s.at( d.id() / darts_per_tri );
+            if( out.id() > maxDartId() ) return {};
 
-            Dart out = it->second;
             for( Dart::IndexType new_local_id = 0; new_local_id < face_local_id; new_local_id++ )
             {
                 out = phi1_1( -1, out );

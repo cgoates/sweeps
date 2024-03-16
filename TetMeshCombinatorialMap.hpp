@@ -70,8 +70,9 @@ namespace topology
         static constexpr std::array<Dart::IndexType, 4> mLocalFaceDarts = { 0, 3, 6, 9 };
 
         /// Stores one phi3 for each half face.  The other phi3s can be
-        /// calculated using these and phi1 operations.
-        std::unordered_map<Dart, Dart> mPhi3s;
+        /// calculated using these and phi1 operations.  The mth entry of
+        /// this vector is the phi3 of the dart with id 3*m.
+        std::vector<Dart> mPhi3s;
 
         std::vector<size_t> mFaceIds;
         std::vector<size_t> mEdgeIds;
