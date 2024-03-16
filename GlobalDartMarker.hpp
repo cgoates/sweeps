@@ -1,7 +1,7 @@
 #pragma once
 #include <CombinatorialMap.hpp>
 #include <vector>
-#include <set>
+#include <SmallVector.hpp>
 
 namespace topology
 {
@@ -23,11 +23,11 @@ namespace topology
         public:
         LocalDartMarker() {}
 
-        void mark( const Dart& d ) { mMarkedDarts.insert( d ); }
+        void mark( const Dart& d ) { mMarkedDarts.push_back( d ); }
 
         bool isMarked( const Dart& d ) const { return std::find( mMarkedDarts.begin(), mMarkedDarts.end(), d ) != mMarkedDarts.end(); }
 
         private:
-        std::set<Dart> mMarkedDarts;
+        SmallVector<Dart, 300> mMarkedDarts;
     };
 } // namespace topology
