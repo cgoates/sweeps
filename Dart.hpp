@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <string> // For hash
+#include <iostream>
 
 namespace topology
 {
@@ -22,6 +23,8 @@ namespace topology
         IndexType mIndex;
     };
 }; // namespace topology
+
+std::ostream& operator<<( std::ostream& o, const topology::Dart& d );
 
 template <>
 struct std::hash<topology::Dart>

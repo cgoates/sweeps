@@ -27,6 +27,7 @@ add_library( attemptlib
   CombinatorialMapMethods.cpp
   CombinatorialMapBoundary.cpp
   CombinatorialMapRestriction.cpp
+  Dart.cpp
 )
 
 include_directories( ${CMAKE_SOURCE_DIR}/../thirdparty/eigen )
