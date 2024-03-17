@@ -58,6 +58,8 @@ namespace topology
 
         const SimplicialComplex& simplicialComplex() const { return mSimplicialComplex; }
 
+        virtual std::optional<size_t> cellCount( const uint cell_dim ) const override;
+
         private:
         const SimplicialComplex& mSimplicialComplex;
 
@@ -76,6 +78,9 @@ namespace topology
 
         std::vector<size_t> mFaceIds;
         std::vector<size_t> mEdgeIds;
+
+        size_t mNumEdges;
+        size_t mNumFaces;
 
         Dart dartOfTet( const uint tet_id ) const;
     };

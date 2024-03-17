@@ -84,6 +84,7 @@ TetMeshCombinatorialMap::TetMeshCombinatorialMap( const SimplicialComplex& compl
             mFaceIds.at( d.id() + 2 ) = face_id;
         }
     }
+    mNumFaces = face_ii;
 
 
     // Build edge indexing.
@@ -102,6 +103,7 @@ TetMeshCombinatorialMap::TetMeshCombinatorialMap( const SimplicialComplex& compl
         }
         return true;
     } );
+    mNumEdges = edge_ii;
 }
 
 Dart::IndexType TetMeshCombinatorialMap::maxDartId() const
@@ -197,6 +199,18 @@ size_t TetMeshCombinatorialMap::faceId( const Face& f ) const
 size_t TetMeshCombinatorialMap::edgeId( const Edge& e ) const
 {
     return mEdgeIds.at( e.dart().id() );
+}
+
+std::optional<size_t> TetMeshCombinatorialMap::cellCount( const uint cell_dim ) const
+{
+    switch( cell_dim )
+    {
+        case 0: return mSimplicialComplex.points.size();
+        case 1: return mNumEdges;
+        case 2: return mNumFaces;
+        case 3: return mSimplicialComplex.simplices.size();
+        default: throw std::runtime_error( "bad cell dim" );
+    }
 }
 
 }
