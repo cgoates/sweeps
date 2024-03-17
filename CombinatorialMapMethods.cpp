@@ -118,14 +118,17 @@ namespace topology
 
     size_t cellCount( const CombinatorialMap& map, const uint cell_dim )
     {
-        return map.cellCount( cell_dim ).value_or( [&](){
+        const auto cc = map.cellCount( cell_dim );
+        if( cc.has_value() ) return cc.value();
+        else
+        {
             size_t i = 0;
             iterateCellsWhile( map, cell_dim, [&]( const auto& ) {
                 i++;
                 return true;
             } );
             return i;
-        }() );
+        }
     }
 
     bool onBoundary( const CombinatorialMap& map, const Dart& d )

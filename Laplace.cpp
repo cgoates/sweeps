@@ -131,7 +131,7 @@ Eigen::VectorXd solveLaplaceSparse( const cgogn::CMap3& map,
                          std::accumulate( one_bcs.begin(), one_bcs.end(), 0 );
 
     std::vector<Eigen::Triplet<double>> L_triplets;
-    L_triplets.reserve( n_verts * n_verts ); // overkill but definitely enough
+    L_triplets.reserve( 2 * cgogn::nb_cells<cgogn::CMap3::Edge>( map ) + n_verts );
 
     SparseVectorXd BCs( n_bcs );
     BCs.reserve( one_bcs.size() );
@@ -254,7 +254,7 @@ Eigen::VectorXd solveLaplaceSparse( const topology::TetMeshCombinatorialMap& map
                          std::accumulate( one_bcs.begin(), one_bcs.end(), 0 );
 
     std::vector<Eigen::Triplet<double>> L_triplets;
-    L_triplets.reserve( n_verts * n_verts ); // overkill but definitely enough
+    L_triplets.reserve( 2 * cellCount( map, 1 ) + n_verts );
 
     SparseVectorXd BCs( n_bcs );
     BCs.reserve( one_bcs.size() );
