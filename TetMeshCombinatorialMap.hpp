@@ -70,6 +70,7 @@ namespace topology
 
         static constexpr std::array<VertexId::Type, 12> mLocalVertices = { 0, 1, 2, 1, 0, 3, 2, 1, 3, 0, 2, 3 };
         static constexpr std::array<Dart::IndexType, 4> mLocalFaceDarts = { 0, 3, 6, 9 };
+        static constexpr std::array<Dart::IndexType, 4> mLocalVertexDarts = { 0, 1, 2, 5 };
 
         /// Stores one phi3 for each half face.  The other phi3s can be
         /// calculated using these and phi1 operations.  The mth entry of
@@ -78,6 +79,7 @@ namespace topology
 
         std::vector<size_t> mFaceIds;
         std::vector<size_t> mEdgeIds;
+        std::vector<Dart> mVertexDarts;
 
         size_t mNumEdges;
         size_t mNumFaces;

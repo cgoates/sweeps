@@ -35,7 +35,8 @@ TetMeshCombinatorialMap::TetMeshCombinatorialMap( const SimplicialComplex& compl
     mSimplicialComplex( complex ),
     mPhi3s( ( maxDartId() + 1 ) / darts_per_tri, maxDartId() + 1 ),
     mFaceIds( maxDartId() + 1 ),
-    mEdgeIds( maxDartId() + 1 )
+    mEdgeIds( maxDartId() + 1 ),
+    mVertexDarts( complex.points.size() )
 {
     // Loop through all tets
     // Loop through four faces of tet
@@ -82,6 +83,10 @@ TetMeshCombinatorialMap::TetMeshCombinatorialMap( const SimplicialComplex& compl
             mFaceIds.at( d.id() ) = face_id;
             mFaceIds.at( d.id() + 1 ) = face_id;
             mFaceIds.at( d.id() + 2 ) = face_id;
+        }
+        for( size_t j = 0; j <= simplex.dim(); j++ )
+        {
+            mVertexDarts.at( simplex.vertex( j ).id() ) = dartOfTet( i ).id() + mLocalVertexDarts.at( j );
         }
     }
     mNumFaces = face_ii;
@@ -160,6 +165,13 @@ bool TetMeshCombinatorialMap::iterateCellsWhile( const uint cell_dim, const std:
         for( size_t i = 0; i < mSimplicialComplex.simplices.size(); i++ )
         {
             if( not callback( Volume( dartOfTet( i ) ) ) ) return false;
+        }
+    }
+    else if( cell_dim == 0 )
+    {
+        for( const Dart& d : mVertexDarts )
+        {
+            if( not callback( Vertex( d ) ) ) return false;
         }
     }
     else
