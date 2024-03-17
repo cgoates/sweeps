@@ -6,6 +6,7 @@
 #include <vector>
 #include <chrono>
 #include <csignal>
+#include <optional>
 
 // clang-format off
 #define LOG( COND ) if( COND ) std::cout
