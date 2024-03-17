@@ -1,5 +1,5 @@
 #include <CombinatorialMapMethods.hpp>
-#include <queue>
+#include <SmallQueue.hpp>
 #include <set>
 #include <GlobalDartMarker.hpp>
 #include <GlobalCellMarker.hpp>
@@ -33,24 +33,20 @@ namespace topology
         const int cell_dim = c.dim();
         const int topo_dim = map.dim();
 
-        std::queue<Dart> dart_queue;
+        SmallQueue<Dart, 300> dart_queue;
         dart_queue.push( c.dart() );
         m.mark( c.dart() );
 
         const auto add_to_queue = [&]( const std::optional<Dart>& d ) {
-            if( d.has_value() )
+            if( d.has_value() and not m.isMarked( d.value() ) )
             {
-                if( not m.isMarked( d.value() ) )
-                {
-                    dart_queue.push( d.value() );
-                    m.mark( d.value() );
-                }
+                dart_queue.push( d.value() );
+                m.mark( d.value() );
             }
         };
         while( not dart_queue.empty() )
         {
-            const Dart curr_d = dart_queue.front();
-            dart_queue.pop();
+            const Dart curr_d = dart_queue.pop();
             if( not callback( curr_d ) ) return false;
             if( cell_dim == 0 )
             {
