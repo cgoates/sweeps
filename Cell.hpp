@@ -63,3 +63,6 @@ namespace topology
         Volume() {}
     };
 } // namespace topology
+
+
+std::ostream& operator<<( std::ostream& o, const topology::Cell& d );
