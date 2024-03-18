@@ -56,6 +56,11 @@ namespace topology
         size_t edgeId( const Edge& e ) const;
         virtual VertexId vertexId( const Vertex& c ) const override;
 
+        Vertex vertexOfId( const VertexId& vid ) const
+        {
+            return Vertex( mVertexDarts.at( vid.id() ) );
+        }
+
         const SimplicialComplex& simplicialComplex() const { return mSimplicialComplex; }
 
         virtual std::optional<size_t> cellCount( const uint cell_dim ) const override;

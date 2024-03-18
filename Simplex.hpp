@@ -8,6 +8,7 @@ class VertexId
     public:
     using Type = uint64_t;
     VertexId( const Type& id );
+    VertexId() {}
     Type id() const { return mId; }
     bool operator<( const VertexId& o ) const { return id() < o.id(); }
     bool operator>( const VertexId& o ) const { return id() > o.id(); }
