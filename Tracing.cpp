@@ -699,7 +699,6 @@ std::optional<std::pair<topology::Edge, double>>
 {
     const Triangle<3> tri3d = triangleOfFace( map, positions, f );
 
-    // calculate the gradient in the xy plane
     const topology::Dart& d = f.dart();
     const auto field = field_values( { map.vertexId( topology::Vertex( d ) ).id(),
                                        map.vertexId( topology::Vertex( phi( map, 1, d ).value() ) ).id(),
