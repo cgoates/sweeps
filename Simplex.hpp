@@ -2,6 +2,7 @@
 #include <array>
 #include <ostream>
 #include <Eigen/Dense>
+#include <SmallVector.hpp>
 
 class VertexId
 {
@@ -30,25 +31,25 @@ class Simplex
     Simplex( const VertexId& v0, const VertexId& v1 );
     Simplex( const VertexId& v0, const VertexId& v1, const VertexId& v2 );
     Simplex( const VertexId& v0, const VertexId& v1, const VertexId& v2, const VertexId& v3 );
-    template< typename It > requires std::input_iterator< It >
-    Simplex( const It& v_list_begin, const size_t size ) :
-        mDim( size - 1 ),
-        mVertexIds( {0,0,0,0} )
+    template <typename It>
+        requires std::input_iterator<It>
+    Simplex( const It& v_list_begin, const size_t size )
     {
         if( size < 1 or size > 4 ) throw( "Bad Simplex size" );
-        for( size_t i = 0; i < size; i++ ) mVertexIds.at( i ) = *std::next( v_list_begin, i );
+        for( size_t i = 0; i < size; i++ ) mVertexIds.push_back( *std::next( v_list_begin, i ) );
     }
 
     const VertexId& vertex( const size_t n ) const;
-    size_t dim() const { return mDim; }
+    const SmallVector<VertexId, 4>& vertices() const { return mVertexIds; }
+    size_t dim() const { return mVertexIds.size() - 1; }
 
     friend std::ostream& operator<<( std::ostream& os, const Simplex& s )
     {
         os << "{";
-        for( size_t i = 0; i <= s.mDim; i++ )
+        for( size_t i = 0; i <= s.dim(); i++ )
         {
             os << s.mVertexIds.at( i ).id();
-            if( i < s.mDim ) os << ", ";
+            if( i < s.dim() ) os << ", ";
         }
         os << "}";
         return os;
@@ -65,8 +66,7 @@ class Simplex
     }
 
     private:
-    size_t mDim;
-    std::array<VertexId, 4> mVertexIds;
+    SmallVector<VertexId, 4> mVertexIds;
 };
 
 class BarycentricPoint

@@ -1,15 +1,16 @@
 #pragma once
 #include <array>
 #include <span>
+#include <iostream>
 
 template<typename T, size_t MAX_SIZE>
 class SmallVector
 {
     public:
-    SmallVector( const std::span<T>& s ) :
+    SmallVector( std::span<const T> s ) :
         mSize( s.size() )
     {
-        for( size_t i = 0; i < s.size(); i++ ) push_back( s.at( i ) );
+        for( size_t i = 0; i < s.size(); i++ ) push_back( s[ i ] );
     }
 
     SmallVector() : mSize( 0 ) {}
