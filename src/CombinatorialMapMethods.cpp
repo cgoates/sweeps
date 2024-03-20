@@ -5,6 +5,7 @@
 #include <GlobalCellMarker.hpp>
 #include <CombinatorialMapBoundary.hpp>
 #include <Logging.hpp>
+#include <queue>
 
 namespace topology
 {
@@ -244,5 +245,33 @@ namespace topology
             return true;
         } );
         return out;
+    }
+
+    void flood2d( const topology::CombinatorialMap& map,
+                  const topology::Face& f,
+                  const std::function<bool( const topology::Face& )>& stop_condition,
+                  const std::function<void( const topology::Face& )>& mark_callback,
+                  const std::function<void( const topology::Face& )>& callback )
+    {
+        if( map.dim() != 2 ) throw std::runtime_error( "Bad cmap dimension for flood2d" );
+        std::queue<topology::Face> to_process;
+        to_process.push( f );
+
+        for( ; not to_process.empty(); to_process.pop() )
+        {
+            const topology::Face& curr_face = to_process.front();
+            if( stop_condition( curr_face ) ) continue;
+            callback( curr_face );
+            mark_callback( curr_face );
+            for( const auto& d : { phi( map, 2, curr_face.dart() ),
+                                   phi( map, { 1, 2 }, curr_face.dart() ),
+                                   phi( map, { -1, 2 }, curr_face.dart() ) } )
+            {
+                if( d.has_value() and not stop_condition( topology::Face( d.value() ) ) )
+                {
+                    to_process.push( topology::Face( d.value() ) );
+                }
+            }
+        }
     }
 } // namespace topology

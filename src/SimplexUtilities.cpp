@@ -163,3 +163,26 @@ void addTriangleNoDuplicateChecking( SimplicialComplex& complex, const Triangle<
     complex.points.push_back( tri.v3 );
     complex.simplices.push_back( Simplex( offset, offset + 1, offset + 2 ) );
 }
+
+Eigen::Vector3d expandBarycentric( const topology::CombinatorialMap& map,
+                                   const VertexPositionsFunc& positions,
+                                   const topology::Cell& start_face,
+                                   const BarycentricPoint& coord )
+{
+    Eigen::Vector3d out = Eigen::Vector3d::Zero();
+    const auto& simplex_verts = coord.simplex.vertices();
+    iterateAdjacentCells( map, start_face, 0, [&]( const topology::Vertex& v ) {
+        const VertexId vid = map.vertexId( v );
+        const size_t idx = std::distance( simplex_verts.begin(), std::find( simplex_verts.begin(), simplex_verts.end(), vid ) );
+        if( idx >= simplex_verts.size() )
+        {
+            std::cout << coord.simplex << std::endl;
+            std::cout << vid << std::endl;
+            std::cout << idx << std::endl;
+            throw std::runtime_error( "Face and simplex don't match" );
+        }
+        out += coord.point( idx ) * positions( v );
+        return true;
+    } );
+    return out;
+}

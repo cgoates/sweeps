@@ -64,4 +64,10 @@ namespace topology
     /// Topologies homogeneous to a disk or ball will have one dart
     /// in the returned set, while a 2-sphere would have zero.
     std::set<Dart> boundaryComponentDarts( const CombinatorialMap& map );
+
+    void flood2d( const topology::CombinatorialMap& map,
+                  const topology::Face& f,
+                  const std::function<bool( const topology::Face& )>& stop_condition,
+                  const std::function<void( const topology::Face& )>& mark_callback,
+                  const std::function<void( const topology::Face& )>& callback );
 } // namespace topology

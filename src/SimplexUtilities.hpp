@@ -83,3 +83,9 @@ Eigen::MatrixX3d gradients( const topology::TetMeshCombinatorialMap& map,
                             const std::vector<Normal>& normals );
 
 Eigen::Vector3d gradient( const Triangle<3>& tri3d, const Eigen::Ref<const Eigen::Vector3d> field_values );
+
+using VertexPositionsFunc = std::function<const Eigen::Vector3d&( const topology::Vertex& )>;
+Eigen::Vector3d expandBarycentric( const topology::CombinatorialMap& map,
+                                   const VertexPositionsFunc& positions,
+                                   const topology::Cell& start_face,
+                                   const BarycentricPoint& coord );
