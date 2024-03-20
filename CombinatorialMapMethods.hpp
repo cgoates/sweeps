@@ -25,6 +25,17 @@ namespace topology
                              DartMarker auto& m,
                              const std::function<bool( const Dart& )>& callback );
 
+    bool iterateDartsOfRestrictedCell( const CombinatorialMap& map,
+                                       const Cell& c,
+                                       const int restrict_dim,
+                                       const std::function<bool( const Dart& )>& callback );
+
+    bool iterateDartsOfRestrictedCell( const CombinatorialMap& map,
+                                       const Cell& c,
+                                       const int restrict_dim,
+                                       DartMarker auto& m,
+                                       const std::function<bool( const Dart& )>& callback );
+
     bool iterateAdjacentCells( const CombinatorialMap& map,
                                const Cell& c,
                                const uint cell_dim,

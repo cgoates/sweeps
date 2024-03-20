@@ -85,6 +85,71 @@ namespace topology
         return iterateDartsOfCell( map, c, m, callback );
     }
 
+    bool iterateDartsOfRestrictedCell( const CombinatorialMap& map,
+                                       const Cell& c,
+                                       const int restrict_dim,
+                                       DartMarker auto& m,
+                                       const std::function<bool( const Dart& )>& callback )
+    {
+        // for each of the phi ops in the orbit, take that phi op and push it back into the queue.
+        const int cell_dim = c.dim();
+        const int topo_dim = map.dim();
+
+        SmallQueue<Dart, 300> dart_queue;
+        dart_queue.push( c.dart() );
+        m.mark( c.dart() );
+
+        const auto add_to_queue = [&]( const std::optional<Dart>& d ) {
+            if( d.has_value() and not m.isMarked( d.value() ) )
+            {
+                dart_queue.push( d.value() );
+                m.mark( d.value() );
+            }
+        };
+        while( not dart_queue.empty() )
+        {
+            const Dart curr_d = dart_queue.pop();
+            if( not callback( curr_d ) ) return false;
+            if( cell_dim == 0 )
+            {
+                if( restrict_dim == 1 ) continue;
+                for( int j = 2; j <= topo_dim; j++ )
+                {
+                    if( j == restrict_dim ) continue;
+                    add_to_queue( phi( map, { j, 1 }, curr_d ) );
+                    add_to_queue( phi( map, { -1, j }, curr_d ) );
+                }
+            }
+            else
+            {
+                for( int j = 1; j <= topo_dim; j++ )
+                {
+                    if( j != cell_dim and j != restrict_dim ) add_to_queue( phi( map, j, curr_d ) );
+                }
+            }
+        }
+        return true;
+    }
+    template bool iterateDartsOfRestrictedCell( const CombinatorialMap& map,
+                                                const Cell& c,
+                                                const int restrict_dim,
+                                                GlobalDartMarker& m,
+                                                const std::function<bool( const Dart& )>& callback );
+    template bool iterateDartsOfRestrictedCell( const CombinatorialMap& map,
+                                                const Cell& c,
+                                                const int restrict_dim,
+                                                LocalDartMarker& m,
+                                                const std::function<bool( const Dart& )>& callback );
+
+    bool iterateDartsOfRestrictedCell( const CombinatorialMap& map,
+                                       const Cell& c,
+                                       const int restrict_dim,
+                                       const std::function<bool( const Dart& )>& callback )
+    {
+        LocalDartMarker m;
+        return iterateDartsOfRestrictedCell( map, c, restrict_dim, m, callback );
+    }
+
     bool iterateAdjacentCells( const CombinatorialMap& map,
                                const Cell& c,
                                const uint cell_dim,
