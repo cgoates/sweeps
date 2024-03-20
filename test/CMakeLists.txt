@@ -4,7 +4,6 @@ function(add_my_test arg)
     catch_discover_tests(${arg})
 endfunction()
 
-add_my_test(cgogn_tests)
 add_my_test(tet_map_tests)
 add_my_test(boundary_map_tests)
 add_my_test(simplex_utility_tests)

@@ -8,7 +8,7 @@
 
 using namespace topology;
 
-TEST_CASE( "Importing a 12-tet hex into cgogn has correct number of elements", "[single-file]" )
+TEST_CASE( "Importing a 12-tet hex into cmap has correct number of elements", "[single-file]" )
 {
     const SweepInput sweep_input = SweepInputTestCases::twelveTetCube();
 

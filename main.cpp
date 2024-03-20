@@ -2,8 +2,6 @@
 #include <AbaqusInput.hpp>
 #include <QuadLayoutInput.hpp>
 #include <Laplace.hpp>
-#include <cgogn/core/functions/traversals/vertex.h>
-#include <cgogn/core/functions/attributes.h>
 #include <TetMeshCombinatorialMap.hpp>
 #include <CombinatorialMapBoundary.hpp>
 #include <CombinatorialMapRestriction.hpp>
@@ -11,23 +9,70 @@
 #include <VTKOutput.hpp>
 #include <Logging.hpp>
 #include <Tracing.hpp>
+#include <queue>
 
-void foreachFaceWithVertsInSet( const cgogn::CMap3& map,
-                                const std::vector<bool>& set,
-                                const std::function<bool( const cgogn::CMap3::Face&, const size_t n )>& callback )
+Eigen::Vector3d expandBarycentric( const topology::CombinatorialMap& map,
+                                   const VertexPositionsFunc& positions,
+                                   const topology::Cell& start_face,
+                                   const BarycentricPoint& coord )
 {
-    const auto contains = [&]( const VertexId& vid ) {
-        return set.at( vid.id() );
-    };
-    size_t i = 0;
-    foreach_cell( map, [&]( cgogn::CMap3::Face f ) {
-        const cgogn::Dart& d = f.dart_;
-        const VertexId vid1 = index_of( map, cgogn::CMap3::Vertex( d ) );
-        const VertexId vid2 = index_of( map, cgogn::CMap3::Vertex( cgogn::phi1( map, d ) ) );
-        const VertexId vid3 = index_of( map, cgogn::CMap3::Vertex( cgogn::phi_1( map, d ) ) );
-        if( contains( vid1 ) and contains( vid2 ) and contains( vid3 ) ) return callback( f, i++ );
+    Eigen::Vector3d out = Eigen::Vector3d::Zero();
+    const auto& simplex_verts = coord.simplex.vertices();
+    iterateAdjacentCells( map, start_face, 0, [&]( const topology::Vertex& v ) {
+        const VertexId vid = map.vertexId( v );
+        const size_t idx = std::distance( simplex_verts.begin(), std::find( simplex_verts.begin(), simplex_verts.end(), vid ) );
+        if( idx >= simplex_verts.size() )
+        {
+            std::cout << coord.simplex << std::endl;
+            std::cout << vid << std::endl;
+            std::cout << idx << std::endl;
+            throw std::runtime_error( "Face and simplex don't match" );
+        }
+        out += coord.point( idx ) * positions( v );
         return true;
     } );
+    return out;
+}
+
+constexpr bool LOG_TRACING_CELL = false;
+topology::Cell tracingCell( const topology::CombinatorialMap& map,
+                            const topology::Cell& lower_dim_cell,
+                            const std::function<Eigen::Vector3d( const topology::Cell& )>& normal,
+                            const std::function<Eigen::Vector3d( const topology::Cell& )>& grad )
+{
+    std::cout << "Searching for tracing cell...\n";
+    const size_t dim = map.dim();
+    if( lower_dim_cell.dim() == dim - 1 )
+    {
+        LOG( LOG_TRACING_CELL ) << "Same as input cell\n";
+        return lower_dim_cell;
+    }
+    LOG( LOG_TRACING_CELL ) << "Cell dim: " << lower_dim_cell.dim() << std::endl;
+    std::optional<topology::Cell> out;
+    iterateAdjacentCells( map, lower_dim_cell, dim, [&]( const topology::Cell& elem ) {
+        const Eigen::Vector3d this_grad = grad( elem );
+        LOG( LOG_TRACING_CELL ) << "Grad: " << this_grad.transpose() << std::endl;
+        const bool found_cell =
+            iterateAdjacentCellsOfRestrictedCell( map,
+                                                  topology::Cell( elem.dart(), lower_dim_cell.dim() ),
+                                                  elem.dim(),
+                                                  dim - 1,
+                                                  [&]( const topology::Cell& interface ) {
+                                                      const Eigen::Vector3d this_normal = normal( interface );
+                                                      LOG( LOG_TRACING_CELL ) << "Normal: " << this_normal.transpose() << std::endl;
+                                                      LOG( LOG_TRACING_CELL ) << "Dot product: " << this_normal.dot( this_grad ) << std::endl;
+                                                      if( this_normal.dot( this_grad ) < 0 ) return false;
+                                                      return true;
+                                                  } );
+        if( found_cell )
+        {
+            out.emplace( topology::Cell( elem.dart(), dim - 1 ) );
+            return false;
+        }
+        return true;
+    } );
+    if( not out.has_value() ) throw std::runtime_error( "No viable tracing candidate" );
+    return out.value();
 }
 
 void foreachFaceWithVertsInSet( const topology::TetMeshCombinatorialMap& map,
@@ -45,58 +90,6 @@ void foreachFaceWithVertsInSet( const topology::TetMeshCombinatorialMap& map,
     iterateCellsWhile( base_surf, 2, [&]( const topology::Face& f ) { return callback( f, i++ ); } );
 }
 
-std::optional<cgogn::CMap3::Edge> boundaryTracingEdge( const cgogn::CMap3& map,
-                                                       const std::vector<bool>& set,
-                                                       const cgogn::CMap3::Edge& start_e )
-{
-    const auto contains = [&]( const VertexId& vid ) { return set.at( vid.id() ); };
-
-    std::optional<cgogn::CMap3::Edge> out = std::nullopt;
-    foreach_dart_of_orbit( map, start_e, [&]( cgogn::Dart d ) {
-        const cgogn::CMap3::Edge e( d );
-        if( not is_boundary( map, d ) ) return true;
-        const VertexId vid1 = index_of( map, cgogn::CMap3::Vertex( d ) );
-        const VertexId vid2 = index_of( map, cgogn::CMap3::Vertex( cgogn::phi1( map, d ) ) );
-        const VertexId vid3 = index_of( map, cgogn::CMap3::Vertex( cgogn::phi_1( map, d ) ) );
-        if( contains( vid1 ) and contains( vid2 ) and not contains( vid3 ) )
-        {
-            out.emplace( e );
-            return false;
-        }
-        const VertexId vid4 = index_of( map, cgogn::CMap3::Vertex( cgogn::phi<2, -1>( map, d ) ) );
-        if( contains( vid1 ) and contains( vid2 ) and not contains( vid4 ) )
-        {
-            out.emplace( cgogn::CMap3::Edge( cgogn::phi2( map, d ) ) );
-            return false;
-        }
-        return false;
-    } );
-    return out;
-}
-
-std::optional<cgogn::CMap3::Edge> boundaryTracingEdgeOnFace( const cgogn::CMap3& map,
-                                                             const std::vector<bool>& set,
-                                                             const cgogn::CMap3::Face& f )
-{
-    return boundaryTracingEdge( map, set, cgogn::CMap3::Edge( f.dart_ ) ).or_else( [&]() {
-        return boundaryTracingEdge( map, set, cgogn::CMap3::Edge( phi1( map, f.dart_ ) ) ).or_else( [&]() {
-            return boundaryTracingEdge( map, set, cgogn::CMap3::Edge( phi_1( map, f.dart_ ) ) );
-        } );
-    } );
-}
-
-void foreachEdgeOnBoundaryOfSet( const cgogn::CMap3& map,
-                                 const std::vector<bool>& set,
-                                 const std::function<bool( const cgogn::CMap3::Edge&, const size_t n )>& callback )
-{
-    size_t i = 0;
-    foreach_cell( map, [&]( cgogn::CMap3::Edge e ) {
-        const std::optional<cgogn::CMap3::Edge> boundary_e = boundaryTracingEdge( map, set, e );
-        if( boundary_e.has_value() ) return callback( boundary_e.value(), i++ );
-        return true;
-    } );
-}
-
 void foreachEdgeOnBoundaryOfSet( const topology::CombinatorialMapBoundary& map,
                                  const std::vector<bool>& set,
                                  const std::function<bool( const topology::Edge&, const size_t n )>& callback )
@@ -112,160 +105,6 @@ void foreachEdgeOnBoundaryOfSet( const topology::CombinatorialMapBoundary& map,
     iterateCellsWhile( edges, 1, [&]( const topology::Edge& e ) {
         const topology::Dart phi2 = phi( map, 2, e.dart() ).value();
         return callback( topology::Edge( phi2 ), i++ );
-    } );
-}
-
-void foreachBaryCoordOnSetBoundary( const cgogn::CMap3& map,
-                                    const std::vector<bool>& set,
-                                    std::vector<BarycentricPoint>& bary_coords,
-                                    const std::function<bool( const cgogn::CMap3::Edge&, const double )>& callback )
-{
-    foreachEdgeOnBoundaryOfSet( map, set, [&]( const cgogn::CMap3::Edge& e, const size_t ) {
-        const VertexId vid1 = index_of( map, cgogn::CMap3::Vertex( e.dart_ ) );
-        const VertexId vid2 = index_of( map, cgogn::CMap3::Vertex( cgogn::phi1( map, e.dart_ ) ) );
-        const bool swap = vid2 < vid1;
-        const Simplex s = swap ? Simplex( vid2, vid1 ) : Simplex( vid1, vid2 );
-        const auto it = std::find_if(
-            bary_coords.begin(), bary_coords.end(), [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
-        if( it != bary_coords.end() )
-        {
-            const auto pt = it->point;
-            bary_coords.erase( it );
-            return callback( e, swap ? pt( 0 ) : pt( 1 ) );
-        }
-        return true;
-    } );
-}
-
-void foreachBaryCoordOnSet( const cgogn::CMap3& map,
-                            const std::vector<bool>& set,
-                            std::vector<BarycentricPoint>& bary_coords,
-                            const std::function<bool( const cgogn::CMap3::Face&, const Eigen::Vector3d& )>& callback )
-{
-    foreachFaceWithVertsInSet( map, set, [&]( const cgogn::CMap3::Face& f, const size_t ) {
-        /*
-            1. Check if the face is in the barycoords. If so, call back on it.
-            2. Check if each edge is in the barycoords.  If so, transfer to face and call back on it.
-            3. Check if any vertex is in the barycoords.  If so, transfer to face and call back on it.
-            4. Remove any of those barycoords from the list so that they aren't duplicated.
-        */
-        const cgogn::Dart& d = f.dart_;
-        cgogn::Dart d1 = f.dart_;
-        cgogn::Dart d2 = cgogn::phi1( map, d );
-        cgogn::Dart d3 = cgogn::phi_1( map, d );
-        VertexId vid1 = index_of( map, cgogn::CMap3::Vertex( d ) );
-        VertexId vid2 = index_of( map, cgogn::CMap3::Vertex( d2 ) );
-        VertexId vid3 = index_of( map, cgogn::CMap3::Vertex( d3 ) );
-
-        const auto position = cgogn::get_attribute<Eigen::Vector3d, cgogn::CMap3::Vertex>( map, "position" );
-        Eigen::Vector3d pos1 = cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( d ) );
-        Eigen::Vector3d pos2 = cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( d2 ) );
-        Eigen::Vector3d pos3 = cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( d3 ) );
-
-        if( vid1 > vid2 )
-        {
-            std::swap( vid1, vid2 );
-            std::swap( pos1, pos2 );
-            std::swap( d1, d2 );
-        }
-        if( vid1 > vid3 )
-        {
-            std::swap( vid1, vid3 );
-            std::swap( pos1, pos3 );
-            std::swap( d1, d3 );
-        }
-        if( vid2 > vid3 )
-        {
-            std::swap( vid2, vid3 );
-            std::swap( pos2, pos3 );
-            std::swap( d2, d3 );
-        }
-
-        {
-            const Simplex s( vid1, vid2, vid3 );
-            const auto it = std::find_if(
-                bary_coords.begin(), bary_coords.end(), [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
-            if( it != bary_coords.end() )
-            {
-                const Eigen::Vector3d pt = it->point( 0 ) * pos1 + it->point( 1 ) * pos2 + it->point( 2 ) * pos3;
-                std::erase_if( bary_coords, [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
-                if( not callback( f, pt ) ) return false;
-            }
-        }
-
-        {
-            const Simplex s( vid1 );
-            const auto it = std::find_if(
-                bary_coords.begin(), bary_coords.end(), [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
-            if( it != bary_coords.end() )
-            {
-                std::erase_if( bary_coords, [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
-                if( not callback( f, 0.99999 * pos1 + 5e-6 * pos2 + 5e-6 * pos3 ) ) return false;
-            }
-        }
-
-        {
-            const Simplex s( vid2 );
-            const auto it = std::find_if(
-                bary_coords.begin(), bary_coords.end(), [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
-            if( it != bary_coords.end() )
-            {
-                std::erase_if( bary_coords, [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
-                if( not callback( f, 5e-6 * pos1 + 0.99999 * pos2 + 5e-6 * pos3 ) ) return false;
-            }
-        }
-
-        {
-            const Simplex s( vid3 );
-            const auto it = std::find_if(
-                bary_coords.begin(), bary_coords.end(), [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
-            if( it != bary_coords.end() )
-            {
-                std::erase_if( bary_coords, [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
-                if( not callback( f, 5e-6 * pos1 + 5e-6 * pos2 + 0.99999 * pos3 ) ) return false;
-            }
-        }
-
-        {
-            const Simplex s( vid1, vid2 );
-            const auto it = std::find_if(
-                bary_coords.begin(), bary_coords.end(), [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
-            if( it != bary_coords.end() )
-            {
-                std::cout << "1,2|";
-                const auto pt = it->point;
-                std::erase_if( bary_coords, [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
-                if( not callback( cgogn::CMap3::Face( d1 ), 0.999998 * pt(0) * pos1 + 0.999998 * pt(1) * pos2 + 2e-6 * pos3 ) ) return false;
-            }
-        }
-
-        {
-            const Simplex s( vid1, vid3 );
-            const auto it = std::find_if(
-                bary_coords.begin(), bary_coords.end(), [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
-            if( it != bary_coords.end() )
-            {
-                std::cout << "1,3|";
-                const auto pt = it->point;
-                std::erase_if( bary_coords, [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
-                if( not callback( cgogn::CMap3::Face( d3 ), 0.999998 * pt(0) * pos1 + 0.999998 * pt(1) * pos3 + 2e-6 * pos2 ) ) return false;
-            }
-        }
-
-        {
-            const Simplex s( vid2, vid3 );
-            const auto it = std::find_if(
-                bary_coords.begin(), bary_coords.end(), [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
-            if( it != bary_coords.end() )
-            {
-                std::cout << "2,3|";
-                const auto pt = it->point;
-                std::erase_if( bary_coords, [&]( const BarycentricPoint& pt ) { return pt.simplex == s; } );
-                if( not callback( cgogn::CMap3::Face( d2 ), 0.999998 * pt(0) * pos2 + 0.999998 * pt(1) * pos3 + 2e-6 * pos1 ) ) return false;
-            }
-        }
-
-        return true;
     } );
 }
 
@@ -296,77 +135,6 @@ topology::Cell cellOfSimplex( const topology::TetMeshCombinatorialMap& map, cons
 
     return out.value();
 }
-
-/*
-void foreachBaryCoordInCurve( const cgogn::CMap3& map,
-                              const std::vector<BarycentricPoint>& bary_coord_curve,
-                              const std::function<bool( const cgogn::CMap3::Face&, const Eigen::Vector3d& )>& callback )
-{
-    //    1. Find the cgogn cell corresponding to the first point.
-    //    2. Callback on first point.
-    //    3. Iterate adjacent cells to find the one corresponding to the next point.
-    //    4. Callback on the next point.
-    //    5. Repeat 3 and 4 until there are no more points.
-
-
-    if( bary_coord_curve.size() == 0 ) return;
-
-    const VertexId vid1 = bary_coord_curve.front().simplex.vertex( 0 );
-    const cgogn::CMap3::Vertex vertex1 = of_index<cgogn::CMap3::Vertex>( map, vid1.id() );
-
-    const auto cell_has_vertices = [&]( const auto& cell, const std::set<VertexId>& vertices ) {
-        bool has_them = true;
-        cgogn::foreach_incident_vertex( map, cell, [&]( cgogn::CMap3::Vertex& v ){
-            if( not vertices.contains( VertexId( index_of( v ) ) ) ) has_them = false;
-            return has_them;
-        } );
-        return has_them;
-    };
-
-
-    switch( simplex.dim() )
-    {
-        case 0: return v;
-        case 1:
-        {
-            std::optional<cgogn::CMap3::Edge> e = std::nullopt;
-            foreach_incident_edge( map, v, [&]( cgogn::CMap3::Edge possible_e ) {
-                if( cell_has_vertices( e, { simplex.vertex( 0 ), simplex.vertex( 1 ) } ) )
-                {
-                    e.emplace( possible_e );
-                    return false;
-                }
-                return true;
-            } );
-            if( e.has_value() ) return e.value();
-            else
-            {
-                throw( "Bad adjacency relationships?" );
-                return cgogn::CMap3::Edge();
-            }
-        }
-        case 2:
-        {
-            std::optional<cgogn::CMap3::Face> f = std::nullopt;
-            foreach_incident_face( map, v, [&]( cgogn::CMap3::Face possible_f ) {
-                if( cell_has_vertices( f, { simplex.vertex( 0 ), simplex.vertex( 1 ), simplex.vertex( 2 ) } ) )
-                {
-                    f.emplace( possible_f );
-                    return false;
-                }
-                return true;
-            } );
-            if( f.has_value() ) return f.value();
-            else
-            {
-                throw( "Bad adjacency relationships?" );
-                return cgogn::CMap3::Face();
-            }
-        }
-        default: throw( "Unsupported cell type" );
-    }
-}
-*/
 
 void append( SimplicialComplex& append_to, const SimplicialComplex& to_append )
 {
@@ -402,32 +170,6 @@ void accumulateTrianglesFromParallelLines( SimplicialComplex& append_to,
             {
                 j++;
                 if( j < long_line.size() ) append_to.simplices.push_back( Simplex( short_point( i ), long_point( j - 1 ), long_point( j ) ) );
-            }
-        }
-    }
-}
-
-void flood2d( const cgogn::CMap3& map,
-              const cgogn::CMap3::Face& f,
-              const std::function<bool( const cgogn::CMap3::Face& )>& stop_condition,
-              const std::function<void( const cgogn::CMap3::Face& )>& mark_callback,
-              const std::function<void( const cgogn::CMap3::Face& )>& callback )
-{
-    std::queue<cgogn::CMap3::Face> to_process;
-    to_process.push( f );
-
-    for( ; not to_process.empty(); to_process.pop() )
-    {
-        const cgogn::CMap3::Face& curr_face = to_process.front();
-        if( stop_condition( curr_face ) ) continue;
-        callback( curr_face );
-        mark_callback( curr_face );
-        for( const auto& d :
-             { phi2( map, curr_face.dart_ ), phi<1, 2>( map, curr_face.dart_ ), phi<-1, 2>( map, curr_face.dart_ ) } )
-        {
-            if( not stop_condition( cgogn::CMap3::Face( d ) ) )
-            {
-                to_process.push( cgogn::CMap3::Face( d ) );
             }
         }
     }
@@ -479,18 +221,6 @@ int main( int argc, char* argv[] )
         }
 
         Timer t;
-        t.start( 0 );
-        cgogn::CMap3 map;
-        mapFromInput( sweep_input.mesh, map );
-        std::cout << "cgogn construct time: " << t.stop( 0 ) << std::endl;
-        t.start( 2 );
-        const std::vector<Normal> normals = faceNormals( map );
-        std::cout << "Normals time: " << t.stop( 2 ) << std::endl;
-        t.start( 5 );
-        const Eigen::VectorXd ans = solveLaplaceSparse( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
-        std::cout << "]laplace time 1: " << t.stop( 5 ) << std::endl;
-
-        const Eigen::MatrixX3d grad = gradients( map, ans, normals );
 
         std::cout << "output-laplace\n";
         t.start( 1 );
@@ -508,43 +238,17 @@ int main( int argc, char* argv[] )
 
         const Eigen::MatrixX3d grad2 = gradients( tet_map, ans_2, normals_2 );
 
-        double maxdiff = 0;
-        for( Eigen::Index i = 0; i < ans.size(); i++ )
-        {
-            maxdiff = std::max( maxdiff, std::abs( ans_2( i ) - ans( i ) ) );
-        }
-
-        std::cout << "Max difference: " << maxdiff << std::endl;
-
         if( std::find( input_args.begin(), input_args.end(), "output-laplace" ) != input_args.end() )
         {
             std::cout << "Outputting Laplace field...\n";
             io::VTKOutputObject output( sweep_input.mesh );
-            output.addVertexField( "laplace", ans );
-            output.addVertexField( "laplace2", ans_2 );
-            output.addCellField( "gradients", grad );
+            output.addVertexField( "laplace", ans_2 );
+            output.addCellField( "gradients", grad2 );
             io::outputSimplicialFieldToVTK( output, "test.vtu" );
         }
 
         if( input_args.front() == "inner-traces" )
         {
-            t.start( 6 );
-            std::cout << "Outputting centroid traces for all base faces...\n";
-            SimplicialComplex all_lines;
-            foreachFaceWithVertsInSet(
-                map, sweep_input.zero_bcs, [&]( const cgogn::CMap3::Face& start_face, const size_t ) {
-                    t.start( 8 );
-                    const SimplicialComplex field_line =
-                        traceField( map, start_face, centroid( map, start_face ), grad, normals );
-                    append( all_lines, field_line );
-                    t.stop( 8 );
-                    return true;
-                } );
-
-            io::VTKOutputObject output( all_lines );
-            io::outputSimplicialFieldToVTK( output, "centroid_traces_00.vtu" );
-            std::cout << "Time to trace each face: " << t.stop( 6 ) << " inner time: " << t.stop( 8 ) << std::endl;
-
             t.start( 7 );
             std::cout << "Outputting centroid traces for all base faces...\n";
             SimplicialComplex all_lines2;
@@ -564,137 +268,43 @@ int main( int argc, char* argv[] )
         }
         if( input_args.front() == "outer-traces" )
         {
-            if( std::find( input_args.begin(), input_args.end(), "old" ) != input_args.end() )
-            {
-                std::cout << "Outputting all boundary traces...\n";
-                t.start( 6 );
-                SimplicialComplex boundary_lines;
-                foreachEdgeOnBoundaryOfSet(
-                    map, sweep_input.zero_bcs, [&]( const cgogn::CMap3::Edge& start_edge, const size_t ) {
-                        t.start( 8 );
-                        const SimplicialComplex field_line =
-                            traceBoundaryField( map, start_edge, 0.5, ans, sweep_input.one_bcs, false );
-                        append( boundary_lines, field_line );
-                        t.stop( 8 );
-                        return true;
-                    } );
-                std::cout << "Time to trace each edge: " << t.stop( 6 ) << " inner time: " << t.stop( 8 ) << std::endl;
+            std::cout << "Outputting all boundary traces...\n";
+            const topology::CombinatorialMapBoundary bdry( tet_map );
 
-                io::VTKOutputObject boundary_output( boundary_lines );
-                io::outputSimplicialFieldToVTK( boundary_output, "boundary_lines_00.vtu" );
-            }
-
-            if( std::find( input_args.begin(), input_args.end(), "new" ) != input_args.end() )
-            {
-                std::cout << "Outputting all boundary traces...\n";
-                const topology::CombinatorialMapBoundary bdry( tet_map );
-
-                const auto keep_face = [&]( const topology::Face& f ) {
-                    return ( not sweep_input.zero_bcs.at( bdry.vertexId( topology::Vertex( f.dart() ) ).id() ) or
-                             not sweep_input.zero_bcs.at(
-                                 bdry.vertexId( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ).id() ) or
-                             not sweep_input.zero_bcs.at(
-                                 bdry.vertexId( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ).id() ) ) and
-                           ( not sweep_input.one_bcs.at( bdry.vertexId( topology::Vertex( f.dart() ) ).id() ) or
-                             not sweep_input.one_bcs.at(
-                                 bdry.vertexId( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ).id() ) or
-                             not sweep_input.one_bcs.at(
-                                 bdry.vertexId( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ).id() ) );
-                };
-
-                const topology::CombinatorialMapRestriction sides( bdry, keep_face );
-
-                const auto vertex_positions = [&]( const topology::Vertex& v ) -> const Eigen::Vector3d& {
-                    return sweep_input.mesh.points.at( bdry.vertexId( v ).id() );
-                };
-
-                SimplicialComplex boundary_lines;
-                t.start( 7 );
-                foreachEdgeOnBoundaryOfSet(
-                    bdry, sweep_input.zero_bcs, [&]( const topology::Edge& start_edge, const size_t ) {
-                        t.start( 9 );
-                        const SimplicialComplex field_line =
-                            traceBoundaryField( sides, start_edge, 0.5, ans_2, vertex_positions, false );
-                        append( boundary_lines, field_line );
-                        t.stop( 9 );
-                        return true;
-                    } );
-                std::cout << "Time to trace each edge: " << t.stop( 7 ) << " inner time: " << t.stop( 9 ) << std::endl;
-
-                io::VTKOutputObject boundary_output( boundary_lines );
-                io::outputSimplicialFieldToVTK( boundary_output, "boundary_lines_01.vtu" );
-            }
-        }
-        if( input_args.front() == "outer-surfaces-old" )
-        {
-            std::cout << "Generating outer surfaces\n";
-            t.start( 6 );
-            cgogn::CellMarker<cgogn::CMap3, cgogn::CMap3::Face> crossed_faces( map );
-            cgogn::CellMarker<cgogn::CMap3, cgogn::CMap3::Face> source_or_target( map );
-            cgogn::CellMarker<cgogn::CMap3, cgogn::CMap3::Face> flooded_faces( map );
-            foreachFaceWithVertsInSet( map, sweep_input.zero_bcs, [&]( const cgogn::CMap3::Face& f, const auto ) {
-                source_or_target.mark( f );
-                return true;
-            } );
-            foreachFaceWithVertsInSet( map, sweep_input.one_bcs, [&]( const cgogn::CMap3::Face& f, const auto ) {
-                source_or_target.mark( f );
-                return true;
-            } );
-
-            /*
-                Mark every face that is crossed by a trace.
-                Flood from every face that isn't marked, marking them and storing in a simplicial complex.
-            */
-
-            const auto is_marked = [&]( cgogn::CMap3::Face f ) {
-                return crossed_faces.is_marked( f ) or source_or_target.is_marked( f ) or flooded_faces.is_marked( f );
+            const auto keep_face = [&]( const topology::Face& f ) {
+                return ( not sweep_input.zero_bcs.at( bdry.vertexId( topology::Vertex( f.dart() ) ).id() ) or
+                            not sweep_input.zero_bcs.at(
+                                bdry.vertexId( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ).id() ) or
+                            not sweep_input.zero_bcs.at(
+                                bdry.vertexId( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ).id() ) ) and
+                        ( not sweep_input.one_bcs.at( bdry.vertexId( topology::Vertex( f.dart() ) ).id() ) or
+                            not sweep_input.one_bcs.at(
+                                bdry.vertexId( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ).id() ) or
+                            not sweep_input.one_bcs.at(
+                                bdry.vertexId( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ).id() ) );
             };
-            const std::vector<std::vector<BarycentricPoint>> coords =
-                io::loadBaryCoords( "/Users/caleb/Downloads/macaroni_layout_bary_coords_00" );
 
-            std::vector<BarycentricPoint> endpoints;
-            for( size_t i = 0; i < 40; i++ )
-            {
-                endpoints.push_back( coords.at( i ).front() );
-                endpoints.push_back( coords.at( i ).back() );
-            }
+            const topology::CombinatorialMapRestriction sides( bdry, keep_face );
+
+            const auto vertex_positions = [&]( const topology::Vertex& v ) -> const Eigen::Vector3d& {
+                return sweep_input.mesh.points.at( bdry.vertexId( v ).id() );
+            };
+
             SimplicialComplex boundary_lines;
-            foreachBaryCoordOnSetBoundary(
-                map, sweep_input.zero_bcs, endpoints, [&]( const cgogn::CMap3::Edge& start_edge, const double b ) {
-                    const SimplicialComplex field_line = traceBoundaryField(
-                        map, start_edge, b, ans, sweep_input.one_bcs, false, [&]( const cgogn::CMap3::Face& f ) {
-                            crossed_faces.mark( f );
-                        } );
+            t.start( 7 );
+            foreachEdgeOnBoundaryOfSet(
+                bdry, sweep_input.zero_bcs, [&]( const topology::Edge& start_edge, const size_t ) {
+                    t.start( 9 );
+                    const SimplicialComplex field_line =
+                        traceBoundaryField( sides, start_edge, 0.5, ans_2, vertex_positions, false );
                     append( boundary_lines, field_line );
+                    t.stop( 9 );
                     return true;
                 } );
+            std::cout << "Time to trace each edge: " << t.stop( 7 ) << " inner time: " << t.stop( 9 ) << std::endl;
 
             io::VTKOutputObject boundary_output( boundary_lines );
-            io::outputSimplicialFieldToVTK( boundary_output, "boundary_traces.vtu" );
-
-            size_t k = 0;
-            foreach_cell( map, [&]( cgogn::CMap3::Face f ) {
-                f = cgogn::CMap3::Face( phi3( map, f.dart_ ) );
-                if( is_boundary( map, f.dart_ ) and not is_marked( f ) )
-                {
-                    // Flood from here
-                    SimplicialComplex surface_component;
-                    flood2d(
-                        map,
-                        f,
-                        is_marked,
-                        [&]( const cgogn::CMap3::Face& f ) { flooded_faces.mark( f ); },
-                        [&]( const cgogn::CMap3::Face& f ) {
-                            // Convert face to triangle, add to simplicial complex, mark as visited
-                            const auto tri = triangleOfFace( map, f );
-                            addTriangleNoDuplicateChecking( surface_component, tri );
-                        } );
-                    io::VTKOutputObject surface_output( surface_component );
-                    io::outputSimplicialFieldToVTK( surface_output, "outer_surface" + std::to_string( k++ ) + ".vtu" );
-                }
-                return true;
-            } );
-            std::cout << "Time for outer surfaces: " << t.stop( 6 ) << std::endl;
+            io::outputSimplicialFieldToVTK( boundary_output, "boundary_lines_01.vtu" );
         }
         if( input_args.front() == "outer-surfaces" )
         {
@@ -800,6 +410,40 @@ int main( int argc, char* argv[] )
         {
             const std::vector<std::vector<BarycentricPoint>> bary_curves =
                 io::loadBaryCoords( "/Users/caleb/Downloads/macaroni_layout_bary_coords_00" );
+
+            const topology::CombinatorialMapBoundary bdry( tet_map );
+
+            const auto keep_face_sides = [&]( const topology::Face& f ) {
+                return ( not sweep_input.zero_bcs.at( bdry.vertexId( topology::Vertex( f.dart() ) ).id() ) or
+                            not sweep_input.zero_bcs.at(
+                                bdry.vertexId( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ).id() ) or
+                            not sweep_input.zero_bcs.at(
+                                bdry.vertexId( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ).id() ) ) and
+                        ( not sweep_input.one_bcs.at( bdry.vertexId( topology::Vertex( f.dart() ) ).id() ) or
+                            not sweep_input.one_bcs.at(
+                                bdry.vertexId( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ).id() ) or
+                            not sweep_input.one_bcs.at(
+                                bdry.vertexId( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ).id() ) );
+            };
+
+            const auto keep_face_base = [&]( const topology::Face& f ) {
+                return sweep_input.zero_bcs.at( bdry.vertexId( topology::Vertex( f.dart() ) ).id() ) and
+                       sweep_input.zero_bcs.at( bdry.vertexId( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ).id() ) and
+                       sweep_input.zero_bcs.at( bdry.vertexId( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ).id() );
+            };
+
+            const topology::CombinatorialMapRestriction sides( bdry, keep_face_sides );
+            const topology::CombinatorialMapRestriction base( bdry, keep_face_base );
+
+            /*
+                Mark every face that is crossed by a trace.
+                Flood from every face that isn't marked, marking them and storing in a simplicial complex.
+            */
+
+            const auto vertex_positions = [&]( const topology::Vertex& v ) -> const Eigen::Vector3d& {
+                return sweep_input.mesh.points.at( bdry.vertexId( v ).id() );
+            };
+
             for( size_t i = 0; i < 40; i++ )
             {
                 const std::vector<BarycentricPoint>& coords = bary_curves.at( i );
@@ -809,58 +453,92 @@ int main( int argc, char* argv[] )
                 SimplicialComplex sep_tris;
 
                 size_t coord_ii = 0;
-                for( const auto& bc : coords )
+                for( const auto& coord : coords )
                 {
-                    std::vector<BarycentricPoint> coord{ bc };
-                    // FIXME: Iterate the points in the barycentric curve by looking for adjacencies
-                    foreachBaryCoordOnSet( map, sweep_input.zero_bcs, coord, [&]( const cgogn::CMap3::Face& start_face, const Eigen::Vector3d& pt ) {
 
-                        const double distance_from_major_axis = ( pt - Eigen::Vector3d( -15.5, 0, 0 ) ).norm();
+                    if( i == 17 and coord_ii == 3 ) continue;
+                    if( i == 20 and coord_ii == 1 ) continue;
+                    if( i == 23 and coord_ii == 4 ) continue;
+                    bool boundary_of_base = false;
+                    std::optional<topology::Cell> trace_cell;
+                    iterateDartsOfCell( tet_map, cellOfSimplex( tet_map, coord.simplex ), [&]( const topology::Dart& d ) {
+                        if( onBoundary( tet_map, d ) )
+                        {
+                            const topology::Cell possible_cell( d, coord.simplex.dim() );
+                            if( keep_face_sides( d ) )
+                            {
+                                boundary_of_base = true;
+                                trace_cell.emplace( possible_cell );
+                                return false;
+                            }
+                            else if( not ( coord.simplex.dim() < 2 and boundaryAdjacent( base, possible_cell ) ) )
+                            {
+                                trace_cell.emplace( possible_cell );
+                                return false;
+                            }
+                        }
+                        return true;
+                    } );
 
-                        const bool on_boundary = equals( distance_from_major_axis, 10.5, 1e-2 ) or
-                            equals( distance_from_major_axis, 5, 1e-2 );
+                    if( not trace_cell.has_value() ) throw std::runtime_error( "No cell for barycentric coordinate!" );
 
+                    const topology::Dart start_cell_dart = trace_cell.value().dim() == 0
+                                                               ? phi( bdry, 1, trace_cell.value().dart() ).value()
+                                                               : trace_cell.value().dart();
 
-                        // const std::optional<cgogn::CMap3::Edge> boundary_e = boundaryTracingEdge( map, sweep_input.zero_bcs, cgogn::CMap3::Edge( start_face.dart_ ) );
-                        const std::optional<cgogn::CMap3::Edge> boundary_e =
-                            on_boundary
-                            ? boundaryTracingEdgeOnFace( map, sweep_input.zero_bcs, start_face ) : std::nullopt;
-                        const SimplicialComplex field_line = boundary_e.and_then( [&]( cgogn::CMap3::Edge start_edge ) -> std::optional<SimplicialComplex> {
-                            const auto position =
-                                cgogn::get_attribute<Eigen::Vector3d, cgogn::CMap3::Vertex>( map, "position" );
-                            const Eigen::Vector3d pos1 =
-                                cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( start_edge.dart_ ) );
-                            const Eigen::Vector3d pos2 =
-                                cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( phi1( map, start_edge.dart_ ) ) );
+                    const SimplicialComplex field_line = [&]() {
+                        if( boundary_of_base )
+                        {
+                            const topology::Edge start_edge( start_cell_dart );
 
-                            const double b = ( pt - pos1 ).norm() / ( pos2 - pos1 ).norm();
+                            const double b = [&](){
+                                if( trace_cell.value().dim() == 0 ) return 0.0;
+                                else if( sides.vertexId( topology::Vertex( start_edge.dart() ) ) == coord.simplex.vertex( 0 ) )
+                                    return coord.point( 1 );
+                                else return coord.point( 0 );
+                            }();
 
                             std::cout << "ON BOUNDARY " << i << "\n";
 
-                            return traceBoundaryField( map, start_edge, b, ans, sweep_input.one_bcs, false );
-                        } ).value_or( traceField( map, start_face, pt, grad, normals, true ) );
-
-                        if( i != 1 or coord_ii != 2 )
+                            return traceBoundaryField( sides, start_edge, b, ans_2, vertex_positions, false );
+                        }
+                        else
                         {
-                            if( lines.size() > 0 )
-                            {
-                                if( field_line.points.size() > lines.back().size() )
-                                    accumulateTrianglesFromParallelLines( sep_tris, lines.back(), field_line.points );
-                                else
-                                    accumulateTrianglesFromParallelLines( sep_tris, field_line.points, lines.back() );
-                            }
+                            const topology::Face start_face = tracingCell(
+                                tet_map,
+                                trace_cell.value(),
+                                [&]( const topology::Face& f ) {
+                                    return normals_2.at( tet_map.faceId( f ) ).get( f.dart() );
+                                },
+                                [&]( const topology::Volume& v ) { return grad2.row( tet_map.elementId( v ) ).transpose(); } );
+                            const Eigen::Vector3d pt =
+                                expandBarycentric( base,
+                                                   vertex_positions,
+                                                   topology::Cell( start_cell_dart, trace_cell.value().dim() ),
+                                                   coord );
+                            return traceField( tet_map, start_face, pt, grad2, normals_2, true );
+                        }
+                    }();
 
-                            if( on_boundary )
-                            {
-                                std::cout << "num_points: " << sep_tris.points.size() << " last point: " << field_line.points.back() << std::endl;
-                                std::cout << "last tri: " << sep_tris.simplices.back() << std::endl;
-                            }
-                            lines.push_back( field_line.points );
+                    if( i != 1 or coord_ii != 2 )
+                    {
+                        if( lines.size() > 0 )
+                        {
+                            if( field_line.points.size() > lines.back().size() )
+                                accumulateTrianglesFromParallelLines( sep_tris, lines.back(), field_line.points );
+                            else
+                                accumulateTrianglesFromParallelLines( sep_tris, field_line.points, lines.back() );
                         }
 
-                        coord_ii++;
-                        return true;
-                    } );
+                        if( boundary_of_base )
+                        {
+                            std::cout << "num_points: " << sep_tris.points.size() << " last point: " << field_line.points.back() << std::endl;
+                            std::cout << "last tri: " << sep_tris.simplices.back() << std::endl;
+                        }
+                        lines.push_back( field_line.points );
+                    }
+
+                    coord_ii++;
                 }
 
                 io::VTKOutputObject boundary_output( sep_tris );

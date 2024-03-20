@@ -2,6 +2,7 @@
 #include <SweepInput.hpp>
 #include <SimplexUtilities.hpp>
 #include <Logging.hpp>
+#include <TetMeshCombinatorialMap.hpp>
 
 TEST_CASE( "Dihedral angle cotangent", "[single-file]" )
 {
@@ -9,18 +10,17 @@ TEST_CASE( "Dihedral angle cotangent", "[single-file]" )
 
     const auto test_angle =
         [&]( const double angle,
-             const std::function<void( const cgogn::CMap3&, const cgogn::CMap3::Edge&, const std::vector<Normal>& )>&
+             const std::function<void( const topology::TetMeshCombinatorialMap&, const topology::Edge&, const std::vector<Normal>& )>&
                  test ) {
             simplicial_complex.points.push_back( { std::cos( angle ), std::sin( angle ), 0 } );
 
-            cgogn::CMap3 map;
-            mapFromInput( simplicial_complex, map );
+            topology::TetMeshCombinatorialMap map( simplicial_complex );
 
             const auto normals = faceNormals( map );
 
-            cgogn::foreach_cell( map, [&]( cgogn::CMap3::Edge e ) {
-                const auto vid1 = cgogn::index_of( map, cgogn::CMap3::Vertex( e.dart_ ) );
-                const auto vid2 = cgogn::index_of( map, cgogn::CMap3::Vertex( cgogn::phi1( map, e.dart_ ) ) );
+            iterateCellsWhile( map, 1, [&]( const topology::Edge& e ) {
+                const auto vid1 = map.vertexId( topology::Vertex( e.dart() ) ).id();
+                const auto vid2 = map.vertexId( topology::Vertex( phi( map, 1, e.dart() ).value() ) ).id();
                 if( ( vid1 == 0 and vid2 == 1 ) or ( vid1 == 1 and vid2 == 0 ) )
                 {
                     test( map, e, normals );
@@ -33,7 +33,7 @@ TEST_CASE( "Dihedral angle cotangent", "[single-file]" )
     SECTION( "90 degrees" )
     {
         test_angle( std::numbers::pi / 2,
-                    [&]( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e, const std::vector<Normal>& normals ) {
+                    [&]( const topology::TetMeshCombinatorialMap& map, const topology::Edge& e, const std::vector<Normal>& normals ) {
                         REQUIRE( equals( dihedralCotangent( map, e, normals ), 0, 1e-5 ) );
                     } );
     }
@@ -41,7 +41,7 @@ TEST_CASE( "Dihedral angle cotangent", "[single-file]" )
     SECTION( "45 degrees" )
     {
         test_angle( std::numbers::pi / 4,
-                    [&]( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e, const std::vector<Normal>& normals ) {
+                    [&]( const topology::TetMeshCombinatorialMap& map, const topology::Edge& e, const std::vector<Normal>& normals ) {
                         REQUIRE( equals( dihedralCotangent( map, e, normals ), 1.0, 1e-5 ) );
                     } );
     }
@@ -50,7 +50,7 @@ TEST_CASE( "Dihedral angle cotangent", "[single-file]" )
     {
         test_angle(
             std::numbers::pi / 6,
-            [&]( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e, const std::vector<Normal>& normals ) {
+            [&]( const topology::TetMeshCombinatorialMap& map, const topology::Edge& e, const std::vector<Normal>& normals ) {
                 REQUIRE( equals( dihedralCotangent( map, e, normals ), 1.0 / std::tan( std::numbers::pi / 6 ), 1e-5 ) );
             } );
     }
@@ -58,7 +58,7 @@ TEST_CASE( "Dihedral angle cotangent", "[single-file]" )
     SECTION( "120 degrees" )
     {
         test_angle( 2 * std::numbers::pi / 3,
-                    [&]( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e, const std::vector<Normal>& normals ) {
+                    [&]( const topology::TetMeshCombinatorialMap& map, const topology::Edge& e, const std::vector<Normal>& normals ) {
                         REQUIRE( equals(
                             dihedralCotangent( map, e, normals ), 1.0 / std::tan( 2 * std::numbers::pi / 3 ), 1e-5 ) );
                     } );

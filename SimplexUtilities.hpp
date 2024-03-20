@@ -1,6 +1,4 @@
 #pragma once
-#include <cgogn/core/types/maps/cmap/cmap3.h>
-#include <cgogn/core/types/cell_marker.h>
 #include <CombinatorialMapMethods.hpp>
 #include <SweepInput.hpp>
 
@@ -12,27 +10,12 @@ namespace topology
 class Normal
 {
     public:
-    Normal( const cgogn::CMap3& map, const cgogn::Dart& dart, const Eigen::Vector3d& normal )
-        : mAlignedDarts( { topology::Dart( dart.index_ ),
-                           topology::Dart( phi<1>( map, dart ).index_ ),
-                           topology::Dart( phi<-1>( map, dart ).index_ ) } ),
-          mNormal( normal )
-    {}
     Normal( const topology::CombinatorialMap& map, const topology::Dart& dart, const Eigen::Vector3d& normal )
         : mAlignedDarts( { dart, phi( map, 1, dart ).value(), phi( map, -1, dart ).value() } ),
           mNormal( normal )
     {}
     Normal() : mAlignedDarts( { 0, 0, 0 } ) {}
 
-    Eigen::Vector3d get( const cgogn::Dart& dart ) const
-    {
-        if( std::find( mAlignedDarts.begin(), mAlignedDarts.end(), topology::Dart( dart.index_ ) ) ==
-            mAlignedDarts.end() )
-        {
-            return -1 * mNormal;
-        }
-        return mNormal;
-    }
     Eigen::Vector3d get( const topology::Dart& dart ) const
     {
         if( std::find( mAlignedDarts.begin(), mAlignedDarts.end(), dart ) == mAlignedDarts.end() )
@@ -71,7 +54,6 @@ template <unsigned int DIM> struct Segment
 
 void addTriangleNoDuplicateChecking( SimplicialComplex& complex, const Triangle<3>& tri );
 
-Triangle<3> triangleOfFace( const cgogn::CMap3& map, const cgogn::CMap3::Face& f );
 Triangle<3> triangleOfFace( const topology::TetMeshCombinatorialMap& map, const topology::Face& f );
 Triangle<3> triangleOfFace( const topology::CombinatorialMap& map,
                             const std::function<const Eigen::Vector3d&( const topology::Vertex& )>& vertex_position,
@@ -79,40 +61,25 @@ Triangle<3> triangleOfFace( const topology::CombinatorialMap& map,
 
 Eigen::Vector3d triangleNormal( const Triangle<3>& tri );
 
-Eigen::Vector3d triangleNormal( const cgogn::CMap3& map, const cgogn::CMap3::Face& f );
 Eigen::Vector3d triangleNormal( const topology::TetMeshCombinatorialMap& map, const topology::Face& f );
 
 Eigen::Vector3d centroid( const Triangle<3>& tri );
 
-Eigen::Vector3d centroid( const cgogn::CMap3& map, const cgogn::CMap3::Face& f );
 Eigen::Vector3d centroid( const topology::TetMeshCombinatorialMap& map, const topology::Face& f );
 
-std::vector<Normal> faceNormals( const cgogn::CMap3& map );
 std::vector<Normal> faceNormals( const topology::TetMeshCombinatorialMap& map );
 
-double edgeLength( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e );
 double edgeLength( const topology::TetMeshCombinatorialMap& map, const topology::Edge& e );
 
-double dihedralCotangent( const cgogn::CMap3& map, const cgogn::CMap3::Edge& e, const std::vector<Normal>& normals );
 double dihedralCotangent( const topology::TetMeshCombinatorialMap& map, const topology::Edge& e, const std::vector<Normal>& normals );
 
-Eigen::Vector3d gradient( const cgogn::CMap3& map,
-                          const cgogn::CMap3::Volume& v,
-                          const Eigen::VectorXd& field_values,
-                          const std::vector<Normal>& normals );
 Eigen::Vector3d gradient( const topology::TetMeshCombinatorialMap& map,
                           const topology::Volume& v,
                           const Eigen::VectorXd& field_values,
                           const std::vector<Normal>& normals );
 
-Eigen::MatrixX3d gradients( const cgogn::CMap3& map,
-                            const Eigen::VectorXd& field_values,
-                            const std::vector<Normal>& normals );
 Eigen::MatrixX3d gradients( const topology::TetMeshCombinatorialMap& map,
                             const Eigen::VectorXd& field_values,
                             const std::vector<Normal>& normals );
 
 Eigen::Vector3d gradient( const Triangle<3>& tri3d, const Eigen::Ref<const Eigen::Vector3d> field_values );
-
-// FIXME: This doesn't belong here
-void mapFromInput( const SimplicialComplex& mesh, cgogn::CMap3& map );

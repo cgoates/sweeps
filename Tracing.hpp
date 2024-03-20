@@ -1,6 +1,4 @@
 #pragma once
-#include <cgogn/core/types/maps/cmap/cmap3.h>
-#include <cgogn/core/types/cell_marker.h>
 #include <SweepInput.hpp>
 #include <optional>
 
@@ -29,23 +27,11 @@ std::optional<Eigen::Vector3d> intersectionOf( const Ray<3>& ray,
                                                const Triangle<3>& tri,
                                                std::optional<const Eigen::Vector3d> maybe_normal = {} );
 
-using TracePoint = std::pair<cgogn::CMap3::Face, Eigen::Vector3d>;
-using TracePoint2 = std::pair<topology::Face, Eigen::Vector3d>;
-std::optional<TracePoint> traceRayOnTet( const cgogn::CMap3& map,
-                                         const cgogn::CMap3::Volume& v,
+using TracePoint = std::pair<topology::Face, Eigen::Vector3d>;
+std::optional<TracePoint> traceRayOnTet( const topology::TetMeshCombinatorialMap& map,
+                                         const topology::Volume& v,
                                          const Ray<3>& ray,
                                          const std::vector<Normal>& normals );
-std::optional<TracePoint2> traceRayOnTet( const topology::TetMeshCombinatorialMap& map,
-                                          const topology::Volume& v,
-                                          const Ray<3>& ray,
-                                          const std::vector<Normal>& normals );
-
-SimplicialComplex traceField( const cgogn::CMap3& map,
-                              const cgogn::CMap3::Face& f,
-                              const Eigen::Vector3d& start_point,
-                              const Eigen::MatrixX3d& field,
-                              const std::vector<Normal>& normals,
-                              const bool debug_output = false );
 
 SimplicialComplex traceField( const topology::TetMeshCombinatorialMap& map,
                               const topology::Face& f,
@@ -61,26 +47,12 @@ std::optional<std::pair<bool, double>> traceGradientOnTri( const Triangle<3>& tr
                                                            const double edge_barycentric_coord,
                                                            const Eigen::Ref<const Eigen::Vector3d> field_values );
 
-std::optional<std::pair<cgogn::CMap3::Edge, double>> traceGradientOnTri( const cgogn::CMap3& map,
-                                                                         const cgogn::CMap3::Face& f,
-                                                                         const double edge_barycentric_coord,
-                                                                         const Eigen::VectorXd& field_values );
-
 using VertexPositionsFunc = std::function<const Eigen::Vector3d&( const topology::Vertex& )>;
 std::optional<std::pair<topology::Edge, double>> traceGradientOnTri( const topology::CombinatorialMap& map,
                                                                      const VertexPositionsFunc& positions,
                                                                      const topology::Face& f,
                                                                      const double edge_barycentric_coord,
                                                                      const Eigen::VectorXd& field_values );
-
-SimplicialComplex traceBoundaryField(
-    const cgogn::CMap3& map,
-    const cgogn::CMap3::Edge& e,
-    const double& start_point,
-    const Eigen::VectorXd& field,
-    const std::vector<bool>& target_vertex_marker,
-    const bool debug_output = false,
-    const std::function<void( const cgogn::CMap3::Face& )>& face_callback = []( const auto& ) {} );
 
 SimplicialComplex traceBoundaryField( const topology::CombinatorialMap& map,
                                       const topology::Edge& e,

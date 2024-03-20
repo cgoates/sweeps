@@ -5,10 +5,6 @@
 #include <VTKOutput.hpp>
 #include <set>
 #include <iomanip>
-#include <cgogn/core/functions/traversals/vertex.h>
-#include <cgogn/core/functions/mesh_info.h>
-#include <cgogn/core/functions/attributes.h>
-#include <cgogn/io/volume/volume_import.h>
 #include <TetMeshCombinatorialMap.hpp>
 #include <SweepInput.hpp>
 #include <Logging.hpp>
@@ -38,146 +34,7 @@ std::optional<Eigen::Vector3d> intersectionOf( const Ray<3>& ray,
     return inside ? std::optional<Eigen::Vector3d>( intersection_point ) : std::nullopt;
 }
 
-////////////////////////////////////////
-/// CGOGN
-
-std::optional<TracePoint> traceRayOnTet( const cgogn::CMap3& map,
-                                         const cgogn::CMap3::Volume& v,
-                                         const Ray<3>& ray,
-                                         const std::vector<Normal>& normals )
-{
-    // The face on the input dart is the location that we start from.
-    // Check all the other faces for intersection with the ray.
-    LOG( LOG_TRACING ) << "Tracing on tet " << v << " from ray " << ray.start_pos.transpose() << " -> "
-                       << ray.dir.transpose() << std::endl;
-    bool found_it = false;
-    std::pair<cgogn::CMap3::Face, Eigen::Vector3d> out;
-    foreach_incident_edge( map, cgogn::CMap3::Face( v.dart_ ), [&]( cgogn::CMap3::Edge e ) {
-        LOG( LOG_TRACING ) << "| Edge " << e << std::endl;
-        const cgogn::CMap3::Face adj_face( phi2( map, e.dart_ ) );
-        const Triangle<3> tri = triangleOfFace( map, adj_face );
-        LOG( LOG_TRACING ) << "| | Triangle<3>: " << tri.v1.transpose() << " | " << tri.v2.transpose() << " | "
-                           << tri.v3.transpose() << std::endl;
-
-        const std::optional<Eigen::Vector3d> intersection =
-            intersectionOf( ray, tri, normals.at( index_of( map, adj_face ) ).get( adj_face.dart_ ) );
-
-        if( intersection.has_value() )
-        {
-            LOG( LOG_TRACING ) << "| | Found intersection: " << intersection.value().transpose() << std::endl;
-            out.first = cgogn::CMap3::Face( phi3( map, adj_face.dart_ ) );
-            out.second = intersection.value();
-            found_it = true;
-            return false;
-        }
-        return true;
-    } );
-    if( not found_it )
-    {
-        LOG( LOG_TRACING ) << "| | NO INTERSECTION\n";
-        return std::nullopt;
-    }
-    return out;
-}
-
-void tracingDebugOutput( const cgogn::CMap3& map,
-                         const cgogn::CMap3::Volume& v,
-                         const Ray<3>& ray,
-                         const SimplicialComplex& line,
-                         SimplicialComplex& tets,
-                         const size_t n )
-{
-    // Add the triangles of the current tet to tets
-    foreach_incident_face( map, v, [&]( cgogn::CMap3::Face f ) {
-        const Triangle<3> from_face = triangleOfFace( map, f );
-        const size_t next_vid = tets.points.size();
-        tets.simplices.push_back( { next_vid + 0, next_vid + 1, next_vid + 2 } );
-        tets.points.push_back( from_face.v1 );
-        tets.points.push_back( from_face.v2 );
-        tets.points.push_back( from_face.v3 );
-        return true;
-    } );
-
-    // Create a simplicial complex with just one face: the triangle it's coming from
-    const Triangle<3> from_face = triangleOfFace( map, cgogn::CMap3::Face( v.dart_ ) );
-    const SimplicialComplex from_face_complex( { { { 0, 1, 2 } }, { from_face.v1, from_face.v2, from_face.v3 } } );
-    const io::VTKOutputObject from_face_output( from_face_complex );
-
-    // Create a simplicial complex for the ray
-    const SimplicialComplex ray_complex( { { { 0 } }, { ray.start_pos } } );
-    io::VTKOutputObject ray_output( ray_complex );
-    ray_output.addVertexField( "ray", ray.dir.transpose() );
-
-    const io::VTKOutputObject line_output( line );
-    const io::VTKOutputObject tets_output( tets );
-
-    std::stringstream ss;
-    ss << std::setw( 3 ) << std::setfill( '0' ) << n;
-    std::string n_str( ss.str() );
-
-    io::outputSimplicialFieldToVTK( from_face_output, "from_face_" + n_str + ".vtu" );
-    io::outputSimplicialFieldToVTK( ray_output, "ray_" + n_str + ".vtu" );
-    io::outputSimplicialFieldToVTK( line_output, "line_" + n_str + ".vtu" );
-    io::outputSimplicialFieldToVTK( tets_output, "tets_" + n_str + ".vtu" );
-}
-
-std::optional<TracePoint> traceFaceAverageField( const cgogn::CMap3& map,
-                                                 const cgogn::CMap3::Face& f,
-                                                 const Eigen::Vector3d& start_point,
-                                                 const Eigen::MatrixX3d& field,
-                                                 const std::vector<Normal>& normals )
-{
-    const cgogn::CMap3::Face f_opp( phi3( map, f.dart_ ) );
-    const cgogn::CMap3::Volume vol( f.dart_ );
-    const cgogn::CMap3::Volume vol_opp( f_opp.dart_ );
-    const auto average_field = 0.5 * ( field.row( index_of( map, vol ) ) + field.row( index_of( map, vol_opp ) ) );
-    const double field_dir = normals.at( index_of( map, f ) ).get( f.dart_ ).dot( average_field );
-    if( field_dir > 0 )
-        return traceRayOnTet( map, vol, { start_point, average_field }, normals );
-    else
-        return traceRayOnTet( map, vol_opp, { start_point, average_field }, normals );
-}
-
-SimplicialComplex traceField( const cgogn::CMap3& map,
-                              const cgogn::CMap3::Face& f,
-                              const Eigen::Vector3d& start_point,
-                              const Eigen::MatrixX3d& field,
-                              const std::vector<Normal>& normals,
-                              const bool debug_output )
-{
-    cgogn::CMap3::Face curr_face = f;
-    Eigen::Vector3d curr_point = start_point;
-
-    SimplicialComplex complex;
-    SimplicialComplex debug_tets;
-    size_t n = 0;
-
-    complex.points.push_back( curr_point );
-    while( not is_boundary( map, curr_face.dart_ ) )
-    {
-        const cgogn::CMap3::Volume curr_vol( curr_face.dart_ );
-        const Ray<3> search_ray( { curr_point, field.row( index_of( map, curr_vol ) ) } );
-        if( debug_output ) tracingDebugOutput( map, curr_vol, search_ray, complex, debug_tets, n++ );
-        std::optional<TracePoint> next_point = traceRayOnTet( map, curr_vol, search_ray, normals );
-        if( not next_point.has_value() )
-        {
-            next_point = traceFaceAverageField( map, cgogn::CMap3::Face( curr_vol.dart_ ), curr_point, field, normals );
-            if( not next_point.has_value() ) throw( std::runtime_error( "Untraceable field" ) );
-        }
-        curr_face = next_point.value().first;
-        curr_point = next_point.value().second;
-        complex.points.push_back( curr_point );
-        complex.simplices.push_back( { complex.points.size() - 2, complex.points.size() - 1 } );
-    }
-
-    return complex;
-}
-
-
-////////////////////////////////////////
-/// TETMESHCOMBINATORIALMAP
-
-std::optional<TracePoint2> traceRayOnTet( const topology::TetMeshCombinatorialMap& map,
+std::optional<TracePoint> traceRayOnTet( const topology::TetMeshCombinatorialMap& map,
                                           const topology::Volume& v,
                                           const Ray<3>& ray,
                                           const std::vector<Normal>& normals )
@@ -258,7 +115,7 @@ void tracingDebugOutput( const topology::TetMeshCombinatorialMap& map,
     io::outputSimplicialFieldToVTK( tets_output, "tets_" + n_str + ".vtu" );
 }
 
-std::optional<TracePoint2> traceFaceAverageField( const topology::TetMeshCombinatorialMap& map,
+std::optional<TracePoint> traceFaceAverageField( const topology::TetMeshCombinatorialMap& map,
                                                   const topology::Face& f,
                                                   const Eigen::Vector3d& start_point,
                                                   const Eigen::MatrixX3d& field,
@@ -300,7 +157,7 @@ SimplicialComplex traceField( const topology::TetMeshCombinatorialMap& map,
         const topology::Volume curr_vol( curr_face.dart() );
         const Ray<3> search_ray( { curr_point, field.row( map.elementId( curr_vol ) ) } );
         if( debug_output ) tracingDebugOutput( map, curr_vol, search_ray, complex, debug_tets, n++ );
-        std::optional<TracePoint2> next_point = traceRayOnTet( map, curr_vol, search_ray, normals );
+        std::optional<TracePoint> next_point = traceRayOnTet( map, curr_vol, search_ray, normals );
         if( not next_point.has_value() )
         {
             next_point = traceFaceAverageField( map, topology::Face( curr_vol.dart() ), curr_point, field, normals );
@@ -471,172 +328,6 @@ std::optional<TriPairTraceResult> traceGradientOnTriPair( const Triangle<3>& tri
             } );
     }
 }
-
-////////////////////////////////////////
-/// CGOGN
-
-void tracingDebugOutput( const cgogn::CMap3& map,
-                         const cgogn::CMap3::Face& curr_face,
-                         const double start_pos,
-                         const Eigen::Ref<const Eigen::VectorXd> field,
-                         const SimplicialComplex& line,
-                         SimplicialComplex& tris,
-                         std::vector<double>& vertex_values,
-                         const size_t n )
-{
-    const Triangle<3> tri3d = triangleOfFace( map, curr_face );
-    const auto& d = curr_face.dart_;
-    const auto field_values = field( { index_of( map, cgogn::CMap3::Vertex( d ) ),
-                                       index_of( map, cgogn::CMap3::Vertex( cgogn::phi1( map, d ) ) ),
-                                       index_of( map, cgogn::CMap3::Vertex( cgogn::phi_1( map, d ) ) ) } );
-
-    // Add the triangles of the current tet to tets
-    const size_t next_vid = tris.points.size();
-    tris.simplices.push_back( { next_vid + 0, next_vid + 1, next_vid + 2 } );
-    tris.points.push_back( tri3d.v1 );
-    tris.points.push_back( tri3d.v2 );
-    tris.points.push_back( tri3d.v3 );
-    vertex_values.push_back( field_values( 0 ) );
-    vertex_values.push_back( field_values( 1 ) );
-    vertex_values.push_back( field_values( 2 ) );
-
-    // Create a simplicial complex with just one face: the triangle it's coming from
-    const SimplicialComplex from_line_complex( { { { 0, 1 } }, { tri3d.v1, tri3d.v2 } } );
-    const io::VTKOutputObject from_line_output( from_line_complex );
-
-    // Create a simplicial complex for the ray
-    const Ray<3> ray( { ( 1.0 - start_pos ) * tri3d.v1 + start_pos * tri3d.v2, gradient( tri3d, field_values ) } );
-    const SimplicialComplex ray_complex( { { { 0 } }, { ray.start_pos } } );
-    io::VTKOutputObject ray_output( ray_complex );
-    ray_output.addVertexField( "ray", ray.dir.transpose() );
-
-    const io::VTKOutputObject line_output( line );
-    io::VTKOutputObject tets_output( tris );
-    tets_output.addVertexField( "field", Eigen::Map<Eigen::VectorXd>( vertex_values.data(), vertex_values.size() ) );
-
-    std::stringstream ss;
-    ss << std::setw( 3 ) << std::setfill( '0' ) << n;
-    std::string n_str( ss.str() );
-
-    io::outputSimplicialFieldToVTK( from_line_output, "bdry_from_line_" + n_str + ".vtu" );
-    io::outputSimplicialFieldToVTK( ray_output, "bdry_ray_" + n_str + ".vtu" );
-    io::outputSimplicialFieldToVTK( line_output, "bdry_line_" + n_str + ".vtu" );
-    io::outputSimplicialFieldToVTK( tets_output, "bdry_tris_" + n_str + ".vtu" );
-}
-
-std::optional<std::pair<cgogn::CMap3::Edge, double>> traceGradientOnTri( const cgogn::CMap3& map,
-                                                                         const cgogn::CMap3::Face& f,
-                                                                         const double edge_barycentric_coord,
-                                                                         const Eigen::VectorXd& field_values )
-{
-    const Triangle<3> tri3d = triangleOfFace( map, f );
-
-    // calculate the gradient in the xy plane
-    const cgogn::Dart& d = f.dart_;
-    const auto field = field_values( { index_of( map, cgogn::CMap3::Vertex( d ) ),
-                                       index_of( map, cgogn::CMap3::Vertex( cgogn::phi1( map, d ) ) ),
-                                       index_of( map, cgogn::CMap3::Vertex( cgogn::phi_1( map, d ) ) ) } );
-
-    return traceGradientOnTri( tri3d, edge_barycentric_coord, field )
-        .and_then( [&]( const std::pair<bool, double>& pr ) {
-            const cgogn::CMap3::Edge e( pr.first ? phi<1, 2>( map, f.dart_ ) : phi<-1, 2>( map, f.dart_ ) );
-            return std::optional<std::pair<cgogn::CMap3::Edge, double>>( { e, 1.0 - pr.second } );
-        } );
-}
-
-std::optional<std::pair<cgogn::CMap3::Edge, double>> traceGradientOnTriPair( const cgogn::CMap3& map,
-                                                                             const cgogn::CMap3::Face& f,
-                                                                             const double edge_barycentric_coord,
-                                                                             const Eigen::VectorXd& field_values )
-{
-    const Triangle<3> tri3d = triangleOfFace( map, f );
-    const auto position = cgogn::get_attribute<Eigen::Vector3d, cgogn::CMap3::Vertex>( map, "position" );
-    const Eigen::Vector3d& opp_v =
-        cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( phi<2, -1>( map, f.dart_ ) ) );
-
-    // calculate the gradient in the xy plane
-    const cgogn::Dart& d = f.dart_;
-    const auto field = field_values( { index_of( map, cgogn::CMap3::Vertex( d ) ),
-                                       index_of( map, cgogn::CMap3::Vertex( cgogn::phi1( map, d ) ) ),
-                                       index_of( map, cgogn::CMap3::Vertex( cgogn::phi_1( map, d ) ) ),
-                                       index_of( map, cgogn::CMap3::Vertex( cgogn::phi<2, -1>( map, d ) ) ) } );
-
-    return traceGradientOnTriPair( tri3d, opp_v, edge_barycentric_coord, field )
-        .and_then( [&]( const TriPairTraceResult& result ) {
-            if( result.on_forward_face )
-            {
-                const cgogn::CMap3::Edge e( result.on_forward_edge ? phi<1, 2>( map, f.dart_ ) : phi<-1, 2>( map, f.dart_ ) );
-                return std::optional<std::pair<cgogn::CMap3::Edge, double>>( { e, 1.0 - result.edge_barycoord } );
-            }
-            else
-            {
-                const cgogn::CMap3::Edge e( result.on_forward_edge ? phi<2, -1, 2>( map, f.dart_ ) : phi<2, 1, 2>( map, f.dart_ ) );
-                return std::optional<std::pair<cgogn::CMap3::Edge, double>>( { e, 1.0 - result.edge_barycoord } );
-            }
-        } );
-}
-
-SimplicialComplex traceBoundaryField( const cgogn::CMap3& map,
-                                      const cgogn::CMap3::Edge& e,
-                                      const double& start_point,
-                                      const Eigen::VectorXd& field,
-                                      const std::vector<bool>& target_vertex_marker,
-                                      const bool debug_output,
-                                      const std::function<void( const cgogn::CMap3::Face& )>& face_callback )
-{
-    const auto is_target = [&map, &target_vertex_marker]( const cgogn::CMap3::Edge& e ) {
-        return target_vertex_marker.at( index_of( map, cgogn::CMap3::Vertex( e.dart_ ) ) ) and
-               target_vertex_marker.at( index_of( map, cgogn::CMap3::Vertex( phi1( map, e.dart_ ) ) ) );
-    };
-
-    const auto position = cgogn::get_attribute<Eigen::Vector3d, cgogn::CMap3::Vertex>( map, "position" );
-    const auto expand_barycentric = [&map, &position]( const cgogn::CMap3::Edge& e, const double coord ) {
-        const cgogn::Dart& d = e.dart_;
-        const Eigen::Vector3d& pos1 = cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( d ) );
-        const Eigen::Vector3d& pos2 =
-            cgogn::value<Eigen::Vector3d>( map, position, cgogn::CMap3::Vertex( cgogn::phi1( map, d ) ) );
-
-        return ( 1.0 - coord ) * pos1 + coord * pos2;
-    };
-
-    cgogn::CMap3::Edge curr_edge = e;
-    double curr_point = start_point;
-
-    SimplicialComplex traced_line;
-    SimplicialComplex debug_tris;
-    std::vector<double> debug_field_values;
-    size_t n = 0;
-
-    traced_line.points.push_back( expand_barycentric( curr_edge, curr_point ) );
-    while( not is_target( curr_edge ) )
-    {
-        const cgogn::CMap3::Face curr_face( curr_edge.dart_ );
-        face_callback( curr_face );
-        if( debug_output )
-            tracingDebugOutput( map, curr_face, curr_point, field, traced_line, debug_tris, debug_field_values, n++ );
-        std::optional<std::pair<cgogn::CMap3::Edge, double>> next_point =
-            traceGradientOnTri( map, curr_face, curr_point, field );
-
-        if( not next_point.has_value() )
-        {
-            next_point = traceGradientOnTriPair( map, curr_face, curr_point, field );
-            if( not next_point.has_value() )
-            {
-                throw std::runtime_error( "No intersection on boundary tracing" );
-                break;
-            }
-        }
-        curr_edge = next_point.value().first;
-        curr_point = next_point.value().second;
-        traced_line.points.push_back( expand_barycentric( curr_edge, curr_point ) );
-        traced_line.simplices.push_back( { traced_line.points.size() - 2, traced_line.points.size() - 1 } );
-    }
-
-    return traced_line;
-}
-
-////////////////////////////////////////
-/// TETMESHCOMBINATORIALMAP
 
 void tracingDebugOutput( const topology::CombinatorialMap& map,
                          const std::function<const Eigen::Vector3d&( const topology::Vertex& )>& positions,

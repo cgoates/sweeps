@@ -3,14 +3,14 @@
 #include <SimplexUtilities.hpp>
 #include <Laplace.hpp>
 #include <Logging.hpp>
+#include <TetMeshCombinatorialMap.hpp>
 
 TEST_CASE( "Laplace patch test", "[single-file]" )
 {
     SweepInput sweep_input = SweepInputTestCases::twelveTetCube();
     sweep_input.mesh.points.back() = Eigen::Vector3d( 0.37, 0.49, 0.55 );
 
-    cgogn::CMap3 map;
-    mapFromInput( sweep_input.mesh, map );
+    topology::TetMeshCombinatorialMap map( sweep_input.mesh );
     const std::vector<Normal> normals = faceNormals( map );
     const Eigen::VectorXd sol = solveLaplaceSparse( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
 

@@ -4,11 +4,6 @@
 #include <SweepInput.hpp>
 #include <map>
 
-namespace cgogn
-{
-    struct CMap3;
-}
-
 namespace io
 {
     class VTKOutputObject
@@ -28,10 +23,6 @@ namespace io
         std::map<std::string, Eigen::MatrixXd> mVertexFields;
         std::map<std::string, Eigen::MatrixXd> mCellFields;
     };
-
-    void outputSimplicialFieldToVTK( const cgogn::CMap3& map,
-                                     const Eigen::MatrixXd& data,
-                                     const std::string& filename );
 
     void outputSimplicialFieldToVTK( const VTKOutputObject& output, const std::string& filename );
 } // namespace io
