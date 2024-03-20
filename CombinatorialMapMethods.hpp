@@ -41,6 +41,12 @@ namespace topology
                                const uint cell_dim,
                                const std::function<bool( const Cell& )>& callback );
 
+    bool iterateAdjacentCellsOfRestrictedCell( const CombinatorialMap& map,
+                                               const Cell& c,
+                                               const int restrict_dim,
+                                               const uint cell_dim,
+                                               const std::function<bool( const Cell& )>& callback );
+
     bool iterateCellsWhile( const CombinatorialMap& map,
                             const uint cell_dim,
                             const std::function<bool( const Cell& )>& callback );

@@ -168,6 +168,25 @@ namespace topology
         } );
     }
 
+    bool iterateAdjacentCellsOfRestrictedCell( const CombinatorialMap& map,
+                                               const Cell& c,
+                                               const int restrict_dim,
+                                               const uint cell_dim,
+                                               const std::function<bool( const Cell& )>& callback )
+    {
+        // FIXME: This fails for edges of a vertex in 2d
+        LocalCellMarker m( cell_dim );
+        return iterateDartsOfRestrictedCell( map, c, restrict_dim, [&]( const Dart& d ){
+            const Cell c_adj( d, cell_dim );
+            if( not m.isMarked( c_adj ) )
+            {
+                m.mark( map, c_adj );
+                if( not callback( c_adj ) ) return false;
+            }
+            return true;
+        } );
+    }
+
     bool iterateCellsWhile( const CombinatorialMap& map,
                             const uint cell_dim,
                             const std::function<bool( const Cell& )>& callback )
