@@ -8,7 +8,7 @@ class SmallVector
 {
     public:
     SmallVector( std::span<const T> s ) :
-        mSize( s.size() )
+        mSize( 0 )
     {
         for( size_t i = 0; i < s.size(); i++ ) push_back( s[ i ] );
     }
