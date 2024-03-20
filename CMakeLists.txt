@@ -7,10 +7,10 @@ add_compile_definitions("SRC_HOME=\"${CMAKE_SOURCE_DIR}\"")
 set(Catch2_DIR ${CMAKE_SOURCE_DIR}/../thirdparty/Catch2/install/lib/cmake/Catch2)
 
 
-project(attempt)
-add_executable( attempt main.cpp )
+project(sweep)
+add_executable( sweep main.cpp )
 
-add_library( attemptlib
+add_library( sweeplib
   Simplex.cpp
   VTKOutput.cpp
   AbaqusInput.cpp
@@ -31,11 +31,11 @@ include_directories( ${CMAKE_SOURCE_DIR}/../thirdparty/eigen )
 
 find_package(Eigen3 REQUIRED)
 
-target_link_libraries( attemptlib PUBLIC Eigen3::Eigen )
+target_link_libraries( sweeplib PUBLIC Eigen3::Eigen )
 
-target_link_libraries( attempt PUBLIC attemptlib Eigen3::Eigen )
-target_include_directories( attemptlib PUBLIC ${CMAKE_SOURCE_DIR} )
-target_include_directories( attempt PUBLIC ${CMAKE_SOURCE_DIR} )
+target_link_libraries( sweep PUBLIC sweeplib Eigen3::Eigen )
+target_include_directories( sweeplib PUBLIC ${CMAKE_SOURCE_DIR} )
+target_include_directories( sweep PUBLIC ${CMAKE_SOURCE_DIR} )
 
 find_package(Catch2 REQUIRED)
 

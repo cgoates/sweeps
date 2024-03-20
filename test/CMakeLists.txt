@@ -1,6 +1,6 @@
 function(add_my_test arg)
     add_executable(${arg} ${arg}.cpp)
-    target_link_libraries(${arg} PRIVATE Catch2::Catch2WithMain attemptlib)
+    target_link_libraries(${arg} PRIVATE Catch2::Catch2WithMain sweeplib)
     catch_discover_tests(${arg})
 endfunction()
 
