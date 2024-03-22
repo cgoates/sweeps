@@ -173,8 +173,10 @@ int main( int argc, char* argv[] )
         const topology::CombinatorialMapRestriction sides( bdry, keep_face_sides );
         const topology::CombinatorialMapRestriction base( bdry, keep_face_base );
 
-        const auto bdry_vertex_positions = [&]( const topology::Vertex& v ) -> const Eigen::Vector3d& {
-            return sweep_input.mesh.points.at( bdry.vertexId( v ).id() );
+        const auto vertex_positions = [&sweep_input]( const topology::CombinatorialMap& map ){
+            return [&sweep_input, &map]( const topology::Vertex& v ) -> const Eigen::Vector3d& {
+                return sweep_input.mesh.points.at( map.vertexId( v ).id() );
+            };
         };
 
         if( std::find( input_args.begin(), input_args.end(), "output-laplace" ) != input_args.end() )
@@ -215,7 +217,7 @@ int main( int argc, char* argv[] )
                 bdry, sweep_input.zero_bcs, [&]( const topology::Edge& start_edge, const size_t ) {
                     t.start( 9 );
                     const SimplicialComplex field_line =
-                        traceBoundaryField( sides, start_edge, 0.5, ans, bdry_vertex_positions, false );
+                        traceBoundaryField( sides, start_edge, 0.5, ans, vertex_positions( bdry ), false );
                     append( boundary_lines, field_line );
                     t.stop( 9 );
                     return true;
@@ -269,7 +271,7 @@ int main( int argc, char* argv[] )
                     const double b = edges_aligned ? coord.point( 1 ) : coord.point( 0 );
 
                     const SimplicialComplex field_line = traceBoundaryField(
-                        sides, trace_cell.value(), b, ans, bdry_vertex_positions, false, [&]( const topology::Face& f ) {
+                        sides, trace_cell.value(), b, ans, vertex_positions( bdry ), false, [&]( const topology::Face& f ) {
                             crossed_faces.mark( sides, f );
                         } );
                     //std::raise(SIGINT);
@@ -349,13 +351,12 @@ int main( int argc, char* argv[] )
 
                     if( not trace_cell.has_value() ) throw std::runtime_error( "No cell for barycentric coordinate!" );
 
-                    const topology::Dart start_cell_dart = trace_cell.value().dim() == 0
-                                                               ? phi( bdry, 1, trace_cell.value().dart() ).value()
-                                                               : trace_cell.value().dart();
-
                     const SimplicialComplex field_line = [&]() {
                         if( boundary_of_base )
                         {
+                            const topology::Dart start_cell_dart =
+                                trace_cell.value().dim() == 0 ? phi( bdry, 1, trace_cell.value().dart() ).value()
+                                                              : trace_cell.value().dart();
                             const topology::Edge start_edge( start_cell_dart );
 
                             const double b = [&](){
@@ -367,14 +368,14 @@ int main( int argc, char* argv[] )
 
                             std::cout << "ON BOUNDARY " << i << "\n";
 
-                            return traceBoundaryField( sides, start_edge, b, ans, bdry_vertex_positions, false );
+                            return traceBoundaryField( sides, start_edge, b, ans, vertex_positions( bdry ), false );
                         }
                         else
                         {
                             const Eigen::Vector3d pt =
-                                expandBarycentric( base,
-                                                   bdry_vertex_positions,
-                                                   topology::Cell( start_cell_dart, trace_cell.value().dim() ),
+                                expandBarycentric( map,
+                                                   vertex_positions( map ),
+                                                   trace_cell.value(),
                                                    coord );
                             return traceField( map, trace_cell.value(), pt, grad, normals, true );
                         }
