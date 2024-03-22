@@ -10,6 +10,7 @@ namespace topology
     class Face;
     class Edge;
     class Vertex;
+    class Cell;
 }
 
 template <unsigned int DIM> struct Triangle;
@@ -34,7 +35,7 @@ std::optional<TracePoint> traceRayOnTet( const topology::TetMeshCombinatorialMap
                                          const std::vector<Normal>& normals );
 
 SimplicialComplex traceField( const topology::TetMeshCombinatorialMap& map,
-                              const topology::Face& f,
+                              const topology::Cell& start_cell,
                               const Eigen::Vector3d& start_point,
                               const Eigen::MatrixX3d& field,
                               const std::vector<Normal>& normals,

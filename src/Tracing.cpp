@@ -116,42 +116,112 @@ void tracingDebugOutput( const topology::TetMeshCombinatorialMap& map,
     io::outputSimplicialFieldToVTK( tets_output, "tets_" + n_str + ".vtu" );
 }
 
-std::optional<TracePoint> traceFaceAverageField( const topology::TetMeshCombinatorialMap& map,
-                                                  const topology::Face& f,
-                                                  const Eigen::Vector3d& start_point,
-                                                  const Eigen::MatrixX3d& field,
-                                                  const std::vector<Normal>& normals )
+static constexpr bool LOG_TRACING_CELL = false;
+std::optional<topology::Cell> tracingStartCell( const topology::CombinatorialMap& map,
+                                                const topology::Cell& lower_dim_cell,
+                                                const std::function<Eigen::Vector3d( const topology::Cell& )>& normal,
+                                                const std::function<Eigen::Vector3d( const topology::Cell& )>& grad )
 {
-    LOG( LOG_TRACING ) << "| | | Tracing on face average field\n";
-    return phi( map, 3, f.dart() ).and_then( [&]( const topology::Dart& d ) {
-        LOG( LOG_TRACING ) << "| | | | Has phi3\n";
-        const topology::Face f_opp( d );
-        const topology::Volume vol( f.dart() );
-        const topology::Volume vol_opp( d );
-        const auto average_field = 0.5 * ( field.row( map.elementId( vol ) ) + field.row( map.elementId( vol_opp ) ) );
-        const double field_dir = normals.at( map.faceId( f ) ).get( f.dart() ).dot( average_field );
-        if( field_dir > 0 )
-            return traceRayOnTet( map, vol, { start_point, average_field }, normals );
-        else
-            return traceRayOnTet( map, vol_opp, { start_point, average_field }, normals );
+    LOG( LOG_TRACING_CELL ) << "Searching for tracing cell...\n";
+    const size_t dim = map.dim();
+
+    LOG( LOG_TRACING_CELL ) << "Cell dim: " << lower_dim_cell.dim() << std::endl;
+    std::optional<topology::Cell> out;
+    iterateAdjacentCells( map, lower_dim_cell, dim, [&]( const topology::Cell& elem ) {
+        const Eigen::Vector3d this_grad = grad( elem );
+        LOG( LOG_TRACING_CELL ) << "Grad: " << this_grad.transpose() << std::endl;
+        const bool found_cell =
+            iterateAdjacentCellsOfRestrictedCell( map,
+                                                  topology::Cell( elem.dart(), lower_dim_cell.dim() ),
+                                                  elem.dim(),
+                                                  dim - 1,
+                                                  [&]( const topology::Cell& interface ) {
+                                                      const Eigen::Vector3d this_normal = normal( interface );
+                                                      LOG( LOG_TRACING_CELL ) << "Normal: " << this_normal.transpose() << std::endl;
+                                                      LOG( LOG_TRACING_CELL ) << "Dot product: " << this_normal.dot( this_grad ) << std::endl;
+                                                      if( this_normal.dot( this_grad ) < 0 ) return false;
+                                                      return true;
+                                                  } );
+        if( found_cell )
+        {
+            out.emplace( topology::Cell( elem.dart(), dim - 1 ) );
+            return false;
+        }
+        return true;
     } );
+    return out;
+}
+
+std::optional<TracePoint> traceCellAverageField( const topology::TetMeshCombinatorialMap& map,
+                                                 const topology::Cell& c,
+                                                 const Eigen::Vector3d& start_point,
+                                                 const Eigen::MatrixX3d& field,
+                                                 const std::vector<Normal>& normals )
+{
+    LOG( LOG_TRACING ) << "| | | Tracing on cell average field\n";
+    Eigen::Vector3d ave_field = Eigen::Vector3d::Zero();
+    iterateAdjacentCells( map, c, 3, [&]( const topology::Volume& v ) {
+        ave_field += field.row( map.elementId( v ) ).transpose();
+        return true;
+    } );
+
+    return tracingStartCell(
+               map,
+               c,
+               [&]( const topology::Face& f ) { return normals.at( map.faceId( f ) ).get( f.dart() ); },
+               [&]( const topology::Volume& ) { return ave_field; } )
+        .and_then( [&]( const topology::Face& start_f ) {
+            return traceRayOnTet( map, topology::Volume( start_f.dart() ), Ray<3>{ start_point, ave_field }, normals );
+        } );
 }
 
 SimplicialComplex traceField( const topology::TetMeshCombinatorialMap& map,
-                              const topology::Face& f,
+                              const topology::Cell& start_cell,
                               const Eigen::Vector3d& start_point,
                               const Eigen::MatrixX3d& field,
                               const std::vector<Normal>& normals,
                               const bool debug_output )
 {
-    topology::Face curr_face = f;
+    topology::Face curr_face;
     Eigen::Vector3d curr_point = start_point;
 
     SimplicialComplex complex;
     SimplicialComplex debug_tets;
-    size_t n = 0;
-
     complex.points.push_back( curr_point );
+
+    // Figure out the start face. If there is a face adjacent to this cell that works, use that.
+    if( start_cell.dim() == 2 )
+    {
+        curr_face = start_cell;
+    }
+    else
+    {
+        const std::optional<topology::Face> start_face = tracingStartCell(
+            map,
+            start_cell,
+            [&]( const topology::Face& f ) { return normals.at( map.faceId( f ) ).get( f.dart() ); },
+            [&]( const topology::Volume& v ) { return field.row( map.elementId( v ) ).transpose(); } );
+
+        if( start_face.has_value() )
+        {
+            curr_face = start_face.value();
+        }
+        else
+        {
+            // If there was not a face adjacent to start_cell that works, trace the cell-average field once.
+            std::optional<TracePoint> second_point = traceCellAverageField( map, start_cell, curr_point, field, normals );
+            if( not second_point.has_value() )
+            {
+                throw( std::runtime_error( "Untraceable field at start" ) );
+            }
+            curr_face = second_point.value().first;
+            curr_point = second_point.value().second;
+            complex.points.push_back( curr_point );
+            complex.simplices.push_back( { complex.points.size() - 2, complex.points.size() - 1 } );
+        }
+    }
+
+    size_t n = 0;
     LOG( LOG_TRACING ) << "Starting a trace\n";
     do
     {
@@ -161,7 +231,7 @@ SimplicialComplex traceField( const topology::TetMeshCombinatorialMap& map,
         std::optional<TracePoint> next_point = traceRayOnTet( map, curr_vol, search_ray, normals );
         if( not next_point.has_value() )
         {
-            next_point = traceFaceAverageField( map, topology::Face( curr_vol.dart() ), curr_point, field, normals );
+            next_point = traceCellAverageField( map, topology::Face( curr_vol.dart() ), curr_point, field, normals );
             if( not next_point.has_value() )
             {
                 throw( std::runtime_error( "Untraceable field" ) );

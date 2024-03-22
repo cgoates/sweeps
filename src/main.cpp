@@ -11,47 +11,6 @@
 #include <Tracing.hpp>
 #include <queue>
 
-constexpr bool LOG_TRACING_CELL = false;
-topology::Cell tracingCell( const topology::CombinatorialMap& map,
-                            const topology::Cell& lower_dim_cell,
-                            const std::function<Eigen::Vector3d( const topology::Cell& )>& normal,
-                            const std::function<Eigen::Vector3d( const topology::Cell& )>& grad )
-{
-    std::cout << "Searching for tracing cell...\n";
-    const size_t dim = map.dim();
-    if( lower_dim_cell.dim() == dim - 1 )
-    {
-        LOG( LOG_TRACING_CELL ) << "Same as input cell\n";
-        return lower_dim_cell;
-    }
-    LOG( LOG_TRACING_CELL ) << "Cell dim: " << lower_dim_cell.dim() << std::endl;
-    std::optional<topology::Cell> out;
-    iterateAdjacentCells( map, lower_dim_cell, dim, [&]( const topology::Cell& elem ) {
-        const Eigen::Vector3d this_grad = grad( elem );
-        LOG( LOG_TRACING_CELL ) << "Grad: " << this_grad.transpose() << std::endl;
-        const bool found_cell =
-            iterateAdjacentCellsOfRestrictedCell( map,
-                                                  topology::Cell( elem.dart(), lower_dim_cell.dim() ),
-                                                  elem.dim(),
-                                                  dim - 1,
-                                                  [&]( const topology::Cell& interface ) {
-                                                      const Eigen::Vector3d this_normal = normal( interface );
-                                                      LOG( LOG_TRACING_CELL ) << "Normal: " << this_normal.transpose() << std::endl;
-                                                      LOG( LOG_TRACING_CELL ) << "Dot product: " << this_normal.dot( this_grad ) << std::endl;
-                                                      if( this_normal.dot( this_grad ) < 0 ) return false;
-                                                      return true;
-                                                  } );
-        if( found_cell )
-        {
-            out.emplace( topology::Cell( elem.dart(), dim - 1 ) );
-            return false;
-        }
-        return true;
-    } );
-    if( not out.has_value() ) throw std::runtime_error( "No viable tracing candidate" );
-    return out.value();
-}
-
 void foreachFaceWithVertsInSet( const topology::TetMeshCombinatorialMap& map,
                                 const std::vector<bool>& set,
                                 const std::function<bool( const topology::Face&, const size_t n )>& callback )
@@ -367,10 +326,6 @@ int main( int argc, char* argv[] )
                 size_t coord_ii = 0;
                 for( const auto& coord : coords )
                 {
-
-                    if( i == 17 and coord_ii == 3 ) continue;
-                    if( i == 20 and coord_ii == 1 ) continue;
-                    if( i == 23 and coord_ii == 4 ) continue;
                     bool boundary_of_base = false;
                     std::optional<topology::Cell> trace_cell;
                     iterateDartsOfCell( map, cellOfSimplex( map, coord.simplex ), [&]( const topology::Dart& d ) {
@@ -416,19 +371,12 @@ int main( int argc, char* argv[] )
                         }
                         else
                         {
-                            const topology::Face start_face = tracingCell(
-                                map,
-                                trace_cell.value(),
-                                [&]( const topology::Face& f ) {
-                                    return normals.at( map.faceId( f ) ).get( f.dart() );
-                                },
-                                [&]( const topology::Volume& v ) { return grad.row( map.elementId( v ) ).transpose(); } );
                             const Eigen::Vector3d pt =
                                 expandBarycentric( base,
                                                    bdry_vertex_positions,
                                                    topology::Cell( start_cell_dart, trace_cell.value().dim() ),
                                                    coord );
-                            return traceField( map, start_face, pt, grad, normals, true );
+                            return traceField( map, trace_cell.value(), pt, grad, normals, true );
                         }
                     }();
 
