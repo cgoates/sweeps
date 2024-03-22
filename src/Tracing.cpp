@@ -24,7 +24,8 @@ std::optional<Eigen::Vector3d> intersectionOf( const Ray<3>& ray,
     const Eigen::Vector3d normal = maybe_normal.value_or( triangleNormal( tri ) );
     const double ray_scaling = normal.dot( tri.v1 - ray.start_pos ) / normal.dot( ray.dir );
     LOG( LOG_TRACING ) << "| | Ray scaling: " << ray_scaling << std::endl;
-    if( ray_scaling < 0 ) return std::nullopt;
+    // TODO: Is there a better approach here? If it is within that tolerance it should be an edge I guess?
+    if( ray_scaling < 1e-13 ) return std::nullopt;
     const Eigen::Vector3d intersection_point = ray.start_pos + ray_scaling * ray.dir;
 
     const bool inside = normal.dot( ( tri.v2 - tri.v1 ).cross( intersection_point - tri.v1 ) ) >= 0 and
