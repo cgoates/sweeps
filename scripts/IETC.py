@@ -51,7 +51,7 @@ SetActiveView(renderView1)
 
 hex_layout_skeletons = []
 
-for i in range(1,41):
+for i in range(0,40):
     hex_layout_skeletons.append( XMLUnstructuredGridReader(registrationName=f"is{i}", FileName=[f"/Users/caleb/sweeps/build/hex_layout_skeleton{i}.vtu"]) )
     # Show( hex_layout_skeletons[-1], renderView1, 'UnstructuredGridRepresentation')
 
@@ -79,23 +79,23 @@ def build_solid( surf_id_1 : int, surf_id_2 : int, surf_id_3 : int, surf_id_4 : 
 
 vol_ii = build_solid( 13, 14, 41, 22, '1.5*jHat', vol_ii )
 
-vol_ii = build_solid( 21, 22, 53, 40, '1.5*(0.5*(coordsX*iHat+coordsZ*kHat)/(sqrt(coordsX^2+coordsZ^2))+sqrt(3)/2*jHat)', vol_ii )
-vol_ii = build_solid( 32, 40, 44, 31, '1.5*(sqrt(3)/2*(coordsX*iHat+coordsZ*kHat)/(sqrt(coordsX^2+coordsZ^2))+0.5*jHat)', vol_ii )
+vol_ii = build_solid( 21, 22, 42, 40, '1.5*(0.5*(coordsX*iHat+coordsZ*kHat)/(sqrt(coordsX^2+coordsZ^2))+sqrt(3)/2*jHat)', vol_ii )
+vol_ii = build_solid( 32, 40, 43, 31, '1.5*(sqrt(3)/2*(coordsX*iHat+coordsZ*kHat)/(sqrt(coordsX^2+coordsZ^2))+0.5*jHat)', vol_ii )
 
-vol_ii = build_solid( 30, 31, 46, 29, '1.5*(coordsX*iHat+coordsZ*kHat)/(sqrt(coordsX^2+coordsZ^2))', vol_ii )
+vol_ii = build_solid( 30, 31, 44, 29, '1.5*(coordsX*iHat+coordsZ*kHat)/(sqrt(coordsX^2+coordsZ^2))', vol_ii )
 
 vol_ii = build_solid( 28, 29, 48, 33, '1.5*(sqrt(3)/2*(coordsX*iHat+coordsZ*kHat)/(sqrt(coordsX^2+coordsZ^2))-0.5*jHat)', vol_ii )
 vol_ii = build_solid( 35, 34, 33, 49, '1.5*(0.5*(coordsX*iHat+coordsZ*kHat)/(sqrt(coordsX^2+coordsZ^2))-sqrt(3)/2*jHat)', vol_ii )
 
-vol_ii = build_solid( 35, 36, 37, 43, '-1.5*jHat', vol_ii )
+vol_ii = build_solid( 35, 36, 37, 50, '-1.5*jHat', vol_ii )
 
-vol_ii = build_solid( 55, 39, 38, 37, '1.5*(-0.5*(coordsX*iHat+coordsZ*kHat)/(sqrt(coordsX^2+coordsZ^2))-sqrt(3)/2*jHat)', vol_ii )
-vol_ii = build_solid( 8, 9, 39, 56, '1.5*(-sqrt(3)/2*(coordsX*iHat+coordsZ*kHat)/(sqrt(coordsX^2+coordsZ^2))-0.5*jHat)', vol_ii )
+vol_ii = build_solid( 56, 39, 38, 37, '1.5*(-0.5*(coordsX*iHat+coordsZ*kHat)/(sqrt(coordsX^2+coordsZ^2))-sqrt(3)/2*jHat)', vol_ii )
+vol_ii = build_solid( 8, 9, 39, 54, '1.5*(-sqrt(3)/2*(coordsX*iHat+coordsZ*kHat)/(sqrt(coordsX^2+coordsZ^2))-0.5*jHat)', vol_ii )
 
-vol_ii = build_solid( 9, 17, 18, 50, '-1.5*(coordsX*iHat+coordsZ*kHat)/(sqrt(coordsX^2+coordsZ^2))', vol_ii )
+vol_ii = build_solid( 9, 17, 18, 47, '-1.5*(coordsX*iHat+coordsZ*kHat)/(sqrt(coordsX^2+coordsZ^2))', vol_ii )
 
-vol_ii = build_solid( 18, 54, 2, 1, '1.5*(-sqrt(3)/2*(coordsX*iHat+coordsZ*kHat)/(sqrt(coordsX^2+coordsZ^2))+0.5*jHat)', vol_ii )
-vol_ii = build_solid( 2, 51, 14, 3, '1.5*(-0.5*(coordsX*iHat+coordsZ*kHat)/(sqrt(coordsX^2+coordsZ^2))+sqrt(3)/2*jHat)', vol_ii )
+vol_ii = build_solid( 18, 46, 2, 1, '1.5*(-sqrt(3)/2*(coordsX*iHat+coordsZ*kHat)/(sqrt(coordsX^2+coordsZ^2))+0.5*jHat)', vol_ii )
+vol_ii = build_solid( 2, 45, 14, 3, '1.5*(-0.5*(coordsX*iHat+coordsZ*kHat)/(sqrt(coordsX^2+coordsZ^2))+sqrt(3)/2*jHat)', vol_ii )
 
 vol_ii = build_solid( 12, 13, 15, 20, 'jHat', vol_ii )
 vol_ii = build_solid( 32, 21, 20, 24, '1/sqrt(2)*((coordsX*iHat+coordsZ*kHat)/(sqrt(coordsX^2+coordsZ^2))+jHat)', vol_ii )
@@ -106,9 +106,9 @@ vol_ii = build_solid( 5, 38, 8, 7, '1/sqrt(2)*(-(coordsX*iHat+coordsZ*kHat)/(sqr
 vol_ii = build_solid( 7, 4, 16, 17, '-(coordsX*iHat+coordsZ*kHat)/(sqrt(coordsX^2+coordsZ^2))', vol_ii )
 vol_ii = build_solid( 1, 3, 12, 16, '1/sqrt(2)*(-(coordsX*iHat+coordsZ*kHat)/(sqrt(coordsX^2+coordsZ^2))+jHat)', vol_ii )
 
-vol_ii = build_solid( 11, 15, 23, 47, '0.5*jHat', vol_ii )
-vol_ii = build_solid( 23, 19, 27, 42, '0.5*(coordsX*iHat+coordsZ*kHat)/(sqrt(coordsX^2+coordsZ^2))', vol_ii )
-vol_ii = build_solid( 6, 10, 27, 45, '-0.5*jHat', vol_ii )
+vol_ii = build_solid( 11, 15, 23, 51, '0.5*jHat', vol_ii )
+vol_ii = build_solid( 23, 19, 27, 53, '0.5*(coordsX*iHat+coordsZ*kHat)/(sqrt(coordsX^2+coordsZ^2))', vol_ii )
+vol_ii = build_solid( 6, 10, 27, 55, '-0.5*jHat', vol_ii )
 vol_ii = build_solid( 6, 4, 11, 52, '-0.5*(coordsX*iHat+coordsZ*kHat)/(sqrt(coordsX^2+coordsZ^2))', vol_ii )
 
 ad = GroupDatasets( registrationName="Hex Layout", Input=solid_hexes)
