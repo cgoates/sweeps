@@ -125,6 +125,24 @@ Eigen::Matrix3Xd gradients( const topology::TetMeshCombinatorialMap& map,
     return result;
 }
 
+Eigen::Matrix3Xd gradientsWithBoundaryCorrection( const topology::TetMeshCombinatorialMap& map,
+                                                  const topology::CombinatorialMap& sides,
+                                                  const Eigen::VectorXd& field_values,
+                                                  const std::vector<Normal>& normals )
+{
+    Eigen::Matrix3Xd result = gradients( map, field_values, normals );
+    iterateCellsWhile( sides, 2, [&]( const topology::Face& f ) {
+        const size_t col = map.elementId( topology::Volume( f.dart() ) );
+        const size_t fid = map.faceId( f );
+        const Eigen::Vector3d outward_normal = normals.at( fid ).reversed( f.dart() );
+        const auto normal_portion = result.col( col ).dot( outward_normal );
+        result.col( col ) -= normal_portion * outward_normal;
+        return true;
+    } );
+
+    return result;
+}
+
 Eigen::Vector3d gradient( const Triangle<3>& tri3d, const Eigen::Ref<const Eigen::Vector3d> field_values )
 {
     const Eigen::Vector3d e1 = ( tri3d.v2 - tri3d.v1 ).normalized();

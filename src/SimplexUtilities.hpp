@@ -82,6 +82,11 @@ Eigen::Matrix3Xd gradients( const topology::TetMeshCombinatorialMap& map,
                             const Eigen::VectorXd& field_values,
                             const std::vector<Normal>& normals );
 
+Eigen::Matrix3Xd gradientsWithBoundaryCorrection( const topology::TetMeshCombinatorialMap& map,
+                                                  const topology::CombinatorialMap& sides,
+                                                  const Eigen::VectorXd& field_values,
+                                                  const std::vector<Normal>& normals );
+
 Eigen::Vector3d gradient( const Triangle<3>& tri3d, const Eigen::Ref<const Eigen::Vector3d> field_values );
 
 using VertexPositionsFunc = std::function<const Eigen::Vector3d&( const topology::Vertex& )>;

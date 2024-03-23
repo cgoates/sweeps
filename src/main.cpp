@@ -146,9 +146,6 @@ int main( int argc, char* argv[] )
             solveLaplaceSparse( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
         std::cout << "Laplace time 2: " << t.stop( 4 ) << std::endl;
 
-        const Eigen::Matrix3Xd grad = gradients( map, ans, normals );
-
-
         const topology::CombinatorialMapBoundary bdry( map );
 
         const auto keep_face_sides = [&]( const topology::Face& f ) {
@@ -172,6 +169,8 @@ int main( int argc, char* argv[] )
 
         const topology::CombinatorialMapRestriction sides( bdry, keep_face_sides );
         const topology::CombinatorialMapRestriction base( bdry, keep_face_base );
+
+        const Eigen::Matrix3Xd grad = gradientsWithBoundaryCorrection( map, sides, ans, normals );
 
         const auto vertex_positions = [&sweep_input]( const topology::CombinatorialMap& map ){
             return [&sweep_input, &map]( const topology::Vertex& v ) -> const Eigen::Vector3d& {
@@ -381,23 +380,20 @@ int main( int argc, char* argv[] )
                         }
                     }();
 
-                    if( i != 1 or coord_ii != 2 )
+                    if( lines.size() > 0 )
                     {
-                        if( lines.size() > 0 )
-                        {
-                            if( field_line.points.size() > lines.back().size() )
-                                accumulateTrianglesFromParallelLines( sep_tris, lines.back(), field_line.points );
-                            else
-                                accumulateTrianglesFromParallelLines( sep_tris, field_line.points, lines.back() );
-                        }
-
-                        if( boundary_of_base )
-                        {
-                            std::cout << "num_points: " << sep_tris.points.size() << " last point: " << field_line.points.back() << std::endl;
-                            std::cout << "last tri: " << sep_tris.simplices.back() << std::endl;
-                        }
-                        lines.push_back( field_line.points );
+                        if( field_line.points.size() > lines.back().size() )
+                            accumulateTrianglesFromParallelLines( sep_tris, lines.back(), field_line.points );
+                        else
+                            accumulateTrianglesFromParallelLines( sep_tris, field_line.points, lines.back() );
                     }
+
+                    if( boundary_of_base )
+                    {
+                        std::cout << "num_points: " << sep_tris.points.size() << " last point: " << field_line.points.back() << std::endl;
+                        std::cout << "last tri: " << sep_tris.simplices.back() << std::endl;
+                    }
+                    lines.push_back( field_line.points );
 
                     coord_ii++;
                 }
