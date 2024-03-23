@@ -37,7 +37,7 @@ std::optional<TracePoint> traceRayOnTet( const topology::TetMeshCombinatorialMap
 SimplicialComplex traceField( const topology::TetMeshCombinatorialMap& map,
                               const topology::Cell& start_cell,
                               const Eigen::Vector3d& start_point,
-                              const Eigen::MatrixX3d& field,
+                              const Eigen::Matrix3Xd& field,
                               const std::vector<Normal>& normals,
                               const bool debug_output = false );
 

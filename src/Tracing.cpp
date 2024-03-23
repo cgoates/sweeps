@@ -155,13 +155,13 @@ std::optional<topology::Cell> tracingStartCell( const topology::CombinatorialMap
 std::optional<TracePoint> traceCellAverageField( const topology::TetMeshCombinatorialMap& map,
                                                  const topology::Cell& c,
                                                  const Eigen::Vector3d& start_point,
-                                                 const Eigen::MatrixX3d& field,
+                                                 const Eigen::Matrix3Xd& field,
                                                  const std::vector<Normal>& normals )
 {
     LOG( LOG_TRACING ) << "| | | Tracing on cell average field\n";
     Eigen::Vector3d ave_field = Eigen::Vector3d::Zero();
     iterateAdjacentCells( map, c, 3, [&]( const topology::Volume& v ) {
-        ave_field += field.row( map.elementId( v ) ).transpose();
+        ave_field += field.col( map.elementId( v ) );
         return true;
     } );
 
@@ -178,7 +178,7 @@ std::optional<TracePoint> traceCellAverageField( const topology::TetMeshCombinat
 SimplicialComplex traceField( const topology::TetMeshCombinatorialMap& map,
                               const topology::Cell& start_cell,
                               const Eigen::Vector3d& start_point,
-                              const Eigen::MatrixX3d& field,
+                              const Eigen::Matrix3Xd& field,
                               const std::vector<Normal>& normals,
                               const bool debug_output )
 {
@@ -200,7 +200,7 @@ SimplicialComplex traceField( const topology::TetMeshCombinatorialMap& map,
             map,
             start_cell,
             [&]( const topology::Face& f ) { return normals.at( map.faceId( f ) ).get( f.dart() ); },
-            [&]( const topology::Volume& v ) { return field.row( map.elementId( v ) ).transpose(); } );
+            [&]( const topology::Volume& v ) { return field.col( map.elementId( v ) ); } );
 
         if( start_face.has_value() )
         {
@@ -226,7 +226,7 @@ SimplicialComplex traceField( const topology::TetMeshCombinatorialMap& map,
     do
     {
         const topology::Volume curr_vol( curr_face.dart() );
-        const Ray<3> search_ray( { curr_point, field.row( map.elementId( curr_vol ) ) } );
+        const Ray<3> search_ray( { curr_point, field.col( map.elementId( curr_vol ) ) } );
         if( debug_output ) tracingDebugOutput( map, curr_vol, search_ray, complex, debug_tets, n++ );
         std::optional<TracePoint> next_point = traceRayOnTet( map, curr_vol, search_ray, normals );
         if( not next_point.has_value() )

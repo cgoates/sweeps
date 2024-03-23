@@ -112,13 +112,13 @@ Eigen::Vector3d gradient( const topology::TetMeshCombinatorialMap& map,
     return gradient;
 }
 
-Eigen::MatrixX3d gradients( const topology::TetMeshCombinatorialMap& map,
+Eigen::Matrix3Xd gradients( const topology::TetMeshCombinatorialMap& map,
                             const Eigen::VectorXd& field_values,
                             const std::vector<Normal>& normals )
 {
-    Eigen::MatrixX3d result( cellCount( map, 3 ), 3 );
+    Eigen::Matrix3Xd result( 3, cellCount( map, 3 ) );
     iterateCellsWhile( map, 3, [&]( const topology::Volume& v ) {
-        result.row( map.elementId( v ) ) = gradient( map, v, field_values, normals ).transpose();
+        result.col( map.elementId( v ) ) = gradient( map, v, field_values, normals );
         return true;
     } );
 

@@ -146,7 +146,7 @@ int main( int argc, char* argv[] )
             solveLaplaceSparse( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
         std::cout << "Laplace time 2: " << t.stop( 4 ) << std::endl;
 
-        const Eigen::MatrixX3d grad = gradients( map, ans, normals );
+        const Eigen::Matrix3Xd grad = gradients( map, ans, normals );
 
 
         const topology::CombinatorialMapBoundary bdry( map );
@@ -184,7 +184,7 @@ int main( int argc, char* argv[] )
             std::cout << "Outputting Laplace field...\n";
             io::VTKOutputObject output( sweep_input.mesh );
             output.addVertexField( "laplace", ans );
-            output.addCellField( "gradients", grad );
+            output.addCellField( "gradients", grad.transpose() );
             io::outputSimplicialFieldToVTK( output, "test.vtu" );
         }
 

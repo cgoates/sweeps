@@ -78,7 +78,7 @@ Eigen::Vector3d gradient( const topology::TetMeshCombinatorialMap& map,
                           const Eigen::VectorXd& field_values,
                           const std::vector<Normal>& normals );
 
-Eigen::MatrixX3d gradients( const topology::TetMeshCombinatorialMap& map,
+Eigen::Matrix3Xd gradients( const topology::TetMeshCombinatorialMap& map,
                             const Eigen::VectorXd& field_values,
                             const std::vector<Normal>& normals );
 
