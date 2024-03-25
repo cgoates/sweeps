@@ -13,6 +13,144 @@ constexpr bool LOG_TRACING = 0;
 
 ////////////////////////////////////////
 ////////////////////////////////////////
+/// GENERAL UTILITIES
+////////////////////////////////////////
+
+static constexpr bool LOG_TRACING_CELL = false;
+std::optional<topology::Cell> tracingStartCell( const topology::CombinatorialMap& map,
+                                                const topology::Cell& lower_dim_cell,
+                                                const std::function<Eigen::Vector3d( const topology::Cell& )>& normal,
+                                                const std::function<Eigen::Vector3d( const topology::Cell& )>& grad )
+{
+    LOG( LOG_TRACING_CELL ) << "Searching for tracing cell...\n";
+    const size_t dim = map.dim();
+
+    LOG( LOG_TRACING_CELL ) << "Cell dim: " << lower_dim_cell.dim() << std::endl;
+    std::optional<topology::Cell> out;
+    iterateAdjacentCells( map, lower_dim_cell, dim, [&]( const topology::Cell& elem ) {
+        const Eigen::Vector3d this_grad = grad( elem );
+        LOG( LOG_TRACING_CELL ) << "Grad: " << this_grad.transpose() << std::endl;
+        const bool found_cell =
+            iterateAdjacentCellsOfRestrictedCell( map,
+                                                  topology::Cell( elem.dart(), lower_dim_cell.dim() ),
+                                                  elem.dim(),
+                                                  dim - 1,
+                                                  [&]( const topology::Cell& interface ) {
+                                                      const Eigen::Vector3d this_normal = normal( interface );
+                                                      LOG( LOG_TRACING_CELL ) << "Normal: " << this_normal.transpose() << std::endl;
+                                                      LOG( LOG_TRACING_CELL ) << "Dot product: " << this_normal.dot( this_grad ) << std::endl;
+                                                      if( this_normal.dot( this_grad ) < 0 ) return false;
+                                                      return true;
+                                                  } );
+        if( found_cell )
+        {
+            out.emplace( topology::Cell( elem.dart(), dim - 1 ) );
+            return false;
+        }
+        return true;
+    } );
+    return out;
+}
+
+////////////////////////////////////////
+////////////////////////////////////////
+/// DEBUG
+////////////////////////////////////////
+
+void interiorTracingDebugOutput( const topology::TetMeshCombinatorialMap& map,
+                                 const topology::Volume& v,
+                                 const Ray<3>& ray,
+                                 const SimplicialComplex& line,
+                                 SimplicialComplex& tets,
+                                 const size_t n )
+{
+    // Add the triangles of the current tet to tets
+    iterateAdjacentCells( map, v, 2, [&]( const topology::Face& f ) {
+        const Triangle<3> from_face = triangleOfFace( map, f );
+        const size_t next_vid = tets.points.size();
+        tets.simplices.push_back( { next_vid + 0, next_vid + 1, next_vid + 2 } );
+        tets.points.push_back( from_face.v1 );
+        tets.points.push_back( from_face.v2 );
+        tets.points.push_back( from_face.v3 );
+        return true;
+    } );
+
+    // Create a simplicial complex with just one face: the triangle it's coming from
+    const Triangle<3> from_face = triangleOfFace( map, topology::Face( v.dart() ) );
+    const SimplicialComplex from_face_complex( { { { 0, 1, 2 } }, { from_face.v1, from_face.v2, from_face.v3 } } );
+    const io::VTKOutputObject from_face_output( from_face_complex );
+
+    // Create a simplicial complex for the ray
+    const SimplicialComplex ray_complex( { { { 0 } }, { ray.start_pos } } );
+    io::VTKOutputObject ray_output( ray_complex );
+    ray_output.addVertexField( "ray", ray.dir.transpose() );
+
+    const io::VTKOutputObject line_output( line );
+    const io::VTKOutputObject tets_output( tets );
+
+    std::stringstream ss;
+    ss << std::setw( 3 ) << std::setfill( '0' ) << n;
+    std::string n_str( ss.str() );
+
+    io::outputSimplicialFieldToVTK( from_face_output, "from_face_" + n_str + ".vtu" );
+    io::outputSimplicialFieldToVTK( ray_output, "ray_" + n_str + ".vtu" );
+    io::outputSimplicialFieldToVTK( line_output, "line_" + n_str + ".vtu" );
+    io::outputSimplicialFieldToVTK( tets_output, "tets_" + n_str + ".vtu" );
+}
+
+void boundaryTracingDebugOutput( const topology::CombinatorialMap& map,
+                                 const std::function<const Eigen::Vector3d&( const topology::Vertex& )>& positions,
+                                 const topology::Face& curr_face,
+                                 const double start_pos,
+                                 const Eigen::Ref<const Eigen::VectorXd> field,
+                                 const SimplicialComplex& line,
+                                 SimplicialComplex& tris,
+                                 std::vector<double>& vertex_values,
+                                 const size_t n )
+{
+    const Triangle<3> tri3d = triangleOfFace( map, positions, curr_face );
+
+    const auto& d = curr_face.dart();
+    const auto field_values = field( { map.vertexId( topology::Vertex( d ) ).id(),
+                                       map.vertexId( topology::Vertex( phi( map, 1, d ).value() ) ).id(),
+                                       map.vertexId( topology::Vertex( phi( map, -1, d ).value() ) ).id() } );
+
+    // Add the triangles of the current tet to tets
+    const size_t next_vid = tris.points.size();
+    tris.simplices.push_back( { next_vid + 0, next_vid + 1, next_vid + 2 } );
+    tris.points.push_back( tri3d.v1 );
+    tris.points.push_back( tri3d.v2 );
+    tris.points.push_back( tri3d.v3 );
+    vertex_values.push_back( field_values( 0 ) );
+    vertex_values.push_back( field_values( 1 ) );
+    vertex_values.push_back( field_values( 2 ) );
+
+    // Create a simplicial complex with just one face: the triangle it's coming from
+    const SimplicialComplex from_line_complex( { { { 0, 1 } }, { tri3d.v1, tri3d.v2 } } );
+    const io::VTKOutputObject from_line_output( from_line_complex );
+
+    // Create a simplicial complex for the ray
+    const auto grad = gradient( tri3d, field_values );
+    const Ray<3> ray( { ( 1.0 - start_pos ) * tri3d.v1 + start_pos * tri3d.v2, grad } );
+    const SimplicialComplex ray_complex( { { { 0 } }, { ray.start_pos } } );
+    io::VTKOutputObject ray_output( ray_complex );
+    ray_output.addVertexField( "ray", ray.dir.transpose() );
+
+    const io::VTKOutputObject line_output( line );
+    io::VTKOutputObject tets_output( tris );
+    tets_output.addVertexField( "field", Eigen::Map<Eigen::VectorXd>( vertex_values.data(), vertex_values.size() ) );
+
+    std::stringstream ss;
+    ss << std::setw( 3 ) << std::setfill( '0' ) << n;
+    std::string n_str( ss.str() );
+
+    io::outputSimplicialFieldToVTK( from_line_output, "bdry_from_line_" + n_str + ".vtu" );
+    io::outputSimplicialFieldToVTK( ray_output, "bdry_ray_" + n_str + ".vtu" );
+    io::outputSimplicialFieldToVTK( line_output, "bdry_line_" + n_str + ".vtu" );
+    io::outputSimplicialFieldToVTK( tets_output, "bdry_tris_" + n_str + ".vtu" );
+}
+
+////////////////////////////////////////
 ////////////////////////////////////////
 /// INTERIOR TRACING
 ////////////////////////////////////////
@@ -72,83 +210,6 @@ std::optional<TracePoint> traceRayOnTet( const topology::TetMeshCombinatorialMap
         LOG( LOG_TRACING ) << "| | NO INTERSECTION\n";
         return std::nullopt;
     }
-    return out;
-}
-
-void tracingDebugOutput( const topology::TetMeshCombinatorialMap& map,
-                         const topology::Volume& v,
-                         const Ray<3>& ray,
-                         const SimplicialComplex& line,
-                         SimplicialComplex& tets,
-                         const size_t n )
-{
-    // Add the triangles of the current tet to tets
-    iterateAdjacentCells( map, v, 2, [&]( const topology::Face& f ) {
-        const Triangle<3> from_face = triangleOfFace( map, f );
-        const size_t next_vid = tets.points.size();
-        tets.simplices.push_back( { next_vid + 0, next_vid + 1, next_vid + 2 } );
-        tets.points.push_back( from_face.v1 );
-        tets.points.push_back( from_face.v2 );
-        tets.points.push_back( from_face.v3 );
-        return true;
-    } );
-
-    // Create a simplicial complex with just one face: the triangle it's coming from
-    const Triangle<3> from_face = triangleOfFace( map, topology::Face( v.dart() ) );
-    const SimplicialComplex from_face_complex( { { { 0, 1, 2 } }, { from_face.v1, from_face.v2, from_face.v3 } } );
-    const io::VTKOutputObject from_face_output( from_face_complex );
-
-    // Create a simplicial complex for the ray
-    const SimplicialComplex ray_complex( { { { 0 } }, { ray.start_pos } } );
-    io::VTKOutputObject ray_output( ray_complex );
-    ray_output.addVertexField( "ray", ray.dir.transpose() );
-
-    const io::VTKOutputObject line_output( line );
-    const io::VTKOutputObject tets_output( tets );
-
-    std::stringstream ss;
-    ss << std::setw( 3 ) << std::setfill( '0' ) << n;
-    std::string n_str( ss.str() );
-
-    io::outputSimplicialFieldToVTK( from_face_output, "from_face_" + n_str + ".vtu" );
-    io::outputSimplicialFieldToVTK( ray_output, "ray_" + n_str + ".vtu" );
-    io::outputSimplicialFieldToVTK( line_output, "line_" + n_str + ".vtu" );
-    io::outputSimplicialFieldToVTK( tets_output, "tets_" + n_str + ".vtu" );
-}
-
-static constexpr bool LOG_TRACING_CELL = false;
-std::optional<topology::Cell> tracingStartCell( const topology::CombinatorialMap& map,
-                                                const topology::Cell& lower_dim_cell,
-                                                const std::function<Eigen::Vector3d( const topology::Cell& )>& normal,
-                                                const std::function<Eigen::Vector3d( const topology::Cell& )>& grad )
-{
-    LOG( LOG_TRACING_CELL ) << "Searching for tracing cell...\n";
-    const size_t dim = map.dim();
-
-    LOG( LOG_TRACING_CELL ) << "Cell dim: " << lower_dim_cell.dim() << std::endl;
-    std::optional<topology::Cell> out;
-    iterateAdjacentCells( map, lower_dim_cell, dim, [&]( const topology::Cell& elem ) {
-        const Eigen::Vector3d this_grad = grad( elem );
-        LOG( LOG_TRACING_CELL ) << "Grad: " << this_grad.transpose() << std::endl;
-        const bool found_cell =
-            iterateAdjacentCellsOfRestrictedCell( map,
-                                                  topology::Cell( elem.dart(), lower_dim_cell.dim() ),
-                                                  elem.dim(),
-                                                  dim - 1,
-                                                  [&]( const topology::Cell& interface ) {
-                                                      const Eigen::Vector3d this_normal = normal( interface );
-                                                      LOG( LOG_TRACING_CELL ) << "Normal: " << this_normal.transpose() << std::endl;
-                                                      LOG( LOG_TRACING_CELL ) << "Dot product: " << this_normal.dot( this_grad ) << std::endl;
-                                                      if( this_normal.dot( this_grad ) < 0 ) return false;
-                                                      return true;
-                                                  } );
-        if( found_cell )
-        {
-            out.emplace( topology::Cell( elem.dart(), dim - 1 ) );
-            return false;
-        }
-        return true;
-    } );
     return out;
 }
 
@@ -227,7 +288,7 @@ SimplicialComplex traceField( const topology::TetMeshCombinatorialMap& map,
     {
         const topology::Volume curr_vol( curr_face.dart() );
         const Ray<3> search_ray( { curr_point, field.col( map.elementId( curr_vol ) ) } );
-        if( debug_output ) tracingDebugOutput( map, curr_vol, search_ray, complex, debug_tets, n++ );
+        if( debug_output ) interiorTracingDebugOutput( map, curr_vol, search_ray, complex, debug_tets, n++ );
         std::optional<TracePoint> next_point = traceRayOnTet( map, curr_vol, search_ray, normals );
         if( not next_point.has_value() )
         {
@@ -249,8 +310,8 @@ SimplicialComplex traceField( const topology::TetMeshCombinatorialMap& map,
 
 ////////////////////////////////////////
 ////////////////////////////////////////
-////////////////////////////////////////
 /// BOUNDARY TRACING
+////////////////////////////////////////
 
 std::optional<double> barycentricIntersectionOf( const Ray<2>& ray, const Segment<2>& line )
 {
@@ -400,58 +461,6 @@ std::optional<TriPairTraceResult> traceGradientOnTriPair( const Triangle<3>& tri
     }
 }
 
-void tracingDebugOutput( const topology::CombinatorialMap& map,
-                         const std::function<const Eigen::Vector3d&( const topology::Vertex& )>& positions,
-                         const topology::Face& curr_face,
-                         const double start_pos,
-                         const Eigen::Ref<const Eigen::VectorXd> field,
-                         const SimplicialComplex& line,
-                         SimplicialComplex& tris,
-                         std::vector<double>& vertex_values,
-                         const size_t n )
-{
-    const Triangle<3> tri3d = triangleOfFace( map, positions, curr_face );
-
-    const auto& d = curr_face.dart();
-    const auto field_values = field( { map.vertexId( topology::Vertex( d ) ).id(),
-                                       map.vertexId( topology::Vertex( phi( map, 1, d ).value() ) ).id(),
-                                       map.vertexId( topology::Vertex( phi( map, -1, d ).value() ) ).id() } );
-
-    // Add the triangles of the current tet to tets
-    const size_t next_vid = tris.points.size();
-    tris.simplices.push_back( { next_vid + 0, next_vid + 1, next_vid + 2 } );
-    tris.points.push_back( tri3d.v1 );
-    tris.points.push_back( tri3d.v2 );
-    tris.points.push_back( tri3d.v3 );
-    vertex_values.push_back( field_values( 0 ) );
-    vertex_values.push_back( field_values( 1 ) );
-    vertex_values.push_back( field_values( 2 ) );
-
-    // Create a simplicial complex with just one face: the triangle it's coming from
-    const SimplicialComplex from_line_complex( { { { 0, 1 } }, { tri3d.v1, tri3d.v2 } } );
-    const io::VTKOutputObject from_line_output( from_line_complex );
-
-    // Create a simplicial complex for the ray
-    const auto grad = gradient( tri3d, field_values );
-    const Ray<3> ray( { ( 1.0 - start_pos ) * tri3d.v1 + start_pos * tri3d.v2, grad } );
-    const SimplicialComplex ray_complex( { { { 0 } }, { ray.start_pos } } );
-    io::VTKOutputObject ray_output( ray_complex );
-    ray_output.addVertexField( "ray", ray.dir.transpose() );
-
-    const io::VTKOutputObject line_output( line );
-    io::VTKOutputObject tets_output( tris );
-    tets_output.addVertexField( "field", Eigen::Map<Eigen::VectorXd>( vertex_values.data(), vertex_values.size() ) );
-
-    std::stringstream ss;
-    ss << std::setw( 3 ) << std::setfill( '0' ) << n;
-    std::string n_str( ss.str() );
-
-    io::outputSimplicialFieldToVTK( from_line_output, "bdry_from_line_" + n_str + ".vtu" );
-    io::outputSimplicialFieldToVTK( ray_output, "bdry_ray_" + n_str + ".vtu" );
-    io::outputSimplicialFieldToVTK( line_output, "bdry_line_" + n_str + ".vtu" );
-    io::outputSimplicialFieldToVTK( tets_output, "bdry_tris_" + n_str + ".vtu" );
-}
-
 std::optional<std::pair<topology::Edge, double>>
     traceGradientOnTri( const topology::CombinatorialMap& map,
                         const std::function<const Eigen::Vector3d&( const topology::Vertex& )>& positions,
@@ -543,7 +552,7 @@ SimplicialComplex traceBoundaryField( const topology::CombinatorialMap& map,
         const topology::Face curr_face( curr_edge.dart() );
         face_callback( curr_face );
         if( debug_output )
-            tracingDebugOutput( map, positions, curr_face, curr_point, field, traced_line, debug_tris, debug_field_values, n++ );
+            boundaryTracingDebugOutput( map, positions, curr_face, curr_point, field, traced_line, debug_tris, debug_field_values, n++ );
         std::optional<std::pair<topology::Edge, double>> next_point =
             traceGradientOnTri( map, positions, curr_face, curr_point, field );
 
