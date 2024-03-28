@@ -31,8 +31,9 @@ class SmallVector
     {
         if( mSize == MAX_SIZE )
         {
-            for( size_t i = 0; i < mSize; i++ ) std::cout << at( i ) << ", ";
-            std::cout << std::endl;
+            std::cerr << "Overfull SmallVector:\n";
+            for( size_t i = 0; i < mSize; i++ ) std::cerr << at( i ) << ", ";
+            std::cerr << std::endl;
             throw std::out_of_range( "push_back into full SmallVector" );
         }
         mData.at( mSize++ ) = t;
