@@ -28,6 +28,6 @@ namespace topology
         bool isMarked( const Dart& d ) const { return std::find( mMarkedDarts.begin(), mMarkedDarts.end(), d ) != mMarkedDarts.end(); }
 
         private:
-        SmallVector<Dart, 300> mMarkedDarts;
+        SmallVector<Dart, 600> mMarkedDarts;
     };
 } // namespace topology
