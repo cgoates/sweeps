@@ -658,7 +658,13 @@ SimplicialComplex traceBoundaryField( const topology::CombinatorialMap& map,
         curr_point = next_point.value().second;
         traced_line.points.push_back( expand_barycentric( curr_edge, curr_point ) );
         traced_line.simplices.push_back( { traced_line.points.size() - 2, traced_line.points.size() - 1 } );
-    } while( not onBoundary( map, curr_edge.dart() ) );
+        n++;
+    } while( not onBoundary( map, curr_edge.dart() ) and n < 2000 );
+    // FIXME: This number being the maximum trace length is completely arbitrary, and I assume at some point this will
+    // break an actual tracing that is supposed to be this long.
+    if( n > 1900 )
+        throw std::runtime_error( "Unending tracing loop Cell(" + std::to_string( start_cell.dart().id() ) + ", " +
+                                  std::to_string( start_cell.dim() ) + ")" );
 
     return traced_line;
 }
