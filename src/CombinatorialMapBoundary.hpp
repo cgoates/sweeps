@@ -18,6 +18,8 @@ namespace topology
         virtual bool iterateCellsWhile( const uint cell_dim, const std::function<bool( const Cell& )>& callback ) const override;
         virtual VertexId vertexId( const Vertex& v ) const override;
 
+        topology::Cell toUnderlyingCell( const topology::Cell& c ) const;
+
         private:
         const CombinatorialMap& mInteriorMap;
         std::set<Dart> mStartDarts;

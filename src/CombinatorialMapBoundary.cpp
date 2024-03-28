@@ -96,3 +96,9 @@ VertexId CombinatorialMapBoundary::vertexId( const Vertex& v ) const
 {
     return mInteriorMap.vertexId( Vertex( topology::phi( mInteriorMap, 1, v.dart() ).value() ) );
 }
+
+topology::Cell CombinatorialMapBoundary::toUnderlyingCell( const topology::Cell& c ) const
+{
+    if( c.dim() > 0 ) return c;
+    else return Vertex( topology::phi( mInteriorMap, 1, c.dart() ).value() );
+}
