@@ -182,6 +182,19 @@ void addTriangleNoDuplicateChecking( SimplicialComplex& complex, const Triangle<
     complex.simplices.push_back( Simplex( offset, offset + 1, offset + 2 ) );
 }
 
+void addTetNoDuplicateChecking( SimplicialComplex& complex,
+                                const topology::CombinatorialMap& map,
+                                const VertexPositionsFunc& pos,
+                                const topology::Volume& vol )
+{
+    const size_t offset = complex.points.size();
+    complex.points.push_back( pos( vol.dart() ) );
+    complex.points.push_back( pos( phi( map, 1, vol.dart() ).value() ) );
+    complex.points.push_back( pos( phi( map, -1, vol.dart() ).value() ) );
+    complex.points.push_back( pos( phi( map, {2, -1}, vol.dart() ).value() ) );
+    complex.simplices.push_back( Simplex( offset, offset + 1, offset + 2, offset + 3 ) );
+}
+
 Eigen::Vector3d expandBarycentric( const topology::CombinatorialMap& map,
                                    const VertexPositionsFunc& positions,
                                    const topology::Cell& start_face,
@@ -194,13 +207,28 @@ Eigen::Vector3d expandBarycentric( const topology::CombinatorialMap& map,
         const size_t idx = std::distance( simplex_verts.begin(), std::find( simplex_verts.begin(), simplex_verts.end(), vid ) );
         if( idx >= simplex_verts.size() )
         {
-            std::cout << coord.simplex << std::endl;
-            std::cout << vid << std::endl;
-            std::cout << idx << std::endl;
+            std::cerr << coord.simplex << std::endl;
+            std::cerr << vid << std::endl;
+            std::cerr << idx << std::endl;
             throw std::runtime_error( "Face and simplex don't match" );
         }
         out += coord.point( idx ) * positions( v );
         return true;
     } );
     return out;
+}
+
+bool isInverted( const topology::CombinatorialMap& map,
+                 const topology::Volume& v,
+                 const VertexPositionsFunc& positions )
+{
+    const auto tri = triangleOfFace( map, positions, topology::Face( v.dart() ) );
+    const auto normal = triangleNormal( tri );
+    const auto inversion_question = ( positions( topology::Vertex( phi( map, { 2, -1 }, v.dart() ).value() ) ) - tri.v1 ).dot( normal );
+    if( inversion_question < 0 )
+    {
+        std::cout << "How inverted? " << inversion_question << std::endl;
+        return true;
+    }
+    return false;
 }

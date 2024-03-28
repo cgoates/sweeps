@@ -52,7 +52,14 @@ template <unsigned int DIM> struct Segment
     const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> end_pos;
 };
 
+using VertexPositionsFunc = std::function<const Eigen::Vector3d&( const topology::Vertex& )>;
+
 void addTriangleNoDuplicateChecking( SimplicialComplex& complex, const Triangle<3>& tri );
+
+void addTetNoDuplicateChecking( SimplicialComplex& complex,
+                                const topology::CombinatorialMap& map,
+                                const VertexPositionsFunc& pos,
+                                const topology::Volume& vol );
 
 Triangle<3> triangleOfFace( const topology::TetMeshCombinatorialMap& map, const topology::Face& f );
 Triangle<3> triangleOfFace( const topology::CombinatorialMap& map,
@@ -89,8 +96,11 @@ Eigen::Matrix3Xd gradientsWithBoundaryCorrection( const topology::TetMeshCombina
 
 Eigen::Vector3d gradient( const Triangle<3>& tri3d, const Eigen::Ref<const Eigen::Vector3d> field_values );
 
-using VertexPositionsFunc = std::function<const Eigen::Vector3d&( const topology::Vertex& )>;
 Eigen::Vector3d expandBarycentric( const topology::CombinatorialMap& map,
                                    const VertexPositionsFunc& positions,
                                    const topology::Cell& start_face,
                                    const BarycentricPoint& coord );
+
+bool isInverted( const topology::CombinatorialMap& map,
+                 const topology::Volume& v,
+                 const VertexPositionsFunc& positions );
