@@ -156,14 +156,30 @@ namespace topology
                                const uint cell_dim,
                                const std::function<bool( const Cell& )>& callback )
     {
-        // FIXME: This fails for edges of a vertex in 2d
+        // We need an extra operation for edges of vertices in map.dim() < 3
+        const bool edges_of_vert_in_lowD = c.dim() == 0 and cell_dim == 1 and map.dim() <= 2;
+
         LocalCellMarker m( cell_dim );
+        const auto mark_and_callback = [&]( const topology::Cell& cell ) {
+            if( not m.isMarked( cell ) )
+            {
+                m.mark( map, cell );
+                return callback( cell );
+            }
+            return true;
+        };
+
         return iterateDartsOfCell( map, c, [&]( const Dart& d ){
             const Cell c_adj( d, cell_dim );
-            if( not m.isMarked( c_adj ) )
+            if( not mark_and_callback( c_adj ) ) return false;
+            if( edges_of_vert_in_lowD )
             {
-                m.mark( map, c_adj );
-                if( not callback( c_adj ) ) return false;
+                const auto phi_1 = phi( map, -1, d );
+                if( phi_1.has_value() )
+                {
+                    const topology::Edge c_adj_2( phi_1.value() );
+                    if( not mark_and_callback( c_adj_2 ) ) return false;
+                }
             }
             return true;
         } );
@@ -175,14 +191,30 @@ namespace topology
                                                const uint cell_dim,
                                                const std::function<bool( const Cell& )>& callback )
     {
-        // FIXME: This fails for edges of a vertex in 2d
+        // We need an extra operation for edges of vertices in map.dim() < 3
+        const bool edges_of_vert_in_lowD = c.dim() == 0 and cell_dim == 1 and map.dim() <= 2 and restrict_dim != 1;
+
         LocalCellMarker m( cell_dim );
+        const auto mark_and_callback = [&]( const topology::Cell& cell ) {
+            if( not m.isMarked( cell ) )
+            {
+                m.mark( map, cell );
+                return callback( cell );
+            }
+            return true;
+        };
+
         return iterateDartsOfRestrictedCell( map, c, restrict_dim, [&]( const Dart& d ){
             const Cell c_adj( d, cell_dim );
-            if( not m.isMarked( c_adj ) )
+            if( not mark_and_callback( c_adj ) ) return false;
+            if( edges_of_vert_in_lowD )
             {
-                m.mark( map, c_adj );
-                if( not callback( c_adj ) ) return false;
+                const auto phi_1 = phi( map, -1, d );
+                if( phi_1.has_value() )
+                {
+                    const topology::Edge c_adj_2( phi_1.value() );
+                    if( not mark_and_callback( c_adj_2 ) ) return false;
+                }
             }
             return true;
         } );
