@@ -167,8 +167,17 @@ int main( int argc, char* argv[] )
                     sweep_input.zero_bcs.at( bdry.vertexId( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ).id() );
         };
 
+        const auto keep_face_target = [&]( const topology::Face& f ) {
+            return sweep_input.one_bcs.at( bdry.vertexId( topology::Vertex( f.dart() ) ).id() ) and
+                   sweep_input.one_bcs.at(
+                       bdry.vertexId( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ).id() ) and
+                   sweep_input.one_bcs.at(
+                       bdry.vertexId( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ).id() );
+        };
+
         const topology::CombinatorialMapRestriction sides( bdry, keep_face_sides );
         const topology::CombinatorialMapRestriction base( bdry, keep_face_base );
+        const topology::CombinatorialMapRestriction target( bdry, keep_face_target );
 
         const Eigen::Matrix3Xd grad = gradientsWithBoundaryCorrection( map, sides, ans, normals );
 
@@ -401,6 +410,104 @@ int main( int argc, char* argv[] )
                 io::VTKOutputObject boundary_output( sep_tris );
                 io::outputSimplicialFieldToVTK( boundary_output, "hex_layout_skeleton" + std::to_string( i ) + ".vtu" );
             }
+        }
+        else if( input_args.at( 0 ) == "parameterize" )
+        {
+            /// LOAD 2D PARAMETERIZATION
+
+            const auto bdry_positions = vertex_positions( bdry );
+            std::cout << "Parameterize sides\n";
+            size_t n_errors = 0;
+            SimplicialComplex error_verts;
+            // const auto negative_field = -1.0 * ans;
+            topology::GlobalCellMarker traced_vertices( map, 0 );
+            Eigen::Matrix3Xd param = Eigen::MatrixXd::Zero( 3, cellCount( map, 0 ) );
+
+            std::cout << "Parameterize base\n";
+            const auto base_pos = vertex_positions( base );
+            iterateCellsWhile( base, 0, [&]( const topology::Vertex& v ) {
+                traced_vertices.mark( map, bdry.toUnderlyingCell( v ) );
+                param.col( base.vertexId( v ).id() ) = base_pos( v );
+                return true;
+            } );
+
+            const auto reverse_ans = -1 * ans;
+            const auto reverse_grad = -1 * grad;
+
+            iterateCellsWhile( sides, 0, [&]( const topology::Vertex& v ) {
+                if( traced_vertices.isMarked( bdry.toUnderlyingCell( v ) ) ) return true;
+                traced_vertices.mark( map, bdry.toUnderlyingCell( v ) );
+                const SimplicialComplex line = traceBoundaryField( sides, v, 1.0, reverse_ans, bdry_positions, false );
+                param.col( sides.vertexId( v ).id() ).head( 2 ) = line.points.back().head( 2 );
+                param( 2, sides.vertexId( v ).id() ) = ans( sides.vertexId( v ).id() );
+                return true;
+            } );
+
+            std::cout << "Parameterize interior\n";
+            const auto pos = vertex_positions( map );
+            iterateCellsWhile( map, 0, [&]( const topology::Vertex& v ) {
+                if( traced_vertices.isMarked( v ) ) return true;
+                try
+                {
+                    const SimplicialComplex line = traceField( map, v, pos( v ), reverse_grad, normals, false );
+                    param.col( map.vertexId( v ).id() ).head( 2 ) = line.points.back().head( 2 );
+                    param( 2, map.vertexId( v ).id() ) = ans( map.vertexId( v ).id() );
+                }
+                catch( const std::runtime_error& e )
+                {
+                    std::cerr << "Skipping " << map.vertexId( v ) << " " << v << " with exception " << e.what();
+                    n_errors++;
+                    error_verts.points.push_back( pos( v ) );
+                    error_verts.simplices.push_back( Simplex( error_verts.points.size() - 1 ) );
+                    std::cout << " " << pos( v ).transpose() << std::endl;
+                    throw e;
+                }
+                catch( const std::out_of_range& e )
+                {
+                    std::cerr << "Skipping " << map.vertexId( v ) << " " << v << " with exception " << e.what();
+                    n_errors++;
+                    error_verts.points.push_back( pos( v ) );
+                    error_verts.simplices.push_back( Simplex( error_verts.points.size() - 1 ) );
+                    std::cout << " " << pos( v ).transpose() << std::endl;
+                }
+                return true;
+            } );
+
+            io::VTKOutputObject output2( error_verts );
+            io::outputSimplicialFieldToVTK( output2, "error_verts.vtu" );
+            std::map<size_t, Eigen::Vector3d> param_position_map;
+            for( Eigen::Index i = 0; i < param.cols(); i++ ) param_position_map.emplace( i, param.col( i ) );
+            const auto param_positions = [&]( const topology::Vertex& v ) -> const Eigen::Vector3d& {
+                return param_position_map.at( map.vertexId( v ).id() );
+            };
+            SimplicialComplex inverted_tets;
+            SimplicialComplex interted_traces;
+            iterateCellsWhile( map, 3, [&]( const topology::Volume& vol ) {
+                if( isInverted( map, vol, param_positions ) )
+                {
+                    std::cerr << "Inverted volume " << vol << std::endl;
+                    addTetNoDuplicateChecking( inverted_tets, map, pos, vol );
+                    iterateAdjacentCells( map, vol, 0, [&]( const topology::Vertex& v ) {
+                        std::cout << "Tracing from vertex of inverted tet...\n";
+                        const SimplicialComplex line = traceField( map, v, pos( v ), reverse_grad, normals, false );
+                        append( interted_traces, line );
+                        return true;
+                    } );
+                }
+                return true;
+            } );
+
+            io::VTKOutputObject output_inverted_tets( inverted_tets );
+            io::outputSimplicialFieldToVTK( output_inverted_tets, "inverted_tets.vtu" );
+
+            io::VTKOutputObject output_inverted_traces( interted_traces );
+            io::outputSimplicialFieldToVTK( output_inverted_traces, "inverted_traces.vtu" );
+
+            std::cout << "Outputting Parameterization...\n";
+            std::cout << n_errors << " errors in tracing\n";
+            io::VTKOutputObject output( sweep_input.mesh );
+            output.addVertexField( "param", param.transpose() );
+            io::outputSimplicialFieldToVTK( output, "param.vtu" );
         }
     }
     else
