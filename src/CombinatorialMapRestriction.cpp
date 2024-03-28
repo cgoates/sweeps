@@ -50,10 +50,12 @@ bool CombinatorialMapRestriction::iterateCellsWhile( const uint cell_dim, const 
         }
         else
         {
-            const bool continue_iterating = iterateDartsOfCell( mUnrestrictedMap, c, [&]( const Dart& d ) {
+            bool continue_iterating = true;
+            iterateDartsOfCell( mUnrestrictedMap, c, [&]( const Dart& d ) {
                 if( mIncludedDarts.isMarked( d ) )
                 {
-                    if( not callback( Cell( d, cell_dim ) ) ) return false;
+                    continue_iterating = callback( Cell( d, cell_dim ) );
+                    return false;
                 }
                 return true;
             } );
