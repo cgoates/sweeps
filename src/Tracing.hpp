@@ -56,7 +56,7 @@ std::optional<std::pair<topology::Edge, double>> traceGradientOnTri( const topol
                                                                      const Eigen::VectorXd& field_values );
 
 SimplicialComplex traceBoundaryField( const topology::CombinatorialMap& map,
-                                      const topology::Edge& e,
+                                      const topology::Cell& start_cell,
                                       const double& start_point,
                                       const Eigen::VectorXd& field,
                                       const std::function<const Eigen::Vector3d&( const topology::Vertex& )>& positions,

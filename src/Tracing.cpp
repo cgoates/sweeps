@@ -52,6 +52,45 @@ std::optional<topology::Cell> tracingStartCell( const topology::CombinatorialMap
     return out;
 }
 
+std::optional<topology::Cell>
+    tracingAverageStartCell( const topology::CombinatorialMap& map,
+                             const topology::Cell& lower_dim_cell,
+                             const std::function<Eigen::Vector3d( const topology::Cell& )>& normal,
+                             const std::function<Eigen::Vector3d( const topology::Cell& )>& grad,
+                             const std::function<Eigen::Vector3d( const topology::Cell& )>& edge_func )
+{
+    LOG( LOG_TRACING_CELL ) << "Searching for tracing cell...\n";
+    const size_t dim = map.dim();
+
+    LOG( LOG_TRACING_CELL ) << "Cell dim: " << lower_dim_cell.dim() << std::endl;
+    std::optional<topology::Cell> out;
+    iterateAdjacentCells( map, lower_dim_cell, dim - 1, [&]( const topology::Cell& I ) {
+        const auto d_opp = phi( map, dim, I.dart() );
+        if( not d_opp.has_value() ) return true;
+
+        const Eigen::Vector3d grad_left = grad( topology::Cell( I.dart(), dim ) );
+        const Eigen::Vector3d grad_right = grad( topology::Cell( d_opp.value(), dim ) );
+
+        const Eigen::Vector3d normal_left = normal( I );
+        const Eigen::Vector3d normal_right = normal( topology::Cell( d_opp.value(), I.dim() ) );
+
+        const Eigen::Vector3d edge = edge_func( I );
+
+        if( ( normal_left.dot( grad_left ) > 0 ) == ( normal_right.dot( grad_right ) > 0 ) )
+        {
+            const bool aligned = map.vertexId( I.dart() ) == map.vertexId( lower_dim_cell );
+            const bool grads_along_edge = ( edge.dot( grad_left ) + edge.dot( grad_right ) ) >= 0 == aligned;
+            if( grads_along_edge )
+            {
+                out.emplace( I );
+                return false;
+            }
+        }
+        return true;
+    } );
+    return out;
+}
+
 ////////////////////////////////////////
 ////////////////////////////////////////
 /// DEBUG
@@ -159,7 +198,7 @@ std::optional<Eigen::Vector3d> intersectionOf( const Ray<3>& ray,
                                                const Triangle<3>& tri,
                                                std::optional<const Eigen::Vector3d> maybe_normal )
 {
-    const Eigen::Vector3d normal = maybe_normal.value_or( triangleNormal( tri ) );
+    const Eigen::Vector3d normal = maybe_normal.has_value() ? maybe_normal.value() : triangleNormal( tri );
     const double ray_scaling = normal.dot( tri.v1 - ray.start_pos ) / normal.dot( ray.dir );
     LOG( LOG_TRACING ) << "| | Ray scaling: " << ray_scaling << std::endl;
     // TODO: Is there a better approach here? If it is within that tolerance it should be an edge I guess?
@@ -198,7 +237,7 @@ std::optional<TracePoint> traceRayOnTet( const topology::TetMeshCombinatorialMap
         {
             LOG( LOG_TRACING ) << "| | Found intersection: " << intersection.value().transpose() << std::endl;
             const auto maybe_phi3 = phi( map, 3, adj_face.dart() );
-            out.first = topology::Face( maybe_phi3.has_value() ? maybe_phi3.value() : adj_face.dart() ); // FIXME?
+            out.first = topology::Face( maybe_phi3.has_value() ? maybe_phi3.value() : adj_face.dart() );
             out.second = intersection.value();
             found_it = true;
             return false;
@@ -279,6 +318,7 @@ SimplicialComplex traceField( const topology::TetMeshCombinatorialMap& map,
             curr_point = second_point.value().second;
             complex.points.push_back( curr_point );
             complex.simplices.push_back( { complex.points.size() - 2, complex.points.size() - 1 } );
+            if( onBoundary( map, curr_face.dart() ) ) return complex;
         }
     }
 
@@ -331,6 +371,9 @@ std::optional<double> barycentricIntersectionOf( const Ray<2>& ray, const Segmen
     if( std::abs( line_multiplier_denominator ) < std::abs( line_multiplier_numerator ) ) return std::nullopt;
 
     const double u = line_multiplier_numerator / line_multiplier_denominator;
+
+    if( u < 1e-13 ) return std::nullopt;
+    if( u > 1 - 1e-13 ) return std::nullopt;
 
     return u;
 }
@@ -513,7 +556,7 @@ std::optional<std::pair<topology::Edge, double>>
                 }
                 else
                 {
-                    const int second_op = result.on_forward_edge ? 1 : -1;
+                    const int second_op = result.on_forward_edge ? -1 : 1;
                     const auto maybe_next_face_dart = phi( map, { 2, second_op, 2 }, f.dart() );
                     const topology::Edge e( maybe_next_face_dart.value_or( phi( map, { 2, second_op }, f.dart() ).value() ) );
                     return std::optional<std::pair<topology::Edge, double>>( { e, 1.0 - result.edge_barycoord } );
@@ -523,7 +566,7 @@ std::optional<std::pair<topology::Edge, double>>
 }
 
 SimplicialComplex traceBoundaryField( const topology::CombinatorialMap& map,
-                                      const topology::Edge& e,
+                                      const topology::Cell& start_cell,
                                       const double& start_point,
                                       const Eigen::VectorXd& field,
                                       const std::function<const Eigen::Vector3d&( const topology::Vertex& )>& positions,
@@ -538,30 +581,75 @@ SimplicialComplex traceBoundaryField( const topology::CombinatorialMap& map,
         return ( 1.0 - coord ) * pos1 + coord * pos2;
     };
 
-    topology::Edge curr_edge = e;
-    double curr_point = start_point;
+    topology::Edge curr_edge;
+    double curr_point;
 
     SimplicialComplex traced_line;
     SimplicialComplex debug_tris;
     std::vector<double> debug_field_values;
-    size_t n = 0;
 
+    // Figure out the start edge. If there is an edge adjacent to start_cell that works, use that.
+    if( start_cell.dim() == 1 )
+    {
+        curr_edge = start_cell;
+        curr_point = start_point;
+        traced_line.points.push_back( expand_barycentric( curr_edge, curr_point ) );
+    }
+    else
+    {
+        const auto normals_func = [&]( const topology::Edge& e ) -> Eigen::Vector3d {
+            // Rotate edge vector 90 degrees about the normal axis
+            const Eigen::Vector3d edge_vector =
+                positions( topology::Vertex( phi( map, 1, e.dart() ).value() ) ) - positions( topology::Vertex( e.dart() ) );
+
+            const Eigen::Vector3d tri_normal = triangleNormal( triangleOfFace( map, positions, topology::Face( e.dart() ) ) );
+
+            return Eigen::AngleAxis<double>( std::numbers::pi / 2.0, tri_normal ) * edge_vector;
+        };
+        const auto edge_func = [&]( const topology::Edge& e ) -> Eigen::Vector3d {
+            return positions( topology::Vertex( phi( map, 1, e.dart() ).value() ) ) - positions( topology::Vertex( e.dart() ) );
+        };
+        const auto grads_func = [&]( const topology::Face& f ) -> Eigen::Vector3d {
+            const topology::Dart& d = f.dart();
+            const auto face_field = field( { map.vertexId( topology::Vertex( d ) ).id(),
+                                             map.vertexId( topology::Vertex( phi( map, 1, d ).value() ) ).id(),
+                                             map.vertexId( topology::Vertex( phi( map, -1, d ).value() ) ).id() } );
+            return gradient( triangleOfFace( map, positions, f ), face_field );
+        };
+        const std::optional<topology::Edge> start_edge =
+            tracingStartCell( map, start_cell, normals_func, grads_func ).or_else( [&]() {
+                return tracingAverageStartCell( map, start_cell, normals_func, grads_func, edge_func );
+            } );
+
+        if( start_edge.has_value() )
+        {
+            curr_edge = start_edge.value();
+            // tracingStartCell will not always give an edge whose dart is on the start vertex, so check that
+            curr_point = map.vertexId( topology::Vertex( curr_edge.dart() ) ) == map.vertexId( start_cell ) ? 0.0 : 1.0;
+        }
+        else throw( std::runtime_error( "Untraceable field at start" ) );
+    }
+
+
+    size_t n = 0;
     traced_line.points.push_back( expand_barycentric( curr_edge, curr_point ) );
     do
     {
+        LOG( LOG_TRACING ) << n << " - Attempting trace from " << curr_edge << ", " << curr_point << std::endl;
         const topology::Face curr_face( curr_edge.dart() );
         face_callback( curr_face );
         if( debug_output )
-            boundaryTracingDebugOutput( map, positions, curr_face, curr_point, field, traced_line, debug_tris, debug_field_values, n++ );
+            boundaryTracingDebugOutput( map, positions, curr_face, curr_point, field, traced_line, debug_tris, debug_field_values, n );
         std::optional<std::pair<topology::Edge, double>> next_point =
             traceGradientOnTri( map, positions, curr_face, curr_point, field );
 
         if( not next_point.has_value() )
         {
+            LOG( LOG_TRACING ) << "Didn't get a tracing match.\n";
             next_point = traceGradientOnTriPair( map, positions, curr_face, curr_point, field );
             if( not next_point.has_value() )
             {
-                throw std::runtime_error( "No intersection on boundary tracing" );
+                throw std::runtime_error( "No intersection on boundary tracing n=" + std::to_string( n ) );
                 break;
             }
         }
