@@ -387,49 +387,6 @@ std::optional<Eigen::Vector2d> intersectionOf( const Ray<2>& ray, const Segment<
 
 constexpr bool FORWARD = true;
 constexpr bool BACKWARD = false;
-std::optional<std::pair<bool, double>> traceGradientOnTri( const Triangle<3>& tri3d,
-                                                           const double edge_barycentric_coord,
-                                                           const Eigen::Ref<const Eigen::Vector3d> field_values )
-{
-    // move the triangle into the xy plane
-    const Eigen::Vector3d e1 = ( tri3d.v2 - tri3d.v1 ).normalized();
-    const Eigen::Vector3d e2 = ( tri3d.v3 - tri3d.v1 - e1.dot( tri3d.v3 - tri3d.v1 ) * e1 ).normalized();
-
-    const Eigen::Vector2d v1_2d( 0, 0 );
-    const Eigen::Vector2d v2_2d( ( tri3d.v2 - tri3d.v1 ).norm(), 0 );
-    const Eigen::Vector2d v3_2d( e1.dot( tri3d.v3 - tri3d.v1 ), e2.dot( tri3d.v3 - tri3d.v1 ) );
-
-    // calculate the gradient in the xy plane
-    const double& f1 = field_values( 0 );
-    const double& f2 = field_values( 1 );
-    const double& f3 = field_values( 2 );
-
-    const Eigen::Rotation2Dd rot90( std::numbers::pi / 2.0 );
-    const double twice_area = v2_2d( 0 ) * v3_2d( 1 );
-
-    const auto grad_s_i = [&]( const Segment<2>& edge_i ) -> Eigen::Vector2d {
-        const auto edge_diff = edge_i.end_pos - edge_i.start_pos;
-        return 1.0 / twice_area * ( rot90 * edge_diff );
-    };
-
-    const Eigen::Vector2d gradient =
-        f1 * grad_s_i( { v2_2d, v3_2d } ) + f2 * grad_s_i( { v3_2d, v1_2d } ) + f3 * grad_s_i( { v1_2d, v2_2d } );
-
-    // iterate the edges and perform line ray intersections
-    const Ray<2> ray( { edge_barycentric_coord * v2_2d, gradient } );
-
-    const auto run_intersection = [&]( const bool i, const Segment<2>& line ) {
-        return barycentricIntersectionOf( ray, line )
-            .and_then( [&]( const double& u ) -> std::optional<std::pair<unsigned int, double>> {
-                return std::pair<bool, double>{ i, u };
-            } );
-    };
-
-    return run_intersection( FORWARD, { v2_2d, v3_2d } ).or_else( [&]() {
-        return run_intersection( BACKWARD, { v3_2d, v1_2d } );
-    } );
-}
-
 
 struct TriPairTraceResult
 {
@@ -514,17 +471,51 @@ std::optional<std::pair<topology::Edge, double>>
     const Triangle<3> tri3d = triangleOfFace( map, positions, f );
 
     const topology::Dart& d = f.dart();
-    const auto field = field_values( { map.vertexId( topology::Vertex( d ) ).id(),
-                                       map.vertexId( topology::Vertex( phi( map, 1, d ).value() ) ).id(),
-                                       map.vertexId( topology::Vertex( phi( map, -1, d ).value() ) ).id() } );
+    const auto face_field = field_values( { map.vertexId( topology::Vertex( d ) ).id(),
+                                            map.vertexId( topology::Vertex( phi( map, 1, d ).value() ) ).id(),
+                                            map.vertexId( topology::Vertex( phi( map, -1, d ).value() ) ).id() } );
 
-    return traceGradientOnTri( tri3d, edge_barycentric_coord, field )
-        .and_then( [&]( const std::pair<bool, double>& pr ) {
-            const int first_op = pr.first ? 1 : -1;
-            const auto maybe_next_face_dart = phi( map, { first_op, 2 }, f.dart() );
-            const topology::Edge e( maybe_next_face_dart.value_or( phi( map, first_op, f.dart() ).value() ) );
-            return std::optional<std::pair<topology::Edge, double>>( { e, maybe_next_face_dart.has_value() ? 1.0 - pr.second : pr.second } );
-        } );
+    // move the triangle into the xy plane
+    const Eigen::Vector3d e1 = ( tri3d.v2 - tri3d.v1 ).normalized();
+    const Eigen::Vector3d e2 = ( tri3d.v3 - tri3d.v1 - e1.dot( tri3d.v3 - tri3d.v1 ) * e1 ).normalized();
+
+    const Eigen::Vector2d v1_2d( 0, 0 );
+    const Eigen::Vector2d v2_2d( ( tri3d.v2 - tri3d.v1 ).norm(), 0 );
+    const Eigen::Vector2d v3_2d( e1.dot( tri3d.v3 - tri3d.v1 ), e2.dot( tri3d.v3 - tri3d.v1 ) );
+
+    // calculate the gradient in the xy plane
+    const double& f1 = face_field( 0 );
+    const double& f2 = face_field( 1 );
+    const double& f3 = face_field( 2 );
+
+    const Eigen::Rotation2Dd rot90( std::numbers::pi / 2.0 );
+    const double twice_area = v2_2d( 0 ) * v3_2d( 1 );
+
+    const auto grad_s_i = [&]( const Segment<2>& edge_i ) -> Eigen::Vector2d {
+        const auto edge_diff = edge_i.end_pos - edge_i.start_pos;
+        return 1.0 / twice_area * ( rot90 * edge_diff );
+    };
+
+    const Eigen::Vector2d gradient =
+        f1 * grad_s_i( { v2_2d, v3_2d } ) + f2 * grad_s_i( { v3_2d, v1_2d } ) + f3 * grad_s_i( { v1_2d, v2_2d } );
+
+    // iterate the edges and perform line ray intersections
+    const Ray<2> ray( { edge_barycentric_coord * v2_2d, gradient } );
+
+    const auto run_intersection = [&]( const bool forward, const Segment<2>& line ) {
+        return barycentricIntersectionOf( ray, line )
+            .and_then( [&]( const double& u ) -> std::optional<std::pair<topology::Edge, double>> {
+                const int first_op = forward ? 1 : -1;
+                const auto maybe_next_face_dart = phi( map, { first_op, 2 }, f.dart() );
+                const topology::Edge e( maybe_next_face_dart.value_or( phi( map, first_op, f.dart() ).value() ) );
+                return std::optional<std::pair<topology::Edge, double>>(
+                    { e, maybe_next_face_dart.has_value() ? 1.0 - u : u } );
+            } );
+    };
+
+    return run_intersection( FORWARD, { v2_2d, v3_2d } ).or_else( [&]() {
+        return run_intersection( BACKWARD, { v3_2d, v1_2d } );
+    } );
 }
 
 std::optional<std::pair<topology::Edge, double>>

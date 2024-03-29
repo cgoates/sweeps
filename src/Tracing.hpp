@@ -44,10 +44,6 @@ SimplicialComplex traceField( const topology::TetMeshCombinatorialMap& map,
 std::optional<Eigen::Vector2d> intersectionOf( const Ray<2>& ray,
                                                const Segment<2>& line );
 
-std::optional<std::pair<bool, double>> traceGradientOnTri( const Triangle<3>& tri3d,
-                                                           const double edge_barycentric_coord,
-                                                           const Eigen::Ref<const Eigen::Vector3d> field_values );
-
 using VertexPositionsFunc = std::function<const Eigen::Vector3d&( const topology::Vertex& )>;
 std::optional<std::pair<topology::Edge, double>> traceGradientOnTri( const topology::CombinatorialMap& map,
                                                                      const VertexPositionsFunc& positions,
