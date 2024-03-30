@@ -466,6 +466,30 @@ std::optional<std::pair<topology::Edge, double>> run2dIntersectionOnTriangle( co
     return std::nullopt;
 }
 
+Eigen::Vector2d gradient2d( const Triangle<2> tri, const Eigen::Vector3d& field, const double twice_area )
+{
+    const auto segment = [&]( const size_t i ) -> Segment<2> {
+        switch( i )
+        {
+            case 0: return Segment<2>( { tri.v1, tri.v2 } );
+            case 1: return Segment<2>( { tri.v2, tri.v3 } );
+            case 2: return Segment<2>( { tri.v3, tri.v1 } );
+            default: throw std::runtime_error( "Why did you put in the wrong number?" );
+        }
+    };
+    const Eigen::Rotation2Dd rot90( std::numbers::pi / 2.0 );
+
+    const auto grad_s_i = [&]( const Segment<2>& edge_i ) -> Eigen::Vector2d {
+        const auto edge_diff = edge_i.end_pos - edge_i.start_pos;
+        return 1.0 / twice_area * ( rot90 * edge_diff );
+    };
+
+    const Eigen::Vector2d gradient =
+        field( 0 ) * grad_s_i( segment( 1 ) ) + field( 1 ) * grad_s_i( segment( 2 ) ) + field( 2 ) * grad_s_i( segment( 0 ) );
+
+    return gradient;
+}
+
 std::optional<std::pair<topology::Edge, double>>
     traceGradientOnTri( const topology::CombinatorialMap& map,
                         const std::function<const Eigen::Vector3d&( const topology::Vertex& )>& positions,
@@ -486,31 +510,14 @@ std::optional<std::pair<topology::Edge, double>>
     const Eigen::Vector2d v1_2d( ( tri3d.v2 - tri3d.v1 ).norm(), 0 );
     const Eigen::Vector2d v2_2d( e0.dot( tri3d.v3 - tri3d.v1 ), e1.dot( tri3d.v3 - tri3d.v1 ) );
 
-    const auto segment = [&]( const size_t i ) -> Segment<2> {
-        switch( i )
-        {
-            case 0: return Segment<2>( { v0_2d, v1_2d } );
-            case 1: return Segment<2>( { v1_2d, v2_2d } );
-            case 2: return Segment<2>( { v2_2d, v0_2d } );
-            default: throw std::runtime_error( "Why did you put in the wrong number?" );
-        }
-    };
-
-    // calculate the gradient in the xy plane
-    const double& f0 = field_values( map.vertexId( topology::Vertex( d ) ).id() );
-    const double& f1 = field_values( map.vertexId( topology::Vertex( phi( map, 1, d ).value() ) ).id() );
-    const double& f2 = field_values( map.vertexId( topology::Vertex( phi( map, -1, d ).value() ) ).id() );
-
-    const Eigen::Rotation2Dd rot90( std::numbers::pi / 2.0 );
     const double twice_area = v1_2d( 0 ) * v2_2d( 1 );
 
-    const auto grad_s_i = [&]( const Segment<2>& edge_i ) -> Eigen::Vector2d {
-        const auto edge_diff = edge_i.end_pos - edge_i.start_pos;
-        return 1.0 / twice_area * ( rot90 * edge_diff );
-    };
+    // calculate the gradient in the xy plane
+    const Eigen::Vector3d face_field = field_values( { map.vertexId( topology::Vertex( d ) ).id(),
+                                                        map.vertexId( topology::Vertex( phi( map, 1, d ).value() ) ).id(),
+                                                        map.vertexId( topology::Vertex( phi( map, -1, d ).value() ) ).id() } );
 
-    const Eigen::Vector2d gradient =
-        f0 * grad_s_i( segment( 1 ) ) + f1 * grad_s_i( segment( 2 ) ) + f2 * grad_s_i( segment( 0 ) );
+    const Eigen::Vector2d gradient = gradient2d( { v0_2d, v1_2d, v2_2d }, face_field, twice_area );
 
     // iterate the edges and perform line ray intersections
     const Eigen::Vector2d start_coord = start_cell.dim() == 0 ? Eigen::Vector2d::Zero() : Eigen::Vector2d( edge_barycentric_coord * v1_2d );
@@ -545,27 +552,17 @@ std::optional<std::pair<topology::Edge, double>>
         const Eigen::Vector2d v3_2d( e0.dot( opp_v - tri3d.v1 ), e1_prime.dot( opp_v - tri3d.v1 ) );
 
         // calculate the gradient in the xy plane
-        const double& f0 = field_values( map.vertexId( topology::Vertex( d ) ).id() );
-        const double& f1 = field_values( map.vertexId( topology::Vertex( phi( map, 1, d ).value() ) ).id() );
-        const double& f2 = field_values( map.vertexId( topology::Vertex( phi( map, -1, d ).value() ) ).id() );
-        const double& f3 = field_values( map.vertexId( topology::Vertex( opp_d ) ).id() );
+        const Eigen::Vector4d faces_field =
+            field_values( { map.vertexId( topology::Vertex( d ) ).id(),
+                            map.vertexId( topology::Vertex( phi( map, 1, d ).value() ) ).id(),
+                            map.vertexId( topology::Vertex( phi( map, -1, d ).value() ) ).id(),
+                            map.vertexId( topology::Vertex( opp_d ) ).id() } );
 
-        const Eigen::Rotation2Dd rot90( std::numbers::pi / 2.0 );
         const double twice_area_0 = v1_2d( 0 ) * v2_2d( 1 );
         const double twice_area_1 = -v1_2d( 0 ) * v3_2d( 1 );
 
-        const auto grad_s_i = [&rot90]( const Segment<2>& edge_i, const double& twice_area ) -> Eigen::Vector2d {
-            const auto edge_diff = edge_i.end_pos - edge_i.start_pos;
-            return 1.0 / twice_area * ( rot90 * edge_diff );
-        };
-
-        const Eigen::Vector2d gradient_0 = f0 * grad_s_i( { v1_2d, v2_2d }, twice_area_0 ) +
-                                           f1 * grad_s_i( { v2_2d, v0_2d }, twice_area_0 ) +
-                                           f2 * grad_s_i( { v0_2d, v1_2d }, twice_area_0 );
-
-        const Eigen::Vector2d gradient_1 = f0 * grad_s_i( { v3_2d, v1_2d }, twice_area_1 ) +
-                                           f1 * grad_s_i( { v0_2d, v3_2d }, twice_area_1 ) +
-                                           f3 * grad_s_i( { v1_2d, v0_2d }, twice_area_1 );
+        const Eigen::Vector2d gradient_0 = gradient2d( { v0_2d, v1_2d, v2_2d }, faces_field( { 0, 1, 2 } ), twice_area_0 );
+        const Eigen::Vector2d gradient_1 = gradient2d( { v0_2d, v3_2d, v1_2d }, faces_field( { 0, 3, 1 } ), twice_area_1 );
 
         const Eigen::Vector2d gradient = ( gradient_0 + gradient_1 ) * 0.5;
 
