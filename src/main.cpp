@@ -416,7 +416,6 @@ int main( int argc, char* argv[] )
             /// LOAD 2D PARAMETERIZATION
 
             const auto bdry_positions = vertex_positions( bdry );
-            std::cout << "Parameterize sides\n";
             size_t n_errors = 0;
             SimplicialComplex error_verts;
             // const auto negative_field = -1.0 * ans;
@@ -434,12 +433,32 @@ int main( int argc, char* argv[] )
             const auto reverse_ans = -1 * ans;
             const auto reverse_grad = -1 * grad;
 
+            std::cout << "Parameterize sides\n";
             iterateCellsWhile( sides, 0, [&]( const topology::Vertex& v ) {
                 if( traced_vertices.isMarked( bdry.toUnderlyingCell( v ) ) ) return true;
                 traced_vertices.mark( map, bdry.toUnderlyingCell( v ) );
-                const SimplicialComplex line = traceBoundaryField( sides, v, 1.0, reverse_ans, bdry_positions, false );
-                param.col( sides.vertexId( v ).id() ).head( 2 ) = line.points.back().head( 2 );
-                param( 2, sides.vertexId( v ).id() ) = ans( sides.vertexId( v ).id() );
+                try{
+                    const SimplicialComplex line = traceBoundaryField( sides, v, 1.0, reverse_ans, bdry_positions, v.dart().id() == 2511146 );
+                    param.col( sides.vertexId( v ).id() ).head( 2 ) = line.points.back().head( 2 );
+                    param( 2, sides.vertexId( v ).id() ) = ans( sides.vertexId( v ).id() );
+                }
+                catch( const std::runtime_error& e )
+                {
+                    std::cerr << "Skipping " << map.vertexId( v ) << " " << v << " with exception " << e.what();
+                    n_errors++;
+                    error_verts.points.push_back( bdry_positions( v ) );
+                    error_verts.simplices.push_back( Simplex( error_verts.points.size() - 1 ) );
+                    std::cout << " " << bdry_positions( v ).transpose() << std::endl;
+                    throw e;
+                }
+                catch( const std::out_of_range& e )
+                {
+                    std::cerr << "Skipping " << map.vertexId( v ) << " " << v << " with exception " << e.what();
+                    n_errors++;
+                    error_verts.points.push_back( bdry_positions( v ) );
+                    error_verts.simplices.push_back( Simplex( error_verts.points.size() - 1 ) );
+                    std::cout << " " << bdry_positions( v ).transpose() << std::endl;
+                }
                 return true;
             } );
 
@@ -488,9 +507,30 @@ int main( int argc, char* argv[] )
                     std::cerr << "Inverted volume " << vol << std::endl;
                     addTetNoDuplicateChecking( inverted_tets, map, pos, vol );
                     iterateAdjacentCells( map, vol, 0, [&]( const topology::Vertex& v ) {
+                        const bool on_bdry = boundaryAdjacent( map, v );
+                        std::cerr << "On boundary? " << on_bdry << std::endl;
+
                         std::cout << "Tracing from vertex of inverted tet...\n";
-                        const SimplicialComplex line = traceField( map, v, pos( v ), reverse_grad, normals, false );
-                        append( interted_traces, line );
+                        if( on_bdry )
+                        {
+                            // get the equvalent boundary vertex
+                            iterateDartsOfCell( map, v, [&]( const topology::Dart& d ) {
+                                if( onBoundary( map, d ) )
+                                {
+                                    const topology::Vertex bdry_v( phi( sides, 1, d ).value() );
+                                    const SimplicialComplex line = traceBoundaryField( sides, bdry_v, 1.0, reverse_ans, bdry_positions, false );
+                                    append( interted_traces, line );
+                                    return false;
+                                }
+                                return true;
+                            } );
+                        }
+                        else
+                        {
+                            const SimplicialComplex line = traceField( map, v, pos( v ), reverse_grad, normals, false );
+                            append( interted_traces, line );
+                        }
+
                         return true;
                     } );
                 }
@@ -507,6 +547,7 @@ int main( int argc, char* argv[] )
             std::cout << n_errors << " errors in tracing\n";
             io::VTKOutputObject output( sweep_input.mesh );
             output.addVertexField( "param", param.transpose() );
+            output.addVertexField( "laplace", ans );
             io::outputSimplicialFieldToVTK( output, "param.vtu" );
         }
     }
