@@ -22,9 +22,9 @@ namespace topology
         private:
         IndexType mIndex;
     };
-}; // namespace topology
 
-std::ostream& operator<<( std::ostream& o, const topology::Dart& d );
+    std::ostream& operator<<( std::ostream& o, const topology::Dart& d );
+}; // namespace topology
 
 template <>
 struct std::hash<topology::Dart>
