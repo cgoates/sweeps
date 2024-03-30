@@ -113,14 +113,14 @@ TEST_CASE( "Test gradient tracing in triangle", "[single-file]" )
         return tri.at( map.vertexId( v ).id() );
     };
 
-    const topology::Face f( topology::Dart( 0 ) );
+    const topology::Edge e( topology::Dart( 0 ) );
 
     SECTION( "No intersection" )
     {
         const Eigen::Vector3d field_values( 0.0, 1.1, 0.5 );
         const double edge_barycentric_coord = 0.7;
         const std::optional<std::pair<topology::Edge, double>> intersection =
-            traceGradientOnTri( map, positions, f, edge_barycentric_coord, field_values );
+            traceGradientOnTri( map, positions, e, edge_barycentric_coord, field_values );
         REQUIRE( not intersection.has_value() );
     }
 
@@ -129,7 +129,7 @@ TEST_CASE( "Test gradient tracing in triangle", "[single-file]" )
         const Eigen::Vector3d field_values( 0.3, 1.1, 1.9 );
         const double edge_barycentric_coord = 0.7;
         const std::optional<std::pair<topology::Edge, double>> intersection =
-            traceGradientOnTri( map, positions, f, edge_barycentric_coord, field_values );
+            traceGradientOnTri( map, positions, e, edge_barycentric_coord, field_values );
         REQUIRE( intersection.has_value() );
         REQUIRE( intersection.value().first.dart().id() == 1 );
         REQUIRE( equals( intersection.value().second, 1.0 - edge_barycentric_coord, 1e-8 ) );
@@ -140,7 +140,7 @@ TEST_CASE( "Test gradient tracing in triangle", "[single-file]" )
         const Eigen::Vector3d field_values( 1.1, 0.3, 1.9 );
         const double edge_barycentric_coord = 0.7;
         const std::optional<std::pair<topology::Edge, double>> intersection =
-            traceGradientOnTri( map, positions, f, edge_barycentric_coord, field_values );
+            traceGradientOnTri( map, positions, e, edge_barycentric_coord, field_values );
         REQUIRE( intersection.has_value() );
         REQUIRE( intersection.value().first.dart().id() == 2 );
         REQUIRE( equals( intersection.value().second, 1.0 - edge_barycentric_coord, 1e-8 ) );

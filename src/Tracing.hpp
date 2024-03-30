@@ -47,7 +47,7 @@ std::optional<Eigen::Vector2d> intersectionOf( const Ray<2>& ray,
 using VertexPositionsFunc = std::function<const Eigen::Vector3d&( const topology::Vertex& )>;
 std::optional<std::pair<topology::Edge, double>> traceGradientOnTri( const topology::CombinatorialMap& map,
                                                                      const VertexPositionsFunc& positions,
-                                                                     const topology::Face& f,
+                                                                     const topology::Cell& start_cell,
                                                                      const double edge_barycentric_coord,
                                                                      const Eigen::VectorXd& field_values );
 
