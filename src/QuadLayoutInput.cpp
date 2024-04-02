@@ -27,7 +27,7 @@ namespace io
                     return equals( p, v_pos, 1e-4 );
                 } );
                 if( it == mesh3d.points.end() )
-                    throw( "Point doesn't exist!!" );
+                    throw std::runtime_error( "Point doesn't exist!!" );
 
                 points_reindexing.emplace( i++, it - mesh3d.points.begin() );
             }

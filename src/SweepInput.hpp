@@ -11,7 +11,7 @@ struct SweepInput
         : mesh( m ), zero_bcs( z ), one_bcs( o )
     {
         if( z.size() != m.points.size() or o.size() != m.points.size() )
-            throw( "Bad arguments to sweep input constructor" );
+            throw std::runtime_error( "Bad arguments to sweep input constructor" );
     }
 
     static SweepInput fromSets( const SimplicialComplex& m, const std::set<VertexId>& z, const std::set<VertexId>& o )

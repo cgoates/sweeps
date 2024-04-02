@@ -35,7 +35,7 @@ class Simplex
         requires std::input_iterator<It>
     Simplex( const It& v_list_begin, const size_t size )
     {
-        if( size < 1 or size > 4 ) throw( "Bad Simplex size" );
+        if( size < 1 or size > 4 ) throw std::out_of_range( "Bad Simplex size" );
         for( size_t i = 0; i < size; i++ ) mVertexIds.push_back( *std::next( v_list_begin, i ) );
     }
 

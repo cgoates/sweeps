@@ -57,7 +57,7 @@ TetMeshCombinatorialMap::TetMeshCombinatorialMap( const SimplicialComplex& compl
     for( size_t i = 0; i < complex.simplices.size(); i++ )
     {
         const Simplex& simplex = complex.simplices.at( i );
-        if( simplex.dim() != 3 ) throw( "Unsupported simplex dimension for TetMeshCombinatorialMap" );
+        if( simplex.dim() != 3 ) throw std::runtime_error( "Unsupported simplex dimension for TetMeshCombinatorialMap" );
         for( const auto& local_dart_id : mLocalFaceDarts )
         {
             const Dart d( dartOfTet( i ).id() + local_dart_id );

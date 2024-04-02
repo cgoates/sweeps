@@ -16,7 +16,7 @@ CombinatorialMapBoundary::CombinatorialMapBoundary( const CombinatorialMap& map,
     mInteriorMap( map ), mStartDarts( boundary_component_darts )
 {
     if( map.dim() < 2 or map.dim() > 3 )
-        throw( "Unsupported map dimension for creating a boundary" );
+        throw std::runtime_error( "Unsupported map dimension for creating a boundary" );
 }
 
 std::optional<Dart> CombinatorialMapBoundary::phi( const int i, const Dart& d ) const

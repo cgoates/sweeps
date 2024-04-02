@@ -26,7 +26,7 @@ const VertexId& Simplex::vertex( const size_t n ) const
 
 BarycentricPoint addVertex( const BarycentricPoint lower_dim_pt, const VertexId& vid, const size_t new_point_pos )
 {
-    if( new_point_pos > lower_dim_pt.simplex.dim() + 1 ) throw( "Bad new point position" );
+    if( new_point_pos > lower_dim_pt.simplex.dim() + 1 ) throw std::runtime_error( "Bad new point position" );
 
     std::vector<VertexId> new_simplex;
     new_simplex.reserve( lower_dim_pt.simplex.dim() + 2 );

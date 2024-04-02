@@ -119,10 +119,12 @@ int main( int argc, char* argv[] )
     {
         const SweepInput sweep_input =
             io::loadINPFile( SRC_HOME "/test/data/macaroni.inp", "Surface3", "Surface4" );
+        // const SweepInput sweep_input =
+        //     io::loadINPFile( SRC_HOME "/test/data/hook.inp", "Surface12", "Surface10" );
 
         if( input_args.front() == "transpose-barycoords" )
         {
-            if( input_args.size() < 4 ) throw( "Bad input to transpose-barycoords" );
+            if( input_args.size() < 4 ) throw std::runtime_error( "Bad input to transpose-barycoords" );
 
             io::rewriteBaryCoordFile( sweep_input.mesh, input_args.at( 1 ), input_args.at( 2 ), input_args.at( 3 ) );
 

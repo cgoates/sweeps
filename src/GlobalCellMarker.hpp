@@ -13,7 +13,7 @@ namespace topology
 
         void mark( const CombinatorialMap& map, const Cell& c )
         {
-            if( c.dim() != mCellDim ) throw( "Bad cell dimension!" );
+            if( c.dim() != mCellDim ) throw std::runtime_error( "Bad cell dimension!" );
             iterateDartsOfCell( map, c, [&]( const Dart& d ) {
                 mDartMarker.mark( d );
                 return true;
@@ -22,7 +22,7 @@ namespace topology
 
         bool isMarked( const Cell& c ) const
         {
-            if( c.dim() != mCellDim ) throw( "Bad cell dimension!" );
+            if( c.dim() != mCellDim ) throw std::runtime_error( "Bad cell dimension!" );
             return mDartMarker.isMarked( c.dart() );
         }
 
@@ -39,7 +39,7 @@ namespace topology
 
         void mark( const CombinatorialMap& map, const Cell& c )
         {
-            if( c.dim() != mCellDim ) throw( "Bad cell dimension!" );
+            if( c.dim() != mCellDim ) throw std::runtime_error( "Bad cell dimension!" );
             iterateDartsOfCell( map, c, [&]( const Dart& d ) {
                 mDartMarker.mark( d );
                 return true;
@@ -48,7 +48,7 @@ namespace topology
 
         bool isMarked( const Cell& c ) const
         {
-            if( c.dim() != mCellDim ) throw( "Bad cell dimension!" );
+            if( c.dim() != mCellDim ) throw std::runtime_error( "Bad cell dimension!" );
             return mDartMarker.isMarked( c.dart() );
         }
 
