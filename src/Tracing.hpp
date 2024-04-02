@@ -30,7 +30,7 @@ std::optional<Eigen::Vector3d> intersectionOf( const Ray<3>& ray,
 
 using TracePoint = std::pair<topology::Face, Eigen::Vector3d>;
 std::optional<TracePoint> traceRayOnTet( const topology::TetMeshCombinatorialMap& map,
-                                         const topology::Volume& v,
+                                         const topology::Cell& start_cell,
                                          const Ray<3>& ray,
                                          const std::vector<Normal>& normals );
 

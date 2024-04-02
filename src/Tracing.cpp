@@ -256,19 +256,23 @@ std::optional<Eigen::Vector3d> intersectionOf( const Ray<3>& ray,
 }
 
 std::optional<TracePoint> traceRayOnTet( const topology::TetMeshCombinatorialMap& map,
-                                          const topology::Volume& v,
-                                          const Ray<3>& ray,
-                                          const std::vector<Normal>& normals )
+                                         const topology::Cell& start_cell,
+                                         const Ray<3>& ray,
+                                         const std::vector<Normal>& normals )
 {
     // The face on the input dart is the location that we start from.
     // Check all the other faces for intersection with the ray.
-    LOG( LOG_TRACING ) << "Tracing on tet " << v.dart().id() << " from ray " << ray.start_pos.transpose() << " -> "
-                       << ray.dir.transpose() << std::endl;
+    LOG( LOG_TRACING ) << "Tracing on tet " << start_cell.dart().id() << " from ray " << ray.start_pos.transpose()
+                       << " -> " << ray.dir.transpose() << std::endl;
+
+    // Avoid attempting intersection with faces adjacent to start_cell.
+    topology::LocalCellMarker m( 2 );
+    iterateAdjacentCells( map, start_cell, 2, [&]( const auto& I ) { m.mark( map, I ); return true; } );
     bool found_it = false;
     std::pair<topology::Face, Eigen::Vector3d> out;
-    iterateAdjacentCells( map, topology::Face( v.dart() ), 1, [&]( const topology::Edge& e ) {
-        LOG( LOG_TRACING ) << "| Edge " << e.dart().id() << std::endl;
-        const topology::Face adj_face( phi( map, 2, e.dart() ).value() );
+    iterateAdjacentCells( map, topology::Volume( start_cell.dart() ), 2, [&]( const topology::Face& adj_face ) {
+        if( m.isMarked( adj_face ) ) return true;
+        LOG( LOG_TRACING ) << "| Face " << adj_face.dart().id() << std::endl;
         const Triangle<3> tri = triangleOfFace( map, adj_face );
         LOG( LOG_TRACING ) << "| | Triangle<3>: " << tri.v1.transpose() << " | " << tri.v2.transpose() << " | "
                            << tri.v3.transpose() << std::endl;
@@ -314,7 +318,7 @@ std::optional<TracePoint> traceCellAverageField( const topology::TetMeshCombinat
                [&]( const topology::Face& f ) { return normals.at( map.faceId( f ) ).get( f.dart() ); },
                [&]( const topology::Volume& ) { return ave_field; } )
         .and_then( [&]( const topology::Face& start_f ) {
-            return traceRayOnTet( map, topology::Volume( start_f.dart() ), Ray<3>{ start_point, ave_field }, normals );
+            return traceRayOnTet( map, start_f, Ray<3>{ start_point, ave_field }, normals );
         } );
 }
 
@@ -325,7 +329,7 @@ SimplicialComplex traceField( const topology::TetMeshCombinatorialMap& map,
                               const std::vector<Normal>& normals,
                               const bool debug_output )
 {
-    topology::Face curr_face;
+    topology::Cell curr_cell;
     Eigen::Vector3d curr_point = start_point;
 
     SimplicialComplex complex;
@@ -335,19 +339,19 @@ SimplicialComplex traceField( const topology::TetMeshCombinatorialMap& map,
     // Figure out the start face. If there is a face adjacent to this cell that works, use that.
     if( start_cell.dim() == 2 )
     {
-        curr_face = start_cell;
+        curr_cell = start_cell;
     }
     else
     {
-        const std::optional<topology::Face> start_face = tracingStartInterface(
+        const std::optional<topology::Cell> adjusted_start_cell = tracingStartCell(
             map,
             start_cell,
             [&]( const topology::Face& f ) { return normals.at( map.faceId( f ) ).get( f.dart() ); },
             [&]( const topology::Volume& v ) { return field.col( map.elementId( v ) ); } );
 
-        if( start_face.has_value() )
+        if( adjusted_start_cell.has_value() )
         {
-            curr_face = start_face.value();
+            curr_cell = adjusted_start_cell.value();
         }
         else
         {
@@ -357,11 +361,11 @@ SimplicialComplex traceField( const topology::TetMeshCombinatorialMap& map,
             {
                 throw( std::runtime_error( "Untraceable field at start" ) );
             }
-            curr_face = second_point.value().first;
+            curr_cell = second_point.value().first;
             curr_point = second_point.value().second;
             complex.points.push_back( curr_point );
             complex.simplices.push_back( { complex.points.size() - 2, complex.points.size() - 1 } );
-            if( onBoundary( map, curr_face.dart() ) ) return complex;
+            if( onBoundary( map, curr_cell.dart() ) ) return complex;
         }
     }
 
@@ -369,23 +373,23 @@ SimplicialComplex traceField( const topology::TetMeshCombinatorialMap& map,
     LOG( LOG_TRACING ) << "Starting a trace\n";
     do
     {
-        const topology::Volume curr_vol( curr_face.dart() );
+        const topology::Volume curr_vol( curr_cell.dart() );
         const Ray<3> search_ray( { curr_point, field.col( map.elementId( curr_vol ) ) } );
         if( debug_output ) interiorTracingDebugOutput( map, curr_vol, search_ray, complex, debug_tets, n++ );
-        std::optional<TracePoint> next_point = traceRayOnTet( map, curr_vol, search_ray, normals );
+        std::optional<TracePoint> next_point = traceRayOnTet( map, curr_cell, search_ray, normals );
         if( not next_point.has_value() )
         {
-            next_point = traceCellAverageField( map, topology::Face( curr_vol.dart() ), curr_point, field, normals );
+            next_point = traceCellAverageField( map, curr_cell, curr_point, field, normals );
             if( not next_point.has_value() )
             {
                 throw( std::runtime_error( "Untraceable field" ) );
             }
         }
-        curr_face = next_point.value().first;
+        curr_cell = next_point.value().first;
         curr_point = next_point.value().second;
         complex.points.push_back( curr_point );
         complex.simplices.push_back( { complex.points.size() - 2, complex.points.size() - 1 } );
-    } while( not onBoundary( map, curr_face.dart() ) );
+    } while( not onBoundary( map, curr_cell.dart() ) );
 
     return complex;
 }
