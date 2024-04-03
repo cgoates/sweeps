@@ -347,6 +347,7 @@ SimplicialComplex traceField( const topology::TetMeshCombinatorialMap& map,
         complex.points.push_back( curr_point );
         complex.simplices.push_back( { complex.points.size() - 2, complex.points.size() - 1 } );
         n++;
+        if( n > 2000 ) throw std::runtime_error( "Never ending tracing loop" );
     } while( not onBoundary( map, curr_cell.dart() ) );
 
     return complex;
