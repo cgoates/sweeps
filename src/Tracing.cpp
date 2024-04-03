@@ -18,41 +18,6 @@ constexpr bool LOG_TRACING = 0;
 ////////////////////////////////////////
 
 static constexpr bool LOG_TRACING_CELL = false;
-std::optional<topology::Cell> tracingStartInterface( const topology::CombinatorialMap& map,
-                                                const topology::Cell& lower_dim_cell,
-                                                const std::function<Eigen::Vector3d( const topology::Cell& )>& normal,
-                                                const std::function<Eigen::Vector3d( const topology::Cell& )>& grad )
-{
-    LOG( LOG_TRACING_CELL ) << "Searching for tracing cell...\n";
-    const size_t dim = map.dim();
-
-    LOG( LOG_TRACING_CELL ) << "Cell dim: " << lower_dim_cell.dim() << std::endl;
-    std::optional<topology::Cell> out;
-    iterateAdjacentCells( map, lower_dim_cell, dim, [&]( const topology::Cell& elem ) {
-        const Eigen::Vector3d this_grad = grad( elem );
-        LOG( LOG_TRACING_CELL ) << "Grad: " << this_grad.transpose() << std::endl;
-        const bool found_cell =
-            iterateAdjacentCellsOfRestrictedCell( map,
-                                                  topology::Cell( elem.dart(), lower_dim_cell.dim() ),
-                                                  elem.dim(),
-                                                  dim - 1,
-                                                  [&]( const topology::Cell& interface ) {
-                                                      const Eigen::Vector3d this_normal = normal( interface );
-                                                      LOG( LOG_TRACING_CELL ) << "Normal: " << this_normal.transpose() << std::endl;
-                                                      LOG( LOG_TRACING_CELL ) << "Dot product: " << this_normal.dot( this_grad ) << std::endl;
-                                                      if( this_normal.dot( this_grad ) < 0 ) return false;
-                                                      return true;
-                                                  } );
-        if( found_cell )
-        {
-            out.emplace( topology::Cell( elem.dart(), dim - 1 ) );
-            return false;
-        }
-        return true;
-    } );
-    return out;
-}
-
 std::optional<topology::Cell> tracingStartCell( const topology::CombinatorialMap& map,
                                                 const topology::Cell& possible_cell,
                                                 const std::function<Eigen::Vector3d( const topology::Cell& )>& normal,
@@ -244,8 +209,7 @@ std::optional<Eigen::Vector3d> intersectionOf( const Ray<3>& ray,
     const Eigen::Vector3d normal = maybe_normal.has_value() ? maybe_normal.value() : triangleNormal( tri );
     const double ray_scaling = normal.dot( tri.v1 - ray.start_pos ) / normal.dot( ray.dir );
     LOG( LOG_TRACING ) << "| | Ray scaling: " << ray_scaling << std::endl;
-    // TODO: Is there a better approach here? If it is within that tolerance it should be an edge I guess?
-    if( ray_scaling < 1e-13 ) return std::nullopt;
+    if( ray_scaling < 0 ) return std::nullopt;
     const Eigen::Vector3d intersection_point = ray.start_pos + ray_scaling * ray.dir;
 
     const bool inside = normal.dot( ( tri.v2 - tri.v1 ).cross( intersection_point - tri.v1 ) ) >= 0 and
@@ -312,13 +276,13 @@ std::optional<TracePoint> traceCellAverageField( const topology::TetMeshCombinat
         return true;
     } );
 
-    return tracingStartInterface(
+    return tracingStartCell(
                map,
                c,
                [&]( const topology::Face& f ) { return normals.at( map.faceId( f ) ).get( f.dart() ); },
                [&]( const topology::Volume& ) { return ave_field; } )
-        .and_then( [&]( const topology::Face& start_f ) {
-            return traceRayOnTet( map, start_f, Ray<3>{ start_point, ave_field }, normals );
+        .and_then( [&]( const topology::Cell& start_cell ) {
+            return traceRayOnTet( map, start_cell, Ray<3>{ start_point, ave_field }, normals );
         } );
 }
 
@@ -343,30 +307,23 @@ SimplicialComplex traceField( const topology::TetMeshCombinatorialMap& map,
     }
     else
     {
-        const std::optional<topology::Cell> adjusted_start_cell = tracingStartCell(
-            map,
-            start_cell,
-            [&]( const topology::Face& f ) { return normals.at( map.faceId( f ) ).get( f.dart() ); },
-            [&]( const topology::Volume& v ) { return field.col( map.elementId( v ) ); } );
+        const auto normals_func = [&]( const topology::Face& f ) { return normals.at( map.faceId( f ) ).get( f.dart() ); };
+        const auto grads_func = [&]( const topology::Volume& v ) { return field.col( map.elementId( v ) ); };
+        const auto edge_func = [&]( const topology::Face& f ) {
+            const Triangle<3> tri = triangleOfFace( map, f );
+            return ( tri.v3 + tri.v2 ) * 0.5 - tri.v1;
+        };
+
+        const std::optional<topology::Cell> adjusted_start_cell =
+            tracingStartCell( map, start_cell, normals_func, grads_func ).or_else( [&]() {
+                return tracingAverageStartCell( map, start_cell, normals_func, grads_func, edge_func );
+            } );
 
         if( adjusted_start_cell.has_value() )
         {
             curr_cell = adjusted_start_cell.value();
         }
-        else
-        {
-            // If there was not a face adjacent to start_cell that works, trace the cell-average field once.
-            std::optional<TracePoint> second_point = traceCellAverageField( map, start_cell, curr_point, field, normals );
-            if( not second_point.has_value() )
-            {
-                throw( std::runtime_error( "Untraceable field at start" ) );
-            }
-            curr_cell = second_point.value().first;
-            curr_point = second_point.value().second;
-            complex.points.push_back( curr_point );
-            complex.simplices.push_back( { complex.points.size() - 2, complex.points.size() - 1 } );
-            if( onBoundary( map, curr_cell.dart() ) ) return complex;
-        }
+        else throw( std::runtime_error( "Untraceable field at start" ) );
     }
 
     size_t n = 0;
