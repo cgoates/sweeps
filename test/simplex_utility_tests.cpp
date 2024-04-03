@@ -4,7 +4,7 @@
 #include <Logging.hpp>
 #include <TetMeshCombinatorialMap.hpp>
 
-TEST_CASE( "Dihedral angle cotangent", "[single-file]" )
+TEST_CASE( "Dihedral angle cotangent", "" )
 {
     SimplicialComplex simplicial_complex = { { { 0, 1, 2, 3 } }, { { 0, 0, 0 }, { 0, 0, 1 }, { 1, 0, 0 } } };
 

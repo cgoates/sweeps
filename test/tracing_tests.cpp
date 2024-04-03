@@ -47,7 +47,7 @@ class SingleTriangleCMap : public CombinatorialMap
 };
 }
 
-TEST_CASE( "Test line ray intersection 0", "[single-file]" )
+TEST_CASE( "Test line ray intersection 0", "" )
 {
     const Eigen::Vector2d line_point_0( 0.0, 1.0 );
     const Eigen::Vector2d line_point_1( 1.0, 0.0 );
@@ -63,7 +63,7 @@ TEST_CASE( "Test line ray intersection 0", "[single-file]" )
     REQUIRE( equals( intersection.value(), Eigen::Vector2d( 0.25, 0.75 ), 1e-8 ) );
 }
 
-TEST_CASE( "Test line ray intersection 1", "[single-file]" )
+TEST_CASE( "Test line ray intersection 1", "" )
 {
     const Eigen::Vector2d line_point_1( 0.0, 1.0 );
     const Eigen::Vector2d line_point_0( 1.0, 0.0 );
@@ -79,7 +79,7 @@ TEST_CASE( "Test line ray intersection 1", "[single-file]" )
     REQUIRE( equals( intersection.value(), Eigen::Vector2d( 0.25, 0.75 ), 1e-8 ) );
 }
 
-TEST_CASE( "Test line ray no intersection", "[single-file]" )
+TEST_CASE( "Test line ray no intersection", "" )
 {
     const Eigen::Vector2d line_point_1( 0.0, 1.0 );
     const Eigen::Vector2d line_point_0( 1.0, 0.0 );
@@ -94,7 +94,7 @@ TEST_CASE( "Test line ray no intersection", "[single-file]" )
     REQUIRE( not intersection.has_value() );
 }
 
-TEST_CASE( "Test line ray no intersection 2", "[single-file]" )
+TEST_CASE( "Test line ray no intersection 2", "" )
 {
     const Eigen::Vector2d line_point_1( 0.0, 1.0 );
     const Eigen::Vector2d line_point_0( 1.0, 0.0 );
@@ -109,7 +109,7 @@ TEST_CASE( "Test line ray no intersection 2", "[single-file]" )
     REQUIRE( not intersection.has_value() );
 }
 
-TEST_CASE( "Test gradient tracing in triangle", "[single-file]" )
+TEST_CASE( "Test gradient tracing in triangle", "" )
 {
     const std::array<Eigen::Vector3d, 3> tri(
         { Eigen::Vector3d( 1.0, 0.0, 0.0 ),

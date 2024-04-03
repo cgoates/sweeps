@@ -9,7 +9,7 @@
 
 using namespace topology;
 
-TEST_CASE( "Importing a 12-tet hex into cmap has correct number of elements", "[single-file]" )
+TEST_CASE( "Importing a 12-tet hex into cmap has correct number of elements", "" )
 {
     const SweepInput sweep_input = SweepInputTestCases::twelveTetCube();
 
@@ -26,7 +26,7 @@ TEST_CASE( "Importing a 12-tet hex into cmap has correct number of elements", "[
     } );
 }
 
-TEST_CASE( "Importing two tets gives correct number of cells", "[single-file]" )
+TEST_CASE( "Importing two tets gives correct number of cells", "" )
 {
     const SweepInput sweep_input = SweepInputTestCases::twoTets();
 
@@ -43,7 +43,7 @@ TEST_CASE( "Importing two tets gives correct number of cells", "[single-file]" )
     } );
 }
 
-TEST_CASE( "1x1x2 hex each divided into 12 tets", "[single-file]" )
+TEST_CASE( "1x1x2 hex each divided into 12 tets", "" )
 {
     const SweepInput sweep_input = SweepInputTestCases::refinedCube( { 1, 1, 2 } );
     const TetMeshCombinatorialMap interior_map( sweep_input.mesh );
@@ -59,7 +59,7 @@ TEST_CASE( "1x1x2 hex each divided into 12 tets", "[single-file]" )
     } );
 }
 
-TEST_CASE( "Simplest gmsh mesh", "[single-file]" )
+TEST_CASE( "Simplest gmsh mesh", "" )
 {
     const SweepInput sweep_input =
         io::loadINPFile( SRC_HOME "/test/simple_mesh.inp", "Surface1", "Surface28" );
