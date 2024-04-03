@@ -332,20 +332,21 @@ SimplicialComplex traceField( const topology::TetMeshCombinatorialMap& map,
     {
         const topology::Volume curr_vol( curr_cell.dart() );
         const Ray<3> search_ray( { curr_point, field.col( map.elementId( curr_vol ) ) } );
-        if( debug_output ) interiorTracingDebugOutput( map, curr_vol, search_ray, complex, debug_tets, n++ );
+        if( debug_output ) interiorTracingDebugOutput( map, curr_vol, search_ray, complex, debug_tets, n );
         std::optional<TracePoint> next_point = traceRayOnTet( map, curr_cell, search_ray, normals );
         if( not next_point.has_value() )
         {
             next_point = traceCellAverageField( map, curr_cell, curr_point, field, normals );
             if( not next_point.has_value() )
             {
-                throw( std::runtime_error( "Untraceable field" ) );
+                throw( std::runtime_error( "Untraceable field at step " + std::to_string( n ) ) );
             }
         }
         curr_cell = next_point.value().first;
         curr_point = next_point.value().second;
         complex.points.push_back( curr_point );
         complex.simplices.push_back( { complex.points.size() - 2, complex.points.size() - 1 } );
+        n++;
     } while( not onBoundary( map, curr_cell.dart() ) );
 
     return complex;
