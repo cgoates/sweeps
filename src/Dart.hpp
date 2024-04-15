@@ -19,6 +19,8 @@ namespace topology
 
         bool operator==( const Dart& o ) const { return id() == o.id(); }
 
+        bool operator!=( const Dart& o ) const { return id() != o.id(); }
+
         private:
         IndexType mIndex;
     };
