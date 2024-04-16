@@ -56,6 +56,8 @@ namespace topology
         size_t edgeId( const Edge& e ) const;
         virtual VertexId vertexId( const Vertex& c ) const override;
 
+        virtual std::optional<IndexingFunc> indexing( const uint cell_dim ) const override;
+
         Vertex vertexOfId( const VertexId& vid ) const
         {
             return Vertex( mVertexDarts.at( vid.id() ) );

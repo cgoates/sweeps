@@ -214,6 +214,38 @@ size_t TetMeshCombinatorialMap::edgeId( const Edge& e ) const
     return mEdgeIds.at( e.dart().id() );
 }
 
+std::optional<IndexingFunc> TetMeshCombinatorialMap::indexing( const uint cell_dim ) const
+{
+    if( cell_dim == 0 )
+    {
+        return [this]( const Vertex& v ){
+            const size_t simplex_id = elementId( Cell( v.dart(), 3 ) );
+            const Simplex& simp = mSimplicialComplex.simplices.at( simplex_id );
+            const VertexId::Type local_vert = mLocalVertices.at( v.dart().id() % darts_per_tet );
+            return simp.vertex( local_vert ).id();
+        };
+    }
+    else if( cell_dim == 1 )
+    {
+        return [this]( const Edge& e ){
+            return mEdgeIds.at( e.dart().id() );
+        };
+    }
+    else if( cell_dim == 2 )
+    {
+        return [this]( const Face& f ){
+            return mFaceIds.at( f.dart().id() );
+        };
+    }
+    else if( cell_dim == 3 )
+    {
+        return []( const Volume& elem ) {
+            return elem.dart().id() / darts_per_tet;
+        };
+    }
+    return std::nullopt;
+}
+
 std::optional<size_t> TetMeshCombinatorialMap::cellCount( const uint cell_dim ) const
 {
     switch( cell_dim )

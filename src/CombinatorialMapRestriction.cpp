@@ -69,3 +69,8 @@ VertexId CombinatorialMapRestriction::vertexId( const Vertex& v ) const
 {
     return mUnrestrictedMap.vertexId( v );
 }
+
+std::optional<IndexingFunc> CombinatorialMapRestriction::indexing( const uint cell_dim ) const
+{
+    return mUnrestrictedMap.indexing( cell_dim );
+}

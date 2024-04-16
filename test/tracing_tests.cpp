@@ -44,6 +44,16 @@ class SingleTriangleCMap : public CombinatorialMap
     {
         return v.dart().id();
     }
+    virtual std::optional<IndexingFunc> indexing( const uint cell_dim ) const override
+    {
+        if( cell_dim != 0 ) return std::nullopt;
+        else
+        {
+            return []( const Vertex& v ){
+                return v.dart().id();
+            };
+        }
+    }
 };
 }
 

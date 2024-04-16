@@ -7,6 +7,8 @@ class VertexId;
 
 namespace topology
 {
+    using IndexingFunc = std::function<size_t(const Cell&)>;
+
     class CombinatorialMap
     {
         public:
@@ -17,6 +19,7 @@ namespace topology
         virtual bool iterateCellsWhile( const uint cell_dim, const std::function<bool( const Cell& )>& callback ) const = 0;
 
         virtual VertexId vertexId( const Vertex& v ) const = 0;
+        virtual std::optional<IndexingFunc> indexing( const uint cell_dim ) const = 0;
 
         virtual std::optional<size_t> cellCount( const uint ) const
         {

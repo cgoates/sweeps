@@ -102,3 +102,12 @@ topology::Cell CombinatorialMapBoundary::toUnderlyingCell( const topology::Cell&
     if( c.dim() > 0 ) return c;
     else return Vertex( topology::phi( mInteriorMap, 1, c.dart() ).value() );
 }
+
+std::optional<IndexingFunc> CombinatorialMapBoundary::indexing( const uint cell_dim ) const
+{
+    return mInteriorMap.indexing( cell_dim ).and_then( [&]( const IndexingFunc underlying_func ) -> std::optional<IndexingFunc> {
+        return [underlying_func,this]( const Cell& c ) {
+            return underlying_func( toUnderlyingCell( c ) );
+        };
+    } );
+}

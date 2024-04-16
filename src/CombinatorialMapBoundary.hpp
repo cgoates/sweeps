@@ -17,6 +17,7 @@ namespace topology
         virtual bool iterateDartsWhile( const std::function<bool( const Dart& )>& callback ) const override;
         virtual bool iterateCellsWhile( const uint cell_dim, const std::function<bool( const Cell& )>& callback ) const override;
         virtual VertexId vertexId( const Vertex& v ) const override;
+        virtual std::optional<IndexingFunc> indexing( const uint cell_dim ) const override;
 
         topology::Cell toUnderlyingCell( const topology::Cell& c ) const;
 

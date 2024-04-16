@@ -70,4 +70,6 @@ namespace topology
                   const std::function<bool( const topology::Face& )>& stop_condition,
                   const std::function<void( const topology::Face& )>& mark_callback,
                   const std::function<void( const topology::Face& )>& callback );
+
+    IndexingFunc indexingOrError( const CombinatorialMap& map, const uint cell_dim );
 } // namespace topology

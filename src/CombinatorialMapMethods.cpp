@@ -306,4 +306,11 @@ namespace topology
             }
         }
     }
+
+    IndexingFunc indexingOrError( const CombinatorialMap& map, const uint cell_dim )
+    {
+        return map.indexing( cell_dim ).or_else( [&]() -> std::optional<IndexingFunc> {
+            throw std::runtime_error( "Indexing for dim " + std::to_string( cell_dim ) + " doesn't exist" );
+        } ).value();
+    }
 } // namespace topology
