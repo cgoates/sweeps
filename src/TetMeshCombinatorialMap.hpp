@@ -54,7 +54,6 @@ namespace topology
         size_t elementId( const Volume& c ) const;
         size_t faceId( const Face& f ) const;
         size_t edgeId( const Edge& e ) const;
-        virtual VertexId vertexId( const Vertex& c ) const override;
 
         virtual std::optional<IndexingFunc> indexing( const uint cell_dim ) const override;
 

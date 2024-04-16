@@ -3,6 +3,7 @@
 #include <SimplexUtilities.hpp>
 #include <Logging.hpp>
 #include <TetMeshCombinatorialMap.hpp>
+#include <CombinatorialMapMethods.hpp>
 
 TEST_CASE( "Dihedral angle cotangent", "" )
 {
@@ -18,9 +19,11 @@ TEST_CASE( "Dihedral angle cotangent", "" )
 
             const auto normals = faceNormals( map );
 
+            const auto vertex_ids = indexingOrError( map, 0 );
+
             iterateCellsWhile( map, 1, [&]( const topology::Edge& e ) {
-                const auto vid1 = map.vertexId( topology::Vertex( e.dart() ) ).id();
-                const auto vid2 = map.vertexId( topology::Vertex( phi( map, 1, e.dart() ).value() ) ).id();
+                const auto vid1 = vertex_ids( topology::Vertex( e.dart() ) );
+                const auto vid2 = vertex_ids( topology::Vertex( phi( map, 1, e.dart() ).value() ) );
                 if( ( vid1 == 0 and vid2 == 1 ) or ( vid1 == 1 and vid2 == 0 ) )
                 {
                     test( map, e, normals );

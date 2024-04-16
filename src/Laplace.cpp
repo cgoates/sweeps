@@ -45,13 +45,14 @@ Eigen::SparseVector<double> laplaceOperatorRowSparse( const topology::TetMeshCom
                                                       const std::vector<double>& edge_weights,
                                                       const int n_verts )
 {
+    const auto vertex_ids = indexingOrError( map, 0 );
     Eigen::SparseVector<double> out( n_verts );
     out.reserve( 10 ); // FIXME
-    const VertexId vid1 = map.vertexId( v1 );
+    const VertexId vid1 = vertex_ids( v1 );
     t.start( 7 );
     iterateAdjacentCells( map, v1, 1, [&]( const topology::Edge& e ) {
         const double edge_weight = edge_weights.at( map.edgeId( e ) );
-        const VertexId vid2 = map.vertexId( topology::Vertex( phi( map, 1, e.dart() ).value() ) );
+        const VertexId vid2 = vertex_ids( topology::Vertex( phi( map, 1, e.dart() ).value() ) );
 
         out.coeffRef( vid1.id() ) -= edge_weight;
         out.coeffRef( vid2.id() ) += edge_weight;
@@ -78,6 +79,8 @@ Eigen::VectorXd solveLaplaceSparse( const topology::TetMeshCombinatorialMap& map
     const size_t n_bcs = std::accumulate( zero_bcs.begin(), zero_bcs.end(), 0 ) +
                          std::accumulate( one_bcs.begin(), one_bcs.end(), 0 );
 
+    const auto vertex_ids = indexingOrError( map, 0 );
+
     std::vector<Eigen::Triplet<double>> L_triplets;
     L_triplets.reserve( 2 * cellCount( map, 1 ) + n_verts );
 
@@ -93,7 +96,7 @@ Eigen::VectorXd solveLaplaceSparse( const topology::TetMeshCombinatorialMap& map
 
     t.start( 1 );
     iterateCellsWhile( map, 0, [&]( const topology::Vertex& v ) {
-        const VertexId vid = map.vertexId( v );
+        const VertexId vid = vertex_ids( v );
         if( zero_bcs.at( vid.id() ) )
         {
             const Eigen::Index i = boundary_verts.size();

@@ -63,6 +63,8 @@ std::optional<topology::Cell>
     LOG( LOG_TRACING_CELL ) << "Searching for tracing cell...\n";
     const size_t dim = map.dim();
 
+    const auto vertex_ids = indexingOrError( map, 0 );
+
     LOG( LOG_TRACING_CELL ) << "Cell dim: " << possible_cell.dim() << std::endl;
     std::optional<topology::Cell> out;
     iterateAdjacentCells( map, possible_cell, dim - 1, [&]( const topology::Cell& I ) {
@@ -79,7 +81,7 @@ std::optional<topology::Cell>
 
         if( ( normal_left.dot( grad_left ) > 0 ) == ( normal_right.dot( grad_right ) > 0 ) )
         {
-            const bool aligned = map.vertexId( I.dart() ) == map.vertexId( possible_cell );
+            const bool aligned = vertex_ids( topology::Vertex( I.dart() ) ) == vertex_ids( possible_cell );
             const bool grads_along_edge = ( edge.dot( grad_left ) + edge.dot( grad_right ) ) >= 0 == aligned;
             if( grads_along_edge )
             {
@@ -151,9 +153,10 @@ void boundaryTracingDebugOutput( const topology::CombinatorialMap& map,
     const Triangle<3> tri3d = triangleOfFace( map, positions, topology::Face( curr_cell.dart() ) );
 
     const auto& d = curr_cell.dart();
-    const auto field_values = field( { map.vertexId( topology::Vertex( d ) ).id(),
-                                       map.vertexId( topology::Vertex( phi( map, 1, d ).value() ) ).id(),
-                                       map.vertexId( topology::Vertex( phi( map, -1, d ).value() ) ).id() } );
+    const auto vertex_ids = indexingOrError( map, 0 );
+    const auto field_values = field( { vertex_ids( topology::Vertex( d ) ),
+                                       vertex_ids( topology::Vertex( phi( map, 1, d ).value() ) ),
+                                       vertex_ids( topology::Vertex( phi( map, -1, d ).value() ) ) } );
 
     // Add the triangles of the current tet to tets
     const size_t next_vid = tris.points.size();
@@ -475,10 +478,12 @@ std::optional<std::pair<topology::Edge, double>>
 
     const double twice_area = v1_2d( 0 ) * v2_2d( 1 );
 
+    const auto vertex_ids = indexingOrError( map, 0 );
+
     // calculate the gradient in the xy plane
-    const Eigen::Vector3d face_field = field_values( { map.vertexId( topology::Vertex( d ) ).id(),
-                                                        map.vertexId( topology::Vertex( phi( map, 1, d ).value() ) ).id(),
-                                                        map.vertexId( topology::Vertex( phi( map, -1, d ).value() ) ).id() } );
+    const Eigen::Vector3d face_field = field_values( { vertex_ids( topology::Vertex( d ) ),
+                                                       vertex_ids( topology::Vertex( phi( map, 1, d ).value() ) ),
+                                                       vertex_ids( topology::Vertex( phi( map, -1, d ).value() ) ) } );
 
     const Eigen::Vector2d gradient = gradient2d( { v0_2d, v1_2d, v2_2d }, face_field, twice_area );
 
@@ -514,12 +519,13 @@ std::optional<std::pair<topology::Edge, double>>
         const Eigen::Vector2d v2_2d( e0.dot( tri3d.v3 - tri3d.v1 ), e1.dot( tri3d.v3 - tri3d.v1 ) );
         const Eigen::Vector2d v3_2d( e0.dot( opp_v - tri3d.v1 ), e1_prime.dot( opp_v - tri3d.v1 ) );
 
+        const auto vertex_ids = indexingOrError( map, 0 );
         // calculate the gradient in the xy plane
         const Eigen::Vector4d faces_field =
-            field_values( { map.vertexId( topology::Vertex( d ) ).id(),
-                            map.vertexId( topology::Vertex( phi( map, 1, d ).value() ) ).id(),
-                            map.vertexId( topology::Vertex( phi( map, -1, d ).value() ) ).id(),
-                            map.vertexId( topology::Vertex( opp_d ) ).id() } );
+            field_values( { vertex_ids( topology::Vertex( d ) ),
+                            vertex_ids( topology::Vertex( phi( map, 1, d ).value() ) ),
+                            vertex_ids( topology::Vertex( phi( map, -1, d ).value() ) ),
+                            vertex_ids( topology::Vertex( opp_d ) ) } );
 
         const double twice_area_0 = v1_2d( 0 ) * v2_2d( 1 );
         const double twice_area_1 = -v1_2d( 0 ) * v3_2d( 1 );
@@ -589,6 +595,7 @@ SimplicialComplex traceBoundaryField( const topology::CombinatorialMap& map,
     }
     else
     {
+        const auto vertex_ids = indexingOrError( map, 0 );
         const auto normals_func = [&]( const topology::Edge& e ) -> Eigen::Vector3d {
             // Rotate edge vector 90 degrees about the normal axis
             const Eigen::Vector3d edge_vector =
@@ -603,9 +610,9 @@ SimplicialComplex traceBoundaryField( const topology::CombinatorialMap& map,
         };
         const auto grads_func = [&]( const topology::Face& f ) -> Eigen::Vector3d {
             const topology::Dart& d = f.dart();
-            const auto face_field = field( { map.vertexId( topology::Vertex( d ) ).id(),
-                                             map.vertexId( topology::Vertex( phi( map, 1, d ).value() ) ).id(),
-                                             map.vertexId( topology::Vertex( phi( map, -1, d ).value() ) ).id() } );
+            const auto face_field = field( { vertex_ids( topology::Vertex( d ) ),
+                                             vertex_ids( topology::Vertex( phi( map, 1, d ).value() ) ),
+                                             vertex_ids( topology::Vertex( phi( map, -1, d ).value() ) ) } );
             return gradient( triangleOfFace( map, positions, f ), face_field );
         };
         const std::optional<topology::Cell> adjusted_start_cell =

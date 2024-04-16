@@ -16,8 +16,9 @@ Eigen::Vector3d triangleNormal( const Triangle<3>& tri )
 Triangle<3> triangleOfFace( const topology::TetMeshCombinatorialMap& map, const topology::Face& f )
 {
     const SimplicialComplex& complex = map.simplicialComplex();
+    const auto vertex_ids = indexingOrError( map, 0 );
     const auto vertex_position = [&]( const topology::Vertex& v ) -> const Eigen::Vector3d& {
-        return complex.points.at( map.vertexId( v ).id() );
+        return complex.points.at( vertex_ids( v ) );
     };
 
     return triangleOfFace( map, vertex_position, f );
@@ -68,8 +69,9 @@ double edgeLength( const topology::TetMeshCombinatorialMap& map, const topology:
 {
     const SimplicialComplex& complex = map.simplicialComplex();
     const topology::Dart& d = e.dart();
+    const auto vertex_ids = indexingOrError( map, 0 );
     const auto vertex_position = [&]( const topology::Vertex& v ) {
-        return complex.points.at( map.vertexId( v ).id() );
+        return complex.points.at( vertex_ids( v ) );
     };
     const Eigen::Vector3d& pos1 = vertex_position( topology::Vertex( d ) );
     const Eigen::Vector3d& pos2 = vertex_position( topology::Vertex( phi( map, 1, d ).value() ) );
@@ -94,13 +96,14 @@ Eigen::Vector3d gradient( const topology::TetMeshCombinatorialMap& map,
 {
     using namespace topology;
     const SimplicialComplex& complex = map.simplicialComplex();
+    const auto vertex_ids = indexingOrError( map, 0 );
     const auto vertex_position = [&]( const topology::Vertex& v ) {
-        return complex.points.at( map.vertexId( v ).id() );
+        return complex.points.at( vertex_ids( v ) );
     };
     Eigen::Vector3d gradient = Eigen::Vector3d::Zero();
     iterateAdjacentCells( map, v, 2, [&]( const Face& f ) {
         const Vertex op_vert( phi( map, {2, -1}, f.dart() ).value() );
-        const VertexId op_vert_id = map.vertexId( op_vert );
+        const VertexId op_vert_id = vertex_ids( op_vert );
         const Eigen::Vector3d& op_vert_pos = vertex_position( op_vert );
         const Eigen::Vector3d& face_vert_pos = vertex_position( Vertex( f.dart() ) );
         const auto fid = map.faceId( f );
@@ -201,9 +204,10 @@ Eigen::Vector3d expandBarycentric( const topology::CombinatorialMap& map,
                                    const BarycentricPoint& coord )
 {
     Eigen::Vector3d out = Eigen::Vector3d::Zero();
+    const auto vertex_ids = indexingOrError( map, 0 );
     const auto& simplex_verts = coord.simplex.vertices();
     iterateAdjacentCells( map, start_face, 0, [&]( const topology::Vertex& v ) {
-        const VertexId vid = map.vertexId( v );
+        const VertexId vid = vertex_ids( v );
         const size_t idx = std::distance( simplex_verts.begin(), std::find( simplex_verts.begin(), simplex_verts.end(), vid ) );
         if( idx >= simplex_verts.size() )
         {

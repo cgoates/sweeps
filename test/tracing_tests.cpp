@@ -40,10 +40,6 @@ class SingleTriangleCMap : public CombinatorialMap
         }
     }
 
-    virtual VertexId vertexId( const Vertex& v ) const override
-    {
-        return v.dart().id();
-    }
     virtual std::optional<IndexingFunc> indexing( const uint cell_dim ) const override
     {
         if( cell_dim != 0 ) return std::nullopt;
@@ -126,8 +122,9 @@ TEST_CASE( "Test gradient tracing in triangle", "" )
           Eigen::Vector3d( 0.0, 1.0, 0.0 ),
           Eigen::Vector3d( 0.0, 0.0, 1.0 ) } );
     const topology::SingleTriangleCMap map;
+    const auto vertex_ids = indexingOrError( map, 0 );
     const auto positions = [&]( const topology::Vertex& v ) -> const Eigen::Vector3d& {
-        return tri.at( map.vertexId( v ).id() );
+        return tri.at( vertex_ids( v ) );
     };
 
     const topology::Edge e( topology::Dart( 0 ) );
@@ -179,31 +176,33 @@ TEST_CASE( "Tracing from all the cells in the macaroni", "[slow]")
 
     const topology::CombinatorialMapBoundary bdry( map );
 
+    const auto bdry_vertex_ids = indexingOrError( bdry, 0 );
+
     const auto keep_face_sides = [&]( const topology::Face& f ) {
-        return ( not sweep_input.zero_bcs.at( bdry.vertexId( topology::Vertex( f.dart() ) ).id() ) or
+        return ( not sweep_input.zero_bcs.at( bdry_vertex_ids( topology::Vertex( f.dart() ) ) ) or
                     not sweep_input.zero_bcs.at(
-                        bdry.vertexId( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ).id() ) or
+                        bdry_vertex_ids( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ) ) or
                     not sweep_input.zero_bcs.at(
-                        bdry.vertexId( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ).id() ) ) and
-                ( not sweep_input.one_bcs.at( bdry.vertexId( topology::Vertex( f.dart() ) ).id() ) or
+                        bdry_vertex_ids( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ) ) ) and
+                ( not sweep_input.one_bcs.at( bdry_vertex_ids( topology::Vertex( f.dart() ) ) ) or
                     not sweep_input.one_bcs.at(
-                        bdry.vertexId( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ).id() ) or
+                        bdry_vertex_ids( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ) ) or
                     not sweep_input.one_bcs.at(
-                        bdry.vertexId( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ).id() ) );
+                        bdry_vertex_ids( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ) ) );
     };
 
     const auto keep_face_base = [&]( const topology::Face& f ) {
-        return sweep_input.zero_bcs.at( bdry.vertexId( topology::Vertex( f.dart() ) ).id() ) and
-                sweep_input.zero_bcs.at( bdry.vertexId( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ).id() ) and
-                sweep_input.zero_bcs.at( bdry.vertexId( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ).id() );
+        return sweep_input.zero_bcs.at( bdry_vertex_ids( topology::Vertex( f.dart() ) ) ) and
+                sweep_input.zero_bcs.at( bdry_vertex_ids( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ) ) and
+                sweep_input.zero_bcs.at( bdry_vertex_ids( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ) );
     };
 
     const auto keep_face_target = [&]( const topology::Face& f ) {
-        return sweep_input.one_bcs.at( bdry.vertexId( topology::Vertex( f.dart() ) ).id() ) and
+        return sweep_input.one_bcs.at( bdry_vertex_ids( topology::Vertex( f.dart() ) ) ) and
                 sweep_input.one_bcs.at(
-                    bdry.vertexId( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ).id() ) and
+                    bdry_vertex_ids( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ) ) and
                 sweep_input.one_bcs.at(
-                    bdry.vertexId( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ).id() );
+                    bdry_vertex_ids( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ) );
     };
 
     const topology::CombinatorialMapRestriction sides( bdry, keep_face_sides );
@@ -213,8 +212,9 @@ TEST_CASE( "Tracing from all the cells in the macaroni", "[slow]")
     const Eigen::Matrix3Xd grad = gradientsWithBoundaryCorrection( map, sides, ans, normals );
 
     const auto vertex_positions = [&sweep_input]( const topology::CombinatorialMap& map ){
-        return [&sweep_input, &map]( const topology::Vertex& v ) -> const Eigen::Vector3d& {
-            return sweep_input.mesh.points.at( map.vertexId( v ).id() );
+        const auto vertex_ids = indexingOrError( map, 0 );
+        return [&sweep_input, vertex_ids]( const topology::Vertex& v ) -> const Eigen::Vector3d& {
+            return sweep_input.mesh.points.at( vertex_ids( v ) );
         };
     };
 

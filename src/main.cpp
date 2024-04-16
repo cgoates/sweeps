@@ -15,11 +15,12 @@ void foreachFaceWithVertsInSet( const topology::TetMeshCombinatorialMap& map,
                                 const std::vector<bool>& set,
                                 const std::function<bool( const topology::Face&, const size_t n )>& callback )
 {
+    const auto vertex_ids = indexingOrError( map, 0 );
     const topology::CombinatorialMapBoundary bdry( map );
     const auto contains = [&]( const topology::Face& f ) {
-        return set.at( map.vertexId( topology::Vertex( f.dart() ) ).id() ) and
-               set.at( map.vertexId( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ).id() ) and
-               set.at( map.vertexId( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ).id() );
+        return set.at( vertex_ids( topology::Vertex( f.dart() ) ) ) and
+               set.at( vertex_ids( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ) ) and
+               set.at( vertex_ids( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ) );
     };
     const topology::CombinatorialMapRestriction base_surf( bdry, contains );
     size_t i = 0;
@@ -30,10 +31,11 @@ void foreachEdgeOnBoundaryOfSet( const topology::CombinatorialMapBoundary& map,
                                  const std::vector<bool>& set,
                                  const std::function<bool( const topology::Edge&, const size_t n )>& callback )
 {
+    const auto vertex_ids = indexingOrError( map, 0 );
     const auto contains = [&]( const topology::Face& f ) {
-        return set.at( map.vertexId( topology::Vertex( f.dart() ) ).id() ) and
-               set.at( map.vertexId( topology::Vertex( phi( map, 1, f.dart() ).value() ) ).id() ) and
-               set.at( map.vertexId( topology::Vertex( phi( map, -1, f.dart() ).value() ) ).id() );
+        return set.at( vertex_ids( topology::Vertex( f.dart() ) ) ) and
+               set.at( vertex_ids( topology::Vertex( phi( map, 1, f.dart() ).value() ) ) ) and
+               set.at( vertex_ids( topology::Vertex( phi( map, -1, f.dart() ).value() ) ) );
     };
     const topology::CombinatorialMapRestriction base_surf( map, contains );
     const topology::CombinatorialMapBoundary edges( base_surf );
@@ -55,10 +57,11 @@ topology::Cell cellOfSimplex( const topology::TetMeshCombinatorialMap& map, cons
 
     const auto contains = [&]( const VertexId& v ) { return std::find( vertices.begin(), vertices.end(), v ) != vertices.end(); };
 
+    const auto vertex_ids = indexingOrError( map, 0 );
     std::optional<topology::Cell> out;
     iterateAdjacentCells( map, v0, s.dim(), [&]( const topology::Cell& c ) {
         const bool right_cell = iterateDartsOfCell( map, c, [&]( const topology::Dart& d ) {
-            return contains( map.vertexId( topology::Vertex( d ) ) );
+            return contains( VertexId( vertex_ids( topology::Vertex( d ) ) ) );
         } );
         if( right_cell ) out.emplace( c );
         return not right_cell;
@@ -150,42 +153,49 @@ int main( int argc, char* argv[] )
 
         const topology::CombinatorialMapBoundary bdry( map );
 
+        const auto bdry_vertex_ids = indexingOrError( bdry, 0 );
+        const auto vertex_ids = indexingOrError( map, 0 );
+
         const auto keep_face_sides = [&]( const topology::Face& f ) {
-            return ( not sweep_input.zero_bcs.at( bdry.vertexId( topology::Vertex( f.dart() ) ).id() ) or
+            return ( not sweep_input.zero_bcs.at( bdry_vertex_ids( topology::Vertex( f.dart() ) ) ) or
                         not sweep_input.zero_bcs.at(
-                            bdry.vertexId( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ).id() ) or
+                            bdry_vertex_ids( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ) ) or
                         not sweep_input.zero_bcs.at(
-                            bdry.vertexId( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ).id() ) ) and
-                    ( not sweep_input.one_bcs.at( bdry.vertexId( topology::Vertex( f.dart() ) ).id() ) or
+                            bdry_vertex_ids( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ) ) ) and
+                    ( not sweep_input.one_bcs.at( bdry_vertex_ids( topology::Vertex( f.dart() ) ) ) or
                         not sweep_input.one_bcs.at(
-                            bdry.vertexId( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ).id() ) or
+                            bdry_vertex_ids( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ) ) or
                         not sweep_input.one_bcs.at(
-                            bdry.vertexId( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ).id() ) );
+                            bdry_vertex_ids( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ) ) );
         };
 
         const auto keep_face_base = [&]( const topology::Face& f ) {
-            return sweep_input.zero_bcs.at( bdry.vertexId( topology::Vertex( f.dart() ) ).id() ) and
-                    sweep_input.zero_bcs.at( bdry.vertexId( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ).id() ) and
-                    sweep_input.zero_bcs.at( bdry.vertexId( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ).id() );
+            return sweep_input.zero_bcs.at( bdry_vertex_ids( topology::Vertex( f.dart() ) ) ) and
+                    sweep_input.zero_bcs.at( bdry_vertex_ids( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ) ) and
+                    sweep_input.zero_bcs.at( bdry_vertex_ids( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ) );
         };
 
         const auto keep_face_target = [&]( const topology::Face& f ) {
-            return sweep_input.one_bcs.at( bdry.vertexId( topology::Vertex( f.dart() ) ).id() ) and
+            return sweep_input.one_bcs.at( bdry_vertex_ids( topology::Vertex( f.dart() ) ) ) and
                    sweep_input.one_bcs.at(
-                       bdry.vertexId( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ).id() ) and
+                       bdry_vertex_ids( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ) ) and
                    sweep_input.one_bcs.at(
-                       bdry.vertexId( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ).id() );
+                       bdry_vertex_ids( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ) );
         };
 
         const topology::CombinatorialMapRestriction sides( bdry, keep_face_sides );
         const topology::CombinatorialMapRestriction base( bdry, keep_face_base );
         const topology::CombinatorialMapRestriction target( bdry, keep_face_target );
 
+        const auto sides_vertex_ids = indexingOrError( sides, 0 );
+        const auto base_vertex_ids = indexingOrError( base, 0 );
+
         const Eigen::Matrix3Xd grad = gradientsWithBoundaryCorrection( map, sides, ans, normals );
 
         const auto vertex_positions = [&sweep_input]( const topology::CombinatorialMap& map ){
-            return [&sweep_input, &map]( const topology::Vertex& v ) -> const Eigen::Vector3d& {
-                return sweep_input.mesh.points.at( map.vertexId( v ).id() );
+            const auto vertex_ids = indexingOrError( map, 0 );
+            return [&sweep_input, vertex_ids]( const topology::Vertex& v ) -> const Eigen::Vector3d& {
+                return sweep_input.mesh.points.at( vertex_ids( v ) );
             };
         };
 
@@ -276,7 +286,8 @@ int main( int argc, char* argv[] )
 
                     if( not trace_cell.has_value() ) continue;
 
-                    const bool edges_aligned = map.vertexId( possible_trace_cell.dart() ) == sides.vertexId( trace_cell.value().dart() );
+                    const bool edges_aligned = vertex_ids( topology::Vertex( possible_trace_cell.dart() ) ) ==
+                                               sides_vertex_ids( topology::Vertex( trace_cell.value().dart() ) );
 
                     const double b = edges_aligned ? coord.point( 1 ) : coord.point( 0 );
 
@@ -371,7 +382,7 @@ int main( int argc, char* argv[] )
 
                             const double b = [&](){
                                 if( trace_cell.value().dim() == 0 ) return 0.0;
-                                else if( sides.vertexId( topology::Vertex( start_edge.dart() ) ) == coord.simplex.vertex( 0 ) )
+                                else if( sides_vertex_ids( topology::Vertex( start_edge.dart() ) ) == coord.simplex.vertex( 0 ).id() )
                                     return coord.point( 1 );
                                 else return coord.point( 0 );
                             }();
@@ -428,7 +439,7 @@ int main( int argc, char* argv[] )
             const auto base_pos = vertex_positions( base );
             iterateCellsWhile( base, 0, [&]( const topology::Vertex& v ) {
                 traced_vertices.mark( map, bdry.toUnderlyingCell( v ) );
-                param.col( base.vertexId( v ).id() ) = base_pos( v );
+                param.col( base_vertex_ids( v ) ) = base_pos( v );
                 return true;
             } );
 
@@ -441,12 +452,12 @@ int main( int argc, char* argv[] )
                 traced_vertices.mark( map, bdry.toUnderlyingCell( v ) );
                 try{
                     const SimplicialComplex line = traceBoundaryField( sides, v, 1.0, reverse_ans, bdry_positions, v.dart().id() == 2511146 );
-                    param.col( sides.vertexId( v ).id() ).head( 2 ) = line.points.back().head( 2 );
-                    param( 2, sides.vertexId( v ).id() ) = ans( sides.vertexId( v ).id() );
+                    param.col( sides_vertex_ids( v ) ).head( 2 ) = line.points.back().head( 2 );
+                    param( 2, sides_vertex_ids( v ) ) = ans( sides_vertex_ids( v ) );
                 }
                 catch( const std::runtime_error& e )
                 {
-                    std::cerr << "Skipping " << map.vertexId( v ) << " " << v << " with exception " << e.what();
+                    std::cerr << "Skipping " << vertex_ids( v ) << " " << v << " with exception " << e.what();
                     n_errors++;
                     error_verts.points.push_back( bdry_positions( v ) );
                     error_verts.simplices.push_back( Simplex( error_verts.points.size() - 1 ) );
@@ -455,7 +466,7 @@ int main( int argc, char* argv[] )
                 }
                 catch( const std::out_of_range& e )
                 {
-                    std::cerr << "Skipping " << map.vertexId( v ) << " " << v << " with exception " << e.what();
+                    std::cerr << "Skipping " << vertex_ids( v ) << " " << v << " with exception " << e.what();
                     n_errors++;
                     error_verts.points.push_back( bdry_positions( v ) );
                     error_verts.simplices.push_back( Simplex( error_verts.points.size() - 1 ) );
@@ -471,12 +482,12 @@ int main( int argc, char* argv[] )
                 try
                 {
                     const SimplicialComplex line = traceField( map, v, pos( v ), reverse_grad, normals, false );
-                    param.col( map.vertexId( v ).id() ).head( 2 ) = line.points.back().head( 2 );
-                    param( 2, map.vertexId( v ).id() ) = ans( map.vertexId( v ).id() );
+                    param.col( vertex_ids( v ) ).head( 2 ) = line.points.back().head( 2 );
+                    param( 2, vertex_ids( v ) ) = ans( vertex_ids( v ) );
                 }
                 catch( const std::runtime_error& e )
                 {
-                    std::cerr << "Skipping " << map.vertexId( v ) << " " << v << " with exception " << e.what();
+                    std::cerr << "Skipping " << vertex_ids( v ) << " " << v << " with exception " << e.what();
                     n_errors++;
                     error_verts.points.push_back( pos( v ) );
                     error_verts.simplices.push_back( Simplex( error_verts.points.size() - 1 ) );
@@ -485,7 +496,7 @@ int main( int argc, char* argv[] )
                 }
                 catch( const std::out_of_range& e )
                 {
-                    std::cerr << "Skipping " << map.vertexId( v ) << " " << v << " with exception " << e.what();
+                    std::cerr << "Skipping " << vertex_ids( v ) << " " << v << " with exception " << e.what();
                     n_errors++;
                     error_verts.points.push_back( pos( v ) );
                     error_verts.simplices.push_back( Simplex( error_verts.points.size() - 1 ) );
@@ -499,7 +510,7 @@ int main( int argc, char* argv[] )
             std::map<size_t, Eigen::Vector3d> param_position_map;
             for( Eigen::Index i = 0; i < param.cols(); i++ ) param_position_map.emplace( i, param.col( i ) );
             const auto param_positions = [&]( const topology::Vertex& v ) -> const Eigen::Vector3d& {
-                return param_position_map.at( map.vertexId( v ).id() );
+                return param_position_map.at( vertex_ids( v ) );
             };
             SimplicialComplex inverted_tets;
             SimplicialComplex interted_traces;
