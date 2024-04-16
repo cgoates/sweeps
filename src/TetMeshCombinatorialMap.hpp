@@ -50,11 +50,6 @@ namespace topology
         virtual uint dim() const override { return 3; }
         virtual bool iterateDartsWhile( const std::function<bool( const Dart& )>& callback ) const override;
         virtual bool iterateCellsWhile( const uint cell_dim, const std::function<bool( const Cell& )>& callback ) const override;
-
-        size_t elementId( const Volume& c ) const;
-        size_t faceId( const Face& f ) const;
-        size_t edgeId( const Edge& e ) const;
-
         virtual std::optional<IndexingFunc> indexing( const uint cell_dim ) const override;
 
         Vertex vertexOfId( const VertexId& vid ) const

@@ -227,6 +227,7 @@ std::optional<TracePoint> traceRayOnTet( const topology::TetMeshCombinatorialMap
                                          const Ray<3>& ray,
                                          const std::vector<Normal>& normals )
 {
+    const auto face_ids = indexingOrError( map, 2 );
     // The face on the input dart is the location that we start from.
     // Check all the other faces for intersection with the ray.
     LOG( LOG_TRACING ) << "Tracing on tet " << start_cell.dart().id() << " from ray " << ray.start_pos.transpose()
@@ -245,7 +246,7 @@ std::optional<TracePoint> traceRayOnTet( const topology::TetMeshCombinatorialMap
                            << tri.v3.transpose() << std::endl;
 
         const std::optional<Eigen::Vector3d> intersection =
-            intersectionOf( ray, tri, normals.at( map.faceId( adj_face ) ).get( adj_face.dart() ) );
+            intersectionOf( ray, tri, normals.at( face_ids( adj_face ) ).get( adj_face.dart() ) );
 
         if( intersection.has_value() )
         {
@@ -272,17 +273,19 @@ std::optional<TracePoint> traceCellAverageField( const topology::TetMeshCombinat
                                                  const Eigen::Matrix3Xd& field,
                                                  const std::vector<Normal>& normals )
 {
+    const auto volume_ids = indexingOrError( map, 3 );
+    const auto face_ids = indexingOrError( map, 2 );
     LOG( LOG_TRACING ) << "| | | Tracing on cell average field\n";
     Eigen::Vector3d ave_field = Eigen::Vector3d::Zero();
     iterateAdjacentCells( map, c, 3, [&]( const topology::Volume& v ) {
-        ave_field += field.col( map.elementId( v ) );
+        ave_field += field.col( volume_ids( v ) );
         return true;
     } );
 
     return tracingStartCell(
                map,
                c,
-               [&]( const topology::Face& f ) { return normals.at( map.faceId( f ) ).get( f.dart() ); },
+               [&]( const topology::Face& f ) { return normals.at( face_ids( f ) ).get( f.dart() ); },
                [&]( const topology::Volume& ) { return ave_field; } )
         .and_then( [&]( const topology::Cell& start_cell ) {
             return traceRayOnTet( map, start_cell, Ray<3>{ start_point, ave_field }, normals );
@@ -296,6 +299,9 @@ SimplicialComplex traceField( const topology::TetMeshCombinatorialMap& map,
                               const std::vector<Normal>& normals,
                               const bool debug_output )
 {
+    const auto volume_ids = indexingOrError( map, 3 );
+    const auto face_ids = indexingOrError( map, 2 );
+
     topology::Cell curr_cell;
     Eigen::Vector3d curr_point = start_point;
 
@@ -310,8 +316,8 @@ SimplicialComplex traceField( const topology::TetMeshCombinatorialMap& map,
     }
     else
     {
-        const auto normals_func = [&]( const topology::Face& f ) { return normals.at( map.faceId( f ) ).get( f.dart() ); };
-        const auto grads_func = [&]( const topology::Volume& v ) { return field.col( map.elementId( v ) ); };
+        const auto normals_func = [&]( const topology::Face& f ) { return normals.at( face_ids( f ) ).get( f.dart() ); };
+        const auto grads_func = [&]( const topology::Volume& v ) { return field.col( volume_ids( v ) ); };
         const auto edge_func = [&]( const topology::Face& f ) {
             const Triangle<3> tri = triangleOfFace( map, f );
             return ( tri.v3 + tri.v2 ) * 0.5 - tri.v1;
@@ -334,7 +340,7 @@ SimplicialComplex traceField( const topology::TetMeshCombinatorialMap& map,
     do
     {
         const topology::Volume curr_vol( curr_cell.dart() );
-        const Ray<3> search_ray( { curr_point, field.col( map.elementId( curr_vol ) ) } );
+        const Ray<3> search_ray( { curr_point, field.col( volume_ids( curr_vol ) ) } );
         if( debug_output ) interiorTracingDebugOutput( map, curr_vol, search_ray, complex, debug_tets, n );
         std::optional<TracePoint> next_point = traceRayOnTet( map, curr_cell, search_ray, normals );
         if( not next_point.has_value() )

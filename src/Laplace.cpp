@@ -30,11 +30,12 @@ double edgeWeight( const topology::TetMeshCombinatorialMap& map, const topology:
 
 std::vector<double> edgeWeights( const topology::TetMeshCombinatorialMap& map, const std::vector<Normal>& normals )
 {
+    const auto edge_ids = indexingOrError( map, 1 );
     const size_t n_edges = cellCount( map, 1 );
     std::vector<double> weights( n_edges, 0 );
 
     iterateCellsWhile( map, 1, [&]( const topology::Edge& e ) {
-        weights.at( map.edgeId( e ) ) = edgeWeight( map, e, normals );
+        weights.at( edge_ids( e ) ) = edgeWeight( map, e, normals );
         return true;
     } );
     return weights;
@@ -46,12 +47,13 @@ Eigen::SparseVector<double> laplaceOperatorRowSparse( const topology::TetMeshCom
                                                       const int n_verts )
 {
     const auto vertex_ids = indexingOrError( map, 0 );
+    const auto edge_ids = indexingOrError( map, 1 );
     Eigen::SparseVector<double> out( n_verts );
     out.reserve( 10 ); // FIXME
     const VertexId vid1 = vertex_ids( v1 );
     t.start( 7 );
     iterateAdjacentCells( map, v1, 1, [&]( const topology::Edge& e ) {
-        const double edge_weight = edge_weights.at( map.edgeId( e ) );
+        const double edge_weight = edge_weights.at( edge_ids( e ) );
         const VertexId vid2 = vertex_ids( topology::Vertex( phi( map, 1, e.dart() ).value() ) );
 
         out.coeffRef( vid1.id() ) -= edge_weight;

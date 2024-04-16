@@ -54,11 +54,12 @@ Eigen::Vector3d centroid( const topology::TetMeshCombinatorialMap& map, const to
 
 std::vector<Normal> faceNormals( const topology::TetMeshCombinatorialMap& map )
 {
+    const auto face_ids = indexingOrError( map, 2 );
     const size_t n_faces = cellCount( map, 2 );
     std::vector<Normal> normals( n_faces );
 
     iterateCellsWhile( map, 2, [&]( const topology::Face& f ) {
-        const auto fid = map.faceId( f );
+        const auto fid = face_ids( f );
         normals[fid] = Normal( map, f.dart(), triangleNormal( map, f ) );
         return true;
     } );
@@ -80,10 +81,11 @@ double edgeLength( const topology::TetMeshCombinatorialMap& map, const topology:
 
 double dihedralCotangent( const topology::TetMeshCombinatorialMap& map, const topology::Edge& e, const std::vector<Normal>& normals )
 {
+    const auto face_ids = indexingOrError( map, 2 );
     const topology::Dart& d1 = e.dart();
     const topology::Dart d2 = phi( map, 2, e.dart() ).value();
-    const Eigen::Vector3d n1 = normals.at( map.faceId( topology::Face( d1 ) ) ).get( d1 );
-    const Eigen::Vector3d n2 = normals.at( map.faceId( topology::Face( d2 ) ) ).reversed( d2 );
+    const Eigen::Vector3d n1 = normals.at( face_ids( topology::Face( d1 ) ) ).get( d1 );
+    const Eigen::Vector3d n2 = normals.at( face_ids( topology::Face( d2 ) ) ).reversed( d2 );
 
     const double cos_theta = n1.dot( n2 );
     return cos_theta / std::sqrt( 1 - cos_theta * cos_theta );
@@ -97,6 +99,7 @@ Eigen::Vector3d gradient( const topology::TetMeshCombinatorialMap& map,
     using namespace topology;
     const SimplicialComplex& complex = map.simplicialComplex();
     const auto vertex_ids = indexingOrError( map, 0 );
+    const auto face_ids = indexingOrError( map, 2 );
     const auto vertex_position = [&]( const topology::Vertex& v ) {
         return complex.points.at( vertex_ids( v ) );
     };
@@ -106,7 +109,7 @@ Eigen::Vector3d gradient( const topology::TetMeshCombinatorialMap& map,
         const VertexId op_vert_id = vertex_ids( op_vert );
         const Eigen::Vector3d& op_vert_pos = vertex_position( op_vert );
         const Eigen::Vector3d& face_vert_pos = vertex_position( Vertex( f.dart() ) );
-        const auto fid = map.faceId( f );
+        const auto fid = face_ids( f );
         const Eigen::Vector3d& normal = normals.at( fid ).get( f.dart() );
         gradient += field_values( op_vert_id.id() ) * normal / normal.dot( op_vert_pos - face_vert_pos );
         return true;
@@ -119,9 +122,10 @@ Eigen::Matrix3Xd gradients( const topology::TetMeshCombinatorialMap& map,
                             const Eigen::VectorXd& field_values,
                             const std::vector<Normal>& normals )
 {
+    const auto volume_ids = indexingOrError( map, 3 );
     Eigen::Matrix3Xd result( 3, cellCount( map, 3 ) );
     iterateCellsWhile( map, 3, [&]( const topology::Volume& v ) {
-        result.col( map.elementId( v ) ) = gradient( map, v, field_values, normals );
+        result.col( volume_ids( v ) ) = gradient( map, v, field_values, normals );
         return true;
     } );
 
@@ -133,10 +137,12 @@ Eigen::Matrix3Xd gradientsWithBoundaryCorrection( const topology::TetMeshCombina
                                                   const Eigen::VectorXd& field_values,
                                                   const std::vector<Normal>& normals )
 {
+    const auto volume_ids = indexingOrError( map, 3 );
+    const auto face_ids = indexingOrError( map, 2 );
     Eigen::Matrix3Xd result = gradients( map, field_values, normals );
     iterateCellsWhile( sides, 2, [&]( const topology::Face& f ) {
-        const size_t col = map.elementId( topology::Volume( f.dart() ) );
-        const size_t fid = map.faceId( f );
+        const size_t col = volume_ids( topology::Volume( f.dart() ) );
+        const size_t fid = face_ids( f );
         const Eigen::Vector3d outward_normal = normals.at( fid ).reversed( f.dart() );
         const auto normal_portion = result.col( col ).dot( outward_normal );
         result.col( col ) -= normal_portion * outward_normal;

@@ -193,27 +193,12 @@ bool TetMeshCombinatorialMap::iterateCellsWhile( const uint cell_dim, const std:
     return true;
 }
 
-size_t TetMeshCombinatorialMap::elementId( const Volume& c ) const
-{
-    return c.dart().id() / darts_per_tet;
-}
-
-size_t TetMeshCombinatorialMap::faceId( const Face& f ) const
-{
-    return mFaceIds.at( f.dart().id() );
-}
-
-size_t TetMeshCombinatorialMap::edgeId( const Edge& e ) const
-{
-    return mEdgeIds.at( e.dart().id() );
-}
-
 std::optional<IndexingFunc> TetMeshCombinatorialMap::indexing( const uint cell_dim ) const
 {
     if( cell_dim == 0 )
     {
         return [this]( const Vertex& v ){
-            const size_t simplex_id = elementId( Cell( v.dart(), 3 ) );
+            const size_t simplex_id = v.dart().id() / darts_per_tet;
             const Simplex& simp = mSimplicialComplex.simplices.at( simplex_id );
             const VertexId::Type local_vert = mLocalVertices.at( v.dart().id() % darts_per_tet );
             return simp.vertex( local_vert ).id();
