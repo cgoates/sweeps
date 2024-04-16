@@ -13,6 +13,7 @@ add_library( sweeplib
   CombinatorialMapRestriction.cpp
   Dart.cpp
   Cell.cpp
+  LevelSetCMap.cpp
 )
 
 target_link_libraries( sweeplib PUBLIC Eigen3::Eigen )
