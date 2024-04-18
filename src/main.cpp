@@ -11,41 +11,6 @@
 #include <Tracing.hpp>
 #include <queue>
 
-void foreachFaceWithVertsInSet( const topology::TetMeshCombinatorialMap& map,
-                                const std::vector<bool>& set,
-                                const std::function<bool( const topology::Face&, const size_t n )>& callback )
-{
-    const auto vertex_ids = indexingOrError( map, 0 );
-    const topology::CombinatorialMapBoundary bdry( map );
-    const auto contains = [&]( const topology::Face& f ) {
-        return set.at( vertex_ids( topology::Vertex( f.dart() ) ) ) and
-               set.at( vertex_ids( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ) ) and
-               set.at( vertex_ids( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ) );
-    };
-    const topology::CombinatorialMapRestriction base_surf( bdry, contains );
-    size_t i = 0;
-    iterateCellsWhile( base_surf, 2, [&]( const topology::Face& f ) { return callback( f, i++ ); } );
-}
-
-void foreachEdgeOnBoundaryOfSet( const topology::CombinatorialMapBoundary& map,
-                                 const std::vector<bool>& set,
-                                 const std::function<bool( const topology::Edge&, const size_t n )>& callback )
-{
-    const auto vertex_ids = indexingOrError( map, 0 );
-    const auto contains = [&]( const topology::Face& f ) {
-        return set.at( vertex_ids( topology::Vertex( f.dart() ) ) ) and
-               set.at( vertex_ids( topology::Vertex( phi( map, 1, f.dart() ).value() ) ) ) and
-               set.at( vertex_ids( topology::Vertex( phi( map, -1, f.dart() ).value() ) ) );
-    };
-    const topology::CombinatorialMapRestriction base_surf( map, contains );
-    const topology::CombinatorialMapBoundary edges( base_surf );
-    size_t i = 0;
-    iterateCellsWhile( edges, 1, [&]( const topology::Edge& e ) {
-        const topology::Dart phi2 = phi( map, 2, e.dart() ).value();
-        return callback( topology::Edge( phi2 ), i++ );
-    } );
-}
-
 topology::Cell cellOfSimplex( const topology::TetMeshCombinatorialMap& map, const Simplex& s )
 {
     const topology::Vertex v0 = map.vertexOfId( s.vertex( 0 ) );
@@ -213,15 +178,15 @@ int main( int argc, char* argv[] )
             t.start( 7 );
             std::cout << "Outputting centroid traces for all base faces...\n";
             SimplicialComplex all_lines2;
-            foreachFaceWithVertsInSet(
-                map, sweep_input.zero_bcs, [&]( const topology::Face& start_face, const size_t ) {
-                    t.start( 9 );
-                    const SimplicialComplex field_line =
-                        traceField( map, start_face, centroid( map, start_face ), grad, normals );
-                    append( all_lines2, field_line );
-                    t.stop( 9 );
-                    return true;
-                } );
+            iterateCellsWhile( base, 2, [&]( const topology::Face& f ) {
+                const topology::Face start_face = bdry.toUnderlyingCell( f );
+                t.start( 9 );
+                const SimplicialComplex field_line =
+                    traceField( map, start_face, centroid( map, start_face ), grad, normals );
+                append( all_lines2, field_line );
+                t.stop( 9 );
+                return true;
+            } );
 
             io::VTKOutputObject output2( all_lines2 );
             io::outputSimplicialFieldToVTK( output2, "centroid_traces_01.vtu" );
@@ -233,15 +198,17 @@ int main( int argc, char* argv[] )
 
             SimplicialComplex boundary_lines;
             t.start( 7 );
-            foreachEdgeOnBoundaryOfSet(
-                bdry, sweep_input.zero_bcs, [&]( const topology::Edge& start_edge, const size_t ) {
-                    t.start( 9 );
-                    const SimplicialComplex field_line =
-                        traceBoundaryField( sides, start_edge, 0.5, ans, vertex_positions( bdry ), false );
-                    append( boundary_lines, field_line );
-                    t.stop( 9 );
-                    return true;
-                } );
+            iterateCellsWhile( base, 1, [&]( const topology::Edge& e ) {
+                if( not boundaryAdjacent( base, e ) ) return true;
+                const topology::Edge start_edge( phi( bdry, 2, e.dart() ).value() );
+                t.start( 9 );
+                const SimplicialComplex field_line =
+                    traceBoundaryField( sides, start_edge, 0.5, ans, vertex_positions( bdry ), false );
+                append( boundary_lines, field_line );
+                t.stop( 9 );
+                return true;
+            } );
+
             std::cout << "Time to trace each edge: " << t.stop( 7 ) << " inner time: " << t.stop( 9 ) << std::endl;
 
             io::VTKOutputObject boundary_output( boundary_lines );
