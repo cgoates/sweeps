@@ -14,6 +14,7 @@ add_library( sweeplib
   Dart.cpp
   Cell.cpp
   LevelSetCMap.cpp
+  TriMeshCombinatorialMap.cpp
 )
 
 target_link_libraries( sweeplib PUBLIC Eigen3::Eigen )
