@@ -4,6 +4,7 @@
 #include <Laplace.hpp>
 #include <Logging.hpp>
 #include <TetMeshCombinatorialMap.hpp>
+#include <SimplicialComplexTestCases.hpp>
 
 TEST_CASE( "Laplace patch test", "" )
 {

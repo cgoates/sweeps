@@ -6,6 +6,7 @@
 #include <SimplexUtilities.hpp>
 #include <AbaqusInput.hpp>
 #include <Logging.hpp>
+#include <SimplicialComplexTestCases.hpp>
 
 using namespace topology;
 
