@@ -172,3 +172,42 @@ class SweepInputTestCases
         return out;
     }
 };
+
+class TriMeshTestCases
+{
+    public:
+    static SimplicialComplex fourTriangleQuad()
+    {
+        std::vector<Eigen::Vector3d> points;
+        points.push_back( { 0, 0, 0 } );
+        points.push_back( { 1, 0, 0 } );
+        points.push_back( { 0, 1, 0 } );
+        points.push_back( { 1, 1, 0 } );
+        points.push_back( { 0.5, 0.5, 0 } );
+
+        std::vector<Simplex> simplices;
+        simplices.push_back( { 0, 1, 4 } );
+        simplices.push_back( { 2, 0, 4 } );
+        simplices.push_back( { 1, 3, 4 } );
+        simplices.push_back( { 3, 2, 4 } );
+
+        return SimplicialComplex{ simplices, points };
+    }
+
+    static SimplicialComplex tetBoundary()
+    {
+        std::vector<Eigen::Vector3d> points;
+        points.push_back( { 0, 0, 0 } );
+        points.push_back( { 1, 0, 0 } );
+        points.push_back( { 0, 1, 0 } );
+        points.push_back( { 0, 0, 1 } );
+
+        std::vector<Simplex> simplices;
+        simplices.push_back( { 0, 2, 1 } );
+        simplices.push_back( { 0, 1, 3 } );
+        simplices.push_back( { 0, 3, 2 } );
+        simplices.push_back( { 1, 2, 3 } );
+
+        return SimplicialComplex{ simplices, points };
+    }
+};

@@ -7,6 +7,7 @@ function(add_my_test arg)
 endfunction()
 
 add_my_test(tet_map_tests)
+add_my_test(tri_map_tests)
 add_my_test(boundary_map_tests)
 add_my_test(simplex_utility_tests)
 add_my_test(laplace_tests)
