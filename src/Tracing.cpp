@@ -141,7 +141,7 @@ void interiorTracingDebugOutput( const topology::TetMeshCombinatorialMap& map,
 }
 
 void boundaryTracingDebugOutput( const topology::CombinatorialMap& map,
-                                 const std::function<const Eigen::Vector3d&( const topology::Vertex& )>& positions,
+                                 const std::function<Eigen::Vector3d( const topology::Vertex& )>& positions,
                                  const topology::Cell& curr_cell,
                                  const double start_pos,
                                  const Eigen::Ref<const Eigen::VectorXd> field,
@@ -464,7 +464,7 @@ Eigen::Vector2d gradient2d( const Triangle<2> tri, const Eigen::Vector3d& field,
 
 std::optional<std::pair<topology::Edge, double>>
     traceGradientOnTri( const topology::CombinatorialMap& map,
-                        const std::function<const Eigen::Vector3d&( const topology::Vertex& )>& positions,
+                        const std::function<Eigen::Vector3d( const topology::Vertex& )>& positions,
                         const topology::Cell& start_cell,
                         const double edge_barycentric_coord,
                         const Eigen::VectorXd& field_values )
@@ -502,7 +502,7 @@ std::optional<std::pair<topology::Edge, double>>
 
 std::optional<std::pair<topology::Edge, double>>
     traceGradientOnTriPair( const topology::CombinatorialMap& map,
-                            const std::function<const Eigen::Vector3d&( const topology::Vertex& )>& positions,
+                            const std::function<Eigen::Vector3d( const topology::Vertex& )>& positions,
                             const topology::Cell& start_cell,
                             const double edge_barycentric_coord,
                             const Eigen::VectorXd& field_values )
@@ -510,7 +510,7 @@ std::optional<std::pair<topology::Edge, double>>
     return phi( map, { 2, -1 }, start_cell.dart() ).and_then( [&]( const topology::Dart& opp_d ) {
         const topology::Face f( start_cell.dart() );
         const Triangle<3> tri3d = triangleOfFace( map, positions, f );
-        const Eigen::Vector3d& opp_v = positions( topology::Vertex( opp_d ) );
+        const Eigen::Vector3d opp_v = positions( topology::Vertex( opp_d ) );
 
         // calculate the gradient in the xy plane
         const topology::Dart& d = start_cell.dart();
@@ -571,7 +571,7 @@ SimplicialComplex traceBoundaryField( const topology::CombinatorialMap& map,
                                       const topology::Cell& start_cell,
                                       const double& start_point,
                                       const Eigen::VectorXd& field,
-                                      const std::function<const Eigen::Vector3d&( const topology::Vertex& )>& positions,
+                                      const std::function<Eigen::Vector3d( const topology::Vertex& )>& positions,
                                       const bool debug_output,
                                       const std::function<void( const topology::Face& )>& face_callback )
 {
@@ -580,8 +580,8 @@ SimplicialComplex traceBoundaryField( const topology::CombinatorialMap& map,
         else if( c.dim() == 1 )
         {
             const topology::Dart& d = c.dart();
-            const Eigen::Vector3d& pos1 = positions( topology::Vertex( d ) );
-            const Eigen::Vector3d& pos2 = positions( topology::Vertex( phi( map, 1, d ).value() ) );
+            const Eigen::Vector3d pos1 = positions( topology::Vertex( d ) );
+            const Eigen::Vector3d pos2 = positions( topology::Vertex( phi( map, 1, d ).value() ) );
 
             return ( 1.0 - coord ) * pos1 + coord * pos2;
         }

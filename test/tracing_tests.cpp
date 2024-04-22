@@ -123,7 +123,7 @@ TEST_CASE( "Test gradient tracing in triangle", "" )
           Eigen::Vector3d( 0.0, 0.0, 1.0 ) } );
     const topology::SingleTriangleCMap map;
     const auto vertex_ids = indexingOrError( map, 0 );
-    const auto positions = [&]( const topology::Vertex& v ) -> const Eigen::Vector3d& {
+    const auto positions = [&]( const topology::Vertex& v ) -> Eigen::Vector3d {
         return tri.at( vertex_ids( v ) );
     };
 
@@ -213,7 +213,7 @@ TEST_CASE( "Tracing from all the cells in the macaroni", "[slow]")
 
     const auto vertex_positions = [&sweep_input]( const topology::CombinatorialMap& map ){
         const auto vertex_ids = indexingOrError( map, 0 );
-        return [&sweep_input, vertex_ids]( const topology::Vertex& v ) -> const Eigen::Vector3d& {
+        return [&sweep_input, vertex_ids]( const topology::Vertex& v ) -> Eigen::Vector3d {
             return sweep_input.mesh.points.at( vertex_ids( v ) );
         };
     };

@@ -17,7 +17,7 @@ Triangle<3> triangleOfFace( const topology::TetMeshCombinatorialMap& map, const 
 {
     const SimplicialComplex& complex = map.simplicialComplex();
     const auto vertex_ids = indexingOrError( map, 0 );
-    const auto vertex_position = [&]( const topology::Vertex& v ) -> const Eigen::Vector3d& {
+    const auto vertex_position = [&]( const topology::Vertex& v ) -> Eigen::Vector3d {
         return complex.points.at( vertex_ids( v ) );
     };
 
@@ -25,14 +25,14 @@ Triangle<3> triangleOfFace( const topology::TetMeshCombinatorialMap& map, const 
 }
 
 Triangle<3> triangleOfFace( const topology::CombinatorialMap& map,
-                            const std::function<const Eigen::Vector3d&( const topology::Vertex& )>& vertex_position,
+                            const std::function<Eigen::Vector3d( const topology::Vertex& )>& vertex_position,
                             const topology::Face& f )
 {
     const topology::Dart& d = f.dart();
 
-    const Eigen::Vector3d& pos1 = vertex_position( topology::Vertex( d ) );
-    const Eigen::Vector3d& pos2 = vertex_position( topology::Vertex( phi( map, 1, d ).value() ) );
-    const Eigen::Vector3d& pos3 = vertex_position( topology::Vertex( phi( map, -1, d ).value() ) );
+    const Eigen::Vector3d pos1 = vertex_position( topology::Vertex( d ) );
+    const Eigen::Vector3d pos2 = vertex_position( topology::Vertex( phi( map, 1, d ).value() ) );
+    const Eigen::Vector3d pos3 = vertex_position( topology::Vertex( phi( map, -1, d ).value() ) );
 
     return Triangle<3>{ pos1, pos2, pos3 };
 }
@@ -74,8 +74,8 @@ double edgeLength( const topology::TetMeshCombinatorialMap& map, const topology:
     const auto vertex_position = [&]( const topology::Vertex& v ) {
         return complex.points.at( vertex_ids( v ) );
     };
-    const Eigen::Vector3d& pos1 = vertex_position( topology::Vertex( d ) );
-    const Eigen::Vector3d& pos2 = vertex_position( topology::Vertex( phi( map, 1, d ).value() ) );
+    const Eigen::Vector3d pos1 = vertex_position( topology::Vertex( d ) );
+    const Eigen::Vector3d pos2 = vertex_position( topology::Vertex( phi( map, 1, d ).value() ) );
     return ( pos2 - pos1 ).norm();
 }
 
@@ -107,8 +107,8 @@ Eigen::Vector3d gradient( const topology::TetMeshCombinatorialMap& map,
     iterateAdjacentCells( map, v, 2, [&]( const Face& f ) {
         const Vertex op_vert( phi( map, {2, -1}, f.dart() ).value() );
         const VertexId op_vert_id = vertex_ids( op_vert );
-        const Eigen::Vector3d& op_vert_pos = vertex_position( op_vert );
-        const Eigen::Vector3d& face_vert_pos = vertex_position( Vertex( f.dart() ) );
+        const Eigen::Vector3d op_vert_pos = vertex_position( op_vert );
+        const Eigen::Vector3d face_vert_pos = vertex_position( Vertex( f.dart() ) );
         const auto fid = face_ids( f );
         const Eigen::Vector3d& normal = normals.at( fid ).get( f.dart() );
         gradient += field_values( op_vert_id.id() ) * normal / normal.dot( op_vert_pos - face_vert_pos );

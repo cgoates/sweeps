@@ -41,18 +41,18 @@ class Normal
 template<unsigned int DIM>
 struct Triangle
 {
-    const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> v1;
-    const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> v2;
-    const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> v3;
+    const Eigen::Matrix<double, DIM, 1> v1;
+    const Eigen::Matrix<double, DIM, 1> v2;
+    const Eigen::Matrix<double, DIM, 1> v3;
 };
 
 template <unsigned int DIM> struct Segment
 {
-    const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> start_pos;
-    const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> end_pos;
+    const Eigen::Matrix<double, DIM, 1> start_pos;
+    const Eigen::Matrix<double, DIM, 1> end_pos;
 };
 
-using VertexPositionsFunc = std::function<const Eigen::Vector3d&( const topology::Vertex& )>;
+using VertexPositionsFunc = std::function<Eigen::Vector3d( const topology::Vertex& )>;
 
 void addTriangleNoDuplicateChecking( SimplicialComplex& complex, const Triangle<3>& tri );
 
@@ -63,7 +63,7 @@ void addTetNoDuplicateChecking( SimplicialComplex& complex,
 
 Triangle<3> triangleOfFace( const topology::TetMeshCombinatorialMap& map, const topology::Face& f );
 Triangle<3> triangleOfFace( const topology::CombinatorialMap& map,
-                            const std::function<const Eigen::Vector3d&( const topology::Vertex& )>& vertex_position,
+                            const std::function<Eigen::Vector3d( const topology::Vertex& )>& vertex_position,
                             const topology::Face& f );
 
 Eigen::Vector3d triangleNormal( const Triangle<3>& tri );

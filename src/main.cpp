@@ -159,7 +159,7 @@ int main( int argc, char* argv[] )
 
         const auto vertex_positions = [&sweep_input]( const topology::CombinatorialMap& map ){
             const auto vertex_ids = indexingOrError( map, 0 );
-            return [&sweep_input, vertex_ids]( const topology::Vertex& v ) -> const Eigen::Vector3d& {
+            return [&sweep_input, vertex_ids]( const topology::Vertex& v ) -> Eigen::Vector3d {
                 return sweep_input.mesh.points.at( vertex_ids( v ) );
             };
         };
@@ -474,10 +474,8 @@ int main( int argc, char* argv[] )
 
             io::VTKOutputObject output2( error_verts );
             io::outputSimplicialFieldToVTK( output2, "error_verts.vtu" );
-            std::map<size_t, Eigen::Vector3d> param_position_map;
-            for( Eigen::Index i = 0; i < param.cols(); i++ ) param_position_map.emplace( i, param.col( i ) );
-            const auto param_positions = [&]( const topology::Vertex& v ) -> const Eigen::Vector3d& {
-                return param_position_map.at( vertex_ids( v ) );
+            const auto param_positions = [&]( const topology::Vertex& v ) -> Eigen::Vector3d {
+                return param.col( vertex_ids( v ) );
             };
             SimplicialComplex inverted_tets;
             SimplicialComplex interted_traces;
