@@ -10,6 +10,7 @@
 #include <Logging.hpp>
 #include <Tracing.hpp>
 #include <queue>
+#include <LevelSetCMap.hpp>
 
 topology::Cell cellOfSimplex( const topology::TetMeshCombinatorialMap& map, const Simplex& s )
 {
@@ -390,6 +391,35 @@ int main( int argc, char* argv[] )
                 io::VTKOutputObject boundary_output( sep_tris );
                 io::outputSimplicialFieldToVTK( boundary_output, "hex_layout_skeleton" + std::to_string( i ) + ".vtu" );
             }
+        }
+        else if( input_args.at( 0 ) == "levelsets" )
+        {
+            SimplicialComplex all_level_sets;
+
+            const Eigen::VectorXd values = Eigen::VectorXd::LinSpaced( 19, 0.05, 0.95 );
+
+            const auto func = [&]( const topology::Vertex& v ) {
+                return ans( vertex_ids( v ) );
+            };
+            for( const double val : values )
+            {
+                const topology::LevelSetCMap level( map, func, val );
+                const auto level_positions = levelSetVertexPositions( level, vertex_positions( map ) );
+
+                iterateCellsWhile( level, 2, [&]( const topology::Face& f ) {
+                    const auto tri = triangleOfFace( level, level_positions, f );
+                    addTriangleNoDuplicateChecking( all_level_sets, tri );
+                    const auto phi11 = phi( level, {1,1}, f.dart() ).value();
+                    if( phi11 != phi( level, -1, f.dart() ).value() )
+                    {
+                        addTriangleNoDuplicateChecking( all_level_sets, triangleOfFace( level, level_positions, topology::Face( phi11 ) ) );
+                    }
+                    return true;
+                } );
+            }
+
+            io::VTKOutputObject output( all_level_sets );
+            io::outputSimplicialFieldToVTK( output, "level_sets.vtu" );
         }
         else if( input_args.at( 0 ) == "parameterize" )
         {
