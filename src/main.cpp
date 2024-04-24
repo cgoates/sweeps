@@ -314,7 +314,6 @@ int main( int argc, char* argv[] )
                 std::vector<std::vector<Eigen::Vector3d>> lines;
                 SimplicialComplex sep_tris;
 
-                size_t coord_ii = 0;
                 for( const auto& coord : coords )
                 {
                     bool boundary_of_base = false;
@@ -384,8 +383,6 @@ int main( int argc, char* argv[] )
                         std::cout << "last tri: " << sep_tris.simplices.back() << std::endl;
                     }
                     lines.push_back( field_line.points );
-
-                    coord_ii++;
                 }
 
                 io::VTKOutputObject boundary_output( sep_tris );
