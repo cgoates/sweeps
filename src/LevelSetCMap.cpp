@@ -98,7 +98,6 @@ LevelSetCMap::LevelSetCMap( const CombinatorialMap& base,
 
 std::optional<Dart> LevelSetCMap::phi( const int i, const Dart& d ) const
 {
-    if( i > 1 ) return std::nullopt;
     const auto find_mark_in_phi1_chain = [this]( const Dart& a ) {
         for( Dart d_next = topology::phi( mUnderlyingMap, 1, a ).value(); d_next != a;
              d_next = topology::phi( mUnderlyingMap, 1, d_next ).value() )
@@ -115,10 +114,12 @@ std::optional<Dart> LevelSetCMap::phi( const int i, const Dart& d ) const
         return topology::phi( mUnderlyingMap, 2, d ).and_then( [&]( const auto& phi2 ) {
             return find_mark_in_phi1_chain( phi2 );
         } );
-    else if( i == 2 and dim() > 2 )
+    else if( i == 2 and dim() > 1 )
+    {
         return topology::phi( mUnderlyingMap, 3, d ).and_then( [&]( const auto& phi3 ) {
             return find_mark_in_phi1_chain( phi3 );
         } );
+    }
     else throw std::runtime_error( "Bad phi operation" );
 }
 
@@ -126,8 +127,7 @@ bool LevelSetCMap::iterateDartsWhile( const std::function<bool( const Dart& )>& 
 {
     for( const auto& pr : mIntersectionPositions )
     {
-        const bool continue_iterating = iterateDartsOfCell( *this, pr.first, callback );
-        if( not continue_iterating ) return false;
+        if( not callback( pr.first.dart() ) ) return false;
     }
     return true;
 }
