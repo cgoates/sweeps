@@ -1,6 +1,7 @@
 #include <LevelSetCMap.hpp>
 #include <queue>
 #include <Simplex.hpp>
+#include <GlobalCellMarker.hpp>
 
 using namespace topology;
 
@@ -40,6 +41,23 @@ LevelSetCMap::LevelSetCMap( const CombinatorialMap& base,
     std::queue<Edge> edges_to_process;
     edges_to_process.push( one_intersected_edge );
 
+    const auto underlying_vertex_ids = indexingOrError( base, 0 );
+
+    const auto add_intersections = [&]( const Dart& d, const double coord ) {
+        if( base_dim <= 2 ) mIntersectionPositions.emplace( Vertex( d ), coord );
+        else
+        {
+            // This will actually work for 2d base as well, but the above is an optimization
+            const size_t vertex_id = underlying_vertex_ids( Vertex( d ) );
+            iterateDartsOfCell( base, Edge( d ), [&]( const Dart& other_d ) {
+                const Vertex other_v( other_d );
+                if( underlying_vertex_ids( other_v ) == vertex_id )
+                    mIntersectionPositions.emplace( other_v, coord );
+                return true;
+            } );
+        }
+    };
+
     while( not edges_to_process.empty() )
     {
         const Edge e = edges_to_process.front();
@@ -57,7 +75,7 @@ LevelSetCMap::LevelSetCMap( const CombinatorialMap& base,
                         if( left_val >= value )
                         {
                             const double barycentric = ( value - left_val ) / ( right_val - left_val );
-                            mIntersectionPositions.emplace( Vertex( e_adj.dart() ), barycentric );
+                            add_intersections( e_adj.dart(), barycentric );
                         }
                         else
                         {
@@ -65,7 +83,7 @@ LevelSetCMap::LevelSetCMap( const CombinatorialMap& base,
                             if( maybe_phi2.has_value() )
                             {
                                 const double barycentric = ( value - right_val ) / ( left_val - right_val );
-                                mIntersectionPositions.emplace( Vertex( maybe_phi2.value() ), barycentric );
+                                add_intersections( maybe_phi2.value(), barycentric );
                             }
                         }
                         return base_dim > 2; // in 2d, there is only ever one edge to find
@@ -93,32 +111,49 @@ std::optional<Dart> LevelSetCMap::phi( const int i, const Dart& d ) const
     if( i == 1 )
         return find_mark_in_phi1_chain( d ).and_then(
             [&]( const auto& phi1 ) { return topology::phi( mUnderlyingMap, 2, phi1 ); } );
-    else
+    else if( i == -1 )
         return topology::phi( mUnderlyingMap, 2, d ).and_then( [&]( const auto& phi2 ) {
             return find_mark_in_phi1_chain( phi2 );
         } );
+    else if( i == 2 and dim() > 2 )
+        return topology::phi( mUnderlyingMap, 3, d ).and_then( [&]( const auto& phi3 ) {
+            return find_mark_in_phi1_chain( phi3 );
+        } );
+    else throw std::runtime_error( "Bad phi operation" );
 }
 
 bool LevelSetCMap::iterateDartsWhile( const std::function<bool( const Dart& )>& callback ) const
 {
-    if( mUnderlyingMap.dim() > 2 ) throw std::runtime_error( "Level sets on 3d maps not yet supported" );
-    return iterateCellsWhile( 1, [&]( const Edge& e ) { return callback( e.dart() ); } );
+    for( const auto& pr : mIntersectionPositions )
+    {
+        const bool continue_iterating = iterateDartsOfCell( *this, pr.first, callback );
+        if( not continue_iterating ) return false;
+    }
+    return true;
 }
 
 bool LevelSetCMap::iterateCellsWhile( const uint cell_dim, const std::function<bool( const Cell& )>& callback ) const
 {
-    if( mUnderlyingMap.dim() > 2 ) throw std::runtime_error( "Level sets on 3d maps not yet supported" );
-    if( cell_dim <= 1 )
+    if( cell_dim == 0 and dim() == 1 )
     {
         for( const auto& pr : mIntersectionPositions )
         {
-            if( not callback( Cell( pr.first.dart(), cell_dim ) ) ) return false;
+            if( not callback( pr.first ) ) return false;
         }
         return true;
     }
     else
     {
-        return true;
+        GlobalCellMarker m( *this, cell_dim );
+        return iterateDartsWhile( [&]( const Dart& d ){
+            const Cell c( d, cell_dim );
+            if( not m.isMarked( c ) )
+            {
+                m.mark( *this, c );
+                if( not callback( c ) ) return false;
+            }
+            return true;
+        } );
     }
 }
 
@@ -128,4 +163,29 @@ std::optional<IndexingFunc> LevelSetCMap::indexing( const uint cell_dim ) const
         .and_then( [&]( const IndexingFunc underlying_func ) -> std::optional<IndexingFunc> {
             return [underlying_func]( const Cell& c ) { return underlying_func( Cell( c.dart(), c.dim() + 1 ) ); };
         } );
+}
+
+double LevelSetCMap::intersectionPosition( const topology::Vertex& v ) const
+{
+    return mIntersectionPositions.at( v );
+}
+
+Cell LevelSetCMap::underlyingCell( const Cell& c ) const
+{
+    return Cell( c.dart(), c.dim() + 1 );
+}
+
+namespace topology
+{
+    std::function<Eigen::Vector3d( const Vertex& )> levelSetVertexPositions(
+        const LevelSetCMap& level, const std::function<Eigen::Vector3d( const Vertex& )>& underlying_positions )
+    {
+        return [&, underlying_positions]( const Vertex& v ) -> Eigen::Vector3d {
+            const double s = level.intersectionPosition( v );
+            const Edge underlying_e = level.underlyingCell( v );
+            const Vertex left_v( underlying_e.dart() );
+            const Vertex right_v( phi( level.underlyingMap(), 1, underlying_e.dart() ).value() );
+            return ( 1 - s ) * underlying_positions( left_v ) + s * underlying_positions( right_v );
+        };
+    }
 }

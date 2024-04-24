@@ -3,6 +3,7 @@
 #include <GlobalCellMarker.hpp>
 #include <CombinatorialMapMethods.hpp>
 #include <map>
+#include <Eigen/Dense>
 
 namespace topology
 {
@@ -25,9 +26,16 @@ namespace topology
         virtual bool iterateCellsWhile( const uint cell_dim, const std::function<bool( const Cell& )>& callback ) const override;
         virtual std::optional<IndexingFunc> indexing( const uint cell_dim ) const override;
 
+        double intersectionPosition( const topology::Vertex& v ) const;
+        Cell underlyingCell( const topology::Cell& c ) const;
+        const CombinatorialMap& underlyingMap() const { return mUnderlyingMap; }
+
         private:
         const CombinatorialMap& mUnderlyingMap;
         GlobalCellMarker mIntersectedEdges;
         std::map<Vertex, double> mIntersectionPositions;
     };
+
+    std::function<Eigen::Vector3d( const Vertex& )> levelSetVertexPositions(
+        const LevelSetCMap& level, const std::function<Eigen::Vector3d( const Vertex& )>& underlying_positions );
 }
