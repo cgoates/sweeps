@@ -232,7 +232,7 @@ int main( int argc, char* argv[] )
                 return crossed_faces.isMarked( f ) or flooded_faces.isMarked( f );
             };
             const std::vector<std::vector<BarycentricPoint>> coords =
-                io::loadBaryCoords( "/Users/caleb/Downloads/macaroni_layout_bary_coords_00" );
+                io::loadBaryCoords( SRC_HOME "/test/data/macaroni_layout_bary_coords_00" );
 
             SimplicialComplex boundary_lines;
             for( size_t i = 0; i < 40; i++ )
@@ -299,7 +299,7 @@ int main( int argc, char* argv[] )
         else if( input_args.at( 0 ) == "inner-surfaces" )
         {
             const std::vector<std::vector<BarycentricPoint>> bary_curves =
-                io::loadBaryCoords( "/Users/caleb/Downloads/macaroni_layout_bary_coords_00" );
+                io::loadBaryCoords( SRC_HOME "/test/data/macaroni_layout_bary_coords_00" );
 
             /*
                 Mark every face that is crossed by a trace.
