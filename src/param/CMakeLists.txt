@@ -1,4 +1,4 @@
-add_library( param
+add_library( param SHARED
   Laplace.cpp
   Tracing.cpp
   SimplexUtilities.cpp

@@ -1,4 +1,4 @@
-add_library( topology
+add_library( topology SHARED
   TetMeshCombinatorialMap.cpp
   TriMeshCombinatorialMap.cpp
   CombinatorialMapMethods.cpp

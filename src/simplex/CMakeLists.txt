@@ -1,4 +1,4 @@
-add_library( simplex
+add_library( simplex SHARED
   Simplex.cpp
   SimplicialComplex.cpp
 )

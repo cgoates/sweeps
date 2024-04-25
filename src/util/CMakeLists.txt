@@ -1,4 +1,4 @@
-add_library( util
+add_library( util SHARED
   Logging.cpp
   SmallQueue.cpp
   SmallVector.cpp

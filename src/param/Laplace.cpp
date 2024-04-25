@@ -5,6 +5,7 @@
 #include <TetMeshCombinatorialMap.hpp>
 #include <CombinatorialMapMethods.hpp>
 #include <Eigen/Sparse>
+#include <numeric>
 
 #define LOG_LAPLACE 0
 

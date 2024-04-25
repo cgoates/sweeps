@@ -1,4 +1,4 @@
-add_library( io
+add_library( io SHARED
   VTKOutput.cpp
   AbaqusInput.cpp
   QuadLayoutInput.cpp
