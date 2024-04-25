@@ -1,6 +1,6 @@
 function(add_my_test arg)
     add_executable(${arg} ${arg}.cpp)
-    target_link_libraries(${arg} PRIVATE Catch2::Catch2WithMain sweeplib)
+    target_link_libraries(${arg} PRIVATE Catch2::Catch2WithMain param )
 
     target_include_directories( ${arg} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} )
     catch_discover_tests(${arg})
