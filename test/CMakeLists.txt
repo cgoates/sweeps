@@ -6,6 +6,21 @@ function(add_my_test arg)
     catch_discover_tests(${arg})
 endfunction()
 
+Include(FetchContent)
+
+set( FETCHCONTENT_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../deps")
+
+FetchContent_Declare(
+  Catch2
+  GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+  GIT_TAG        v3.5.0
+)
+
+FetchContent_MakeAvailable(Catch2)
+
+include(CTest)
+include(Catch)
+
 add_my_test(tet_map_tests)
 add_my_test(tri_map_tests)
 add_my_test(boundary_map_tests)

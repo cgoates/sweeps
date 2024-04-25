@@ -4,6 +4,6 @@ add_library( util SHARED
   SmallVector.cpp
 )
 
-target_link_libraries( util PUBLIC Eigen3::Eigen )
+add_dependencies( util eigen )
 
 target_include_directories( util PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} )
