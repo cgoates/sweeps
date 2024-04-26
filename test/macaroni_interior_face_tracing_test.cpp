@@ -12,12 +12,6 @@
 #include <AbaqusInput.hpp>
 #include <random>
 
-bool trueOnARandomQuarterOfCalls()
-{
-    static auto gen = std::bind(std::uniform_int_distribution<>(0,4),std::default_random_engine());
-    return gen() < 1;
-}
-
 TEST_CASE( "Tracing from all the interior faces in the macaroni", "[slow]")
 {
     const SweepInput sweep_input =
