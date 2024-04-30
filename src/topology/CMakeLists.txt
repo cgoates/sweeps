@@ -4,6 +4,7 @@ add_library( topology SHARED
   CombinatorialMapMethods.cpp
   CombinatorialMapBoundary.cpp
   CombinatorialMapRestriction.cpp
+  DelaunayTriangulation.cpp
   Dart.cpp
   Cell.cpp
   LevelSetCMap.cpp
