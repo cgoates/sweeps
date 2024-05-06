@@ -19,7 +19,7 @@ TEST_CASE( "Tracing from all the face/edges in the macaroni", "[slow]")
     const topology::TetMeshCombinatorialMap map( sweep_input.mesh );
     const std::vector<Normal> normals = faceNormals( map );
     const Eigen::VectorXd ans =
-        solveLaplaceSparse( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
+        sweepEmbedding( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
 
     const topology::CombinatorialMapBoundary bdry( map );
 

@@ -70,10 +70,10 @@ Eigen::SparseVector<double> laplaceOperatorRowSparse( const topology::Combinator
     return out;
 }
 
-Eigen::VectorXd solveLaplaceSparse( const topology::TetMeshCombinatorialMap& map,
-                                    const std::vector<bool>& zero_bcs,
-                                    const std::vector<bool>& one_bcs,
-                                    const std::vector<Normal>& normals )
+Eigen::VectorXd sweepEmbedding( const topology::TetMeshCombinatorialMap& map,
+                                const std::vector<bool>& zero_bcs,
+                                const std::vector<bool>& one_bcs,
+                                const std::vector<Normal>& normals )
 {
     const auto vertex_ids = indexingOrError( map, 0 );
     const auto vertex_position = [&]( const topology::Vertex& v ) {
@@ -85,33 +85,32 @@ Eigen::VectorXd solveLaplaceSparse( const topology::TetMeshCombinatorialMap& map
     const auto edge_weights_func = [&]( const topology::Edge& e ){
         return edge_weights.at( edge_ids( e ) );
     };
-    return solveLaplaceSparse( map, edge_weights_func, zero_bcs, one_bcs );
+    return sweepEmbedding( map, edge_weights_func, zero_bcs, one_bcs );
 }
 
-Eigen::VectorXd solveLaplaceSparse( const topology::CombinatorialMap& map,
-                                    const std::function<double( const topology::Edge& )>& edge_weights,
-                                    const std::vector<bool>& zero_bcs,
-                                    const std::vector<bool>& one_bcs )
+Eigen::VectorXd sweepEmbedding( const topology::CombinatorialMap& map,
+                                const std::function<double( const topology::Edge& )>& edge_weights,
+                                const std::vector<bool>& zero_bcs,
+                                const std::vector<bool>& one_bcs )
 {
     const auto vertex_ids = indexingOrError( map, 0 );
-    const auto constraints = [&]( const topology::Vertex& v ) -> std::optional<double>{
-        if( zero_bcs.at( vertex_ids( v ) ) ) return 0.0;
-        else if( one_bcs.at( vertex_ids( v ) ) ) return 1.0;
+    const auto constraints = [&]( const topology::Vertex& v ) -> std::optional<Eigen::VectorXd>{
+        if( zero_bcs.at( vertex_ids( v ) ) ) return Eigen::Matrix<double, 1, 1>( 0.0 );
+        else if( one_bcs.at( vertex_ids( v ) ) ) return Eigen::Matrix<double, 1, 1>( 1.0 );
         else return {};
     };
 
     const size_t n_constraints =
         std::accumulate( zero_bcs.begin(), zero_bcs.end(), 0 ) + std::accumulate( one_bcs.begin(), one_bcs.end(), 0 );
 
-    return solveLaplaceSparse( map, edge_weights, constraints, n_constraints );
+    return solveLaplaceSparse( map, edge_weights, constraints, n_constraints, 1 );
 }
 
-// Needs to return a MatrixXd?
-// Needs to allow vector valued bcs
-Eigen::VectorXd solveLaplaceSparse( const topology::CombinatorialMap& map,
+Eigen::MatrixXd solveLaplaceSparse( const topology::CombinatorialMap& map,
                                     const std::function<double( const topology::Edge& )>& edge_weights,
-                                    const std::function<std::optional<double>( const topology::Vertex& )>& constraints,
-                                    const size_t n_constrained_verts )
+                                    const std::function<std::optional<Eigen::VectorXd>( const topology::Vertex& )>& constraints,
+                                    const size_t n_constrained_verts,
+                                    const size_t data_dim )
 {
     t.start( 0 );
 
@@ -127,7 +126,7 @@ Eigen::VectorXd solveLaplaceSparse( const topology::CombinatorialMap& map,
     std::vector<Eigen::Triplet<double>> L_triplets;
     L_triplets.reserve( 2 * cellCount( map, 1 ) + n_verts );
 
-    Eigen::VectorXd BCs( n_constrained_verts );
+    Eigen::MatrixXd BCs( n_constrained_verts, data_dim );
 
     t.start( 1 );
     iterateCellsWhile( map, 0, [&]( const topology::Vertex& v ) {
@@ -136,7 +135,7 @@ Eigen::VectorXd solveLaplaceSparse( const topology::CombinatorialMap& map,
         if( maybe_constrained.has_value() )
         {
             const Eigen::Index i = boundary_verts.size();
-            BCs( i ) = maybe_constrained.value();
+            BCs.row( i ) = maybe_constrained.value();
             boundary_verts.emplace( vid.id(), i );
         }
         else
@@ -181,7 +180,7 @@ Eigen::VectorXd solveLaplaceSparse( const topology::CombinatorialMap& map,
 
     LOG( LOG_LAPLACE ) << "BCs: " << std::endl << BCs << std::endl << std::endl;
 
-    const Eigen::VectorXd rhs = -L_IB * BCs;
+    const Eigen::MatrixXd rhs = -L_IB * BCs;
     t.stop( 3 );
 
     LOG( LOG_LAPLACE ) << "L_II:\n" << Eigen::MatrixXd( L_II ) << std::endl << std::endl;
@@ -197,9 +196,9 @@ Eigen::VectorXd solveLaplaceSparse( const topology::CombinatorialMap& map,
     LOG( LOG_LAPLACE ) << "Assembling result\n";
 
     t.start( 5 );
-    Eigen::VectorXd result( n_verts );
-    for( const auto& pr : interior_verts ) result( pr.first ) = ans.coeffRef( pr.second );
-    for( const auto& pr : boundary_verts ) result( pr.first ) = BCs.coeffRef( pr.second );
+    Eigen::MatrixXd result( n_verts, data_dim );
+    for( const auto& pr : interior_verts ) result.row( pr.first ) = ans.row( pr.second );
+    for( const auto& pr : boundary_verts ) result.row( pr.first ) = BCs.row( pr.second );
     t.stop( 5 );
     t.stop( 0 );
 

@@ -115,7 +115,7 @@ int main( int argc, char* argv[] )
         std::cout << "Normals time: " << t.stop( 3 ) << std::endl;
         t.start( 4 );
         const Eigen::VectorXd ans =
-            solveLaplaceSparse( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
+            sweepEmbedding( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
         std::cout << "Laplace time 2: " << t.stop( 4 ) << std::endl;
 
         const topology::CombinatorialMapBoundary bdry( map );
