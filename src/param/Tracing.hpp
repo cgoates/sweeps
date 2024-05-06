@@ -1,6 +1,7 @@
 #pragma once
 #include <SweepInput.hpp>
 #include <optional>
+#include <VertexPositionsFunc.hpp>
 
 namespace topology
 {
@@ -44,7 +45,6 @@ SimplicialComplex traceField( const topology::TetMeshCombinatorialMap& map,
 std::optional<Eigen::Vector2d> intersectionOf( const Ray<2>& ray,
                                                const Segment<2>& line );
 
-using VertexPositionsFunc = std::function<Eigen::Vector3d( const topology::Vertex& )>;
 std::optional<std::pair<topology::Edge, double>> traceGradientOnTri( const topology::CombinatorialMap& map,
                                                                      const VertexPositionsFunc& positions,
                                                                      const topology::Cell& start_cell,

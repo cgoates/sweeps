@@ -1,6 +1,7 @@
 #pragma once
 #include <CombinatorialMapMethods.hpp>
 #include <SweepInput.hpp>
+#include <VertexPositionsFunc.hpp>
 
 namespace topology
 {
@@ -51,8 +52,6 @@ template <unsigned int DIM> struct Segment
     const Eigen::Matrix<double, DIM, 1> start_pos;
     const Eigen::Matrix<double, DIM, 1> end_pos;
 };
-
-using VertexPositionsFunc = std::function<Eigen::Vector3d( const topology::Vertex& )>;
 
 void addTriangleNoDuplicateChecking( SimplicialComplex& complex, const Triangle<3>& tri );
 

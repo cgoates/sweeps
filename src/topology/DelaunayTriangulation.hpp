@@ -1,9 +1,7 @@
 #pragma once
 #include <CombinatorialMap.hpp>
 #include <map>
-#include <Eigen/Dense>
-
-using VertexPositionsFunc = std::function<Eigen::Vector3d( const topology::Vertex& )>;
+#include <VertexPositionsFunc.hpp>
 
 namespace topology
 {
