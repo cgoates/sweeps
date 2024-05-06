@@ -66,20 +66,15 @@ std::vector<Normal> faceNormals( const topology::TetMeshCombinatorialMap& map )
     return normals;
 }
 
-double edgeLength( const topology::TetMeshCombinatorialMap& map, const topology::Edge& e )
+double edgeLength( const topology::CombinatorialMap& map, const VertexPositionsFunc& vertex_position, const topology::Edge& e )
 {
-    const SimplicialComplex& complex = map.simplicialComplex();
     const topology::Dart& d = e.dart();
-    const auto vertex_ids = indexingOrError( map, 0 );
-    const auto vertex_position = [&]( const topology::Vertex& v ) {
-        return complex.points.at( vertex_ids( v ) );
-    };
     const Eigen::Vector3d pos1 = vertex_position( topology::Vertex( d ) );
     const Eigen::Vector3d pos2 = vertex_position( topology::Vertex( phi( map, 1, d ).value() ) );
     return ( pos2 - pos1 ).norm();
 }
 
-double dihedralCotangent( const topology::TetMeshCombinatorialMap& map, const topology::Edge& e, const std::vector<Normal>& normals )
+double dihedralCotangent( const topology::CombinatorialMap& map, const topology::Edge& e, const std::vector<Normal>& normals )
 {
     const auto face_ids = indexingOrError( map, 2 );
     const topology::Dart& d1 = e.dart();

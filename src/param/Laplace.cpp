@@ -11,7 +11,10 @@
 
 Timer t;
 
-double edgeWeight( const topology::TetMeshCombinatorialMap& map, const topology::Edge& e, const std::vector<Normal>& normals )
+double edgeWeight( const topology::CombinatorialMap& map,
+                   const VertexPositionsFunc& v_positions,
+                   const topology::Edge& e,
+                   const std::vector<Normal>& normals )
 {
     double weight = 0;
     t.start( 8 );
@@ -20,7 +23,7 @@ double edgeWeight( const topology::TetMeshCombinatorialMap& map, const topology:
     iterateAdjacentCells( map, e, 3, [&]( const topology::Volume& v ) {
         t.start( 6 );
         const topology::Edge op_edge( phi( map, { 1, 2, -1 }, v.dart() ).value() );
-        const double factor = edgeLength( map, op_edge ) / 12;
+        const double factor = edgeLength( map, v_positions, op_edge ) / 12;
         weight += factor * dihedralCotangent( map, op_edge, normals );
         t.stop( 6 );
         return true;
@@ -29,20 +32,22 @@ double edgeWeight( const topology::TetMeshCombinatorialMap& map, const topology:
     return weight;
 }
 
-std::vector<double> edgeWeights( const topology::TetMeshCombinatorialMap& map, const std::vector<Normal>& normals )
+std::vector<double> edgeWeights( const topology::CombinatorialMap& map,
+                                 const VertexPositionsFunc& vertex_position,
+                                 const std::vector<Normal>& normals )
 {
     const auto edge_ids = indexingOrError( map, 1 );
     const size_t n_edges = cellCount( map, 1 );
     std::vector<double> weights( n_edges, 0 );
 
     iterateCellsWhile( map, 1, [&]( const topology::Edge& e ) {
-        weights.at( edge_ids( e ) ) = edgeWeight( map, e, normals );
+        weights.at( edge_ids( e ) ) = edgeWeight( map, vertex_position, e, normals );
         return true;
     } );
     return weights;
 }
 
-Eigen::SparseVector<double> laplaceOperatorRowSparse( const topology::TetMeshCombinatorialMap& map,
+Eigen::SparseVector<double> laplaceOperatorRowSparse( const topology::CombinatorialMap& map,
                                                       const topology::Vertex& v1,
                                                       const std::vector<double>& edge_weights,
                                                       const int n_verts )
@@ -71,6 +76,20 @@ Eigen::VectorXd solveLaplaceSparse( const topology::TetMeshCombinatorialMap& map
                                     const std::vector<bool>& one_bcs,
                                     const std::vector<Normal>& normals )
 {
+    const auto vertex_ids = indexingOrError( map, 0 );
+    const auto vertex_position = [&]( const topology::Vertex& v ) {
+        return map.simplicialComplex().points.at( vertex_ids( v ) );
+    };
+
+    return solveLaplaceSparse( map, vertex_position, zero_bcs, one_bcs, normals );
+}
+
+Eigen::VectorXd solveLaplaceSparse( const topology::CombinatorialMap& map,
+                                    const VertexPositionsFunc& v_positions,
+                                    const std::vector<bool>& zero_bcs,
+                                    const std::vector<bool>& one_bcs,
+                                    const std::vector<Normal>& normals )
+{
     t.start( 0 );
 
     using SparseVectorXd = Eigen::SparseVector<double>;
@@ -94,7 +113,7 @@ Eigen::VectorXd solveLaplaceSparse( const topology::TetMeshCombinatorialMap& map
     LOG( LOG_LAPLACE ) << "ones: " << one_bcs << std::endl;
 
     t.start( 9 );
-    const std::vector<double> edge_weights = edgeWeights( map, normals );
+    const std::vector<double> edge_weights = edgeWeights( map, v_positions, normals );
     t.stop( 9 );
 
     t.start( 1 );

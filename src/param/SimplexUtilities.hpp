@@ -75,9 +75,9 @@ Eigen::Vector3d centroid( const topology::TetMeshCombinatorialMap& map, const to
 
 std::vector<Normal> faceNormals( const topology::TetMeshCombinatorialMap& map );
 
-double edgeLength( const topology::TetMeshCombinatorialMap& map, const topology::Edge& e );
+double edgeLength( const topology::CombinatorialMap& map, const VertexPositionsFunc& positions, const topology::Edge& e );
 
-double dihedralCotangent( const topology::TetMeshCombinatorialMap& map, const topology::Edge& e, const std::vector<Normal>& normals );
+double dihedralCotangent( const topology::CombinatorialMap& map, const topology::Edge& e, const std::vector<Normal>& normals );
 
 Eigen::Vector3d gradient( const topology::TetMeshCombinatorialMap& map,
                           const topology::Volume& v,
