@@ -49,17 +49,16 @@ std::vector<double> edgeWeights( const topology::CombinatorialMap& map,
 
 Eigen::SparseVector<double> laplaceOperatorRowSparse( const topology::CombinatorialMap& map,
                                                       const topology::Vertex& v1,
-                                                      const std::vector<double>& edge_weights,
+                                                      const std::function<double( const topology::Edge& )>& edge_weights,
                                                       const int n_verts )
 {
     const auto vertex_ids = indexingOrError( map, 0 );
-    const auto edge_ids = indexingOrError( map, 1 );
     Eigen::SparseVector<double> out( n_verts );
     out.reserve( 10 ); // FIXME
     const VertexId vid1 = vertex_ids( v1 );
     t.start( 7 );
     iterateAdjacentCells( map, v1, 1, [&]( const topology::Edge& e ) {
-        const double edge_weight = edge_weights.at( edge_ids( e ) );
+        const double edge_weight = edge_weights( e );
         const VertexId vid2 = vertex_ids( topology::Vertex( phi( map, 1, e.dart() ).value() ) );
 
         out.coeffRef( vid1.id() ) -= edge_weight;
@@ -81,14 +80,38 @@ Eigen::VectorXd solveLaplaceSparse( const topology::TetMeshCombinatorialMap& map
         return map.simplicialComplex().points.at( vertex_ids( v ) );
     };
 
-    return solveLaplaceSparse( map, vertex_position, zero_bcs, one_bcs, normals );
+    const auto edge_ids = indexingOrError( map, 1 );
+    const std::vector<double> edge_weights = edgeWeights( map, vertex_position, normals );
+    const auto edge_weights_func = [&]( const topology::Edge& e ){
+        return edge_weights.at( edge_ids( e ) );
+    };
+    return solveLaplaceSparse( map, edge_weights_func, zero_bcs, one_bcs );
 }
 
 Eigen::VectorXd solveLaplaceSparse( const topology::CombinatorialMap& map,
-                                    const VertexPositionsFunc& v_positions,
+                                    const std::function<double( const topology::Edge& )>& edge_weights,
                                     const std::vector<bool>& zero_bcs,
-                                    const std::vector<bool>& one_bcs,
-                                    const std::vector<Normal>& normals )
+                                    const std::vector<bool>& one_bcs )
+{
+    const auto vertex_ids = indexingOrError( map, 0 );
+    const auto constraints = [&]( const topology::Vertex& v ) -> std::optional<double>{
+        if( zero_bcs.at( vertex_ids( v ) ) ) return 0.0;
+        else if( one_bcs.at( vertex_ids( v ) ) ) return 1.0;
+        else return {};
+    };
+
+    const size_t n_constraints =
+        std::accumulate( zero_bcs.begin(), zero_bcs.end(), 0 ) + std::accumulate( one_bcs.begin(), one_bcs.end(), 0 );
+
+    return solveLaplaceSparse( map, edge_weights, constraints, n_constraints );
+}
+
+// Needs to return a MatrixXd?
+// Needs to allow vector valued bcs
+Eigen::VectorXd solveLaplaceSparse( const topology::CombinatorialMap& map,
+                                    const std::function<double( const topology::Edge& )>& edge_weights,
+                                    const std::function<std::optional<double>( const topology::Vertex& )>& constraints,
+                                    const size_t n_constrained_verts )
 {
     t.start( 0 );
 
@@ -98,36 +121,22 @@ Eigen::VectorXd solveLaplaceSparse( const topology::CombinatorialMap& map,
     std::map<Eigen::Index, Eigen::Index> boundary_verts;
 
     const size_t n_verts = cellCount( map, 0 );
-    const size_t n_bcs = std::accumulate( zero_bcs.begin(), zero_bcs.end(), 0 ) +
-                         std::accumulate( one_bcs.begin(), one_bcs.end(), 0 );
 
     const auto vertex_ids = indexingOrError( map, 0 );
 
     std::vector<Eigen::Triplet<double>> L_triplets;
     L_triplets.reserve( 2 * cellCount( map, 1 ) + n_verts );
 
-    SparseVectorXd BCs( n_bcs );
-    BCs.reserve( one_bcs.size() );
-
-    LOG( LOG_LAPLACE ) << "zeros: " << zero_bcs << std::endl;
-    LOG( LOG_LAPLACE ) << "ones: " << one_bcs << std::endl;
-
-    t.start( 9 );
-    const std::vector<double> edge_weights = edgeWeights( map, v_positions, normals );
-    t.stop( 9 );
+    Eigen::VectorXd BCs( n_constrained_verts );
 
     t.start( 1 );
     iterateCellsWhile( map, 0, [&]( const topology::Vertex& v ) {
         const VertexId vid = vertex_ids( v );
-        if( zero_bcs.at( vid.id() ) )
+        const auto maybe_constrained = constraints( v );
+        if( maybe_constrained.has_value() )
         {
             const Eigen::Index i = boundary_verts.size();
-            boundary_verts.emplace( vid.id(), i );
-        }
-        else if( one_bcs.at( vid.id() ) )
-        {
-            const Eigen::Index i = boundary_verts.size();
-            BCs.insert( i ) = 1.0;
+            BCs( i ) = maybe_constrained.value();
             boundary_verts.emplace( vid.id(), i );
         }
         else
@@ -157,7 +166,7 @@ Eigen::VectorXd solveLaplaceSparse( const topology::CombinatorialMap& map,
             L_II_triplets.emplace_back( t.row(), find_it->second, t.value() );
         }
     }
-    SparseMatrixXd L_II( n_verts - n_bcs, n_verts - n_bcs );
+    SparseMatrixXd L_II( n_verts - n_constrained_verts, n_verts - n_constrained_verts );
     L_II.setFromTriplets( L_II_triplets.begin(), L_II_triplets.end() );
 
     std::vector<Eigen::Triplet<double>> L_IB_triplets;
@@ -167,12 +176,12 @@ Eigen::VectorXd solveLaplaceSparse( const topology::CombinatorialMap& map,
         const auto find_it = boundary_verts.find( t.col() );
         if( find_it != boundary_verts.end() ) L_IB_triplets.emplace_back( t.row(), find_it->second, t.value() );
     }
-    SparseMatrixXd L_IB( n_verts - n_bcs, n_bcs );
+    SparseMatrixXd L_IB( n_verts - n_constrained_verts, n_constrained_verts );
     L_IB.setFromTriplets( L_IB_triplets.begin(), L_IB_triplets.end() );
 
     LOG( LOG_LAPLACE ) << "BCs: " << std::endl << BCs << std::endl << std::endl;
 
-    const SparseVectorXd rhs = -L_IB * BCs;
+    const Eigen::VectorXd rhs = -L_IB * BCs;
     t.stop( 3 );
 
     LOG( LOG_LAPLACE ) << "L_II:\n" << Eigen::MatrixXd( L_II ) << std::endl << std::endl;
