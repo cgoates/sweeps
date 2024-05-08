@@ -152,8 +152,8 @@ Eigen::MatrixXd solveLaplaceSparse( const topology::CombinatorialMap& map,
 
     using SparseVectorXd = Eigen::SparseVector<double>;
     using SparseMatrixXd = Eigen::SparseMatrix<double>;
-    std::map<Eigen::Index, Eigen::Index> interior_verts;
-    std::map<Eigen::Index, Eigen::Index> boundary_verts;
+    std::map<size_t, Eigen::Index> interior_verts;
+    std::map<size_t, Eigen::Index> boundary_verts;
 
     const size_t n_verts = cellCount( map, 0 );
 
@@ -166,13 +166,14 @@ Eigen::MatrixXd solveLaplaceSparse( const topology::CombinatorialMap& map,
 
     t.start( 1 );
     iterateCellsWhile( map, 0, [&]( const topology::Vertex& v ) {
-        const VertexId vid = vertex_ids( v );
+        const size_t vid = vertex_ids( v );
+        if( vid >= n_verts ) throw std::runtime_error( "Solving a Laplace system requires a contiguous zero based vertex indexing" );
         const auto maybe_constrained = constraints( v );
         if( maybe_constrained.has_value() )
         {
             const Eigen::Index i = boundary_verts.size();
             BCs.row( i ) = maybe_constrained.value();
-            boundary_verts.emplace( vid.id(), i );
+            boundary_verts.emplace( vid, i );
         }
         else
         {
@@ -184,7 +185,7 @@ Eigen::MatrixXd solveLaplaceSparse( const topology::CombinatorialMap& map,
             {
                 L_triplets.emplace_back( i, it.row(), it.value() );
             }
-            interior_verts.emplace( vid.id(), i );
+            interior_verts.emplace( vid, i );
         }
         return true;
     } );
