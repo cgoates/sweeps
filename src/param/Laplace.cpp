@@ -4,6 +4,7 @@
 #include <SimplexUtilities.hpp>
 #include <TetMeshCombinatorialMap.hpp>
 #include <CombinatorialMapMethods.hpp>
+#include <CombinatorialMapBoundary.hpp>
 #include <Eigen/Sparse>
 #include <numeric>
 
@@ -11,10 +12,10 @@
 
 Timer t;
 
-double edgeWeight( const topology::CombinatorialMap& map,
-                   const VertexPositionsFunc& v_positions,
-                   const topology::Edge& e,
-                   const std::vector<Normal>& normals )
+double edgeWeightLaplace3d( const topology::CombinatorialMap& map,
+                            const VertexPositionsFunc& v_positions,
+                            const topology::Edge& e,
+                            const std::vector<Normal>& normals )
 {
     double weight = 0;
     t.start( 8 );
@@ -32,16 +33,16 @@ double edgeWeight( const topology::CombinatorialMap& map,
     return weight;
 }
 
-std::vector<double> edgeWeights( const topology::CombinatorialMap& map,
-                                 const VertexPositionsFunc& vertex_position,
-                                 const std::vector<Normal>& normals )
+std::vector<double> edgeWeightsLaplace3d( const topology::CombinatorialMap& map,
+                                          const VertexPositionsFunc& vertex_position,
+                                          const std::vector<Normal>& normals )
 {
     const auto edge_ids = indexingOrError( map, 1 );
     const size_t n_edges = cellCount( map, 1 );
     std::vector<double> weights( n_edges, 0 );
 
     iterateCellsWhile( map, 1, [&]( const topology::Edge& e ) {
-        weights.at( edge_ids( e ) ) = edgeWeight( map, vertex_position, e, normals );
+        weights.at( edge_ids( e ) ) = edgeWeightLaplace3d( map, vertex_position, e, normals );
         return true;
     } );
     return weights;
@@ -90,7 +91,7 @@ Eigen::VectorXd sweepEmbedding( const topology::TetMeshCombinatorialMap& map,
     };
 
     const auto edge_ids = indexingOrError( map, 1 );
-    const std::vector<double> edge_weights = edgeWeights( map, vertex_position, normals );
+    const std::vector<double> edge_weights = edgeWeightsLaplace3d( map, vertex_position, normals );
     const auto edge_weights_func = [&]( const topology::Edge& e ){
         return edge_weights.at( edge_ids( e ) );
     };
@@ -113,6 +114,32 @@ Eigen::VectorXd sweepEmbedding( const topology::CombinatorialMap& map,
         std::accumulate( zero_bcs.begin(), zero_bcs.end(), 0 ) + std::accumulate( one_bcs.begin(), one_bcs.end(), 0 );
 
     return solveLaplaceSparse( map, edge_weights, constraints, n_constraints, 1 );
+}
+
+Eigen::MatrixX2d tutteEmbedding( const topology::CombinatorialMap& map,
+                                 const VertexPositionsFunc& vert_positions,
+                                 const std::function<std::optional<Eigen::Vector2d>( const topology::Vertex& )>& constraints,
+                                 const bool shape_preserving )
+{
+    if( map.dim() != 2 ) throw std::runtime_error( "Tutte embedding only supports 2d maps" );
+
+    const size_t n_bdry_verts = [&map]() {
+        const topology::CombinatorialMapBoundary bdry( map );
+        return cellCount( bdry, 0 );
+    }();
+
+    const auto constraints_wrapper = [&constraints]( const topology::Vertex& v ) -> std::optional<Eigen::VectorXd> {
+        return constraints( v ).and_then( [&]( const Eigen::Vector2d& vec ) { return std::optional<Eigen::VectorXd>( vec ); } );
+    };
+
+    const auto edge_weights = [&]() -> std::function<double( const topology::Edge& )> {
+        if( shape_preserving )
+            return [&]( const topology::Edge& e ) { return edgeLength( map, vert_positions, e ); };
+        else
+            return []( const auto& ) { return 1.0; };
+    }();
+
+    return solveLaplaceSparse( map, edge_weights, constraints_wrapper, n_bdry_verts, map.dim() );
 }
 
 Eigen::MatrixXd solveLaplaceSparse( const topology::CombinatorialMap& map,
