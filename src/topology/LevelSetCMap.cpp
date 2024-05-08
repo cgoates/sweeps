@@ -94,6 +94,13 @@ LevelSetCMap::LevelSetCMap( const CombinatorialMap& base,
             return true;
         } );
     }
+
+    const auto underlying_edge_ids = indexingOrError( mUnderlyingMap, 1 );
+    size_t vert_ii = 0;
+    iterateCellsWhile( 0, [&]( const topology::Vertex& v ) {
+        mVertexIds.emplace( underlying_edge_ids( Edge( v.dart() ) ), vert_ii++ );
+        return true;
+    } );
 }
 
 std::optional<Dart> LevelSetCMap::phi( const int i, const Dart& d ) const
@@ -159,10 +166,17 @@ bool LevelSetCMap::iterateCellsWhile( const uint cell_dim, const std::function<b
 
 std::optional<IndexingFunc> LevelSetCMap::indexing( const uint cell_dim ) const
 {
-    return mUnderlyingMap.indexing( cell_dim + 1 )
-        .and_then( [&]( const IndexingFunc underlying_func ) -> std::optional<IndexingFunc> {
-            return [underlying_func]( const Cell& c ) { return underlying_func( Cell( c.dart(), c.dim() + 1 ) ); };
-        } );
+    // We need contiguous zero based ids for vertices to run laplace solves
+    if( cell_dim == 0 )
+        return mUnderlyingMap.indexing( cell_dim + 1 )
+            .and_then( [&]( const IndexingFunc underlying_func ) -> std::optional<IndexingFunc> {
+                return [this, underlying_func]( const Cell& c ) { return mVertexIds.at( underlying_func( Cell( c.dart(), c.dim() + 1 ) ) ); };
+            } );
+    else
+        return mUnderlyingMap.indexing( cell_dim + 1 )
+            .and_then( [&]( const IndexingFunc underlying_func ) -> std::optional<IndexingFunc> {
+                return [underlying_func]( const Cell& c ) { return underlying_func( Cell( c.dart(), c.dim() + 1 ) ); };
+            } );
 }
 
 double LevelSetCMap::intersectionPosition( const topology::Vertex& v ) const

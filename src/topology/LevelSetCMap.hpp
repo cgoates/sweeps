@@ -34,6 +34,7 @@ namespace topology
         const CombinatorialMap& mUnderlyingMap;
         GlobalCellMarker mIntersectedEdges;
         std::map<Vertex, double> mIntersectionPositions;
+        std::map<size_t, size_t> mVertexIds; // Remove if we no longer need contiguous zero-based ids
     };
 
     std::function<Eigen::Vector3d( const Vertex& )> levelSetVertexPositions(
