@@ -55,14 +55,23 @@ Eigen::SparseVector<double> laplaceOperatorRowSparse( const topology::Combinator
     const auto vertex_ids = indexingOrError( map, 0 );
     Eigen::SparseVector<double> out( n_verts );
     out.reserve( 10 ); // FIXME
-    const VertexId vid1 = vertex_ids( v1 );
+    const VertexId vid_ref = vertex_ids( v1 );
     t.start( 7 );
     iterateAdjacentCells( map, v1, 1, [&]( const topology::Edge& e ) {
         const double edge_weight = edge_weights( e );
+        const VertexId vid1 = vertex_ids( topology::Vertex( e.dart() ) );
         const VertexId vid2 = vertex_ids( topology::Vertex( phi( map, 1, e.dart() ).value() ) );
 
-        out.coeffRef( vid1.id() ) -= edge_weight;
-        out.coeffRef( vid2.id() ) += edge_weight;
+        if( vid1 == vid_ref )
+        {
+            out.coeffRef( vid1.id() ) -= edge_weight;
+            out.coeffRef( vid2.id() ) += edge_weight;
+        }
+        else
+        {
+            out.coeffRef( vid2.id() ) -= edge_weight;
+            out.coeffRef( vid1.id() ) += edge_weight;
+        }
         return true;
     } );
     t.stop( 7 );
@@ -184,13 +193,25 @@ Eigen::MatrixXd solveLaplaceSparse( const topology::CombinatorialMap& map,
     t.stop( 3 );
 
     LOG( LOG_LAPLACE ) << "L_II:\n" << Eigen::MatrixXd( L_II ) << std::endl << std::endl;
-    LOG( LOG_LAPLACE ) << "rhs:\n" << Eigen::VectorXd( rhs ).transpose() << std::endl << std::endl;
+    LOG( LOG_LAPLACE ) << "L_IB:\n" << Eigen::MatrixXd( L_IB ) << std::endl << std::endl;
+    LOG( LOG_LAPLACE ) << "rhs:\n" << rhs.transpose() << std::endl << std::endl;
 
     LOG( LOG_LAPLACE ) << "About to solve\n";
 
     t.start( 4 );
-    Eigen::ConjugateGradient<SparseMatrixXd, Eigen::Lower | Eigen::Upper> solver( L_II );
-    const Eigen::VectorXd ans = solver.solve( rhs );
+    const Eigen::MatrixXd ans = [&]() -> Eigen::MatrixXd {
+        if( map.dim() == 3 )
+        {
+            Eigen::ConjugateGradient<SparseMatrixXd, Eigen::Lower | Eigen::Upper> solver( L_II );
+            return solver.solve( rhs );
+        }
+        else
+        {
+            Eigen::SimplicialLDLT<SparseMatrixXd> solver( L_II );
+            return solver.solve( rhs );
+        }
+    }();
+
     t.stop( 4 );
 
     LOG( LOG_LAPLACE ) << "Assembling result\n";
