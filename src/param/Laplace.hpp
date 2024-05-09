@@ -28,6 +28,10 @@ Eigen::MatrixX2d tutteEmbedding( const topology::CombinatorialMap& map,
                                  const std::function<std::optional<Eigen::Vector2d>( const topology::Vertex& )>& constraints,
                                  const bool shape_preserving = true );
 
+/// Defaults to embedding to a unit circle
+Eigen::MatrixX2d tutteEmbedding( const topology::CombinatorialMap& map,
+                                 const VertexPositionsFunc& vert_positions );
+
 Eigen::MatrixXd solveLaplaceSparse(
     const topology::CombinatorialMap& map,
     const std::function<double( const topology::Edge& )>& edge_weights,
