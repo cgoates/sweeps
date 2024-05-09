@@ -416,6 +416,41 @@ int main( int argc, char* argv[] )
             io::VTKOutputObject output( all_level_sets );
             io::outputSimplicialFieldToVTK( output, "level_sets.vtu" );
         }
+        else if( input_args.at( 0 ) == "tutte" )
+        {
+            SimplicialComplex all_level_sets;
+
+            const Eigen::VectorXd values = Eigen::VectorXd::LinSpaced( 19, 0.05, 0.95 );
+
+            const auto func = [&]( const topology::Vertex& v ) {
+                return ans( vertex_ids( v ) );
+            };
+            for( const double val : values )
+            {
+                const topology::LevelSetCMap level( map, func, val );
+                const auto level_positions = levelSetVertexPositions( level, vertex_positions( map ) );
+                const topology::DelaunayTriangulation level_tri( level, level_positions );
+                const auto level_tri_positions = delaunayTriangulationVertexPositions( level_tri, level_positions );
+
+                const auto level_tri_vert_ids = indexingOrError( level_tri, 0 );
+
+                const Eigen::MatrixX2d tutte = tutteEmbedding( level_tri, level_tri_positions );
+
+                const auto tutte_positions = [&]( const topology::Vertex& v ) {
+                    Eigen::Vector3d t = ( Eigen::Vector3d() << tutte( level_tri_vert_ids( v ), 0 ), tutte( level_tri_vert_ids( v ), 1 ), 10*val ).finished();
+                    return t;
+                };
+
+                iterateCellsWhile( level_tri, 2, [&]( const topology::Face& f ) {
+                    const auto tri = triangleOfFace( level_tri, tutte_positions, f );
+                    addTriangleNoDuplicateChecking( all_level_sets, tri );
+                    return true;
+                } );
+            }
+
+            io::VTKOutputObject output( all_level_sets );
+            io::outputSimplicialFieldToVTK( output, "tutte.vtu" );
+        }
         else if( input_args.at( 0 ) == "parameterize" )
         {
             /// LOAD 2D PARAMETERIZATION
