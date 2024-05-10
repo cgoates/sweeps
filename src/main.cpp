@@ -12,6 +12,7 @@
 #include <queue>
 #include <LevelSetCMap.hpp>
 #include <DelaunayTriangulation.hpp>
+#include "../test/SimplicialComplexTestCases.hpp"
 
 topology::Cell cellOfSimplex( const topology::TetMeshCombinatorialMap& map, const Simplex& s )
 {
@@ -87,10 +88,12 @@ int main( int argc, char* argv[] )
 
     if( input_args.size() > 0 )
     {
-        const SweepInput sweep_input =
-            io::loadINPFile( SRC_HOME "/test/data/macaroni.inp", "Surface3", "Surface4" );
         // const SweepInput sweep_input =
-        //     io::loadINPFile( SRC_HOME "/test/data/hook.inp", "Surface12", "Surface10" );
+        //     io::loadINPFile( SRC_HOME "/test/data/macaroni.inp", "Surface3", "Surface4" );
+        const SweepInput sweep_input =
+            io::loadINPFile( SRC_HOME "/test/data/hook.inp", "Surface12", "Surface10" );
+
+        // const SweepInput sweep_input = SweepInputTestCases::twelveTetCube();
 
         if( input_args.front() == "transpose-barycoords" )
         {
