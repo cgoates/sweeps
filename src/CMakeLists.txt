@@ -1,6 +1,7 @@
 add_subdirectory( util )
 add_subdirectory( simplex )
 add_subdirectory( topology )
+add_subdirectory( param )
 add_subdirectory( io )
 add_subdirectory( reparam )
 
