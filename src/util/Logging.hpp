@@ -12,6 +12,26 @@
 #define LOG( COND ) if( COND ) std::cout
 // clang-format on
 
+namespace util
+{
+    inline std::string black() { return "\033[30m"; }
+    inline std::string red() { return "\033[31m"; }
+    inline std::string green() { return "\033[32m"; }
+    inline std::string yellow() { return "\033[33m"; }
+    inline std::string blue() { return "\033[34m"; }
+    inline std::string purple() { return "\033[35m"; }
+    inline std::string cyan() { return "\033[36m"; }
+    inline std::string bblack() { return "\033[1;30m"; }
+    inline std::string bred() { return "\033[1;31m"; }
+    inline std::string bgreen() { return "\033[1;32m"; }
+    inline std::string byellow() { return "\033[1;33m"; }
+    inline std::string bblue() { return "\033[1;34m"; }
+    inline std::string bpurple() { return "\033[1;35m"; }
+    inline std::string bcyan() { return "\033[1;36m"; }
+    inline std::string reset() { return "\033[0m"; }
+    inline std::string resetl() { return "\033[0m\n"; }
+}
+
 std::ostream& operator<<( std::ostream& o, const Eigen::Triplet<double>& t );
 
 template <typename T> std::ostream& operator<<( std::ostream& o, const std::vector<T>& v )
