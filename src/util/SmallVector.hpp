@@ -31,9 +31,6 @@ class SmallVector
     {
         if( mSize == MAX_SIZE )
         {
-            std::cerr << "Overfull SmallVector:\n";
-            for( size_t i = 0; i < mSize; i++ ) std::cerr << at( i ) << ", ";
-            std::cerr << std::endl;
             throw std::out_of_range( "push_back into full SmallVector" );
         }
         mData.at( mSize++ ) = t;
@@ -59,6 +56,16 @@ class SmallVector
     std::array<T,MAX_SIZE>::const_iterator end() const
     {
         return std::next( mData.begin(), mSize );
+    }
+
+    T* data()
+    {
+        return mData.data();
+    }
+
+    const T* data() const
+    {
+        return mData.data();
     }
 
     bool operator==( const SmallVector<T, MAX_SIZE>& o ) const
