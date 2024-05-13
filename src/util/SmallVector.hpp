@@ -13,6 +13,14 @@ class SmallVector
         for( size_t i = 0; i < s.size(); i++ ) push_back( s[ i ] );
     }
 
+    SmallVector( const std::initializer_list<const T>& il ) : SmallVector( std::span<const T>( il ) ) {}
+
+    SmallVector( const size_t count, const T& val ) :
+        mSize( 0 )
+    {
+        for( size_t i = 0; i < count; i++ ) push_back( val );
+    }
+
     SmallVector() : mSize( 0 ) {}
 
     const T& at( const size_t n ) const
