@@ -1,6 +1,7 @@
 add_library( param SHARED
   ParentDomain.cpp
   ParametricAtlas.cpp
+  TriangleParametricAtlas.cpp
 )
 
 target_link_libraries( param PUBLIC util topology )

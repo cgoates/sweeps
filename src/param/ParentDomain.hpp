@@ -42,6 +42,7 @@ namespace param
     /// @brief Represents a point in a parent domain
     class ParentPoint
     {
+        public:
         ParentDomain mDomain;
         Vector3dMax mPoint;
     };
