@@ -20,13 +20,13 @@ namespace basis
 
     BarycentricBasis bernsteinBasis( const size_t degree );
 
-    class LocalBasis
+    class ParentBasis
     {
         public:
         param::ParentDomain mParentDomain;
         SmallVector<BarycentricBasis, 3> mBasisGroups;
     };
 
-    LocalBasis bernsteinSimplex( const size_t dim, const size_t degree );
-    LocalBasis bernsteinCube( const size_t dim, const size_t degree );
+    ParentBasis bernsteinSimplex( const size_t dim, const size_t degree );
+    ParentBasis bernsteinCube( const size_t dim, const size_t degree );
 }

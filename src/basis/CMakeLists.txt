@@ -1,6 +1,6 @@
 add_library( basis SHARED
-  LocalBasis.cpp
-  BasisMesh.cpp
+  ParentBasis.cpp
+  BasisComplex.cpp
   SplineSpace.cpp
 )
 
