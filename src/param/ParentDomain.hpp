@@ -39,12 +39,16 @@ namespace param
     size_t dim( const ParentDomain& pd );
     size_t numTotalCoordinates( const ParentDomain& pd );
 
+    using BaryCoordIsZeroVec = SmallVector<bool, 6>;
+
     /// @brief Represents a point in a parent domain
     class ParentPoint
     {
         public:
         ParentDomain mDomain;
         Vector3dMax mPoint;
+        BaryCoordIsZeroVec mBaryCoordIsZero;
     };
 
+    ParentPoint pointOnBoundary( const ParentDomain& domain, const BaryCoordIsZeroVec& is_zero );
 }

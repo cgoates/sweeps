@@ -17,6 +17,5 @@ namespace param
         private:
         const topology::CombinatorialMap& mMap;
         const ParentDomain mParentDomain = simplexDomain( 2 );
-        const std::array<Eigen::Vector2d, 3> mPoints = { Eigen::Vector2d{1, 1}, Eigen::Vector2d{0, 1}, Eigen::Vector2d{1, 0} };
     };
 }

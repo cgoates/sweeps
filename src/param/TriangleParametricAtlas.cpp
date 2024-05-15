@@ -30,6 +30,9 @@ namespace param
             throw std::runtime_error( "TriangleParametricAtlas only takes triangle faces with no hanging nodes!" );
         }
 
-        return ParentPoint{ mParentDomain, mPoints.at( num_phi1s ) };
+        BaryCoordIsZeroVec is_zero( 3, false );
+        is_zero.at( num_phi1s ) = true;
+
+        return pointOnBoundary( mParentDomain, is_zero );
     }
 }
