@@ -200,8 +200,8 @@ std::optional<size_t> DelaunayTriangulation::cellCount( const uint cell_dim ) co
 
 namespace topology
 {
-    std::function<Eigen::Vector3d( const Vertex& )> delaunayTriangulationVertexPositions(
-        const DelaunayTriangulation& dtri, const std::function<Eigen::Vector3d( const Vertex& )>& underlying_positions )
+    VertexPositionsFunc delaunayTriangulationVertexPositions(
+        const DelaunayTriangulation& dtri, const VertexPositionsFunc& underlying_positions )
     {
         Dart::IndexType largest_underlying_dart_id = dtri.baseMap().maxDartId();
         return [&dtri, largest_underlying_dart_id, underlying_positions]( const Vertex& v ) -> Eigen::Vector3d {

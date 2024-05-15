@@ -55,6 +55,6 @@ SimplicialComplex traceBoundaryField( const topology::CombinatorialMap& map,
                                       const topology::Cell& start_cell,
                                       const double& start_point,
                                       const Eigen::VectorXd& field,
-                                      const std::function<Eigen::Vector3d( const topology::Vertex& )>& positions,
+                                      const VertexPositionsFunc& positions,
                                       const bool debug_output,
                                       const std::function<void( const topology::Face& )>& face_callback = []( const auto& ) {} );

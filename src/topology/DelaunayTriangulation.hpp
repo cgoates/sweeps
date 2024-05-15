@@ -34,6 +34,6 @@ namespace topology
         Dart::IndexType mMaxDartId;
     };
 
-    std::function<Eigen::Vector3d( const Vertex& )> delaunayTriangulationVertexPositions(
+    VertexPositionsFunc delaunayTriangulationVertexPositions(
         const DelaunayTriangulation& dtri, const VertexPositionsFunc& underlying_positions );
 } // namespace topology

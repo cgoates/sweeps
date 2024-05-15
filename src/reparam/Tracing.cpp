@@ -141,7 +141,7 @@ void interiorTracingDebugOutput( const topology::TetMeshCombinatorialMap& map,
 }
 
 void boundaryTracingDebugOutput( const topology::CombinatorialMap& map,
-                                 const std::function<Eigen::Vector3d( const topology::Vertex& )>& positions,
+                                 const VertexPositionsFunc& positions,
                                  const topology::Cell& curr_cell,
                                  const double start_pos,
                                  const Eigen::Ref<const Eigen::VectorXd> field,
@@ -464,7 +464,7 @@ Eigen::Vector2d gradient2d( const Triangle<2> tri, const Eigen::Vector3d& field,
 
 std::optional<std::pair<topology::Edge, double>>
     traceGradientOnTri( const topology::CombinatorialMap& map,
-                        const std::function<Eigen::Vector3d( const topology::Vertex& )>& positions,
+                        const VertexPositionsFunc& positions,
                         const topology::Cell& start_cell,
                         const double edge_barycentric_coord,
                         const Eigen::VectorXd& field_values )
@@ -502,7 +502,7 @@ std::optional<std::pair<topology::Edge, double>>
 
 std::optional<std::pair<topology::Edge, double>>
     traceGradientOnTriPair( const topology::CombinatorialMap& map,
-                            const std::function<Eigen::Vector3d( const topology::Vertex& )>& positions,
+                            const VertexPositionsFunc& positions,
                             const topology::Cell& start_cell,
                             const double edge_barycentric_coord,
                             const Eigen::VectorXd& field_values )
@@ -571,7 +571,7 @@ SimplicialComplex traceBoundaryField( const topology::CombinatorialMap& map,
                                       const topology::Cell& start_cell,
                                       const double& start_point,
                                       const Eigen::VectorXd& field,
-                                      const std::function<Eigen::Vector3d( const topology::Vertex& )>& positions,
+                                      const VertexPositionsFunc& positions,
                                       const bool debug_output,
                                       const std::function<void( const topology::Face& )>& face_callback )
 {
