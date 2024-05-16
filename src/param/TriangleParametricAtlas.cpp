@@ -30,8 +30,8 @@ namespace param
             throw std::runtime_error( "TriangleParametricAtlas only takes triangle faces with no hanging nodes!" );
         }
 
-        BaryCoordIsZeroVec is_zero( 3, false );
-        is_zero.at( num_phi1s ) = true;
+        BaryCoordIsZeroVec is_zero( 3, true );
+        is_zero.at( num_phi1s ) = false;
 
         return pointOnBoundary( mParentDomain, is_zero );
     }
