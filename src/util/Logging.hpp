@@ -7,6 +7,7 @@
 #include <chrono>
 #include <csignal>
 #include <optional>
+#include <SmallVector.hpp>
 
 // clang-format off
 #define LOG( COND ) if( COND ) std::cout
@@ -43,6 +44,19 @@ template <typename T> std::ostream& operator<<( std::ostream& o, const std::vect
         o << "{ ";
         for( auto it = v.begin(); it != v.end() - 1; it++ ) o << *it << ", ";
         o << v.back() << " }";
+    }
+    return o;
+}
+
+template <typename T, size_t N> std::ostream& operator<<( std::ostream& o, const SmallVector<T, N>& v )
+{
+    if( v.size() == 0 )
+        o << "{}";
+    else
+    {
+        o << "{ ";
+        for( auto it = v.begin(); it != v.end() - 1; it++ ) o << *it << ", ";
+        o << *( v.end() - 1 ) << " }";
     }
     return o;
 }
