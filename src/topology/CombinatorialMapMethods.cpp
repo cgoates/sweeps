@@ -158,6 +158,7 @@ namespace topology
     {
         // We need an extra operation for edges of vertices in map.dim() < 3
         const bool edges_of_vert_in_lowD = c.dim() == 0 and cell_dim == 1 and map.dim() <= 2;
+        const bool verts_of_edge_in_lowD = c.dim() == 1 and cell_dim == 0 and map.dim() <= 2;
 
         LocalCellMarker m( cell_dim );
         const auto mark_and_callback = [&]( const topology::Cell& cell ) {
@@ -181,6 +182,15 @@ namespace topology
                     if( not mark_and_callback( c_adj_2 ) ) return false;
                 }
             }
+            else if( verts_of_edge_in_lowD )
+            {
+                const auto phi1 = phi( map, 1, d );
+                if( phi1.has_value() )
+                {
+                    const topology::Vertex c_adj_2( phi1.value() );
+                    if( not mark_and_callback( c_adj_2 ) ) return false;
+                }
+            }
             return true;
         } );
     }
@@ -193,6 +203,7 @@ namespace topology
     {
         // We need an extra operation for edges of vertices in map.dim() < 3
         const bool edges_of_vert_in_lowD = c.dim() == 0 and cell_dim == 1 and map.dim() <= 2 and restrict_dim != 1;
+        const bool verts_of_edge_in_lowD = c.dim() == 1 and cell_dim == 0 and map.dim() <= 2 and restrict_dim != 1;
 
         LocalCellMarker m( cell_dim );
         const auto mark_and_callback = [&]( const topology::Cell& cell ) {
@@ -213,6 +224,15 @@ namespace topology
                 if( phi_1.has_value() )
                 {
                     const topology::Edge c_adj_2( phi_1.value() );
+                    if( not mark_and_callback( c_adj_2 ) ) return false;
+                }
+            }
+            else if( verts_of_edge_in_lowD )
+            {
+                const auto phi1 = phi( map, 1, d );
+                if( phi1.has_value() )
+                {
+                    const topology::Vertex c_adj_2( phi1.value() );
                     if( not mark_and_callback( c_adj_2 ) ) return false;
                 }
             }
