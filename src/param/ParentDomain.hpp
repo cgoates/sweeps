@@ -4,6 +4,7 @@
 #include <numeric>
 
 using Vector3dMax = Eigen::Matrix<double, Eigen::Dynamic, 1, 0, 3>;
+using Vector6dMax = Eigen::Matrix<double, Eigen::Dynamic, 1, 0, 6>;
 
 namespace param
 {
@@ -38,6 +39,7 @@ namespace param
     size_t numGroups( const ParentDomain& pd );
     size_t dim( const ParentDomain& pd );
     size_t numTotalCoordinates( const ParentDomain& pd );
+    void iterateGroups( const ParentDomain& pd, const std::function<void( const size_t, const size_t, const CoordinateSystem& )>& callback );
 
     using BaryCoordIsZeroVec = SmallVector<bool, 6>;
 
@@ -51,4 +53,6 @@ namespace param
     };
 
     ParentPoint pointOnBoundary( const ParentDomain& domain, const BaryCoordIsZeroVec& is_zero );
+    Vector6dMax expandedCoordinates( const ParentPoint& pt );
+    BaryCoordIsZeroVec join( const BaryCoordIsZeroVec& v1, const BaryCoordIsZeroVec& v2 );
 }
