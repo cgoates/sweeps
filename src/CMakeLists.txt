@@ -3,6 +3,7 @@ add_subdirectory( simplex )
 add_subdirectory( topology )
 add_subdirectory( param )
 add_subdirectory( basis )
+add_subdirectory( mapping )
 add_subdirectory( io )
 add_subdirectory( reparam )
 
