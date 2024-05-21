@@ -410,7 +410,7 @@ int main( int argc, char* argv[] )
                 const auto level_tri_positions = delaunayTriangulationVertexPositions( level_tri, level_positions );
 
                 iterateCellsWhile( level_tri, 2, [&]( const topology::Face& f ) {
-                    const auto tri = triangleOfFace( level_tri, level_tri_positions, f );
+                    const auto tri = triangleOfFace<3>( level_tri, level_tri_positions, f );
                     addTriangleNoDuplicateChecking( all_level_sets, tri );
                     return true;
                 } );
@@ -445,7 +445,7 @@ int main( int argc, char* argv[] )
                 };
 
                 iterateCellsWhile( level_tri, 2, [&]( const topology::Face& f ) {
-                    const auto tri = triangleOfFace( level_tri, tutte_positions, f );
+                    const auto tri = triangleOfFace<3>( level_tri, tutte_positions, f );
                     addTriangleNoDuplicateChecking( all_level_sets, tri );
                     return true;
                 } );

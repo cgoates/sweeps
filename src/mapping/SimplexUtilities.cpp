@@ -21,21 +21,32 @@ Triangle<3> triangleOfFace( const topology::TetMeshCombinatorialMap& map, const 
         return complex.points.at( vertex_ids( v ) );
     };
 
-    return triangleOfFace( map, vertex_position, f );
+    return triangleOfFace<3>( map, vertex_position, f );
 }
 
-Triangle<3> triangleOfFace( const topology::CombinatorialMap& map,
-                            const std::function<Eigen::Vector3d( const topology::Vertex& )>& vertex_position,
-                            const topology::Face& f )
+template<unsigned int DIM>
+Triangle<DIM> triangleOfFace( const topology::CombinatorialMap& map,
+                              const VertexPositionsFunc& vertex_position,
+                              const topology::Face& f )
 {
     const topology::Dart& d = f.dart();
 
-    const Eigen::Vector3d pos1 = vertex_position( topology::Vertex( d ) );
-    const Eigen::Vector3d pos2 = vertex_position( topology::Vertex( phi( map, 1, d ).value() ) );
-    const Eigen::Vector3d pos3 = vertex_position( topology::Vertex( phi( map, -1, d ).value() ) );
+    const Vector3dMax pos1 = vertex_position( topology::Vertex( d ) );
+    const Vector3dMax pos2 = vertex_position( topology::Vertex( phi( map, 1, d ).value() ) );
+    const Vector3dMax pos3 = vertex_position( topology::Vertex( phi( map, -1, d ).value() ) );
 
-    return Triangle<3>{ pos1, pos2, pos3 };
+    if( pos1.size() != DIM ) throw std::runtime_error( "Bad positions vector size in triangleOfFace" );
+
+    return Triangle<DIM>{ pos1, pos2, pos3 };
 }
+template
+Triangle<3> triangleOfFace( const topology::CombinatorialMap&,
+                            const VertexPositionsFunc&,
+                            const topology::Face& );
+template
+Triangle<2> triangleOfFace( const topology::CombinatorialMap&,
+                            const VertexPositionsFunc&,
+                            const topology::Face& );
 
 Eigen::Vector3d triangleNormal( const topology::TetMeshCombinatorialMap& map, const topology::Face& f )
 {
@@ -227,7 +238,7 @@ bool isInverted( const topology::CombinatorialMap& map,
                  const topology::Volume& v,
                  const VertexPositionsFunc& positions )
 {
-    const auto tri = triangleOfFace( map, positions, topology::Face( v.dart() ) );
+    const auto tri = triangleOfFace<3>( map, positions, topology::Face( v.dart() ) );
     const auto normal = triangleNormal( tri );
     const auto inversion_question = ( positions( topology::Vertex( phi( map, { 2, -1 }, v.dart() ).value() ) ) - tri.v1 ).dot( normal );
     if( inversion_question < 0 )

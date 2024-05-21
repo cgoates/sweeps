@@ -61,9 +61,11 @@ void addTetNoDuplicateChecking( SimplicialComplex& complex,
                                 const topology::Volume& vol );
 
 Triangle<3> triangleOfFace( const topology::TetMeshCombinatorialMap& map, const topology::Face& f );
-Triangle<3> triangleOfFace( const topology::CombinatorialMap& map,
-                            const std::function<Eigen::Vector3d( const topology::Vertex& )>& vertex_position,
-                            const topology::Face& f );
+
+template <unsigned int DIM>
+Triangle<DIM> triangleOfFace( const topology::CombinatorialMap& map,
+                              const VertexPositionsFunc& vertex_position,
+                              const topology::Face& f );
 
 Eigen::Vector3d triangleNormal( const Triangle<3>& tri );
 

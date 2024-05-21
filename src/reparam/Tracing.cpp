@@ -150,7 +150,7 @@ void boundaryTracingDebugOutput( const topology::CombinatorialMap& map,
                                  std::vector<double>& vertex_values,
                                  const size_t n )
 {
-    const Triangle<3> tri3d = triangleOfFace( map, positions, topology::Face( curr_cell.dart() ) );
+    const Triangle<3> tri3d = triangleOfFace<3>( map, positions, topology::Face( curr_cell.dart() ) );
 
     const auto& d = curr_cell.dart();
     const auto vertex_ids = indexingOrError( map, 0 );
@@ -470,7 +470,7 @@ std::optional<std::pair<topology::Edge, double>>
                         const Eigen::VectorXd& field_values )
 {
     const topology::Face f( start_cell.dart() );
-    const Triangle<3> tri3d = triangleOfFace( map, positions, f );
+    const Triangle<3> tri3d = triangleOfFace<3>( map, positions, f );
 
     const topology::Dart& d = start_cell.dart();
 
@@ -509,7 +509,7 @@ std::optional<std::pair<topology::Edge, double>>
 {
     return phi( map, { 2, -1 }, start_cell.dart() ).and_then( [&]( const topology::Dart& opp_d ) {
         const topology::Face f( start_cell.dart() );
-        const Triangle<3> tri3d = triangleOfFace( map, positions, f );
+        const Triangle<3> tri3d = triangleOfFace<3>( map, positions, f );
         const Eigen::Vector3d opp_v = positions( topology::Vertex( opp_d ) );
 
         // calculate the gradient in the xy plane
@@ -607,7 +607,7 @@ SimplicialComplex traceBoundaryField( const topology::CombinatorialMap& map,
             const Eigen::Vector3d edge_vector =
                 positions( topology::Vertex( phi( map, 1, e.dart() ).value() ) ) - positions( topology::Vertex( e.dart() ) );
 
-            const Eigen::Vector3d tri_normal = triangleNormal( triangleOfFace( map, positions, topology::Face( e.dart() ) ) );
+            const Eigen::Vector3d tri_normal = triangleNormal( triangleOfFace<3>( map, positions, topology::Face( e.dart() ) ) );
 
             return Eigen::AngleAxis<double>( std::numbers::pi / 2.0, tri_normal ) * edge_vector;
         };
@@ -619,7 +619,7 @@ SimplicialComplex traceBoundaryField( const topology::CombinatorialMap& map,
             const auto face_field = field( { vertex_ids( topology::Vertex( d ) ),
                                              vertex_ids( topology::Vertex( phi( map, 1, d ).value() ) ),
                                              vertex_ids( topology::Vertex( phi( map, -1, d ).value() ) ) } );
-            return gradient( triangleOfFace( map, positions, f ), face_field );
+            return gradient( triangleOfFace<3>( map, positions, f ), face_field );
         };
         const std::optional<topology::Cell> adjusted_start_cell =
             tracingStartCell( map, start_cell, normals_func, grads_func ).or_else( [&]() {
