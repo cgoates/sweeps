@@ -105,3 +105,5 @@ Eigen::Vector3d expandBarycentric( const topology::CombinatorialMap& map,
 bool isInverted( const topology::CombinatorialMap& map,
                  const topology::Volume& v,
                  const VertexPositionsFunc& positions );
+
+std::optional<Eigen::Vector3d> invertTriangleMap( const Triangle<2>& tri, const Eigen::Vector2d& point );

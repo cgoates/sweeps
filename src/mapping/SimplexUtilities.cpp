@@ -248,3 +248,24 @@ bool isInverted( const topology::CombinatorialMap& map,
     }
     return false;
 }
+
+std::optional<Eigen::Vector3d> invertTriangleMap( const Triangle<2>& tri, const Eigen::Vector2d& point )
+{
+    // See https://gamedev.stackexchange.com/questions/23743/whats-the-most-efficient-way-to-find-barycentric-coordinates/63203#63203
+    const Eigen::Vector2d diff0 = tri.v2 - tri.v1;
+    const Eigen::Vector2d diff1 = tri.v3 - tri.v1;
+    const Eigen::Vector2d diff_point = point - tri.v1;
+    const auto perpendicular_dot_product = []( const Eigen::Vector2d& a, const Eigen::Vector2d& b ){
+        return a( 0 ) * b( 1 ) - a( 1 ) * b( 0 );
+    };
+    const double denominator = 1.0 / perpendicular_dot_product( diff0, diff1 );
+    Eigen::Vector3d out = Eigen::Vector3d::Zero();
+    out( 1 ) = denominator * perpendicular_dot_product( diff_point, diff1 );
+    if( out( 1 ) > 1.0 or out( 1 ) < 0.0 ) return std::nullopt;
+    out( 2 ) = denominator * perpendicular_dot_product( diff0, diff_point );
+    if( out( 2 ) > 1.0 or out( 2 ) < 0.0 ) return std::nullopt;
+    out( 0 ) = 1 - ( out( 1 ) + out( 2 ) );
+    if( out( 0 ) > 1.0 or out( 0 ) < 0.0 ) return std::nullopt;
+
+    return out;
+}
