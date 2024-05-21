@@ -1,4 +1,5 @@
 #include <ParentDomain.hpp>
+#include <CommonUtils.hpp>
 
 namespace param
 {
@@ -76,21 +77,39 @@ namespace param
         return ParentPoint{ domain, point, is_zero };
     }
 
-    Vector6dMax expandedCoordinates( const ParentPoint& pt )
+    Vector6dMax expandedCoordinates( const ParentDomain& domain, const Vector3dMax& point )
     {
-        Vector6dMax out = Vector6dMax::Zero( numTotalCoordinates( pt.mDomain ) );
+        Vector6dMax out = Vector6dMax::Zero( numTotalCoordinates( domain ) );
 
-        iterateGroups( pt.mDomain, [&]( const size_t group_expanded_start, const size_t group_explicit_start, const CoordinateSystem& cs ) {
+        iterateGroups( domain, [&]( const size_t group_expanded_start, const size_t group_explicit_start, const CoordinateSystem& cs ) {
             double residue = 0;
             for( size_t group_coord = 0; group_coord < cs.dim(); group_coord++ )
             {
-                residue += pt.mPoint( group_explicit_start + group_coord );
-                out( group_expanded_start + 1 + group_coord ) = pt.mPoint( group_explicit_start + group_coord );
+                residue += point( group_explicit_start + group_coord );
+                out( group_expanded_start + 1 + group_coord ) = point( group_explicit_start + group_coord );
             }
             out( group_expanded_start ) = 1.0 - residue;
         } );
 
         return out;
+    }
+
+    ParentPoint::ParentPoint( const ParentDomain& domain, const Vector3dMax& point, const BaryCoordIsZeroVec& zero_vec ) :
+        mDomain( domain ), mPoint( point ), mBaryCoordIsZero( zero_vec )
+    {}
+    ParentPoint::ParentPoint( const ParentDomain& domain, const Vector3dMax& point, const double is_zero_tol ) :
+        mDomain( domain ), mPoint( point ), mBaryCoordIsZero( numTotalCoordinates( domain ), false )
+    {
+        const Vector6dMax coords = expandedCoordinates( domain, point );
+        for( Eigen::Index i = 0; i < coords.size(); i++ )
+        {
+            if( util::equals( coords( i ), 0.0, is_zero_tol ) ) mBaryCoordIsZero.at( i ) = true;
+        }
+    }
+
+    Vector6dMax expandedCoordinates( const ParentPoint& pt )
+    {
+        return expandedCoordinates( pt.mDomain, pt.mPoint );
     }
 
     BaryCoordIsZeroVec join( const BaryCoordIsZeroVec& v1, const BaryCoordIsZeroVec& v2 )

@@ -40,6 +40,7 @@ namespace param
     size_t dim( const ParentDomain& pd );
     size_t numTotalCoordinates( const ParentDomain& pd );
     void iterateGroups( const ParentDomain& pd, const std::function<void( const size_t, const size_t, const CoordinateSystem& )>& callback );
+    Vector6dMax expandedCoordinates( const ParentDomain& domain, const Vector3dMax& pt );
 
     using BaryCoordIsZeroVec = SmallVector<bool, 6>;
 
@@ -47,6 +48,8 @@ namespace param
     class ParentPoint
     {
         public:
+        ParentPoint( const ParentDomain& domain, const Vector3dMax& point, const BaryCoordIsZeroVec& zero_vec );
+        ParentPoint( const ParentDomain& domain, const Vector3dMax& point, const double is_zero_tol );
         ParentDomain mDomain;
         Vector3dMax mPoint;
         BaryCoordIsZeroVec mBaryCoordIsZero;
