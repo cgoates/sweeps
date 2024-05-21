@@ -131,7 +131,3 @@ class Timer
     std::vector<std::chrono::time_point<std::chrono::high_resolution_clock>> mStartTimes;
     std::vector<bool> mStarted;
 };
-
-bool equals( const double& a, const double& b, const double& tol );
-
-bool equals( const Eigen::Ref<const Eigen::VectorXd> a, const Eigen::Ref<const Eigen::VectorXd> b, const double& tol );

@@ -7,6 +7,7 @@
 #include <TriMeshCombinatorialMap.hpp>
 #include <SimplicialComplexTestCases.hpp>
 #include <CombinatorialMapMethods.hpp>
+#include <CommonUtils.hpp>
 
 TEST_CASE( "Laplace patch test", "" )
 {
@@ -17,7 +18,7 @@ TEST_CASE( "Laplace patch test", "" )
     const std::vector<Normal> normals = faceNormals( map );
     const Eigen::VectorXd sol = sweepEmbedding( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
 
-    REQUIRE( equals( sol( 8 ), sweep_input.mesh.points.back()( 2 ), sweep_input.mesh.points.back()( 2 ) * 1e-15 ) );
+    REQUIRE( util::equals( sol( 8 ), sweep_input.mesh.points.back()( 2 ), sweep_input.mesh.points.back()( 2 ) * 1e-15 ) );
 }
 
 TEST_CASE( "Tutte embedding patch test" )

@@ -4,6 +4,7 @@
 #include <Logging.hpp>
 #include <TetMeshCombinatorialMap.hpp>
 #include <CombinatorialMapMethods.hpp>
+#include <CommonUtils.hpp>
 
 TEST_CASE( "Dihedral angle cotangent", "" )
 {
@@ -37,7 +38,7 @@ TEST_CASE( "Dihedral angle cotangent", "" )
     {
         test_angle( std::numbers::pi / 2,
                     [&]( const topology::TetMeshCombinatorialMap& map, const topology::Edge& e, const std::vector<Normal>& normals ) {
-                        REQUIRE( equals( dihedralCotangent( map, e, normals ), 0, 1e-5 ) );
+                        REQUIRE( util::equals( dihedralCotangent( map, e, normals ), 0, 1e-5 ) );
                     } );
     }
 
@@ -45,7 +46,7 @@ TEST_CASE( "Dihedral angle cotangent", "" )
     {
         test_angle( std::numbers::pi / 4,
                     [&]( const topology::TetMeshCombinatorialMap& map, const topology::Edge& e, const std::vector<Normal>& normals ) {
-                        REQUIRE( equals( dihedralCotangent( map, e, normals ), 1.0, 1e-5 ) );
+                        REQUIRE( util::equals( dihedralCotangent( map, e, normals ), 1.0, 1e-5 ) );
                     } );
     }
 
@@ -54,7 +55,7 @@ TEST_CASE( "Dihedral angle cotangent", "" )
         test_angle(
             std::numbers::pi / 6,
             [&]( const topology::TetMeshCombinatorialMap& map, const topology::Edge& e, const std::vector<Normal>& normals ) {
-                REQUIRE( equals( dihedralCotangent( map, e, normals ), 1.0 / std::tan( std::numbers::pi / 6 ), 1e-5 ) );
+                REQUIRE( util::equals( dihedralCotangent( map, e, normals ), 1.0 / std::tan( std::numbers::pi / 6 ), 1e-5 ) );
             } );
     }
 
@@ -62,7 +63,7 @@ TEST_CASE( "Dihedral angle cotangent", "" )
     {
         test_angle( 2 * std::numbers::pi / 3,
                     [&]( const topology::TetMeshCombinatorialMap& map, const topology::Edge& e, const std::vector<Normal>& normals ) {
-                        REQUIRE( equals(
+                        REQUIRE( util::equals(
                             dihedralCotangent( map, e, normals ), 1.0 / std::tan( 2 * std::numbers::pi / 3 ), 1e-5 ) );
                     } );
     }

@@ -2,6 +2,7 @@ add_library( util SHARED
   Logging.cpp
   SmallQueue.cpp
   SmallVector.cpp
+  CommonUtils.cpp
 )
 
 add_dependencies( util eigen )

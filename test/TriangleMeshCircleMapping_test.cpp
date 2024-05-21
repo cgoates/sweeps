@@ -6,6 +6,7 @@
 #include <CombinatorialMapMethods.hpp>
 #include <ParentDomain.hpp>
 #include <Logging.hpp>
+#include <CommonUtils.hpp>
 
 TEST_CASE( "Simple circle evaluations" )
 {
@@ -33,9 +34,9 @@ TEST_CASE( "Simple circle evaluations" )
             const param::ParentPoint ppt = pointOnBoundary( pd, parentDomainBoundary( param, e ) );
             const Eigen::Vector2d pos = geom_mapping.evaluate( f, ppt );
             if( boundaryAdjacent( cmap, e ) )
-                CHECK( equals( pos.norm(), 1.0, 1e-12 ) );
+                CHECK( util::equals( pos.norm(), 1.0, 1e-12 ) );
             else
-                CHECK( equals( pos.norm(), 0.5, 1e-12 ) );
+                CHECK( util::equals( pos.norm(), 0.5, 1e-12 ) );
             return true;
         } );
 
@@ -43,13 +44,13 @@ TEST_CASE( "Simple circle evaluations" )
             const param::ParentPoint ppt = param.parentPoint( v );
             const Eigen::Vector2d pos = geom_mapping.evaluate( f, ppt );
             const Eigen::Vector2d expected = vert_positions( v );
-            CHECK( equals( pos, expected, 1e-12 ) );
+            CHECK( util::equals( pos, expected, 1e-12 ) );
             return true;
         } );
 
         const param::ParentPoint ppt = pointOnBoundary( pd, parentDomainBoundary( param, f ) );
         const Eigen::Vector2d pos = geom_mapping.evaluate( f, ppt );
-        CHECK( equals( pos.norm(), 2.0/3.0, 1e-12 ) );
+        CHECK( util::equals( pos.norm(), 2.0/3.0, 1e-12 ) );
         return true;
     } );
 }
@@ -82,7 +83,7 @@ TEST_CASE( "Circle evaluation with non-boundary-adjacent cells" )
             const param::ParentPoint ppt = pointOnBoundary( pd, parentDomainBoundary( param, e ) );
             const Eigen::Vector2d pos = geom_mapping.evaluate( f, ppt );
             if( boundaryAdjacent( cmap, e ) )
-                CHECK( equals( pos.norm(), 1.0, 1e-12 ) );
+                CHECK( util::equals( pos.norm(), 1.0, 1e-12 ) );
             return true;
         } );
 
@@ -90,7 +91,7 @@ TEST_CASE( "Circle evaluation with non-boundary-adjacent cells" )
             const param::ParentPoint ppt = param.parentPoint( v );
             const Eigen::Vector2d pos = geom_mapping.evaluate( f, ppt );
             const Eigen::Vector2d expected = vert_positions( v );
-            CHECK( equals( pos, expected, 1e-12 ) );
+            CHECK( util::equals( pos, expected, 1e-12 ) );
             return true;
         } );
         return true;
@@ -98,5 +99,5 @@ TEST_CASE( "Circle evaluation with non-boundary-adjacent cells" )
 
     const param::ParentPoint ppt = pointOnBoundary( pd, {false, false, false} );
     const Eigen::Vector2d pos = geom_mapping.evaluate( topology::Face( topology::Dart( 0 ) ), ppt );
-    CHECK( equals( pos, Eigen::Vector2d( 0.0, 0.0 ), 1e-12 ) );
+    CHECK( util::equals( pos, Eigen::Vector2d( 0.0, 0.0 ), 1e-12 ) );
 }

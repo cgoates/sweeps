@@ -4,6 +4,7 @@
 #include <Logging.hpp>
 #include <algorithm>
 #include <sstream>
+#include <CommonUtils.hpp>
 
 namespace io
 {
@@ -24,7 +25,7 @@ namespace io
                 ss >> dummy_string >> v_pos(0) >> v_pos(1) >> v_pos(2);
 
                 const auto it = std::find_if( mesh3d.points.begin(), mesh3d.points.end(), [&]( const Eigen::Vector3d& p ) {
-                    return equals( p, v_pos, 1e-4 );
+                    return util::equals( p, v_pos, 1e-4 );
                 } );
                 if( it == mesh3d.points.end() )
                     throw std::runtime_error( "Point doesn't exist!!" );

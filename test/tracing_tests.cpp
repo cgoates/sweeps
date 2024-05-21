@@ -10,6 +10,7 @@
 #include <GlobalCellMarker.hpp>
 #include <Laplace.hpp>
 #include <AbaqusInput.hpp>
+#include <CommonUtils.hpp>
 
 namespace topology
 {
@@ -66,7 +67,7 @@ TEST_CASE( "Test line ray intersection 0", "" )
     const auto intersection = intersectionOf( ray, line );
 
     REQUIRE( intersection.has_value() );
-    REQUIRE( equals( intersection.value(), Eigen::Vector2d( 0.25, 0.75 ), 1e-8 ) );
+    REQUIRE( util::equals( intersection.value(), Eigen::Vector2d( 0.25, 0.75 ), 1e-8 ) );
 }
 
 TEST_CASE( "Test line ray intersection 1", "" )
@@ -82,7 +83,7 @@ TEST_CASE( "Test line ray intersection 1", "" )
     const auto intersection = intersectionOf( ray, line );
 
     REQUIRE( intersection.has_value() );
-    REQUIRE( equals( intersection.value(), Eigen::Vector2d( 0.25, 0.75 ), 1e-8 ) );
+    REQUIRE( util::equals( intersection.value(), Eigen::Vector2d( 0.25, 0.75 ), 1e-8 ) );
 }
 
 TEST_CASE( "Test line ray no intersection", "" )
@@ -146,7 +147,7 @@ TEST_CASE( "Test gradient tracing in triangle", "" )
             traceGradientOnTri( map, positions, e, edge_barycentric_coord, field_values );
         REQUIRE( intersection.has_value() );
         REQUIRE( intersection.value().first.dart().id() == 1 );
-        REQUIRE( equals( intersection.value().second, 1.0 - edge_barycentric_coord, 1e-8 ) );
+        REQUIRE( util::equals( intersection.value().second, 1.0 - edge_barycentric_coord, 1e-8 ) );
     }
 
     SECTION( "Backward intersection" )
@@ -157,7 +158,7 @@ TEST_CASE( "Test gradient tracing in triangle", "" )
             traceGradientOnTri( map, positions, e, edge_barycentric_coord, field_values );
         REQUIRE( intersection.has_value() );
         REQUIRE( intersection.value().first.dart().id() == 2 );
-        REQUIRE( equals( intersection.value().second, 1.0 - edge_barycentric_coord, 1e-8 ) );
+        REQUIRE( util::equals( intersection.value().second, 1.0 - edge_barycentric_coord, 1e-8 ) );
     }
 
     // std::cout << "Intersection: {" << intersection.value().first << ", " << intersection.value().second << std::endl;
