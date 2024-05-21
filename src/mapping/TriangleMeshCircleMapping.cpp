@@ -70,7 +70,7 @@ namespace mapping
         else
         {
             Vector3dMax out = Vector3dMax::Zero( 2 );
-            iterateAdjacentCells( mAtlas.cmap(), c, 0, [&]( const topology::Vertex& v ) {
+            iterateAdjacentCellsOfRestrictedCell( mAtlas.cmap(), c, 2, 0, [&]( const topology::Vertex& v ) {
                 out += mPositions( v ) * expanded_coords( vertex_ii( v ) );
                 return true;
             } );
