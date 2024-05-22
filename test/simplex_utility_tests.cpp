@@ -68,3 +68,34 @@ TEST_CASE( "Dihedral angle cotangent", "" )
                     } );
     }
 }
+
+TEST_CASE( "2d triangle inverse with canonical triangle" )
+{
+    const auto has_specific_value = []( const std::optional<Eigen::Vector3d>& inverse, const Eigen::Vector3d& expected ){
+        CHECK( inverse.has_value() );
+        if( inverse.has_value() ) CHECK( util::equals( inverse.value(), expected, 1e-12 ) );
+    };
+    SECTION( "Canonical triangle" )
+    {
+        const Triangle<2> tri{ { 0, 0 }, {1, 0}, {0, 1} };
+        has_specific_value( invertTriangleMap( tri, {0.5, 0.5} ), {0.0, 0.5, 0.5} );
+        has_specific_value( invertTriangleMap( tri, {0.0, 0.0} ), {1.0, 0.0, 0.0} );
+        has_specific_value( invertTriangleMap( tri, {0.33, 0.33} ), {0.34, 0.33, 0.33} );
+        has_specific_value( invertTriangleMap( tri, {0.21, 0.69} ), {0.1, 0.21, 0.69} );
+        CHECK( not invertTriangleMap( tri, {1,1} ).has_value() );
+        CHECK( not invertTriangleMap( tri, {-1, 0.2} ).has_value() );
+    }
+
+    SECTION( "" )
+    {
+        const Triangle<2> tri{ { 0.23, 2 }, {1.9, 0.7}, {2.3, 1.8} };
+        has_specific_value( invertTriangleMap( tri, {2.1, 1.25} ), {0.0, 0.5, 0.5} );
+        has_specific_value( invertTriangleMap( tri, {0.23, 2.0} ), {1.0, 0.0, 0.0} );
+        has_specific_value( invertTriangleMap( tri, {1.4642, 1.505} ), {0.34, 0.33, 0.33} );
+        has_specific_value( invertTriangleMap( tri, {2.009, 1.589} ), {0.1, 0.21, 0.69} );
+
+        CHECK( not invertTriangleMap( tri, {1,1} ).has_value() );
+        CHECK( not invertTriangleMap( tri, {-1, 0.2} ).has_value() );
+        CHECK( not invertTriangleMap( tri, {2.2, 1.25} ).has_value() );
+    }
+}
