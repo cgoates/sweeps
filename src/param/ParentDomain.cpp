@@ -97,14 +97,20 @@ namespace param
     ParentPoint::ParentPoint( const ParentDomain& domain, const Vector3dMax& point, const BaryCoordIsZeroVec& zero_vec ) :
         mDomain( domain ), mPoint( point ), mBaryCoordIsZero( zero_vec )
     {}
-    ParentPoint::ParentPoint( const ParentDomain& domain, const Vector3dMax& point, const double is_zero_tol ) :
-        mDomain( domain ), mPoint( point ), mBaryCoordIsZero( numTotalCoordinates( domain ), false )
-    {
-        const Vector6dMax coords = expandedCoordinates( domain, point );
+    ParentPoint compressCoordinates( const ParentDomain& domain, const Vector6dMax& coords, const double is_zero_tol ){
+        BaryCoordIsZeroVec zeros( coords.size(), false );
         for( Eigen::Index i = 0; i < coords.size(); i++ )
         {
-            if( util::equals( coords( i ), 0.0, is_zero_tol ) ) mBaryCoordIsZero.at( i ) = true;
+            if( util::equals( coords( i ), 0.0, is_zero_tol ) ) zeros.at( i ) = true;
         }
+        Vector3dMax point = Vector3dMax::Zero( dim( domain ) );
+        iterateGroups( domain, [&]( const size_t expanded_start, const size_t explicit_start, const param::CoordinateSystem& cs ) {
+            for( size_t ii = 0; ii < cs.dim(); ii++ )
+            {
+                point( explicit_start + ii ) = coords( expanded_start + 1 + ii );
+            }
+        } );
+        return ParentPoint( domain, point, zeros );
     }
 
     Vector6dMax expandedCoordinates( const ParentPoint& pt )

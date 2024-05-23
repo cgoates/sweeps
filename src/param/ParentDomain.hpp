@@ -49,7 +49,6 @@ namespace param
     {
         public:
         ParentPoint( const ParentDomain& domain, const Vector3dMax& point, const BaryCoordIsZeroVec& zero_vec );
-        ParentPoint( const ParentDomain& domain, const Vector3dMax& point, const double is_zero_tol );
         ParentDomain mDomain;
         Vector3dMax mPoint;
         BaryCoordIsZeroVec mBaryCoordIsZero;
@@ -57,5 +56,6 @@ namespace param
 
     ParentPoint pointOnBoundary( const ParentDomain& domain, const BaryCoordIsZeroVec& is_zero );
     Vector6dMax expandedCoordinates( const ParentPoint& pt );
+    ParentPoint compressCoordinates( const ParentDomain& domain, const Vector6dMax& expanded_coords, const double is_zero_tol );
     BaryCoordIsZeroVec join( const BaryCoordIsZeroVec& v1, const BaryCoordIsZeroVec& v2 );
 }
