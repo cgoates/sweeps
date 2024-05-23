@@ -79,7 +79,7 @@ class SmallVector
     bool operator==( const SmallVector<T, MAX_SIZE>& o ) const
     {
         if( size() != o.size() ) return false;
-        for( size_t i = 0; i <= o.dim(); i++ )
+        for( size_t i = 0; i < o.size(); i++ )
         {
             if( at( i ) != o.at( i ) ) return false;
         }
