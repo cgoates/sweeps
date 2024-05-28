@@ -1,6 +1,7 @@
 #include <TriangleMeshCircleMapping.hpp>
 #include <CombinatorialMapMethods.hpp>
 #include <numbers>
+#include <SimplexUtilities.hpp>
 
 namespace mapping
 {
@@ -82,4 +83,113 @@ namespace mapping
         }
     }
 
+    // Find { 1 - t, t } for pt = ( 1 - t ) * pt0 + t * pt1
+    std::pair<double, double> inverseLinear( const double pt0, const double pt1, const double pt )
+    {
+        const double t = ( pt - pt0 ) / ( pt1 - pt0 );
+        return { 1 - t, t };
+    }
+
+    // Intersection of the line formed by pt0 and pt1 with the unit circle,
+    // in the direction of pt1 - pt0. Assumes that both points are in the circle.
+    Eigen::Vector2d lineCircleIntersection( const Eigen::Vector2d& pt0, const Eigen::Vector2d& pt1 )
+    {
+        const double A = pt1( 1 ) - pt0( 1 );
+        const double B = pt0( 0 ) - pt1( 0 );
+        const double C = -A * pt0( 0 ) - B * pt0( 1 );
+
+        const double Asquared = A*A;
+        const double Bsquared = B*B;
+        const double Csquared = C*C;
+
+        const double denominator = 1.0 / ( Asquared + Bsquared );
+        const double sqrt_term = sqrt( Asquared + Bsquared - Csquared );
+
+        return Eigen::Vector2d( -( sqrt_term * B + A * C ) * denominator, ( sqrt_term * A - B * C ) * denominator );
+    }
+
+    double normalizeAngle( double angle )
+    {
+        while( angle < -1 * std::numbers::pi ) angle += 2 * std::numbers::pi;
+        while( angle > std::numbers::pi ) angle -= 2 * std::numbers::pi;
+        return angle;
+    }
+
+    // See https://stackoverflow.com/a/23550032
+    bool isBetweenAngles( double a, double b, const double test_angle )
+    {
+        a -= test_angle;
+        b -= test_angle;
+        a = normalizeAngle( a );
+        b = normalizeAngle( b );
+        if( a * b > 0 ) return false;
+        return std::abs( a - b ) < std::numbers::pi;
+    }
+
+    std::optional<param::ParentPoint> TriangleMeshCircleMapping::maybeInverse( const topology::Face& f, const Eigen::Vector2d& pt ) const
+    {
+        const auto vertex_ii = [&]( const topology::Vertex& v ) {
+            const param::ParentPoint v_pt = mAtlas.parentPoint( v );
+            return std::distance( v_pt.mBaryCoordIsZero.begin(),
+                                  std::find( v_pt.mBaryCoordIsZero.begin(), v_pt.mBaryCoordIsZero.end(), false ) );
+        };
+        const std::optional<topology::Edge> boundary_edge = maybeBoundaryEdge( mAtlas.cmap(), f );
+        if( boundary_edge.has_value() )
+        {
+            const topology::Vertex v0( boundary_edge.value().dart() );
+            const topology::Vertex v1( phi( mAtlas.cmap(), 1, v0.dart() ).value() );
+            const topology::Vertex v2( phi( mAtlas.cmap(), 1, v1.dart() ).value() );
+            const Eigen::Vector2d non_bdry_point = mPositions( v2 );
+
+            const Eigen::Vector2d one_bdry_vert_point = mPositions( v0 );
+            if( ( pt - non_bdry_point ).norm() < 1e-10 * ( one_bdry_vert_point - non_bdry_point ).norm() ) return mAtlas.parentPoint( v2 );
+
+            const auto vert_ids = indexingOrError( mAtlas.cmap(), 0 );
+            const double theta0 = mBoundaryAngles.at( vert_ids( v0 ) );
+            const double theta1 = mBoundaryAngles.at( vert_ids( v1 ) );
+
+            const Eigen::Vector2d bdry_point = lineCircleIntersection( non_bdry_point, pt );
+            const double bdry_point_theta = atan2( bdry_point( 1 ), bdry_point( 0 ) );
+
+            if( not isBetweenAngles( theta0, theta1, bdry_point_theta ) ) return std::nullopt;
+
+            const auto [ lambda_non_bdry, lambda_bdry ] = [&](){
+                if( std::abs( bdry_point( 0 ) - non_bdry_point( 0 ) ) > std::abs( bdry_point( 1 ) - non_bdry_point( 1 ) ) )
+                    return inverseLinear( non_bdry_point(0), bdry_point(0), pt(0) );
+                else
+                    return inverseLinear( non_bdry_point(1), bdry_point(1), pt(1) );
+            }();
+
+            const auto [lambda_v0, lambda_v1] = inverseLinear(
+                normalizeAngle( theta0 - bdry_point_theta ), normalizeAngle( theta1 - bdry_point_theta ), 0.0 );
+
+            Eigen::Vector3d bary = Eigen::Vector3d::Zero();
+            bary( vertex_ii( v0 ) ) = lambda_v0 * lambda_bdry;
+            bary( vertex_ii( v1 ) ) = lambda_v1 * lambda_bdry;
+            bary( vertex_ii( v2 ) ) = lambda_non_bdry;
+
+            const param::ParentDomain pd = mAtlas.parentDomain( f );
+            return compressCoordinates( pd, bary, 1e-5 );
+        }
+        else
+        {
+            std::optional<param::ParentPoint> out = std::nullopt;
+
+            iterateAdjacentCellsOfRestrictedCell( mAtlas.cmap(), f, 2, 0, [&]( const topology::Vertex& v ) {
+                if( vertex_ii( v ) == 0 )
+                {
+                    const Triangle<2> tri = triangleOfFace<2>( mAtlas.cmap(), mPositions, topology::Face( v.dart() ) );
+                    const param::ParentDomain pd = mAtlas.parentDomain( f );
+                    const std::optional<Eigen::Vector3d> maybe_bary = invertTriangleMap( tri, pt );
+                    out = maybe_bary.and_then( [&]( const Eigen::Vector3d& bary_coords ) -> std::optional<param::ParentPoint> {
+                        return compressCoordinates( pd, bary_coords, 1e-5 );
+                    } );
+
+                    return false;
+                }
+                return true;
+            } );
+            return out;
+        }
+    }
 }

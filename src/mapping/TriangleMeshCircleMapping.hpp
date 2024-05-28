@@ -14,6 +14,8 @@ namespace mapping
 
         virtual Eigen::VectorXd evaluate( const topology::Cell& c, const param::ParentPoint& pt ) const override;
 
+        std::optional<param::ParentPoint> maybeInverse( const topology::Face& f, const Eigen::Vector2d& pt ) const;
+
         private:
         const param::TriangleParametricAtlas& mAtlas;
         VertexPositionsFunc mPositions;
