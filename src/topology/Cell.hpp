@@ -15,6 +15,7 @@ namespace topology
         uint dim() const { return mDim; }
 
         bool operator<( const Cell& o ) const { return dim() < o.dim() or dart() < o.dart(); }
+        bool operator==( const Cell& o ) const { return dim() == o.dim() and dart() == o.dart(); }
 
         private:
         Dart mDart;
