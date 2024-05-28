@@ -16,6 +16,9 @@ namespace mapping
 
         std::optional<param::ParentPoint> maybeInverse( const topology::Face& f, const Eigen::Vector2d& pt ) const;
 
+        //FIXME: PROBABLY VERY SLOW
+        std::optional<std::pair<topology::Face, param::ParentPoint>> maybeInverse( const Eigen::Vector2d& pt ) const;
+
         private:
         const param::TriangleParametricAtlas& mAtlas;
         VertexPositionsFunc mPositions;

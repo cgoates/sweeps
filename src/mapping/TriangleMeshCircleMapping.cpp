@@ -192,4 +192,19 @@ namespace mapping
             return out;
         }
     }
+
+    std::optional<std::pair<topology::Face, param::ParentPoint>> TriangleMeshCircleMapping::maybeInverse( const Eigen::Vector2d& pt ) const
+    {
+        if( pt.norm() > 1.0 + 1e-15 ) return std::nullopt;
+        std::optional<std::pair<topology::Face, param::ParentPoint>> out;
+        iterateCellsWhile( mAtlas.cmap(), 2, [&]( const topology::Face& f ) {
+            out = maybeInverse( f, pt ).and_then(
+                [&f]( const param::ParentPoint& ppt ) -> std::optional<std::pair<topology::Face, param::ParentPoint>> {
+                    return std::pair<topology::Face, param::ParentPoint>{ f, ppt };
+                } );
+            return not out.has_value();
+        } );
+        return out;
+    }
+
 }
