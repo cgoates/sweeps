@@ -165,3 +165,49 @@ TEST_CASE( "Circle mapping and inverse round trip test" )
         return true;
     } );
 }
+
+TEST_CASE( "Mesh wide circle map inverse test" )
+{
+    // This but fit boundary edges to a circle:
+    //   *
+    //  /|\.
+    // *-*-*
+    //  \|/
+    //   *
+    const SimplicialComplex mesh{
+        { { 0, 1, 4 }, { 0, 4, 2 }, { 4, 1, 3 }, { 4, 3, 2 } },
+        { { -1.0, 0.0, 0.0 }, { 0.0, -1.0, 0.0 }, { 0.0, 1.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } } };
+
+    const topology::TriMeshCombinatorialMap cmap( mesh );
+    const auto vert_id = indexingOrError( cmap, 0 );
+    const param::TriangleParametricAtlas param( cmap );
+    const auto vert_positions = [&]( const topology::Vertex& v ) {
+        return mesh.points.at( vert_id( v ) ).head<2>();
+    };
+    const mapping::TriangleMeshCircleMapping geom_mapping( param, vert_positions );
+
+    const auto face_ids = indexingOrError( cmap, 2 );
+
+    const auto test_inverse = [&]( const Eigen::Vector2d& spatial_pt,
+                                   const topology::Face& expected_f,
+                                   const Eigen::Vector2d& expected_ppt ) {
+        const auto inverse_pr = geom_mapping.maybeInverse( spatial_pt );
+        CHECK( inverse_pr.has_value() );
+        if( inverse_pr.has_value() )
+        {
+            CHECK( face_ids( expected_f ) == face_ids( inverse_pr->first ) );
+            std::cout << expected_ppt.transpose() << " | " << inverse_pr->second.mPoint.transpose() << std::endl;
+            CHECK( util::equals( expected_ppt, inverse_pr->second.mPoint, 1e-5 ) );
+        }
+    };
+    const auto test_no_inverse = [&]( const Eigen::Vector2d& spatial_pt ){
+        CHECK( not geom_mapping.maybeInverse( spatial_pt ).has_value() );
+    };
+
+    test_no_inverse( {4.4, 0} );
+    test_inverse( {-0.25, -0.25}, topology::Face( topology::Dart( 0 ) ), {0.176776695, 0.6464466094} );
+    test_inverse( { 0.25, -0.25}, topology::Face( topology::Dart( 6 ) ), {0.176776695, 0.176776695} );
+    test_inverse( {-0.25,  0.25}, topology::Face( topology::Dart( 3 ) ), {0.6464466094, 0.176776695} );
+    test_inverse( { 0.25,  0.25}, topology::Face( topology::Dart( 9 ) ), {0.176776695, 0.176776695} );
+    test_no_inverse( {0.9, 0.5} );
+}
