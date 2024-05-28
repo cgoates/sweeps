@@ -53,10 +53,14 @@ namespace mapping
             const double& bary0 = expanded_coords( vertex_ii( v0 ) );
             const double& bary1 = expanded_coords( vertex_ii( v1 ) );
             const double& bary2 = expanded_coords( vertex_ii( v2 ) );
+            const double theta0 = mBoundaryAngles.at( vert_ids( v0 ) );
+            const double theta1 = [&]() {
+                double temp = mBoundaryAngles.at( vert_ids( v1 ) );
+                while( temp < theta0 ) temp += 2 * std::numbers::pi;
+                return temp;
+            }();
             // 1. Get the theta value
-            const double theta =
-                ( mBoundaryAngles.at( vert_ids( v0 ) ) * bary0 + mBoundaryAngles.at( vert_ids( v1 ) ) * bary1 ) /
-                ( bary0 + bary1 );
+            const double theta = ( theta0 * bary0 + theta1 * bary1 ) / ( bary0 + bary1 );
 
             // Check for bary0 + bary1 = 0 without toleranced compares.  Bad idea?
             if( std::isinf( theta ) or std::isnan( theta ) ) return mPositions( v2 );
