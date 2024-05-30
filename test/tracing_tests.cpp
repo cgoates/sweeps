@@ -64,7 +64,7 @@ TEST_CASE( "Test line ray intersection 0", "" )
     const Segment<2> line{ line_point_0, line_point_1 };
     const Ray<2> ray{ ray_point, ray_dir };
 
-    const auto intersection = intersectionOf( ray, line );
+    const auto intersection = reparam::intersectionOf( ray, line );
 
     REQUIRE( intersection.has_value() );
     REQUIRE( util::equals( intersection.value(), Eigen::Vector2d( 0.25, 0.75 ), 1e-8 ) );
@@ -80,7 +80,7 @@ TEST_CASE( "Test line ray intersection 1", "" )
     const Segment<2> line{ line_point_0, line_point_1 };
     const Ray<2> ray{ ray_point, ray_dir };
 
-    const auto intersection = intersectionOf( ray, line );
+    const auto intersection = reparam::intersectionOf( ray, line );
 
     REQUIRE( intersection.has_value() );
     REQUIRE( util::equals( intersection.value(), Eigen::Vector2d( 0.25, 0.75 ), 1e-8 ) );
@@ -96,7 +96,7 @@ TEST_CASE( "Test line ray no intersection", "" )
     const Segment<2> line{ line_point_0, line_point_1 };
     const Ray<2> ray{ ray_point, ray_dir };
 
-    const auto intersection = intersectionOf( ray, line );
+    const auto intersection = reparam::intersectionOf( ray, line );
 
     REQUIRE( not intersection.has_value() );
 }
@@ -111,7 +111,7 @@ TEST_CASE( "Test line ray no intersection 2", "" )
     const Segment<2> line{ line_point_0, line_point_1 };
     const Ray<2> ray{ ray_point, ray_dir };
 
-    const auto intersection = intersectionOf( ray, line );
+    const auto intersection = reparam::intersectionOf( ray, line );
 
     REQUIRE( not intersection.has_value() );
 }
@@ -135,7 +135,7 @@ TEST_CASE( "Test gradient tracing in triangle", "" )
         const Eigen::Vector3d field_values( 0.0, 1.1, 0.5 );
         const double edge_barycentric_coord = 0.7;
         const std::optional<std::pair<topology::Edge, double>> intersection =
-            traceGradientOnTri( map, positions, e, edge_barycentric_coord, field_values );
+            reparam::traceGradientOnTri( map, positions, e, edge_barycentric_coord, field_values );
         REQUIRE( not intersection.has_value() );
     }
 
@@ -144,7 +144,7 @@ TEST_CASE( "Test gradient tracing in triangle", "" )
         const Eigen::Vector3d field_values( 0.3, 1.1, 1.9 );
         const double edge_barycentric_coord = 0.7;
         const std::optional<std::pair<topology::Edge, double>> intersection =
-            traceGradientOnTri( map, positions, e, edge_barycentric_coord, field_values );
+            reparam::traceGradientOnTri( map, positions, e, edge_barycentric_coord, field_values );
         REQUIRE( intersection.has_value() );
         REQUIRE( intersection.value().first.dart().id() == 1 );
         REQUIRE( util::equals( intersection.value().second, 1.0 - edge_barycentric_coord, 1e-8 ) );
@@ -155,7 +155,7 @@ TEST_CASE( "Test gradient tracing in triangle", "" )
         const Eigen::Vector3d field_values( 1.1, 0.3, 1.9 );
         const double edge_barycentric_coord = 0.7;
         const std::optional<std::pair<topology::Edge, double>> intersection =
-            traceGradientOnTri( map, positions, e, edge_barycentric_coord, field_values );
+            reparam::traceGradientOnTri( map, positions, e, edge_barycentric_coord, field_values );
         REQUIRE( intersection.has_value() );
         REQUIRE( intersection.value().first.dart().id() == 2 );
         REQUIRE( util::equals( intersection.value().second, 1.0 - edge_barycentric_coord, 1e-8 ) );

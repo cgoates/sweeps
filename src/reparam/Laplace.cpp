@@ -10,297 +10,306 @@
 
 #define LOG_LAPLACE 0
 
-Timer t;
-
-double edgeWeightLaplace3d( const topology::CombinatorialMap& map,
-                            const VertexPositionsFunc& v_positions,
-                            const topology::Edge& e,
-                            const std::vector<Normal>& normals )
+namespace reparam
 {
-    double weight = 0;
-    t.start( 8 );
+    Timer t;
 
-    t.stop( 8 );
-    iterateAdjacentCells( map, e, 3, [&]( const topology::Volume& v ) {
-        t.start( 6 );
-        const topology::Edge op_edge( phi( map, { 1, 2, -1 }, v.dart() ).value() );
-        const double factor = edgeLength( map, v_positions, op_edge ) / 12;
-        weight += factor * dihedralCotangent( map, op_edge, normals );
-        t.stop( 6 );
-        return true;
-    } );
-
-    return weight;
-}
-
-std::vector<double> edgeWeightsLaplace3d( const topology::CombinatorialMap& map,
-                                          const VertexPositionsFunc& vertex_position,
-                                          const std::vector<Normal>& normals )
-{
-    const auto edge_ids = indexingOrError( map, 1 );
-    const size_t n_edges = cellCount( map, 1 );
-    std::vector<double> weights( n_edges, 0 );
-
-    iterateCellsWhile( map, 1, [&]( const topology::Edge& e ) {
-        weights.at( edge_ids( e ) ) = edgeWeightLaplace3d( map, vertex_position, e, normals );
-        return true;
-    } );
-    return weights;
-}
-
-Eigen::SparseVector<double> laplaceOperatorRowSparse( const topology::CombinatorialMap& map,
-                                                      const topology::Vertex& v1,
-                                                      const std::function<double( const topology::Edge& )>& edge_weights,
-                                                      const int n_verts )
-{
-    const auto vertex_ids = indexingOrError( map, 0 );
-    Eigen::SparseVector<double> out( n_verts );
-    out.reserve( 10 ); // FIXME
-    const VertexId vid_ref = vertex_ids( v1 );
-    t.start( 7 );
-    iterateAdjacentCells( map, v1, 1, [&]( const topology::Edge& e ) {
-        const double edge_weight = edge_weights( e );
-        const VertexId vid1 = vertex_ids( topology::Vertex( e.dart() ) );
-        const VertexId vid2 = vertex_ids( topology::Vertex( phi( map, 1, e.dart() ).value() ) );
-
-        if( vid1 == vid_ref )
-        {
-            out.coeffRef( vid1.id() ) -= edge_weight;
-            out.coeffRef( vid2.id() ) += edge_weight;
-        }
-        else
-        {
-            out.coeffRef( vid2.id() ) -= edge_weight;
-            out.coeffRef( vid1.id() ) += edge_weight;
-        }
-        return true;
-    } );
-    t.stop( 7 );
-
-    return out;
-}
-
-Eigen::VectorXd sweepEmbedding( const topology::TetMeshCombinatorialMap& map,
-                                const std::vector<bool>& zero_bcs,
-                                const std::vector<bool>& one_bcs,
+    double edgeWeightLaplace3d( const topology::CombinatorialMap& map,
+                                const VertexPositionsFunc& v_positions,
+                                const topology::Edge& e,
                                 const std::vector<Normal>& normals )
-{
-    const auto vertex_ids = indexingOrError( map, 0 );
-    const auto vertex_position = [&]( const topology::Vertex& v ) {
-        return map.simplicialComplex().points.at( vertex_ids( v ) );
-    };
+    {
+        double weight = 0;
+        t.start( 8 );
 
-    const auto edge_ids = indexingOrError( map, 1 );
-    const std::vector<double> edge_weights = edgeWeightsLaplace3d( map, vertex_position, normals );
-    const auto edge_weights_func = [&]( const topology::Edge& e ){
-        return edge_weights.at( edge_ids( e ) );
-    };
-    return sweepEmbedding( map, edge_weights_func, zero_bcs, one_bcs );
-}
+        t.stop( 8 );
+        iterateAdjacentCells( map, e, 3, [&]( const topology::Volume& v ) {
+            t.start( 6 );
+            const topology::Edge op_edge( phi( map, { 1, 2, -1 }, v.dart() ).value() );
+            const double factor = edgeLength( map, v_positions, op_edge ) / 12;
+            weight += factor * dihedralCotangent( map, op_edge, normals );
+            t.stop( 6 );
+            return true;
+        } );
 
-Eigen::VectorXd sweepEmbedding( const topology::CombinatorialMap& map,
-                                const std::function<double( const topology::Edge& )>& edge_weights,
-                                const std::vector<bool>& zero_bcs,
-                                const std::vector<bool>& one_bcs )
-{
-    const auto vertex_ids = indexingOrError( map, 0 );
-    const auto constraints = [&]( const topology::Vertex& v ) -> std::optional<Eigen::VectorXd>{
-        if( zero_bcs.at( vertex_ids( v ) ) ) return Eigen::Matrix<double, 1, 1>( 0.0 );
-        else if( one_bcs.at( vertex_ids( v ) ) ) return Eigen::Matrix<double, 1, 1>( 1.0 );
-        else return {};
-    };
+        return weight;
+    }
 
-    const size_t n_constraints =
-        std::accumulate( zero_bcs.begin(), zero_bcs.end(), 0 ) + std::accumulate( one_bcs.begin(), one_bcs.end(), 0 );
+    std::vector<double> edgeWeightsLaplace3d( const topology::CombinatorialMap& map,
+                                              const VertexPositionsFunc& vertex_position,
+                                              const std::vector<Normal>& normals )
+    {
+        const auto edge_ids = indexingOrError( map, 1 );
+        const size_t n_edges = cellCount( map, 1 );
+        std::vector<double> weights( n_edges, 0 );
 
-    return solveLaplaceSparse( map, edge_weights, constraints, n_constraints, 1 );
-}
+        iterateCellsWhile( map, 1, [&]( const topology::Edge& e ) {
+            weights.at( edge_ids( e ) ) = edgeWeightLaplace3d( map, vertex_position, e, normals );
+            return true;
+        } );
+        return weights;
+    }
 
-Eigen::MatrixX2d tutteEmbedding( const topology::CombinatorialMap& map,
-                                 const VertexPositionsFunc& vert_positions,
-                                 const std::function<std::optional<Eigen::Vector2d>( const topology::Vertex& )>& constraints,
-                                 const bool shape_preserving )
-{
-    if( map.dim() != 2 ) throw std::runtime_error( "Tutte embedding only supports 2d maps" );
+    Eigen::SparseVector<double>
+        laplaceOperatorRowSparse( const topology::CombinatorialMap& map,
+                                  const topology::Vertex& v1,
+                                  const std::function<double( const topology::Edge& )>& edge_weights,
+                                  const int n_verts )
+    {
+        const auto vertex_ids = indexingOrError( map, 0 );
+        Eigen::SparseVector<double> out( n_verts );
+        out.reserve( 10 ); // FIXME
+        const VertexId vid_ref = vertex_ids( v1 );
+        t.start( 7 );
+        iterateAdjacentCells( map, v1, 1, [&]( const topology::Edge& e ) {
+            const double edge_weight = edge_weights( e );
+            const VertexId vid1 = vertex_ids( topology::Vertex( e.dart() ) );
+            const VertexId vid2 = vertex_ids( topology::Vertex( phi( map, 1, e.dart() ).value() ) );
 
-    const size_t n_bdry_verts = [&map]() {
-        const topology::CombinatorialMapBoundary bdry( map );
-        return cellCount( bdry, 0 );
-    }();
-
-    const auto constraints_wrapper = [&constraints]( const topology::Vertex& v ) -> std::optional<Eigen::VectorXd> {
-        return constraints( v ).and_then( [&]( const Eigen::Vector2d& vec ) { return std::optional<Eigen::VectorXd>( vec ); } );
-    };
-
-    const auto edge_weights = [&]() -> std::function<double( const topology::Edge& )> {
-        if( shape_preserving )
-            return [&]( const topology::Edge& e ) { return edgeLength( map, vert_positions, e ); };
-        else
-            return []( const auto& ) { return 1.0; };
-    }();
-
-    return solveLaplaceSparse( map, edge_weights, constraints_wrapper, n_bdry_verts, map.dim() );
-}
-
-Eigen::MatrixX2d tutteEmbedding( const topology::CombinatorialMap& map,
-                                 const VertexPositionsFunc& vert_positions )
-{
-    const topology::CombinatorialMapBoundary bdry( map );
-    const auto bdry_positions = [&]( const topology::Vertex& v ) {
-        return vert_positions( bdry.toUnderlyingCell( v ) );
-    };
-    const size_t n_bdry_verts = cellCount( bdry, 0 );
-
-    const auto level_tri_vert_ids = indexingOrError( map, 0 );
-    std::map<size_t, double> vert_accumulated_arc_length;
-    double bdry_arc_length = 0;
-
-    iterateCellsWhile( bdry, 0, [&]( const topology::Vertex& v ) {
-        topology::Dart d = v.dart();
-        do
-        {
-            bdry_arc_length += edgeLength( bdry, bdry_positions, topology::Edge( d ) );
-            vert_accumulated_arc_length.emplace(
-                level_tri_vert_ids( bdry.toUnderlyingCell( topology::Vertex( d ) ) ), bdry_arc_length );
-            d = phi( bdry, 1, d ).value();
-        } while( d != v.dart() );
-        return false;
-    } );
-
-    if( vert_accumulated_arc_length.size() != n_bdry_verts or n_bdry_verts == 0 )
-        throw std::runtime_error( "tutteEmbedding requires one boundary component" );
-
-    const auto constraints = [&]( const topology::Vertex& v ) -> std::optional<Eigen::Vector2d> {
-        if( not boundaryAdjacent( map, v ) ) return std::nullopt;
-        const double theta =
-            ( 2.0 * std::numbers::pi * vert_accumulated_arc_length.at( level_tri_vert_ids( v ) ) ) / bdry_arc_length;
-        return Eigen::Vector2d( std::cos( theta ), std::sin( theta ) );
-    };
-
-    return tutteEmbedding( map, vert_positions, constraints );
-}
-
-Eigen::MatrixXd solveLaplaceSparse( const topology::CombinatorialMap& map,
-                                    const std::function<double( const topology::Edge& )>& edge_weights,
-                                    const std::function<std::optional<Eigen::VectorXd>( const topology::Vertex& )>& constraints,
-                                    const size_t n_constrained_verts,
-                                    const size_t data_dim )
-{
-    t.start( 0 );
-
-    using SparseVectorXd = Eigen::SparseVector<double>;
-    using SparseMatrixXd = Eigen::SparseMatrix<double>;
-    std::map<size_t, Eigen::Index> interior_verts;
-    std::map<size_t, Eigen::Index> boundary_verts;
-
-    const size_t n_verts = cellCount( map, 0 );
-
-    const auto vertex_ids = indexingOrError( map, 0 );
-
-    std::vector<Eigen::Triplet<double>> L_triplets;
-    L_triplets.reserve( 2 * cellCount( map, 1 ) + n_verts );
-
-    Eigen::MatrixXd BCs( n_constrained_verts, data_dim );
-
-    t.start( 1 );
-    iterateCellsWhile( map, 0, [&]( const topology::Vertex& v ) {
-        const size_t vid = vertex_ids( v );
-        if( vid >= n_verts ) throw std::runtime_error( "Solving a Laplace system requires a contiguous zero based vertex indexing" );
-        const auto maybe_constrained = constraints( v );
-        if( maybe_constrained.has_value() )
-        {
-            const Eigen::Index i = boundary_verts.size();
-            BCs.row( i ) = maybe_constrained.value();
-            boundary_verts.emplace( vid, i );
-        }
-        else
-        {
-            t.start( 2 );
-            const SparseVectorXd row = laplaceOperatorRowSparse( map, v, edge_weights, n_verts );
-            t.stop( 2 );
-            const Eigen::Index i = interior_verts.size();
-            for( SparseVectorXd::InnerIterator it( row ); it; ++it )
+            if( vid1 == vid_ref )
             {
-                L_triplets.emplace_back( i, it.row(), it.value() );
+                out.coeffRef( vid1.id() ) -= edge_weight;
+                out.coeffRef( vid2.id() ) += edge_weight;
             }
-            interior_verts.emplace( vid, i );
-        }
-        return true;
-    } );
-    t.stop( 1 );
+            else
+            {
+                out.coeffRef( vid2.id() ) -= edge_weight;
+                out.coeffRef( vid1.id() ) += edge_weight;
+            }
+            return true;
+        } );
+        t.stop( 7 );
 
-    t.start( 3 );
-    std::vector<Eigen::Triplet<double>> L_II_triplets;
-    L_II_triplets.reserve( L_triplets.size() );
-    for( const auto& t : L_triplets )
-    {
-        const auto find_it = interior_verts.find( t.col() );
-        if( find_it != interior_verts.end() )
-        {
-            L_II_triplets.emplace_back( t.row(), find_it->second, t.value() );
-        }
+        return out;
     }
-    SparseMatrixXd L_II( n_verts - n_constrained_verts, n_verts - n_constrained_verts );
-    L_II.setFromTriplets( L_II_triplets.begin(), L_II_triplets.end() );
 
-    std::vector<Eigen::Triplet<double>> L_IB_triplets;
-    L_IB_triplets.reserve( L_triplets.size() );
-    for( const auto& t : L_triplets )
+    Eigen::VectorXd sweepEmbedding( const topology::TetMeshCombinatorialMap& map,
+                                    const std::vector<bool>& zero_bcs,
+                                    const std::vector<bool>& one_bcs,
+                                    const std::vector<Normal>& normals )
     {
-        const auto find_it = boundary_verts.find( t.col() );
-        if( find_it != boundary_verts.end() ) L_IB_triplets.emplace_back( t.row(), find_it->second, t.value() );
+        const auto vertex_ids = indexingOrError( map, 0 );
+        const auto vertex_position = [&]( const topology::Vertex& v ) {
+            return map.simplicialComplex().points.at( vertex_ids( v ) );
+        };
+
+        const auto edge_ids = indexingOrError( map, 1 );
+        const std::vector<double> edge_weights = edgeWeightsLaplace3d( map, vertex_position, normals );
+        const auto edge_weights_func = [&]( const topology::Edge& e ) { return edge_weights.at( edge_ids( e ) ); };
+        return sweepEmbedding( map, edge_weights_func, zero_bcs, one_bcs );
     }
-    SparseMatrixXd L_IB( n_verts - n_constrained_verts, n_constrained_verts );
-    L_IB.setFromTriplets( L_IB_triplets.begin(), L_IB_triplets.end() );
 
-    LOG( LOG_LAPLACE ) << "BCs: " << std::endl << BCs << std::endl << std::endl;
+    Eigen::VectorXd sweepEmbedding( const topology::CombinatorialMap& map,
+                                    const std::function<double( const topology::Edge& )>& edge_weights,
+                                    const std::vector<bool>& zero_bcs,
+                                    const std::vector<bool>& one_bcs )
+    {
+        const auto vertex_ids = indexingOrError( map, 0 );
+        const auto constraints = [&]( const topology::Vertex& v ) -> std::optional<Eigen::VectorXd> {
+            if( zero_bcs.at( vertex_ids( v ) ) )
+                return Eigen::Matrix<double, 1, 1>( 0.0 );
+            else if( one_bcs.at( vertex_ids( v ) ) )
+                return Eigen::Matrix<double, 1, 1>( 1.0 );
+            else
+                return {};
+        };
 
-    const Eigen::MatrixXd rhs = -L_IB * BCs;
-    t.stop( 3 );
+        const size_t n_constraints = std::accumulate( zero_bcs.begin(), zero_bcs.end(), 0 ) +
+                                     std::accumulate( one_bcs.begin(), one_bcs.end(), 0 );
 
-    LOG( LOG_LAPLACE ) << "L_II:\n" << Eigen::MatrixXd( L_II ) << std::endl << std::endl;
-    LOG( LOG_LAPLACE ) << "L_IB:\n" << Eigen::MatrixXd( L_IB ) << std::endl << std::endl;
-    LOG( LOG_LAPLACE ) << "rhs:\n" << rhs.transpose() << std::endl << std::endl;
+        return solveLaplaceSparse( map, edge_weights, constraints, n_constraints, 1 );
+    }
 
-    LOG( LOG_LAPLACE ) << "About to solve\n";
+    Eigen::MatrixX2d
+        tutteEmbedding( const topology::CombinatorialMap& map,
+                        const VertexPositionsFunc& vert_positions,
+                        const std::function<std::optional<Eigen::Vector2d>( const topology::Vertex& )>& constraints,
+                        const bool shape_preserving )
+    {
+        if( map.dim() != 2 ) throw std::runtime_error( "Tutte embedding only supports 2d maps" );
 
-    t.start( 4 );
-    const Eigen::MatrixXd ans = [&]() -> Eigen::MatrixXd {
-        if( map.dim() == 3 )
+        const size_t n_bdry_verts = [&map]() {
+            const topology::CombinatorialMapBoundary bdry( map );
+            return cellCount( bdry, 0 );
+        }();
+
+        const auto constraints_wrapper = [&constraints]( const topology::Vertex& v ) -> std::optional<Eigen::VectorXd> {
+            return constraints( v ).and_then(
+                [&]( const Eigen::Vector2d& vec ) { return std::optional<Eigen::VectorXd>( vec ); } );
+        };
+
+        const auto edge_weights = [&]() -> std::function<double( const topology::Edge& )> {
+            if( shape_preserving )
+                return [&]( const topology::Edge& e ) { return edgeLength( map, vert_positions, e ); };
+            else
+                return []( const auto& ) { return 1.0; };
+        }();
+
+        return solveLaplaceSparse( map, edge_weights, constraints_wrapper, n_bdry_verts, map.dim() );
+    }
+
+    Eigen::MatrixX2d tutteEmbedding( const topology::CombinatorialMap& map, const VertexPositionsFunc& vert_positions )
+    {
+        const topology::CombinatorialMapBoundary bdry( map );
+        const auto bdry_positions = [&]( const topology::Vertex& v ) {
+            return vert_positions( bdry.toUnderlyingCell( v ) );
+        };
+        const size_t n_bdry_verts = cellCount( bdry, 0 );
+
+        const auto level_tri_vert_ids = indexingOrError( map, 0 );
+        std::map<size_t, double> vert_accumulated_arc_length;
+        double bdry_arc_length = 0;
+
+        iterateCellsWhile( bdry, 0, [&]( const topology::Vertex& v ) {
+            topology::Dart d = v.dart();
+            do
+            {
+                bdry_arc_length += edgeLength( bdry, bdry_positions, topology::Edge( d ) );
+                vert_accumulated_arc_length.emplace(
+                    level_tri_vert_ids( bdry.toUnderlyingCell( topology::Vertex( d ) ) ), bdry_arc_length );
+                d = phi( bdry, 1, d ).value();
+            } while( d != v.dart() );
+            return false;
+        } );
+
+        if( vert_accumulated_arc_length.size() != n_bdry_verts or n_bdry_verts == 0 )
+            throw std::runtime_error( "tutteEmbedding requires one boundary component" );
+
+        const auto constraints = [&]( const topology::Vertex& v ) -> std::optional<Eigen::Vector2d> {
+            if( not boundaryAdjacent( map, v ) ) return std::nullopt;
+            const double theta =
+                ( 2.0 * std::numbers::pi * vert_accumulated_arc_length.at( level_tri_vert_ids( v ) ) ) /
+                bdry_arc_length;
+            return Eigen::Vector2d( std::cos( theta ), std::sin( theta ) );
+        };
+
+        return tutteEmbedding( map, vert_positions, constraints );
+    }
+
+    Eigen::MatrixXd
+        solveLaplaceSparse( const topology::CombinatorialMap& map,
+                            const std::function<double( const topology::Edge& )>& edge_weights,
+                            const std::function<std::optional<Eigen::VectorXd>( const topology::Vertex& )>& constraints,
+                            const size_t n_constrained_verts,
+                            const size_t data_dim )
+    {
+        t.start( 0 );
+
+        using SparseVectorXd = Eigen::SparseVector<double>;
+        using SparseMatrixXd = Eigen::SparseMatrix<double>;
+        std::map<size_t, Eigen::Index> interior_verts;
+        std::map<size_t, Eigen::Index> boundary_verts;
+
+        const size_t n_verts = cellCount( map, 0 );
+
+        const auto vertex_ids = indexingOrError( map, 0 );
+
+        std::vector<Eigen::Triplet<double>> L_triplets;
+        L_triplets.reserve( 2 * cellCount( map, 1 ) + n_verts );
+
+        Eigen::MatrixXd BCs( n_constrained_verts, data_dim );
+
+        t.start( 1 );
+        iterateCellsWhile( map, 0, [&]( const topology::Vertex& v ) {
+            const size_t vid = vertex_ids( v );
+            if( vid >= n_verts )
+                throw std::runtime_error( "Solving a Laplace system requires a contiguous zero based vertex indexing" );
+            const auto maybe_constrained = constraints( v );
+            if( maybe_constrained.has_value() )
+            {
+                const Eigen::Index i = boundary_verts.size();
+                BCs.row( i ) = maybe_constrained.value();
+                boundary_verts.emplace( vid, i );
+            }
+            else
+            {
+                t.start( 2 );
+                const SparseVectorXd row = laplaceOperatorRowSparse( map, v, edge_weights, n_verts );
+                t.stop( 2 );
+                const Eigen::Index i = interior_verts.size();
+                for( SparseVectorXd::InnerIterator it( row ); it; ++it )
+                {
+                    L_triplets.emplace_back( i, it.row(), it.value() );
+                }
+                interior_verts.emplace( vid, i );
+            }
+            return true;
+        } );
+        t.stop( 1 );
+
+        t.start( 3 );
+        std::vector<Eigen::Triplet<double>> L_II_triplets;
+        L_II_triplets.reserve( L_triplets.size() );
+        for( const auto& t : L_triplets )
         {
-            Eigen::ConjugateGradient<SparseMatrixXd, Eigen::Lower | Eigen::Upper> solver( L_II );
-            return solver.solve( rhs );
+            const auto find_it = interior_verts.find( t.col() );
+            if( find_it != interior_verts.end() )
+            {
+                L_II_triplets.emplace_back( t.row(), find_it->second, t.value() );
+            }
         }
-        else
+        SparseMatrixXd L_II( n_verts - n_constrained_verts, n_verts - n_constrained_verts );
+        L_II.setFromTriplets( L_II_triplets.begin(), L_II_triplets.end() );
+
+        std::vector<Eigen::Triplet<double>> L_IB_triplets;
+        L_IB_triplets.reserve( L_triplets.size() );
+        for( const auto& t : L_triplets )
         {
-            Eigen::SimplicialLDLT<SparseMatrixXd> solver( L_II );
-            return solver.solve( rhs );
+            const auto find_it = boundary_verts.find( t.col() );
+            if( find_it != boundary_verts.end() ) L_IB_triplets.emplace_back( t.row(), find_it->second, t.value() );
         }
-    }();
+        SparseMatrixXd L_IB( n_verts - n_constrained_verts, n_constrained_verts );
+        L_IB.setFromTriplets( L_IB_triplets.begin(), L_IB_triplets.end() );
 
-    t.stop( 4 );
+        LOG( LOG_LAPLACE ) << "BCs: " << std::endl << BCs << std::endl << std::endl;
 
-    LOG( LOG_LAPLACE ) << "Assembling result\n";
+        const Eigen::MatrixXd rhs = -L_IB * BCs;
+        t.stop( 3 );
 
-    t.start( 5 );
-    Eigen::MatrixXd result( n_verts, data_dim );
-    for( const auto& pr : interior_verts ) result.row( pr.first ) = ans.row( pr.second );
-    for( const auto& pr : boundary_verts ) result.row( pr.first ) = BCs.row( pr.second );
-    t.stop( 5 );
-    t.stop( 0 );
+        LOG( LOG_LAPLACE ) << "L_II:\n" << Eigen::MatrixXd( L_II ) << std::endl << std::endl;
+        LOG( LOG_LAPLACE ) << "L_IB:\n" << Eigen::MatrixXd( L_IB ) << std::endl << std::endl;
+        LOG( LOG_LAPLACE ) << "rhs:\n" << rhs.transpose() << std::endl << std::endl;
 
-    LOG( LOG_LAPLACE ) << "returning result\n";
+        LOG( LOG_LAPLACE ) << "About to solve\n";
 
-    LOG( LOG_LAPLACE ) << "Total time: " << t.stop( 0 ) << std::endl;
-    LOG( LOG_LAPLACE ) << "| Weights time: " << t.stop( 9 ) << std::endl;
-    LOG( LOG_LAPLACE ) << "| | Edge length time: " << t.stop( 8 ) << std::endl;
-    LOG( LOG_LAPLACE ) << "| | cot time: " << t.stop( 6 ) << std::endl;
-    LOG( LOG_LAPLACE ) << "| Loop time: " << t.stop( 1 ) << std::endl;
-    LOG( LOG_LAPLACE ) << "| | Row time: " << t.stop( 2 ) << std::endl;
-    LOG( LOG_LAPLACE ) << "| | | Loop time: " << t.stop( 7 ) << std::endl;
-    LOG( LOG_LAPLACE ) << "| Assembly time: " << t.stop( 3 ) << std::endl;
-    LOG( LOG_LAPLACE ) << "| Solve time: " << t.stop( 4 ) << std::endl;
-    LOG( LOG_LAPLACE ) << "| Format time: " << t.stop( 5 ) << std::endl;
+        t.start( 4 );
+        const Eigen::MatrixXd ans = [&]() -> Eigen::MatrixXd {
+            if( map.dim() == 3 )
+            {
+                Eigen::ConjugateGradient<SparseMatrixXd, Eigen::Lower | Eigen::Upper> solver( L_II );
+                return solver.solve( rhs );
+            }
+            else
+            {
+                Eigen::SimplicialLDLT<SparseMatrixXd> solver( L_II );
+                return solver.solve( rhs );
+            }
+        }();
 
-    return result;
-}
+        t.stop( 4 );
+
+        LOG( LOG_LAPLACE ) << "Assembling result\n";
+
+        t.start( 5 );
+        Eigen::MatrixXd result( n_verts, data_dim );
+        for( const auto& pr : interior_verts ) result.row( pr.first ) = ans.row( pr.second );
+        for( const auto& pr : boundary_verts ) result.row( pr.first ) = BCs.row( pr.second );
+        t.stop( 5 );
+        t.stop( 0 );
+
+        LOG( LOG_LAPLACE ) << "returning result\n";
+
+        LOG( LOG_LAPLACE ) << "Total time: " << t.stop( 0 ) << std::endl;
+        LOG( LOG_LAPLACE ) << "| Weights time: " << t.stop( 9 ) << std::endl;
+        LOG( LOG_LAPLACE ) << "| | Edge length time: " << t.stop( 8 ) << std::endl;
+        LOG( LOG_LAPLACE ) << "| | cot time: " << t.stop( 6 ) << std::endl;
+        LOG( LOG_LAPLACE ) << "| Loop time: " << t.stop( 1 ) << std::endl;
+        LOG( LOG_LAPLACE ) << "| | Row time: " << t.stop( 2 ) << std::endl;
+        LOG( LOG_LAPLACE ) << "| | | Loop time: " << t.stop( 7 ) << std::endl;
+        LOG( LOG_LAPLACE ) << "| Assembly time: " << t.stop( 3 ) << std::endl;
+        LOG( LOG_LAPLACE ) << "| Solve time: " << t.stop( 4 ) << std::endl;
+        LOG( LOG_LAPLACE ) << "| Format time: " << t.stop( 5 ) << std::endl;
+
+        return result;
+    }
+} // namespace reparam

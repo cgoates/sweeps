@@ -10,6 +10,9 @@
 #include <Logging.hpp>
 #include <GlobalCellMarker.hpp>
 
+namespace reparam
+{
+
 constexpr bool LOG_TRACING = 0;
 
 ////////////////////////////////////////
@@ -670,4 +673,6 @@ SimplicialComplex traceBoundaryField( const topology::CombinatorialMap& map,
                                   std::to_string( start_cell.dim() ) + ")" );
 
     return traced_line;
+}
+
 }

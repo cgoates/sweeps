@@ -13,28 +13,34 @@ namespace topology
     class Edge;
 }
 
-Eigen::VectorXd sweepEmbedding( const topology::TetMeshCombinatorialMap& map,
-                                const std::vector<bool>& zero_bcs,
-                                const std::vector<bool>& one_bcs,
-                                const std::vector<Normal>& normals );
+namespace reparam
+{
 
-Eigen::VectorXd sweepEmbedding( const topology::CombinatorialMap& map,
-                                const std::function<double( const topology::Edge& )>& edge_weights,
-                                const std::vector<bool>& zero_bcs,
-                                const std::vector<bool>& one_bcs );
+    Eigen::VectorXd sweepEmbedding( const topology::TetMeshCombinatorialMap& map,
+                                    const std::vector<bool>& zero_bcs,
+                                    const std::vector<bool>& one_bcs,
+                                    const std::vector<Normal>& normals );
 
-Eigen::MatrixX2d tutteEmbedding( const topology::CombinatorialMap& map,
-                                 const VertexPositionsFunc& vert_positions,
-                                 const std::function<std::optional<Eigen::Vector2d>( const topology::Vertex& )>& constraints,
-                                 const bool shape_preserving = true );
+    Eigen::VectorXd sweepEmbedding( const topology::CombinatorialMap& map,
+                                    const std::function<double( const topology::Edge& )>& edge_weights,
+                                    const std::vector<bool>& zero_bcs,
+                                    const std::vector<bool>& one_bcs );
 
-/// Defaults to embedding to a unit circle
-Eigen::MatrixX2d tutteEmbedding( const topology::CombinatorialMap& map,
-                                 const VertexPositionsFunc& vert_positions );
+    Eigen::MatrixX2d
+        tutteEmbedding( const topology::CombinatorialMap& map,
+                        const VertexPositionsFunc& vert_positions,
+                        const std::function<std::optional<Eigen::Vector2d>( const topology::Vertex& )>& constraints,
+                        const bool shape_preserving = true );
 
-Eigen::MatrixXd solveLaplaceSparse(
-    const topology::CombinatorialMap& map,
-    const std::function<double( const topology::Edge& )>& edge_weights,
-    const std::function<std::optional<Eigen::VectorXd>( const topology::Vertex& )>& constraints,
-    const size_t n_constrained_verts,
-    const size_t data_dim );
+    /// Defaults to embedding to a unit circle
+    /// FIXME: Needs a way to specify orientation of the circle, not just randomly pick
+    Eigen::MatrixX2d tutteEmbedding( const topology::CombinatorialMap& map, const VertexPositionsFunc& vert_positions );
+
+    Eigen::MatrixXd
+        solveLaplaceSparse( const topology::CombinatorialMap& map,
+                            const std::function<double( const topology::Edge& )>& edge_weights,
+                            const std::function<std::optional<Eigen::VectorXd>( const topology::Vertex& )>& constraints,
+                            const size_t n_constrained_verts,
+                            const size_t data_dim );
+
+} // namespace reparam

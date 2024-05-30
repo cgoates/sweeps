@@ -19,7 +19,7 @@ TEST_CASE( "Tracing from all the face/edges in the macaroni", "[slow]")
     const topology::TetMeshCombinatorialMap map( sweep_input.mesh );
     const std::vector<Normal> normals = faceNormals( map );
     const Eigen::VectorXd ans =
-        sweepEmbedding( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
+        reparam::sweepEmbedding( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
 
     const topology::CombinatorialMapBoundary bdry( map );
 
@@ -64,20 +64,15 @@ TEST_CASE( "Tracing from all the face/edges in the macaroni", "[slow]")
         };
     };
 
-    // iterateCellsWhile( map, 2, [&]( const topology::Face& start_face ) {
-    //     if( onBoundary( map, start_face.dart() ) ) return true;
-    //     CHECK_NOTHROW( traceField( map, start_face, centroid( map, start_face ), grad, normals ) );
-    //     return true;
-    // } );
     iterateCellsWhile( base, 2, [&]( const topology::Face& start_face ) {
-        CHECK_NOTHROW( traceField( map, start_face, centroid( map, start_face ), grad, normals ) );
+        CHECK_NOTHROW( reparam::traceField( map, start_face, centroid( map, start_face ), grad, normals ) );
         return true;
     } );
 
     iterateCellsWhile( sides, 1, [&]( const topology::Edge& start_edge ) {
         const auto maybe_phi2 = phi( bdry, 2, start_edge.dart() );
         if( maybe_phi2.has_value() and keep_face_target( maybe_phi2.value() ) ) return true;
-        CHECK_NOTHROW( traceBoundaryField( sides, start_edge, 0.5, ans, vertex_positions( sides ), false ) );
+        CHECK_NOTHROW( reparam::traceBoundaryField( sides, start_edge, 0.5, ans, vertex_positions( sides ), false ) );
         return true;
     } );
 }

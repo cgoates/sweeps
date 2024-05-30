@@ -19,7 +19,7 @@ TEST_CASE( "Tracing from all the vertices in the macaroni", "[slow]")
     const topology::TetMeshCombinatorialMap map( sweep_input.mesh );
     const std::vector<Normal> normals = faceNormals( map );
     const Eigen::VectorXd ans =
-        sweepEmbedding( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
+        reparam::sweepEmbedding( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
 
     const topology::CombinatorialMapBoundary bdry( map );
 
@@ -65,23 +65,6 @@ TEST_CASE( "Tracing from all the vertices in the macaroni", "[slow]")
         };
     };
 
-    // iterateCellsWhile( map, 2, [&]( const topology::Face& start_face ) {
-    //     if( onBoundary( map, start_face.dart() ) ) return true;
-    //     CHECK_NOTHROW( traceField( map, start_face, centroid( map, start_face ), grad, normals ) );
-    //     return true;
-    // } );
-    // iterateCellsWhile( base, 2, [&]( const topology::Face& start_face ) {
-    //     CHECK_NOTHROW( traceField( map, start_face, centroid( map, start_face ), grad, normals ) );
-    //     return true;
-    // } );
-
-    // iterateCellsWhile( sides, 1, [&]( const topology::Edge& start_edge ) {
-    //     const auto maybe_phi2 = phi( bdry, 2, start_edge.dart() );
-    //     if( maybe_phi2.has_value() and keep_face_target( maybe_phi2.value() ) ) return true;
-    //     CHECK_NOTHROW( traceBoundaryField( sides, start_edge, 0.5, ans, vertex_positions( sides ), false ) );
-    //     return true;
-    // } );
-
     const auto bdry_positions = vertex_positions( bdry );
     topology::GlobalCellMarker traced_vertices( map, 0 );
 
@@ -97,14 +80,14 @@ TEST_CASE( "Tracing from all the vertices in the macaroni", "[slow]")
     iterateCellsWhile( sides, 0, [&]( const topology::Vertex& v ) {
         if( traced_vertices.isMarked( bdry.toUnderlyingCell( v ) ) ) return true;
         traced_vertices.mark( map, bdry.toUnderlyingCell( v ) );
-        CHECK_NOTHROW( traceBoundaryField( sides, v, 1.0, reverse_ans, bdry_positions, false ) );
+        CHECK_NOTHROW( reparam::traceBoundaryField( sides, v, 1.0, reverse_ans, bdry_positions, false ) );
         return true;
     } );
 
     const auto pos = vertex_positions( map );
     iterateCellsWhile( map, 0, [&]( const topology::Vertex& v ) {
         if( traced_vertices.isMarked( v ) ) return true;
-        CHECK_NOTHROW( traceField( map, v, pos( v ), reverse_grad, normals, false ) );
+        CHECK_NOTHROW( reparam::traceField( map, v, pos( v ), reverse_grad, normals, false ) );
         return true;
     } );
 }

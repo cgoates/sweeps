@@ -20,7 +20,7 @@ TEST_CASE( "Tracing from all the interior faces in the macaroni", "[slow]")
     const topology::TetMeshCombinatorialMap map( sweep_input.mesh );
     const std::vector<Normal> normals = faceNormals( map );
     const Eigen::VectorXd ans =
-        sweepEmbedding( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
+        reparam::sweepEmbedding( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
 
     const topology::CombinatorialMapBoundary bdry( map );
 
@@ -47,7 +47,7 @@ TEST_CASE( "Tracing from all the interior faces in the macaroni", "[slow]")
     iterateCellsWhile( map, 2, [&]( const topology::Face& start_face ) {
         if( onBoundary( map, start_face.dart() ) ) return true;
         if( i++ % 4 != 0 ) return true; // To shorten the test
-        CHECK_NOTHROW( traceField( map, start_face, centroid( map, start_face ), grad, normals ) );
+        CHECK_NOTHROW( reparam::traceField( map, start_face, centroid( map, start_face ), grad, normals ) );
         return true;
     } );
 }

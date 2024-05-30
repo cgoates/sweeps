@@ -16,7 +16,7 @@ TEST_CASE( "Laplace patch test", "" )
 
     topology::TetMeshCombinatorialMap map( sweep_input.mesh );
     const std::vector<Normal> normals = faceNormals( map );
-    const Eigen::VectorXd sol = sweepEmbedding( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
+    const Eigen::VectorXd sol = reparam::sweepEmbedding( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
 
     REQUIRE( util::equals( sol( 8 ), sweep_input.mesh.points.back()( 2 ), sweep_input.mesh.points.back()( 2 ) * 1e-15 ) );
 }
@@ -50,7 +50,7 @@ TEST_CASE( "Tutte embedding patch test" )
         return mesh.points.at( vids( v ) );
     };
 
-    const Eigen::MatrixX2d tutte = tutteEmbedding( map, vert_positions, constraints_func, false );
+    const Eigen::MatrixX2d tutte = reparam::tutteEmbedding( map, vert_positions, constraints_func, false );
 
     const Eigen::MatrixX2d expected = ( Eigen::MatrixX2d( 5, 2 ) << 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.5, 0.5 ).finished();
 

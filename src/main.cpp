@@ -14,6 +14,8 @@
 #include <DelaunayTriangulation.hpp>
 #include "../test/SimplicialComplexTestCases.hpp"
 
+using namespace reparam;
+
 topology::Cell cellOfSimplex( const topology::TetMeshCombinatorialMap& map, const Simplex& s )
 {
     const topology::Vertex v0 = map.vertexOfId( s.vertex( 0 ) );
