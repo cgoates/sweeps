@@ -209,9 +209,9 @@ int main( int argc, char* argv[] )
                 if( not boundaryAdjacent( base, e ) ) return true;
                 const topology::Edge start_edge( phi( bdry, 2, e.dart() ).value() );
                 t.start( 9 );
-                const SimplicialComplex field_line =
+                const reparam::Trace field_line =
                     traceBoundaryField( sides, start_edge, 0.5, ans, vertex_positions( bdry ), false );
-                append( boundary_lines, field_line );
+                append( boundary_lines, field_line.mComplex );
                 t.stop( 9 );
                 return true;
             } );
@@ -265,12 +265,13 @@ int main( int argc, char* argv[] )
 
                     const double b = edges_aligned ? coord.point( 1 ) : coord.point( 0 );
 
-                    const SimplicialComplex field_line = traceBoundaryField(
-                        sides, trace_cell.value(), b, ans, vertex_positions( bdry ), false, [&]( const topology::Face& f ) {
-                            crossed_faces.mark( sides, f );
-                        } );
-                    //std::raise(SIGINT);
-                    append( boundary_lines, field_line );
+                    const reparam::Trace field_line =
+                        traceBoundaryField( sides, trace_cell.value(), b, ans, vertex_positions( bdry ), false );
+                    for( const topology::Cell& f : field_line.mBaseCells )
+                    {
+                        crossed_faces.mark( sides, f );
+                    }
+                    append( boundary_lines, field_line.mComplex );
                 }
             }
 
@@ -362,7 +363,8 @@ int main( int argc, char* argv[] )
 
                             std::cout << "ON BOUNDARY " << i << "\n";
 
-                            return traceBoundaryField( sides, start_edge, b, ans, vertex_positions( bdry ), false );
+                            return traceBoundaryField( sides, start_edge, b, ans, vertex_positions( bdry ), false )
+                                .mComplex;
                         }
                         else
                         {
@@ -483,7 +485,8 @@ int main( int argc, char* argv[] )
                 if( traced_vertices.isMarked( bdry.toUnderlyingCell( v ) ) ) return true;
                 traced_vertices.mark( map, bdry.toUnderlyingCell( v ) );
                 try{
-                    const SimplicialComplex line = traceBoundaryField( sides, v, 1.0, reverse_ans, bdry_positions, v.dart().id() == 2511146 );
+                    const SimplicialComplex line =
+                        traceBoundaryField( sides, v, 1.0, reverse_ans, bdry_positions, false ).mComplex;
                     param.col( sides_vertex_ids( v ) ).head( 2 ) = line.points.back().head( 2 );
                     param( 2, sides_vertex_ids( v ) ) = ans( sides_vertex_ids( v ) );
                 }
@@ -561,8 +564,9 @@ int main( int argc, char* argv[] )
                                 if( onBoundary( map, d ) )
                                 {
                                     const topology::Vertex bdry_v( phi( sides, 1, d ).value() );
-                                    const SimplicialComplex line = traceBoundaryField( sides, bdry_v, 1.0, reverse_ans, bdry_positions, false );
-                                    append( interted_traces, line );
+                                    const reparam::Trace line =
+                                        traceBoundaryField( sides, bdry_v, 1.0, reverse_ans, bdry_positions, false );
+                                    append( interted_traces, line.mComplex );
                                     return false;
                                 }
                                 return true;

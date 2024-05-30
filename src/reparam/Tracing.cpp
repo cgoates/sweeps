@@ -570,14 +570,14 @@ std::optional<std::pair<topology::Edge, double>>
     } );
 }
 
-SimplicialComplex traceBoundaryField( const topology::CombinatorialMap& map,
-                                      const topology::Cell& start_cell,
-                                      const double& start_point,
-                                      const Eigen::VectorXd& field,
-                                      const VertexPositionsFunc& positions,
-                                      const bool debug_output,
-                                      const std::function<void( const topology::Face& )>& face_callback )
+Trace traceBoundaryField( const topology::CombinatorialMap& map,
+                          const topology::Cell& start_cell,
+                          const double& start_point,
+                          const Eigen::VectorXd& field,
+                          const VertexPositionsFunc& positions,
+                          const bool debug_output )
 {
+    const auto vertex_ids = indexingOrError( map, 0 );
     const auto expand_barycentric = [&map, &positions]( const topology::Cell& c, const double coord ) -> Eigen::Vector3d {
         if( c.dim() == 0 ) return positions( c );
         else if( c.dim() == 1 )
@@ -590,13 +590,27 @@ SimplicialComplex traceBoundaryField( const topology::CombinatorialMap& map,
         }
         else throw std::runtime_error( "Don't pass triangle or higher as the start cell" );
     };
+    const auto expand_field = [&map, &field, &vertex_ids]( const topology::Cell& c, const double coord ) -> double {
+        if( c.dim() == 0 ) return field( vertex_ids( c ) );
+        else if( c.dim() == 1 )
+        {
+            const topology::Dart& d = c.dart();
+            const double pos1 = field( vertex_ids( topology::Vertex( d ) ) );
+            const double pos2 = field( vertex_ids( topology::Vertex( phi( map, 1, d ).value() ) ) );
+
+            return ( 1.0 - coord ) * pos1 + coord * pos2;
+        }
+        else throw std::runtime_error( "Don't pass triangle or higher as the start cell" );
+    };
 
     topology::Cell curr_cell;
     double curr_point = start_point;
 
     SimplicialComplex traced_line;
     SimplicialComplex debug_tris;
-    std::vector<double> debug_field_values;
+    std::vector<double> debug_field_values; // This is at the tris, not the trace
+    std::vector<double> field_values;       // At the verts of the trace
+    std::vector<topology::Cell> tracing_faces;
 
     if( start_cell.dim() == 1 )
     {
@@ -604,7 +618,6 @@ SimplicialComplex traceBoundaryField( const topology::CombinatorialMap& map,
     }
     else
     {
-        const auto vertex_ids = indexingOrError( map, 0 );
         const auto normals_func = [&]( const topology::Edge& e ) -> Eigen::Vector3d {
             // Rotate edge vector 90 degrees about the normal axis
             const Eigen::Vector3d edge_vector =
@@ -636,14 +649,13 @@ SimplicialComplex traceBoundaryField( const topology::CombinatorialMap& map,
         else throw( std::runtime_error( "Untraceable field at start" ) );
     }
 
-
     size_t n = 0;
     traced_line.points.push_back( expand_barycentric( start_cell, start_point ) );
+    field_values.push_back( expand_field( start_cell, start_point ) );
     do
     {
         LOG( LOG_TRACING ) << n << " - Attempting trace from " << curr_cell << ", " << curr_point << std::endl;
         const topology::Face curr_face( curr_cell.dart() );
-        face_callback( curr_face );
         if( debug_output )
             boundaryTracingDebugOutput( map, positions, curr_cell, curr_point, field, traced_line, debug_tris, debug_field_values, n );
         std::optional<std::pair<topology::Edge, double>> next_point =
@@ -663,7 +675,9 @@ SimplicialComplex traceBoundaryField( const topology::CombinatorialMap& map,
         curr_cell = next_point.value().first;
         curr_point = next_point.value().second;
         traced_line.points.push_back( expand_barycentric( curr_cell, curr_point ) );
+        field_values.push_back( expand_field( curr_cell, curr_point ) );
         traced_line.simplices.push_back( { traced_line.points.size() - 2, traced_line.points.size() - 1 } );
+        tracing_faces.push_back( curr_face );
         n++;
     } while( not onBoundary( map, curr_cell.dart() ) and n < 2000 );
     // FIXME: This number being the maximum trace length is completely arbitrary, and I assume at some point this will
@@ -672,7 +686,7 @@ SimplicialComplex traceBoundaryField( const topology::CombinatorialMap& map,
         throw std::runtime_error( "Unending tracing loop Cell(" + std::to_string( start_cell.dart().id() ) + ", " +
                                   std::to_string( start_cell.dim() ) + ")" );
 
-    return traced_line;
+    return { traced_line, field_values, tracing_faces };
 }
 
 }

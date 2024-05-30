@@ -26,6 +26,14 @@ template <unsigned int DIM> struct Ray
 
 namespace reparam
 {
+    class Trace
+    {
+        public:
+        SimplicialComplex mComplex;
+        std::vector<double> mHarmonicFuncValues;
+        std::vector<topology::Cell> mBaseCells;
+    };
+
     std::optional<Eigen::Vector3d> intersectionOf( const Ray<3>& ray,
                                                    const Triangle<3>& tri,
                                                    std::optional<const Eigen::Vector3d> maybe_normal = {} );
@@ -51,12 +59,10 @@ namespace reparam
                                                                          const double edge_barycentric_coord,
                                                                          const Eigen::VectorXd& field_values );
 
-    SimplicialComplex traceBoundaryField(
-        const topology::CombinatorialMap& map,
-        const topology::Cell& start_cell,
-        const double& start_point,
-        const Eigen::VectorXd& field,
-        const VertexPositionsFunc& positions,
-        const bool debug_output,
-        const std::function<void( const topology::Face& )>& face_callback = []( const auto& ) {} );
+    Trace traceBoundaryField( const topology::CombinatorialMap& map,
+                              const topology::Cell& start_cell,
+                              const double& start_point,
+                              const Eigen::VectorXd& field,
+                              const VertexPositionsFunc& positions,
+                              const bool debug_output );
 } // namespace reparam
