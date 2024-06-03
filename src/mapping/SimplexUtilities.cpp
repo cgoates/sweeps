@@ -269,3 +269,9 @@ std::optional<Eigen::Vector3d> invertTriangleMap( const Triangle<2>& tri, const 
 
     return out;
 }
+
+std::pair<double, double> inverseLinear( const double pt0, const double pt1, const double pt )
+{
+    const double t = ( pt - pt0 ) / ( pt1 - pt0 );
+    return { 1 - t, t };
+}

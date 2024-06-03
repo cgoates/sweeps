@@ -107,3 +107,6 @@ bool isInverted( const topology::CombinatorialMap& map,
                  const VertexPositionsFunc& positions );
 
 std::optional<Eigen::Vector3d> invertTriangleMap( const Triangle<2>& tri, const Eigen::Vector2d& point );
+
+// Find { 1 - t, t } for pt = ( 1 - t ) * pt0 + t * pt1
+std::pair<double, double> inverseLinear( const double pt0, const double pt1, const double pt );

@@ -83,13 +83,6 @@ namespace mapping
         }
     }
 
-    // Find { 1 - t, t } for pt = ( 1 - t ) * pt0 + t * pt1
-    std::pair<double, double> inverseLinear( const double pt0, const double pt1, const double pt )
-    {
-        const double t = ( pt - pt0 ) / ( pt1 - pt0 );
-        return { 1 - t, t };
-    }
-
     // Intersection of the line formed by pt0 and pt1 with the unit circle,
     // in the direction of pt1 - pt0. Assumes that both points are in the circle.
     Eigen::Vector2d lineCircleIntersection( const Eigen::Vector2d& pt0, const Eigen::Vector2d& pt1 )
