@@ -1,6 +1,7 @@
 #pragma once
 #include <CombinatorialMap.hpp>
 #include <set>
+#include <VertexPositionsFunc.hpp>
 
 namespace topology
 {
@@ -24,4 +25,7 @@ namespace topology
         const CombinatorialMap& mInteriorMap;
         std::set<Dart> mStartDarts;
     };
+
+    VertexPositionsFunc boundaryVertexPositions( const CombinatorialMapBoundary& bdry,
+                                                 const VertexPositionsFunc& underlying_positions );
 }; // namespace topology

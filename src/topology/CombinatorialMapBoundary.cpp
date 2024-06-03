@@ -106,3 +106,14 @@ std::optional<IndexingFunc> CombinatorialMapBoundary::indexing( const uint cell_
         };
     } );
 }
+
+namespace topology
+{
+    VertexPositionsFunc boundaryVertexPositions( const CombinatorialMapBoundary& bdry,
+                                                 const VertexPositionsFunc& underlying_positions )
+    {
+        return [&]( const Vertex& v ){
+            return underlying_positions( bdry.toUnderlyingCell( v ) );
+        };
+    }
+}
