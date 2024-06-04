@@ -1,7 +1,7 @@
 #include <TriangleMeshCircleMapping.hpp>
 #include <CombinatorialMapMethods.hpp>
-#include <numbers>
 #include <SimplexUtilities.hpp>
+#include <CommonUtils.hpp>
 
 namespace mapping
 {
@@ -101,20 +101,13 @@ namespace mapping
         return Eigen::Vector2d( -( sqrt_term * B + A * C ) * denominator, ( sqrt_term * A - B * C ) * denominator );
     }
 
-    double normalizeAngle( double angle )
-    {
-        while( angle < -1 * std::numbers::pi ) angle += 2 * std::numbers::pi;
-        while( angle > std::numbers::pi ) angle -= 2 * std::numbers::pi;
-        return angle;
-    }
-
     // See https://stackoverflow.com/a/23550032
     bool isBetweenAngles( double a, double b, const double test_angle )
     {
         a -= test_angle;
         b -= test_angle;
-        a = normalizeAngle( a );
-        b = normalizeAngle( b );
+        a = util::normalizeAngle( a );
+        b = util::normalizeAngle( b );
         if( a * b > 0 ) return false;
         return std::abs( a - b ) < std::numbers::pi;
     }
@@ -154,7 +147,7 @@ namespace mapping
             }();
 
             const auto [lambda_v0, lambda_v1] = inverseLinear(
-                normalizeAngle( theta0 - bdry_point_theta ), normalizeAngle( theta1 - bdry_point_theta ), 0.0 );
+                util::normalizeAngle( theta0 - bdry_point_theta ), util::normalizeAngle( theta1 - bdry_point_theta ), 0.0 );
 
             Eigen::Vector3d bary = Eigen::Vector3d::Zero();
             bary( vertex_ii( v0 ) ) = lambda_v0 * lambda_bdry;

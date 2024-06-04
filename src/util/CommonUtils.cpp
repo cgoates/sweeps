@@ -1,4 +1,5 @@
 #include <CommonUtils.hpp>
+#include <numbers>
 
 namespace util
 {
@@ -18,5 +19,12 @@ namespace util
             if( not equals( a( i ), b( i ), tol ) ) return false;
         }
         return true;
+    }
+
+    double normalizeAngle( double angle )
+    {
+        while( angle < -1 * std::numbers::pi ) angle += 2 * std::numbers::pi;
+        while( angle > std::numbers::pi ) angle -= 2 * std::numbers::pi;
+        return angle;
     }
 } // namespace util

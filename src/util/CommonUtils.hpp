@@ -8,4 +8,6 @@ namespace util
     bool equals( const Eigen::Ref<const Eigen::VectorXd> a,
                  const Eigen::Ref<const Eigen::VectorXd> b,
                  const double& tol );
+
+    double normalizeAngle( double angle );
 } // namespace util
