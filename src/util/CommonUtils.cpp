@@ -27,4 +27,9 @@ namespace util
         while( angle > std::numbers::pi ) angle -= 2 * std::numbers::pi;
         return angle;
     }
+
+    bool angleEquals( const double a, const double b, const double tol )
+    {
+        return equals( normalizeAngle( a ), normalizeAngle( b ), tol );
+    }
 } // namespace util
