@@ -13,6 +13,7 @@
 #include <Tracing.hpp>
 #include <Foliation.hpp>
 #include <LevelSetCMap.hpp>
+#include <ReversedCombinatorialMap.hpp>
 
 double atan2( const Eigen::Vector2d& v )
 {
@@ -29,6 +30,7 @@ TEST_CASE( "Theta values on cube foliation" )
     const topology::CombinatorialMapBoundary bdry( map );
 
     const auto bdry_vertex_ids = indexingOrError( bdry, 0 );
+    const auto map_face_ids = indexingOrError( map, 2 );
 
     const auto keep_face_sides = [&]( const topology::Face& f ) {
         return ( not sweep_input.zero_bcs.at( bdry_vertex_ids( topology::Vertex( f.dart() ) ) ) or
@@ -49,8 +51,17 @@ TEST_CASE( "Theta values on cube foliation" )
                 sweep_input.zero_bcs.at( bdry_vertex_ids( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ) );
     };
 
+    const auto keep_face_target = [&]( const topology::Face& f ) {
+        return sweep_input.one_bcs.at( bdry_vertex_ids( topology::Vertex( f.dart() ) ) ) and
+                sweep_input.one_bcs.at(
+                    bdry_vertex_ids( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ) ) and
+                sweep_input.one_bcs.at(
+                    bdry_vertex_ids( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ) );
+    };
+
     const topology::CombinatorialMapRestriction sides( bdry, keep_face_sides );
     const topology::CombinatorialMapRestriction base( bdry, keep_face_base );
+    const topology::CombinatorialMapRestriction target( bdry, keep_face_target );
 
     const auto vertex_positions = [&sweep_input]( const topology::CombinatorialMap& map ){
         const auto vertex_ids = indexingOrError( map, 0 );
@@ -63,9 +74,9 @@ TEST_CASE( "Theta values on cube foliation" )
     std::cout << "Right edge? " << keep_face_sides( start_edge.dart() ) << std::endl;
     const reparam::Trace trace = reparam::traceBoundaryField( sides, start_edge, 0.5, sol, vertex_positions( sides ), false );
 
-    const double level_set_value = 0.5;
-    const std::vector<reparam::TraceLevelSetIntersection> intersections = reparam::levelSetIntersections( trace, { level_set_value } );
-    REQUIRE( intersections.size() == 1 );
+    const std::vector<double> level_set_values{ 0.0, 0.5, 1.0 };
+    const std::vector<reparam::TraceLevelSetIntersection> intersections = reparam::levelSetIntersections( trace, sides, level_set_values );
+    REQUIRE( intersections.size() == level_set_values.size() );
 
     const auto vertex_ids = indexingOrError( map, 0 );
 
@@ -73,15 +84,52 @@ TEST_CASE( "Theta values on cube foliation" )
         return sol( vertex_ids( v ) );
     };
 
-    const topology::LevelSetCMap level_set( map, func, level_set_value );
-    const auto v_pos = vertex_positions( map );
-    const auto level_set_positions = topology::levelSetVertexPositions( level_set, v_pos );
-    const std::map<topology::Vertex, double> thetas = reparam::thetaValues( level_set, level_set_positions, intersections[0] );
+    { // Base level set
+        const auto base_positions = vertex_positions( base );
+        const auto face_ids_of_edge = [&]( const topology::Edge& e ){
+            return map_face_ids( bdry.toUnderlyingCell( topology::Face( phi( bdry, 2, e.dart() ).value() ) ) );
+        };
+        const std::map<topology::Vertex, double> thetas = reparam::thetaValues( base, base_positions, face_ids_of_edge, intersections[0] );
 
-    for( const auto& pr : thetas )
-    {
-        std::cout << "Position: " << level_set_positions( pr.first ).transpose() << " vs theta: " << pr.second << std::endl;
-        const double expected_theta = atan2( level_set_positions( pr.first ).head<2>() - Eigen::Vector2d( 0.5, 0.5 ) ) + std::numbers::pi / 2;
-        CHECK( util::normalizeAngle( expected_theta ) == util::normalizeAngle( pr.second ) );
+        for( const auto& pr : thetas )
+        {
+            std::cout << "Position: " << base_positions( pr.first ).transpose() << " vs theta: " << pr.second << std::endl;
+            const double expected_theta = atan2( base_positions( pr.first ).head<2>() - Eigen::Vector2d( 0.5, 0.5 ) ) + std::numbers::pi / 2;
+            CHECK( util::angleEquals( expected_theta, pr.second, 1e-10 ) );
+        }
+    }
+
+    { // Midway level set
+        const topology::LevelSetCMap level_set( map, func, level_set_values[1] );
+        const auto v_pos = vertex_positions( map );
+        const auto level_set_positions = topology::levelSetVertexPositions( level_set, v_pos );
+        const auto face_ids_of_edge = [&]( const topology::Edge& e ){
+            return map_face_ids( level_set.underlyingCell( e ) );
+        };
+        const std::map<topology::Vertex, double> thetas = reparam::thetaValues( level_set, level_set_positions, face_ids_of_edge, intersections[1] );
+
+        for( const auto& pr : thetas )
+        {
+            std::cout << "Position: " << level_set_positions( pr.first ).transpose() << " vs theta: " << pr.second << std::endl;
+            const double expected_theta = atan2( level_set_positions( pr.first ).head<2>() - Eigen::Vector2d( 0.5, 0.5 ) ) + std::numbers::pi / 2;
+            CHECK( util::angleEquals( expected_theta, pr.second, 1e-10 ) );
+        }
+    }
+
+    { // target level set
+        const auto target_positions = vertex_positions( target );
+        const topology::ReversedCombinatorialMap rev_map( target );
+        const auto rev_positions = reversedVertexPositions( rev_map, target_positions );
+        const auto face_ids_of_edge = [&]( const topology::Edge& e ){
+            return map_face_ids( bdry.toUnderlyingCell( topology::Face( phi( bdry, 2, rev_map.toUnderlyingCell( e ).dart() ).value() ) ) );
+        };
+        const std::map<topology::Vertex, double> thetas = reparam::thetaValues( rev_map, rev_positions, face_ids_of_edge, intersections[2] );
+
+        for( const auto& pr : thetas )
+        {
+            std::cout << "Position: " << rev_positions( pr.first ).transpose() << " vs theta: " << pr.second << std::endl;
+            const double expected_theta = atan2( rev_positions( pr.first ).head<2>() - Eigen::Vector2d( 0.5, 0.5 ) ) + std::numbers::pi / 2;
+            CHECK( util::angleEquals( expected_theta, pr.second, 1e-10 ) );
+        }
     }
 }
