@@ -9,6 +9,7 @@
 namespace reparam
 {
     std::vector<TraceLevelSetIntersection> levelSetIntersections( const Trace& trace,
+                                                                  const topology::CombinatorialMap& traced_map,
                                                                   const std::vector<double>& level_set_values )
     {
         std::vector<TraceLevelSetIntersection> out;
@@ -27,15 +28,19 @@ namespace reparam
             const Eigen::Vector3d pt =
                 s * trace.mComplex.points.at( trace_vert_ii - 1 ) + t * trace.mComplex.points.at( trace_vert_ii );
 
-            out.push_back( { pt, trace.mBaseCells.at( trace_vert_ii - 1 ) } );
+            const topology::Cell& base_cell = trace.mBaseCells.at( trace_vert_ii - 1 );
+
+            out.push_back( { pt, indexingOrError( traced_map, base_cell.dim() )( base_cell ) } );
         }
 
         return out;
     }
 
-    std::map<topology::Vertex, double> thetaValues( const topology::LevelSetCMap& level_set,
-                                                    const VertexPositionsFunc& level_set_positions,
-                                                    const TraceLevelSetIntersection& intersection )
+    std::map<topology::Vertex, double>
+        thetaValues( const topology::CombinatorialMap& level_set,
+                     const VertexPositionsFunc& level_set_positions,
+                     const std::function<size_t( const topology::Edge& )>& underlying_face_id_of_edge,
+                     const TraceLevelSetIntersection& intersection )
     {
         const topology::CombinatorialMapBoundary bdry( level_set );
         const auto bdry_positions = boundaryVertexPositions( bdry, level_set_positions );
@@ -49,13 +54,9 @@ namespace reparam
             return d;
         }();
 
-        const auto vol_face_ids = indexingOrError( level_set.underlyingMap(), 2 );
-
-        const size_t intersection_face_id = vol_face_ids( intersection.second );
         const auto is_intersection_edge = [&]( const topology::Edge& bdry_e ) {
             const topology::Edge level_e = bdry.toUnderlyingCell( bdry_e );
-            const topology::Face volume_f = level_set.underlyingCell( level_e );
-            return ( vol_face_ids( volume_f ) == intersection_face_id );
+            return ( underlying_face_id_of_edge( level_e ) == intersection.second );
         };
 
         std::map<topology::Vertex, double> out;
