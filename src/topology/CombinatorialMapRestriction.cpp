@@ -5,7 +5,8 @@
 using namespace topology;
 
 CombinatorialMapRestriction::CombinatorialMapRestriction( const CombinatorialMap& map,
-                                                          const std::function<bool( const Cell& )>& restriction_func )
+                                                          const std::function<bool( const Cell& )>& restriction_func,
+                                                          const bool reindex_verts )
     : mUnrestrictedMap( map ), mIncludedDarts( map )
 {
     topology::iterateCellsWhile( map, map.dim(), [&]( const Cell& elem ) {
@@ -18,6 +19,21 @@ CombinatorialMapRestriction::CombinatorialMapRestriction( const CombinatorialMap
         }
         return true;
     } );
+
+    if( reindex_verts )
+    {
+        const auto underlying_ids = map.indexing( 0 );
+        if( underlying_ids.has_value() )
+        {
+            mVertexIds.emplace( std::map<size_t, size_t>() );
+            size_t vert_ii = 0;
+            iterateCellsWhile( 0, [&]( const topology::Vertex& v ) {
+                mVertexIds->insert( { underlying_ids.value()( v ), vert_ii++ } );
+                return true;
+            } );
+        }
+
+    }
 }
 
 std::optional<Dart> CombinatorialMapRestriction::phi( const int i, const Dart& d ) const
@@ -67,5 +83,13 @@ bool CombinatorialMapRestriction::iterateCellsWhile( const uint cell_dim, const 
 
 std::optional<IndexingFunc> CombinatorialMapRestriction::indexing( const uint cell_dim ) const
 {
+    if( cell_dim == 0 and mVertexIds )
+    {
+        return mUnrestrictedMap.indexing( cell_dim ).and_then( [&]( const auto& underlying_ids ) -> std::optional<IndexingFunc> {
+            return [underlying_ids,this]( const topology::Vertex& v ){
+                return mVertexIds->at( underlying_ids( v ) );
+            };
+        } );
+    }
     return mUnrestrictedMap.indexing( cell_dim );
 }
