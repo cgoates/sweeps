@@ -7,7 +7,6 @@
 namespace topology
 {
 
-// TODO: Put this in a namespace so it is file local only
 constexpr int darts_per_tri = 3;
 constexpr int darts_per_tet = 12;
 
