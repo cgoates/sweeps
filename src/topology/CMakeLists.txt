@@ -8,6 +8,7 @@ add_library( topology SHARED
   Dart.cpp
   Cell.cpp
   LevelSetCMap.cpp
+  ReversedCombinatorialMap.cpp
 )
 
 target_link_libraries( topology PUBLIC util simplex )
