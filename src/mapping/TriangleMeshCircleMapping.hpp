@@ -1,6 +1,7 @@
 #include <GeometricMapping.hpp>
 #include <TriangleParametricAtlas.hpp>
 #include <VertexPositionsFunc.hpp>
+#include <TriangleMeshMapping.hpp>
 #include <map>
 
 namespace mapping
@@ -21,7 +22,7 @@ namespace mapping
 
         private:
         const param::TriangleParametricAtlas& mAtlas;
-        VertexPositionsFunc mPositions;
+        const TriangleMeshMapping mTriMapping;
         std::map<size_t, double> mBoundaryAngles;
     };
 }
