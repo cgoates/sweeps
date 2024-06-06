@@ -1,5 +1,6 @@
 add_library( mapping SHARED
   GeometricMapping.cpp
+  TriangleMeshMapping.cpp
   TriangleMeshCircleMapping.cpp
   SimplexUtilities.cpp
 )
