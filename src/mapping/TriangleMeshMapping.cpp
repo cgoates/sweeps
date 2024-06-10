@@ -20,9 +20,15 @@ namespace mapping
         };
 
         const Vector6dMax expanded_coords = expandedCoordinates( pt );
-        Vector3dMax out = Vector3dMax::Zero( 2 );
+        Vector3dMax out;
+        bool first = true;
         iterateAdjacentCellsOfRestrictedCell( mAtlas.cmap(), c, 2, 0, [&]( const topology::Vertex& v ) {
-            out += mPositions( v ) * expanded_coords( vertex_ii( v ) );
+            if( first )
+            {
+                out = mPositions( v ) * expanded_coords( vertex_ii( v ) );
+                first = false;
+            }
+            else out += mPositions( v ) * expanded_coords( vertex_ii( v ) );
             return true;
         } );
         return out;
