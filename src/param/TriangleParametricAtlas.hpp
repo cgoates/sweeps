@@ -10,6 +10,7 @@ namespace param
     {
         public:
         TriangleParametricAtlas( const topology::CombinatorialMap& cmap ) : mMap( cmap ) {}
+        virtual ~TriangleParametricAtlas() = default;
         virtual const topology::CombinatorialMap& cmap() const override { return mMap; }
         virtual const ParentDomain& parentDomain( const topology::Cell& c ) const override;
         virtual ParentPoint parentPoint( const topology::Vertex& v ) const override;

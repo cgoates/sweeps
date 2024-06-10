@@ -10,6 +10,8 @@ namespace topology
         public:
         DelaunayTriangulation( const CombinatorialMap& base, const VertexPositionsFunc& vert_positions );
 
+        virtual ~DelaunayTriangulation() = default;
+
         virtual std::optional<Dart> phi( const int i, const Dart& d ) const override;
 
         virtual Dart::IndexType maxDartId() const override { return mMaxDartId; }

@@ -10,6 +10,8 @@ namespace mapping
         public:
         TriangleMeshMapping( const param::TriangleParametricAtlas& atlas, const VertexPositionsFunc& vertex_positions );
 
+        virtual ~TriangleMeshMapping() = default;
+
         virtual const param::TriangleParametricAtlas& parametricAtlas() const override { return mAtlas; }
 
         virtual Eigen::VectorXd evaluate( const topology::Cell& c, const param::ParentPoint& pt ) const override;

@@ -19,6 +19,8 @@ namespace topology
                       const double value,
                       const Edge& one_intersected_edge );
 
+        virtual ~LevelSetCMap() = default;
+
         virtual std::optional<Dart> phi( const int i, const Dart& d ) const override;
         virtual Dart::IndexType maxDartId() const override { return mUnderlyingMap.maxDartId(); }
         virtual uint dim() const override { return mUnderlyingMap.dim() - 1; }
