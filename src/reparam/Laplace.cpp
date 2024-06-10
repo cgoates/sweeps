@@ -140,7 +140,7 @@ namespace reparam
 
         const auto edge_weights = [&]() -> std::function<double( const topology::Edge& )> {
             if( shape_preserving )
-                return [&]( const topology::Edge& e ) { return edgeLength( map, vert_positions, e ); };
+                return [&]( const topology::Edge& e ) { return 1.0 / edgeLength( map, vert_positions, e ); };
             else
                 return []( const auto& ) { return 1.0; };
         }();
