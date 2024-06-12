@@ -270,12 +270,12 @@ namespace mapping
                         }
                         else
                         {
-                            reordered_bary( vertex_ii( mAtlas, vertices[0] ) ) = 0.5 * bary( 0 );
-                            reordered_bary( vertex_ii( mAtlas, vertices[1] ) ) = bary( 1 );
-                            reordered_bary( vertex_ii( mAtlas, vertices[2] ) ) = bary( 2 ) + 0.5 * bary( 0 );
+                            reordered_bary( vertex_ii( mAtlas, vertices[0] ) ) = 0.5 * bary( 2 );
+                            reordered_bary( vertex_ii( mAtlas, vertices[1] ) ) = bary( 0 );
+                            reordered_bary( vertex_ii( mAtlas, vertices[2] ) ) = bary( 1 ) + 0.5 * bary( 2 );
                         }
                         const param::ParentDomain pd = mAtlas.parentDomain( f );
-                        return compressCoordinates( pd, bary, 1e-5 );
+                        return compressCoordinates( pd, reordered_bary, 1e-5 );
                     } );
             }
             default:
