@@ -50,7 +50,7 @@ namespace mapping
                 const Triangle<2> tri = triangleOfFace<2>( mAtlas.cmap(), mPositions, topology::Face( v.dart() ) );
                 const param::ParentDomain pd = mAtlas.parentDomain( f );
                 const std::optional<Eigen::Vector3d> maybe_bary = invertTriangleMap( tri, pt );
-                out = maybe_bary.and_then( [&]( const Eigen::Vector3d& bary_coords ) -> std::optional<param::ParentPoint> {
+                out = maybe_bary.transform( [&]( const Eigen::Vector3d& bary_coords ) {
                     return compressCoordinates( pd, bary_coords, 1e-5 );
                 } );
 
@@ -65,10 +65,9 @@ namespace mapping
     {
         std::optional<std::pair<topology::Face, param::ParentPoint>> out;
         iterateCellsWhile( mAtlas.cmap(), 2, [&]( const topology::Face& f ) {
-            out = maybeInverse( f, pt ).and_then(
-                [&f]( const param::ParentPoint& ppt ) -> std::optional<std::pair<topology::Face, param::ParentPoint>> {
-                    return std::pair<topology::Face, param::ParentPoint>{ f, ppt };
-                } );
+            out = maybeInverse( f, pt ).transform( [&f]( const param::ParentPoint& ppt ) {
+                return std::pair<topology::Face, param::ParentPoint>{ f, ppt };
+            } );
             return not out.has_value();
         } );
         return out;

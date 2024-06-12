@@ -134,8 +134,7 @@ namespace reparam
         }();
 
         const auto constraints_wrapper = [&constraints]( const topology::Vertex& v ) -> std::optional<Eigen::VectorXd> {
-            return constraints( v ).and_then(
-                [&]( const Eigen::Vector2d& vec ) { return std::optional<Eigen::VectorXd>( vec ); } );
+            return constraints( v ).transform( [&]( const Eigen::Vector2d& vec ) { return Eigen::VectorXd( vec ); } );
         };
 
         const auto edge_weights = [&]() -> std::function<double( const topology::Edge& )> {

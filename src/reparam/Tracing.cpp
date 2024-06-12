@@ -395,7 +395,7 @@ std::optional<double> barycentricIntersectionOf( const Ray<2>& ray, const Segmen
 
 std::optional<Eigen::Vector2d> intersectionOf( const Ray<2>& ray, const Segment<2>& line )
 {
-    return barycentricIntersectionOf( ray, line ).and_then( [&]( const double& u ) -> std::optional<Eigen::Vector2d> {
+    return barycentricIntersectionOf( ray, line ).transform( [&]( const double& u ) -> Eigen::Vector2d {
         return ( 1 - u ) * line.start_pos + u * line.end_pos;
     } );
 }
@@ -417,11 +417,10 @@ std::optional<std::pair<topology::Edge, double>> run2dIntersectionOnTriangle( co
     };
     const auto run_intersection = [&]( const topology::Dart& d_next, const Segment<2>& line ) {
         return barycentricIntersectionOf( ray, line )
-            .and_then( [&]( const double& u ) -> std::optional<std::pair<topology::Edge, double>> {
+            .transform( [&]( const double& u ) -> std::pair<topology::Edge, double> {
                 const auto maybe_next_face_dart = phi( map, 2, d_next );
                 const topology::Edge e( maybe_next_face_dart.value_or( d_next ) );
-                return std::optional<std::pair<topology::Edge, double>>(
-                    { e, maybe_next_face_dart.has_value() ? 1.0 - u : u } );
+                return { e, maybe_next_face_dart.has_value() ? 1.0 - u : u };
             } );
     };
 

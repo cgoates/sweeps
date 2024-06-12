@@ -109,23 +109,18 @@ std::optional<Dart> LevelSetCMap::phi( const int i, const Dart& d ) const
         for( Dart d_next = topology::phi( mUnderlyingMap, 1, a ).value(); d_next != a;
              d_next = topology::phi( mUnderlyingMap, 1, d_next ).value() )
         {
-            if( mIntersectedEdges.isMarked( Edge( d_next ) ) ) return std::optional<Dart>( d_next );
+            if( mIntersectedEdges.isMarked( Edge( d_next ) ) ) return d_next;
         }
         throw std::runtime_error( "No next marked dart found!" );
     };
 
     if( i == 1 )
-        return find_mark_in_phi1_chain( d ).and_then(
-            [&]( const auto& phi1 ) { return topology::phi( mUnderlyingMap, 2, phi1 ); } );
+        return topology::phi( mUnderlyingMap, 2, find_mark_in_phi1_chain( d ) );
     else if( i == -1 )
-        return topology::phi( mUnderlyingMap, 2, d ).and_then( [&]( const auto& phi2 ) {
-            return find_mark_in_phi1_chain( phi2 );
-        } );
+        return topology::phi( mUnderlyingMap, 2, d ).transform( find_mark_in_phi1_chain );
     else if( i == 2 and dim() > 1 )
     {
-        return topology::phi( mUnderlyingMap, 3, d ).and_then( [&]( const auto& phi3 ) {
-            return find_mark_in_phi1_chain( phi3 );
-        } );
+        return topology::phi( mUnderlyingMap, 3, d ).transform( find_mark_in_phi1_chain );
     }
     else throw std::runtime_error( "Bad phi operation" );
 }
@@ -169,12 +164,12 @@ std::optional<IndexingFunc> LevelSetCMap::indexing( const uint cell_dim ) const
     // We need contiguous zero based ids for vertices to run laplace solves
     if( cell_dim == 0 )
         return mUnderlyingMap.indexing( cell_dim + 1 )
-            .and_then( [&]( const IndexingFunc underlying_func ) -> std::optional<IndexingFunc> {
+            .transform( [&]( const IndexingFunc underlying_func ) -> IndexingFunc {
                 return [this, underlying_func]( const Cell& c ) { return mVertexIds.at( underlying_func( Cell( c.dart(), c.dim() + 1 ) ) ); };
             } );
     else
         return mUnderlyingMap.indexing( cell_dim + 1 )
-            .and_then( [&]( const IndexingFunc underlying_func ) -> std::optional<IndexingFunc> {
+            .transform( [&]( const IndexingFunc underlying_func ) -> IndexingFunc {
                 return [underlying_func]( const Cell& c ) { return underlying_func( Cell( c.dart(), c.dim() + 1 ) ); };
             } );
 }

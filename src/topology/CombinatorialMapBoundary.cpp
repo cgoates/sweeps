@@ -100,7 +100,7 @@ topology::Cell CombinatorialMapBoundary::toUnderlyingCell( const topology::Cell&
 
 std::optional<IndexingFunc> CombinatorialMapBoundary::indexing( const uint cell_dim ) const
 {
-    return mInteriorMap.indexing( cell_dim ).and_then( [&]( const IndexingFunc underlying_func ) -> std::optional<IndexingFunc> {
+    return mInteriorMap.indexing( cell_dim ).transform( [&]( const IndexingFunc underlying_func ) -> IndexingFunc {
         return [underlying_func,this]( const Cell& c ) {
             return underlying_func( toUnderlyingCell( c ) );
         };

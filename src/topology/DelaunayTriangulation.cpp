@@ -168,7 +168,7 @@ std::optional<IndexingFunc> DelaunayTriangulation::indexing( const uint cell_dim
     if( cell_dim == 0 )
     {
         return mBaseMap.indexing( cell_dim )
-            .and_then( [this]( const IndexingFunc& underlying_indexing ) -> std::optional<IndexingFunc> {
+            .transform( [this]( const IndexingFunc& underlying_indexing ) -> IndexingFunc {
                 return [this, underlying_indexing]( const Vertex& v ) {
                     std::optional<size_t> out = std::nullopt;
 

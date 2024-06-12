@@ -85,7 +85,7 @@ std::optional<IndexingFunc> CombinatorialMapRestriction::indexing( const uint ce
 {
     if( cell_dim == 0 and mVertexIds )
     {
-        return mUnrestrictedMap.indexing( cell_dim ).and_then( [&]( const auto& underlying_ids ) -> std::optional<IndexingFunc> {
+        return mUnrestrictedMap.indexing( cell_dim ).transform( [&]( const auto& underlying_ids ) -> IndexingFunc {
             return [underlying_ids,this]( const topology::Vertex& v ){
                 return mVertexIds->at( underlying_ids( v ) );
             };
