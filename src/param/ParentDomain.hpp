@@ -16,6 +16,11 @@ namespace param
         CoordinateSystem( const size_t dim ) : mDim( dim ) {}
         size_t dim() const { return mDim; }
 
+        bool operator!=( const CoordinateSystem& o ) const
+        {
+            return dim() != o.dim();
+        }
+
         private:
         size_t mDim;
     };
@@ -29,6 +34,12 @@ namespace param
         public:
         ParentDomain( std::span<const CoordinateSystem> cs_vec ) : mCoordinateGroups( cs_vec ) {}
         const SmallVector<CoordinateSystem, 3>& coordinateGroups() const { return mCoordinateGroups; }
+
+        bool operator!=( const ParentDomain& o ) const
+        {
+            return coordinateGroups() != o.coordinateGroups();
+        }
+
         private:
         SmallVector<CoordinateSystem, 3> mCoordinateGroups;
     };
@@ -57,5 +68,6 @@ namespace param
     ParentPoint pointOnBoundary( const ParentDomain& domain, const BaryCoordIsZeroVec& is_zero );
     Vector6dMax expandedCoordinates( const ParentPoint& pt );
     ParentPoint compressCoordinates( const ParentDomain& domain, const Vector6dMax& expanded_coords, const double is_zero_tol );
+    ParentPoint average( const ParentPoint& pt1, const ParentPoint& pt2 );
     BaryCoordIsZeroVec join( const BaryCoordIsZeroVec& v1, const BaryCoordIsZeroVec& v2 );
 }

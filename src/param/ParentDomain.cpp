@@ -118,6 +118,12 @@ namespace param
         return expandedCoordinates( pt.mDomain, pt.mPoint );
     }
 
+    ParentPoint average( const ParentPoint& pt1, const ParentPoint& pt2 )
+    {
+        if( pt1.mDomain != pt2.mDomain ) throw std::runtime_error( "Cannot average two parent points from different domains" );
+        return ParentPoint( pt1.mDomain, 0.5 * ( pt1.mPoint + pt2.mPoint ), join( pt1.mBaryCoordIsZero, pt2.mBaryCoordIsZero ) );
+    }
+
     BaryCoordIsZeroVec join( const BaryCoordIsZeroVec& v1, const BaryCoordIsZeroVec& v2 )
     {
         if( v1.size() != v2.size() ) throw std::runtime_error( "Cannot join two BaryCoordIsZeroVecs of different sizes" );
