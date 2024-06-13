@@ -75,7 +75,6 @@ TEST_CASE( "Theta values on cube foliation" )
     };
 
     const topology::Edge start_edge( phi( bdry, 2, topology::Dart( 0 ) ).value() );
-    std::cout << "Right edge? " << keep_face_sides( start_edge.dart() ) << std::endl;
     const reparam::Trace trace = reparam::traceBoundaryField( sides, start_edge, 0.5, sol, vertex_positions( sides ), false );
 
     const std::vector<double> level_set_values{ 0.0, 0.5, 1.0 };
@@ -97,7 +96,6 @@ TEST_CASE( "Theta values on cube foliation" )
 
         for( const auto& pr : thetas )
         {
-            std::cout << "Position: " << base_positions( pr.first ).transpose() << " vs theta: " << pr.second << std::endl;
             const double expected_theta = atan2( base_positions( pr.first ).head<2>() - Eigen::Vector2d( 0.5, 0.5 ) ) + std::numbers::pi / 2;
             CHECK( util::angleEquals( expected_theta, pr.second, 1e-10 ) );
         }
@@ -114,7 +112,6 @@ TEST_CASE( "Theta values on cube foliation" )
 
         for( const auto& pr : thetas )
         {
-            std::cout << "Position: " << level_set_positions( pr.first ).transpose() << " vs theta: " << pr.second << std::endl;
             const double expected_theta = atan2( level_set_positions( pr.first ).head<2>() - Eigen::Vector2d( 0.5, 0.5 ) ) + std::numbers::pi / 2;
             CHECK( util::angleEquals( expected_theta, pr.second, 1e-10 ) );
         }
@@ -131,7 +128,6 @@ TEST_CASE( "Theta values on cube foliation" )
 
         for( const auto& pr : thetas )
         {
-            std::cout << "Position: " << rev_positions( pr.first ).transpose() << " vs theta: " << pr.second << std::endl;
             const double expected_theta = atan2( rev_positions( pr.first ).head<2>() - Eigen::Vector2d( 0.5, 0.5 ) ) + std::numbers::pi / 2;
             CHECK( util::angleEquals( expected_theta, pr.second, 1e-10 ) );
         }
@@ -371,6 +367,7 @@ void testLevelSetBasedTracing( const SweepInput& sweep_input, const size_t n_lev
 
             if( output_to_vtk )
             {
+                if( i == 0 ) continue;
                 for( size_t simplex_ii = 0; simplex_ii < i - 1; simplex_ii++ )
                 {
                     param_out.simplices.push_back( Simplex( offset + simplex_ii, offset + simplex_ii + 1 ) );
@@ -412,6 +409,6 @@ TEST_CASE( "Level set parameterization of cube" )
     const SweepInput sweep_input = SweepInputTestCases::twelveTetCube();
 
     const bool log_progress = false;
-    const bool output_vtk = true;
+    const bool output_vtk = false;
     testLevelSetBasedTracing( sweep_input, 3, log_progress, output_vtk );
 }
