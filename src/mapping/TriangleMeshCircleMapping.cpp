@@ -24,14 +24,18 @@ namespace mapping
     {
         SmallVector<topology::Edge, 3> out;
         topology::Dart curr_d = f.dart();
+
+        // Always start with a non-boundary dart so the boundary darts will be grouped together.
+        while( onBoundary( cmap, curr_d ) ) curr_d = phi( cmap, -1, curr_d ).value();
+
+        const topology::Dart ref_dart = curr_d;
+
         do
         {
             if( onBoundary( cmap, curr_d ) ) out.push_back( curr_d );
 
-            const auto phi1 = phi( cmap, 1, curr_d );
-            if( phi1.has_value() ) curr_d = phi1.value();
-            else break;
-        } while( curr_d != f.dart() );
+            curr_d = phi( cmap, 1, curr_d ).value();
+        } while( curr_d != ref_dart );
 
         return out;
     }
