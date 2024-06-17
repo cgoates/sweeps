@@ -134,7 +134,7 @@ TEST_CASE( "Theta values on cube foliation" )
     }
 }
 
-void testLevelSetBasedTracing( const SweepInput& sweep_input, const size_t n_levels, const bool log, const bool output_to_vtk )
+void testLevelSetBasedTracing( const SweepInput& sweep_input, const std::vector<double> level_set_values, const bool log, const bool output_to_vtk )
 {
     const topology::TetMeshCombinatorialMap map( sweep_input.mesh );
     const std::vector<Normal> normals = faceNormals( map );
@@ -202,16 +202,6 @@ void testLevelSetBasedTracing( const SweepInput& sweep_input, const size_t n_lev
 
     if( log ) std::cout << "FINISHED TRACE\n\n";
 
-    const std::vector<double> level_set_values = [&]( const size_t n_levels ) {
-        std::vector<double> out;
-        out.reserve( n_levels );
-        const double diff = 1.0 / ( n_levels - 1 );
-        for( size_t i = 0; i < n_levels; i++ )
-        {
-            out.push_back( i * diff );
-        }
-        return out;
-    }( n_levels );
     const std::vector<reparam::TraceLevelSetIntersection> intersections =
         reparam::levelSetIntersections( trace, sides, level_set_values );
     REQUIRE( intersections.size() == level_set_values.size() );
@@ -386,13 +376,56 @@ void testLevelSetBasedTracing( const SweepInput& sweep_input, const size_t n_lev
     }
 }
 
+void testLevelSetBasedTracing( const SweepInput& sweep_input, const size_t n_levels, const bool log, const bool output_to_vtk )
+{
+    const std::vector<double> level_set_values = [&]( const size_t n_levels ) {
+        std::vector<double> out;
+        out.reserve( n_levels );
+        const double diff = 1.0 / ( n_levels - 1 );
+        for( size_t i = 0; i < n_levels; i++ )
+        {
+            out.push_back( i * diff );
+        }
+        return out;
+    }( n_levels );
+
+    testLevelSetBasedTracing( sweep_input, level_set_values, log, output_to_vtk );
+}
+
 TEST_CASE( "Level set parameterization of left ventricle" )
 {
     const SweepInput sweep_input = io::loadINPFile( SRC_HOME "/test/data/left_ventricle.inp", "Surface3", "Surface2" );
 
+    const auto linspace = []( const double left_val, const double right_val, const size_t n_levels ) {
+        std::vector<double> out;
+        out.reserve( n_levels );
+        const double diff = ( right_val - left_val ) / ( n_levels - 1 );
+        for( size_t i = 0; i < n_levels; i++ )
+        {
+            out.push_back( left_val + i * diff );
+        }
+        return out;
+    };
+
+    const auto concatenate = []( const std::vector<double>& first, const std::vector<double>& second ) {
+        std::vector<double> out;
+        out.reserve( first.size() + second.size() );
+
+        out.insert( out.end(), first.begin(), first.end() );
+        out.insert( out.end(), second.begin(), second.end() );
+
+        return out;
+    };
+
+    // level set every 0.02 until 0.75, then ~30 levels between 0.75 and 0.85, then every 0.2 until 1.0.
+    const std::vector<double> level_set_values =
+        concatenate(
+            concatenate( linspace( 0, 0.78, 40 ), linspace( 0.8, 0.819, 20 ) ),
+            concatenate( concatenate( linspace( 0.81925, 0.81975, 3 ), linspace( 0.82, 0.85, 31 ) ), linspace( 0.86, 1.0, 13 ) ) );
+
     const bool log_progress = false;
-    const bool output_vtk = false;
-    testLevelSetBasedTracing( sweep_input, 300, log_progress, output_vtk );
+    const bool output_vtk = true;
+    testLevelSetBasedTracing( sweep_input, level_set_values, log_progress, output_vtk );
 }
 
 TEST_CASE( "Level set parameterization of hook" )
