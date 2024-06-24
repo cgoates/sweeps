@@ -1,4 +1,5 @@
 #include <TriangleParametricAtlas.hpp>
+#include <CombinatorialMapMethods.hpp>
 
 namespace param
 {

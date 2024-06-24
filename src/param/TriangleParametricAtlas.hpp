@@ -1,6 +1,5 @@
 #pragma once
 #include <ParametricAtlas.hpp>
-#include <CombinatorialMapMethods.hpp>
 
 namespace param
 {
