@@ -72,6 +72,12 @@ namespace param
             zero_vec );
     }
 
+    std::ostream& operator<<( std::ostream& o, const ParentPoint& ppt )
+    {
+        o << "ParentPoint( " << ppt.mDomain << ", " << ppt.mPoint.transpose() << ", " << ppt.mBaryCoordIsZero << " )";
+        return o;
+    }
+
     BaryCoordIsZeroVec join( const BaryCoordIsZeroVec& v1, const BaryCoordIsZeroVec& v2 )
     {
         if( v1.size() != v2.size() ) throw std::runtime_error( "Cannot join two BaryCoordIsZeroVecs of different sizes" );

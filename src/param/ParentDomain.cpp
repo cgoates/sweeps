@@ -81,4 +81,12 @@ namespace param
 
         return out;
     }
+
+    std::ostream& operator<<( std::ostream& o, const ParentDomain& pd )
+    {
+        o << "ParentDomain( ";
+        iterateGroups( pd, [&]( const auto&, const auto&, const CoordinateSystem& cs ) { o << cs.dim() << ", "; } );
+        o << ")";
+        return o;
+    }
 }

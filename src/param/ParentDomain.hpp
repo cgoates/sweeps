@@ -21,6 +21,11 @@ namespace param
             return dim() != o.dim();
         }
 
+        bool operator==( const CoordinateSystem& o ) const
+        {
+            return dim() == o.dim();
+        }
+
         private:
         size_t mDim;
     };
@@ -41,6 +46,11 @@ namespace param
             return coordinateGroups() != o.coordinateGroups();
         }
 
+        bool operator==( const ParentDomain& o ) const
+        {
+            return coordinateGroups() == o.coordinateGroups();
+        }
+
         private:
         SmallVector<CoordinateSystem, 3> mCoordinateGroups;
     };
@@ -48,6 +58,8 @@ namespace param
     ParentDomain simplexDomain( const size_t dim );
     ParentDomain cubeDomain( const size_t dim );
     ParentDomain tensorProduct( const ParentDomain& pd1, const ParentDomain& pd2 );
+
+    std::ostream& operator<<( std::ostream& o, const ParentDomain& pd );
 
     size_t numGroups( const ParentDomain& pd );
     size_t dim( const ParentDomain& pd );
