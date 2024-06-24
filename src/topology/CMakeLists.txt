@@ -10,6 +10,7 @@ add_library( topology SHARED
   LevelSetCMap.cpp
   ReversedCombinatorialMap.cpp
   CombinatorialMap1d.cpp
+  TPCombinatorialMap.cpp
 )
 
 target_link_libraries( topology PUBLIC util simplex )
