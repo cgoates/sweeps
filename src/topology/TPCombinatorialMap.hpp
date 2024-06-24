@@ -24,7 +24,7 @@ namespace topology
     /// face that is parallel to the sweep.
     ///
     ///        DP5
-    ///  *------------
+    ///   ------------*
     ///  *------------
     ///        DP3     *
     /// |              |
@@ -56,6 +56,9 @@ namespace topology
 
         virtual std::optional<size_t> cellCount( const uint ) const override;
 
+        const CombinatorialMap& sourceCMap() const { return mSource; }
+        const CombinatorialMap1d& lineCMap() const { return mLine; }
+
         enum class TPDartPos : Dart::IndexType
         {
             DartPos0,
@@ -66,14 +69,14 @@ namespace topology
             DartPos5
         };
 
-        private:
-
         Dart flatten( const Dart& source_dart, const Dart& line_dart, const TPDartPos& pos ) const;
         std::tuple<Dart, Dart, TPDartPos> unflatten( const Dart& d ) const;
+
+        private:
 
         Dart::IndexType dartsPerSourceDart() const { return 2 * dim(); }
 
         const CombinatorialMap& mSource;
-        const CombinatorialMap& mLine;
+        const CombinatorialMap1d& mLine;
     };
 }; // namespace topology
