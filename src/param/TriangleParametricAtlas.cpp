@@ -3,7 +3,7 @@
 
 namespace param
 {
-    const ParentDomain& TriangleParametricAtlas::parentDomain( const topology::Cell& c ) const
+    const ParentDomain TriangleParametricAtlas::parentDomain( const topology::Cell& c ) const
     {
         if( c.dim() != 2 ) throw std::runtime_error( "Invalid cell dimension" );
         return mParentDomain;
