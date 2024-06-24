@@ -4,6 +4,7 @@
 namespace param
 {
     size_t numTotalCoordinates( const CoordinateSystem& cs ) { return cs.dim() + 1; }
+    size_t numParametricLengths( const CoordinateSystem& cs ) { return cs.dim() * ( cs.dim() + 1 ) / 2; }
 
     ParentDomain simplexDomain( const size_t dim )
     {
@@ -12,6 +13,13 @@ namespace param
     ParentDomain cubeDomain( const size_t dim )
     {
         return ParentDomain( std::vector<CoordinateSystem>( dim, CoordinateSystem( 1 ) ) );
+    }
+
+    ParentDomain tensorProduct( const ParentDomain& pd1, const ParentDomain& pd2 )
+    {
+        SmallVector<CoordinateSystem, 3> new_cs_vec( pd1.coordinateGroups() );
+        iterateGroups( pd2, [&]( const auto&, const auto&, const CoordinateSystem& cs ){ new_cs_vec.push_back( cs ); } );
+        return ParentDomain( new_cs_vec );
     }
 
     size_t numGroups( const ParentDomain& pd )
@@ -33,6 +41,14 @@ namespace param
                                 pd.coordinateGroups().end(),
                                 0,
                                 []( size_t acc, const CoordinateSystem& cs ) { return acc + numTotalCoordinates( cs ); } );
+    }
+
+    size_t numParametricLengths( const ParentDomain& pd )
+    {
+        return std::accumulate( pd.coordinateGroups().begin(),
+                                pd.coordinateGroups().end(),
+                                0,
+                                []( size_t acc, const CoordinateSystem& cs ) { return acc + numParametricLengths( cs ); } );
     }
 
     void iterateGroups( const ParentDomain& pd,

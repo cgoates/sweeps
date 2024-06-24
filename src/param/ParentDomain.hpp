@@ -26,6 +26,7 @@ namespace param
     };
 
     size_t numTotalCoordinates( const CoordinateSystem& cs );
+    size_t numParametricLengths( const CoordinateSystem& cs );
 
     /// @brief Represents a parent domain coordinate system made up of tensor products
     /// of one or more barycentric coordinate systems.
@@ -46,10 +47,12 @@ namespace param
 
     ParentDomain simplexDomain( const size_t dim );
     ParentDomain cubeDomain( const size_t dim );
+    ParentDomain tensorProduct( const ParentDomain& pd1, const ParentDomain& pd2 );
 
     size_t numGroups( const ParentDomain& pd );
     size_t dim( const ParentDomain& pd );
     size_t numTotalCoordinates( const ParentDomain& pd );
+    size_t numParametricLengths( const ParentDomain& pd );
     void iterateGroups( const ParentDomain& pd, const std::function<void( const size_t, const size_t, const CoordinateSystem& )>& callback );
     Vector6dMax expandedCoordinates( const ParentDomain& domain, const Vector3dMax& pt );
 }

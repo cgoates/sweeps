@@ -62,6 +62,16 @@ namespace param
         return ParentPoint( pt1.mDomain, 0.5 * ( pt1.mPoint + pt2.mPoint ), join( pt1.mBaryCoordIsZero, pt2.mBaryCoordIsZero ) );
     }
 
+    ParentPoint tensorProduct( const ParentPoint& pt1, const ParentPoint& pt2 )
+    {
+        BaryCoordIsZeroVec zero_vec = pt1.mBaryCoordIsZero;
+        for( const bool b : pt2.mBaryCoordIsZero ) zero_vec.push_back( b );
+        return ParentPoint(
+            tensorProduct( pt1.mDomain, pt2.mDomain ),
+            ( Vector3dMax( pt1.mPoint.size() + pt2.mPoint.size() ) << pt1.mPoint, pt2.mPoint ).finished(),
+            zero_vec );
+    }
+
     BaryCoordIsZeroVec join( const BaryCoordIsZeroVec& v1, const BaryCoordIsZeroVec& v2 )
     {
         if( v1.size() != v2.size() ) throw std::runtime_error( "Cannot join two BaryCoordIsZeroVecs of different sizes" );

@@ -22,5 +22,6 @@ namespace param
     Vector6dMax expandedCoordinates( const ParentPoint& pt );
     ParentPoint compressCoordinates( const ParentDomain& domain, const Vector6dMax& expanded_coords, const double is_zero_tol );
     ParentPoint average( const ParentPoint& pt1, const ParentPoint& pt2 );
+    ParentPoint tensorProduct( const ParentPoint& pt1, const ParentPoint& pt2 );
     BaryCoordIsZeroVec join( const BaryCoordIsZeroVec& v1, const BaryCoordIsZeroVec& v2 );
 }
