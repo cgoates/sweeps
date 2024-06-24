@@ -1,5 +1,6 @@
 add_library( param SHARED
   ParentDomain.cpp
+  ParentPoint.cpp
   ParametricAtlas.cpp
   TriangleParametricAtlas.cpp
 )

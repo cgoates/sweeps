@@ -1,6 +1,6 @@
 #pragma once
 #include <CombinatorialMap.hpp>
-#include <ParentDomain.hpp>
+#include <ParentPoint.hpp>
 
 namespace param
 {
