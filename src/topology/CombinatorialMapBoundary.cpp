@@ -80,6 +80,7 @@ bool CombinatorialMapBoundary::iterateDartsWhile( const std::function<bool( cons
 
 bool CombinatorialMapBoundary::iterateCellsWhile( const uint cell_dim, const std::function<bool( const Cell& )>& callback ) const
 {
+    if( cell_dim > dim() ) return true;
     GlobalCellMarker m( *this, cell_dim );
     return iterateDartsWhile( [&]( const Dart& d ){
         const Cell c( d, cell_dim );

@@ -136,6 +136,7 @@ bool LevelSetCMap::iterateDartsWhile( const std::function<bool( const Dart& )>& 
 
 bool LevelSetCMap::iterateCellsWhile( const uint cell_dim, const std::function<bool( const Cell& )>& callback ) const
 {
+    if( cell_dim > dim() ) return true;
     if( cell_dim == 0 and dim() == 1 )
     {
         for( const auto& pr : mIntersectionPositions )

@@ -140,7 +140,7 @@ bool DelaunayTriangulation::iterateCellsWhile( const uint cell_dim,
         }
         return keep_iterating;
     }
-    else
+    else if( cell_dim == 2 )
     {
         GlobalCellMarker m( *this, cell_dim );
         const bool keep_iterating = topology::iterateCellsWhile( mBaseMap, cell_dim, [&]( const Face& f ) {
@@ -161,6 +161,7 @@ bool DelaunayTriangulation::iterateCellsWhile( const uint cell_dim,
         }
         return keep_iterating;
     }
+    return true;
 }
 
 std::optional<IndexingFunc> DelaunayTriangulation::indexing( const uint cell_dim ) const
@@ -194,7 +195,8 @@ std::optional<IndexingFunc> DelaunayTriangulation::indexing( const uint cell_dim
 
 std::optional<size_t> DelaunayTriangulation::cellCount( const uint cell_dim ) const
 {
-    if( cell_dim == 0 ) return mBaseMap.cellCount( cell_dim );
+    if( cell_dim > 2 ) return 0;
+    else if( cell_dim == 0 ) return mBaseMap.cellCount( cell_dim );
     else return topology::cellCount( mBaseMap, cell_dim ) + ( mMaxDartId - mLowerBound ) / 2;
 }
 

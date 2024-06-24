@@ -170,7 +170,7 @@ std::optional<size_t> TriMeshCombinatorialMap::cellCount( const uint cell_dim ) 
         case 0: return mSimplicialComplex.points.size();
         case 1: return mNumEdges;
         case 2: return mSimplicialComplex.simplices.size();
-        default: throw std::runtime_error( "bad cell dim" );
+        default: return 0;
     }
 }
 

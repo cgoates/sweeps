@@ -162,7 +162,8 @@ bool TetMeshCombinatorialMap::iterateDartsWhile( const std::function<bool( const
 
 bool TetMeshCombinatorialMap::iterateCellsWhile( const uint cell_dim, const std::function<bool( const Cell& )>& callback ) const
 {
-    if( cell_dim == 3 )
+    if( cell_dim > dim() ) return true;
+    else if( cell_dim == 3 )
     {
         for( size_t i = 0; i < mSimplicialComplex.simplices.size(); i++ )
         {
@@ -232,7 +233,7 @@ std::optional<size_t> TetMeshCombinatorialMap::cellCount( const uint cell_dim ) 
         case 1: return mNumEdges;
         case 2: return mNumFaces;
         case 3: return mSimplicialComplex.simplices.size();
-        default: throw std::runtime_error( "bad cell dim" );
+        default: return 0;
     }
 }
 
