@@ -134,7 +134,7 @@ TEST_CASE( "Theta values on cube foliation" )
     }
 }
 
-void testLevelSetBasedTracing( const SweepInput& sweep_input, const std::vector<double> level_set_values, const bool log, const bool output_to_vtk )
+void testLevelSetBasedTracing( const SweepInput& sweep_input, const std::vector<double> level_set_values, const bool log, const std::optional<std::string> output_prefix )
 {
     const topology::TetMeshCombinatorialMap map( sweep_input.mesh );
     const std::vector<Normal> normals = faceNormals( map );
@@ -262,7 +262,7 @@ void testLevelSetBasedTracing( const SweepInput& sweep_input, const std::vector<
             leaf.circle_mapping = std::make_unique<mapping::TriangleMeshCircleMapping>( *leaf.atlas, vert_positions );
             leaf.space_mapping = std::make_unique<mapping::TriangleMeshMapping>( *leaf.atlas, positions );
 
-            if( output_to_vtk )
+            if( output_prefix )
                 iterateCellsWhile( cmap, 2, [&]( const topology::Face& f ) {
                     addTriangleNoDuplicateChecking( level_sets, triangleOfFace<3>( cmap, positions, f ) );
                     return true;
@@ -347,7 +347,7 @@ void testLevelSetBasedTracing( const SweepInput& sweep_input, const std::vector<
                     std::cerr << "NO VALUE r: " << radius << " t: " << theta << " i: " << i << std::endl;
                     break;
                 }
-                if( output_to_vtk )
+                if( output_prefix )
                 {
                     const auto space_pt = leaf.space_mapping->evaluate( param_pt.value().first, param_pt.value().second );
                     param_out.points.push_back( space_pt );
@@ -355,7 +355,7 @@ void testLevelSetBasedTracing( const SweepInput& sweep_input, const std::vector<
                 i++;
             }
 
-            if( output_to_vtk )
+            if( output_prefix )
             {
                 if( i == 0 ) continue;
                 for( size_t simplex_ii = 0; simplex_ii < i - 1; simplex_ii++ )
@@ -366,17 +366,17 @@ void testLevelSetBasedTracing( const SweepInput& sweep_input, const std::vector<
         }
     }
 
-    if( output_to_vtk )
+    if( output_prefix )
     {
         io::VTKOutputObject output( level_sets );
-        io::outputSimplicialFieldToVTK( output, "level_set_foliation.vtu" );
+        io::outputSimplicialFieldToVTK( output, output_prefix.value() + "_level_sets.vtu" );
 
         io::VTKOutputObject output2( param_out );
-        io::outputSimplicialFieldToVTK( output2, "foliation_param.vtu" );
+        io::outputSimplicialFieldToVTK( output2, output_prefix.value() + "_foliation_param.vtu" );
     }
 }
 
-void testLevelSetBasedTracing( const SweepInput& sweep_input, const size_t n_levels, const bool log, const bool output_to_vtk )
+void testLevelSetBasedTracing( const SweepInput& sweep_input, const size_t n_levels, const bool log, const std::optional<std::string> output_prefix = std::nullopt )
 {
     const std::vector<double> level_set_values = [&]( const size_t n_levels ) {
         std::vector<double> out;
@@ -389,7 +389,7 @@ void testLevelSetBasedTracing( const SweepInput& sweep_input, const size_t n_lev
         return out;
     }( n_levels );
 
-    testLevelSetBasedTracing( sweep_input, level_set_values, log, output_to_vtk );
+    testLevelSetBasedTracing( sweep_input, level_set_values, log, output_prefix );
 }
 
 TEST_CASE( "Level set parameterization of left ventricle" )
@@ -424,8 +424,8 @@ TEST_CASE( "Level set parameterization of left ventricle" )
             concatenate( concatenate( linspace( 0.81925, 0.81975, 3 ), linspace( 0.82, 0.85, 31 ) ), linspace( 0.86, 1.0, 13 ) ) );
 
     const bool log_progress = false;
-    const bool output_vtk = true;
-    testLevelSetBasedTracing( sweep_input, level_set_values, log_progress, output_vtk );
+    const std::optional<std::string> output_prefix = std::nullopt;//{ "ventricle" };
+    testLevelSetBasedTracing( sweep_input, level_set_values, log_progress, output_prefix );
 }
 
 TEST_CASE( "Level set parameterization of hook" )
@@ -433,8 +433,8 @@ TEST_CASE( "Level set parameterization of hook" )
     const SweepInput sweep_input = io::loadINPFile( SRC_HOME "/test/data/hook.inp", "Surface12", "Surface10" );
 
     const bool log_progress = false;
-    const bool output_vtk = false;
-    testLevelSetBasedTracing( sweep_input, 30, log_progress, output_vtk );
+    const std::optional<std::string> output_prefix = std::nullopt;//{ "hook" };
+    testLevelSetBasedTracing( sweep_input, 30, log_progress, output_prefix );
 }
 
 TEST_CASE( "Level set parameterization of cube" )
@@ -442,6 +442,5 @@ TEST_CASE( "Level set parameterization of cube" )
     const SweepInput sweep_input = SweepInputTestCases::twelveTetCube();
 
     const bool log_progress = false;
-    const bool output_vtk = false;
-    testLevelSetBasedTracing( sweep_input, 3, log_progress, output_vtk );
+    testLevelSetBasedTracing( sweep_input, 3, log_progress );
 }
