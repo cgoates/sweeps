@@ -36,4 +36,11 @@ namespace param
 
         return pointOnBoundary( mParentDomain, is_zero );
     }
+
+    Vector6dMax TriangleParametricAtlas::parametricLengths( const topology::Cell& c ) const
+    {
+        if( c.dim() != 2 ) throw std::runtime_error( "Invalid cell dimension" );
+        return Eigen::Vector3d::Ones();
+    }
+
 }
