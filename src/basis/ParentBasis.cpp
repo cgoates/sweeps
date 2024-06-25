@@ -22,4 +22,11 @@ namespace basis
     {
         return ParentBasis{ param::cubeDomain( dim ), { dim, bernsteinBasis( degree ) } };
     }
+
+    ParentBasis tensorProduct( const ParentBasis& pb1, const ParentBasis& pb2 )
+    {
+        SmallVector<BarycentricBasis, 3> combined_groups = pb1.mBasisGroups;
+        for( const auto& group : pb2.mBasisGroups ) combined_groups.push_back( group );
+        return ParentBasis{ tensorProduct( pb1.mParentDomain, pb2.mParentDomain ), combined_groups };
+    }
 }

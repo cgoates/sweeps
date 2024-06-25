@@ -29,4 +29,5 @@ namespace basis
 
     ParentBasis bernsteinSimplex( const size_t dim, const size_t degree );
     ParentBasis bernsteinCube( const size_t dim, const size_t degree );
+    ParentBasis tensorProduct( const ParentBasis& pb1, const ParentBasis& pb2 );
 }
