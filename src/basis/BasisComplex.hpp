@@ -25,6 +25,6 @@ namespace basis
 
         /// @brief Gives the parent basis on the given element.
         /// Only guaranteed to be implemented for element, not general cells.
-        virtual const ParentBasis& parentBasis( const topology::Cell& ) const = 0;
+        virtual const ParentBasis parentBasis( const topology::Cell& ) const = 0;
     };
 }
