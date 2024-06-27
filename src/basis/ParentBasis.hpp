@@ -5,20 +5,23 @@ namespace basis
 {
     enum class BasisType {
         Bernstein,
-        BSpline
+        DivConformingBernstein,
+        //BSpline
     };
 
     class BarycentricBasis
     {
         public:
         BasisType type = BasisType::Bernstein;
-        size_t num_functions;
+        SmallVector<size_t, 3> degrees; // Will be of size 1 except for div conforming. Size indicates number of parametric groups in basis group.
         //std::optional< std::vector<double> > mKnotVector;
     };
 
-    size_t degree( const BarycentricBasis& bb );
+    size_t numFunctions( const BarycentricBasis& bb );
 
     BarycentricBasis bernsteinBasis( const size_t degree );
+    BarycentricBasis divConformingBernsteinBasis( const size_t dim, const size_t degree );
+    BarycentricBasis divConformingBernsteinBasis( const SmallVector<size_t, 3>& degrees );
 
     class ParentBasis
     {
@@ -29,5 +32,6 @@ namespace basis
 
     ParentBasis bernsteinSimplex( const size_t dim, const size_t degree );
     ParentBasis bernsteinCube( const size_t dim, const size_t degree );
+    ParentBasis divConformingBernsteinCube( const size_t dim, const size_t primal_degree );
     ParentBasis tensorProduct( const ParentBasis& pb1, const ParentBasis& pb2 );
 }
