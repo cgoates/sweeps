@@ -6,8 +6,8 @@
 
 namespace basis
 {
-    /// @brief A parent basis complex over a ParametricAtlas1d.
-    /// Supports only uniform degree for now.
+    /// @brief A parent basis complex over a TPParametricAtlas.
+    ///
     class TPBasisComplex : public BasisComplex
     {
         public:
