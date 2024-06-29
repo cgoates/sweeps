@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 set(CMAKE_CXX_STANDARD 23)
 add_compile_options(-Wall -Wextra -Wpedantic)
-set(CMAKE_LINKER_TYPE mold)
 add_compile_definitions("SRC_HOME=\"${CMAKE_SOURCE_DIR}\"")
 
 project(sweep)
