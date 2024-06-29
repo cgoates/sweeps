@@ -6,6 +6,7 @@ namespace basis
     class FunctionId
     {
         public:
+        FunctionId( const Eigen::Index id ) : mId( id ) {}
         Eigen::Index operator()() const { return mId; }
 
         bool operator<( const FunctionId& o ) const
