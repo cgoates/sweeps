@@ -5,6 +5,7 @@ add_library( basis SHARED
   TPBasisComplex.cpp
   DivConfBasisComplex.cpp
   SplineSpace.cpp
+  GenericSplineSpace.cpp
 )
 
 target_link_libraries( basis PUBLIC util topology param )
