@@ -21,6 +21,7 @@ namespace basis
                 return result;
             }
         }
+        return 0;// Added to make linux build happy
     }
 
     BarycentricBasis bernsteinBasis( const size_t degree )

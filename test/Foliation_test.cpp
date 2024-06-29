@@ -18,6 +18,7 @@
 #include <VTKOutput.hpp>
 #include <AbaqusInput.hpp>
 #include <iomanip>
+#include <memory>
 
 double atan2( const Eigen::Vector2d& v )
 {

@@ -2,6 +2,7 @@
 #include <Eigen/Dense>
 #include <set>
 #include <VertexPositionsFunc.hpp>
+#include <optional>
 
 class VertexId;
 class Normal;

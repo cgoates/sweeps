@@ -85,7 +85,7 @@ std::optional<topology::Cell>
         if( ( normal_left.dot( grad_left ) > 0 ) == ( normal_right.dot( grad_right ) > 0 ) )
         {
             const bool aligned = vertex_ids( topology::Vertex( I.dart() ) ) == vertex_ids( possible_cell );
-            const bool grads_along_edge = ( edge.dot( grad_left ) + edge.dot( grad_right ) ) >= 0 == aligned;
+            const bool grads_along_edge = ( ( edge.dot( grad_left ) + edge.dot( grad_right ) ) >= 0 ) == aligned;
             if( grads_along_edge )
             {
                 out.emplace( topology::Cell( aligned ? I.dart() : d_opp.value(), possible_cell.dim() ) );
