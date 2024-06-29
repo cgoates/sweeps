@@ -3,6 +3,7 @@ add_library( basis SHARED
   BasisComplex.cpp
   BasisComplex1d.cpp
   TPBasisComplex.cpp
+  DivConfBasisComplex.cpp
   SplineSpace.cpp
 )
 
