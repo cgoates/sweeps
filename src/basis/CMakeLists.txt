@@ -6,6 +6,7 @@ add_library( basis SHARED
   DivConfBasisComplex.cpp
   SplineSpace.cpp
   GenericSplineSpace.cpp
+  KnotVector.cpp
 )
 
 target_link_libraries( basis PUBLIC util topology param )
