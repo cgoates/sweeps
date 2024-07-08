@@ -24,6 +24,12 @@ namespace basis
             return mId == o();
         }
 
+        friend std::ostream& operator<<( std::ostream& os, const FunctionId& fid )
+        {
+            os << fid.mId;
+            return os;
+        }
+
         private:
         Eigen::Index mId;
     };
