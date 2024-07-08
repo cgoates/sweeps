@@ -1,6 +1,6 @@
 function(add_my_test arg)
     add_executable(${arg} ${arg}.cpp)
-    target_link_libraries(${arg} PRIVATE Catch2::Catch2WithMain reparam )
+    target_link_libraries(${arg} PRIVATE Catch2::Catch2WithMain reparam basis )
 
     target_include_directories( ${arg} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} )
     catch_discover_tests(${arg})
@@ -35,3 +35,4 @@ add_my_test(TriangleMeshCircleMapping_test)
 add_my_test(Foliation_test)
 add_my_test(TPCombinatorialMap_test)
 add_my_test(TPParametricAtlas_test)
+add_my_test(SplineSpace1d_test)
