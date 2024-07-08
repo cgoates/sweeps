@@ -11,7 +11,7 @@ namespace basis
         return mAtlas;
     }
 
-    const ParentBasis BasisComplex1d::parentBasis( const topology::Cell& ) const
+    ParentBasis BasisComplex1d::parentBasis( const topology::Cell& ) const
     {
         return mParentBasis;
     }

@@ -13,7 +13,7 @@ namespace basis
         return mAtlas;
     }
 
-    const ParentBasis TPBasisComplex::parentBasis( const topology::Cell& c ) const
+    ParentBasis TPBasisComplex::parentBasis( const topology::Cell& c ) const
     {
         if( c.dim() != mAtlas.cmap().dim() ) throw std::runtime_error( "parentBasis only accepts cells of dimension cmap.dim()" );
 

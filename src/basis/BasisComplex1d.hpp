@@ -15,7 +15,7 @@ namespace basis
 
         virtual const param::ParametricAtlas1d& parametricAtlas() const override;
 
-        virtual const ParentBasis parentBasis( const topology::Cell& ) const override;
+        virtual ParentBasis parentBasis( const topology::Cell& ) const override;
 
         private:
         const param::ParametricAtlas1d& mAtlas;

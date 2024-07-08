@@ -9,7 +9,7 @@ namespace basis
         return mPrimalComplex.parametricAtlas();
     }
 
-    const ParentBasis DivConfBasisComplex::parentBasis( const topology::Cell& c ) const
+    ParentBasis DivConfBasisComplex::parentBasis( const topology::Cell& c ) const
     {
         const ParentBasis primal = mPrimalComplex.parentBasis( c );
         const size_t param_dim = dim( primal.mParentDomain );
