@@ -29,5 +29,5 @@ namespace basis
         std::map<size_t, std::vector<FunctionId>> mConnectivity;
     };
 
-    GenericSplineSpace coxDeBoor( const BasisComplex1d& bc, const KnotVector& kv );
+    GenericSplineSpace knotVectorSplineSpace( const BasisComplex1d& bc, const KnotVector& kv );
 }
