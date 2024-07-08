@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <Eigen/Dense>
+#include <Eigen/Sparse>
 
 namespace basis
 {
@@ -11,9 +12,24 @@ namespace basis
         size_t size() const;
         double knot( const size_t knot_ii ) const;
         std::vector<double> uniqueKnots() const;
+
+        void iterateUniqueKnots( const std::function<void( const double, const size_t )>& iter ) const;
+
+        void duplicate( const size_t knot_ii );
+
         private:
         std::vector<std::pair<double, size_t>> mKnots;
     };
 
+    /// @brief Gives the parametric lengths of the cells represented by the knot vector.
+    /// @param kv The knot vector
+    /// @return The differences between each unique knot value
     Eigen::VectorXd parametricLengths( const KnotVector& kv );
+
+    /// @brief Gives the extraction operator between the given knot vector and one that has all knots duplicated to
+    /// multiplicity >= degree
+    /// @param kv  The knot vector
+    /// @param degree  The degree of the spline represented by the knot vector
+    /// @return  The extraction operator
+    Eigen::SparseMatrix<double> globalExtractionOp( const KnotVector& kv, const size_t degree );
 }
