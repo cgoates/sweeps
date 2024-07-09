@@ -11,7 +11,13 @@ namespace basis
                                             const std::map<size_t, Eigen::MatrixXd>& ex_ops,
                                             const std::map<size_t, std::vector<FunctionId>>& connectivity )
         : mBasisComplex( bc ), mExtractionOps( ex_ops ), mConnectivity( connectivity )
-    {}
+    {
+        mNumFunctions = 0;
+        for( const auto& pr : connectivity )
+        {
+            for( const FunctionId& fid : pr.second ) mNumFunctions = std::max( mNumFunctions, size_t( fid() ) );
+        }
+    }
 
     const BasisComplex& GenericSplineSpace::basisComplex() const
     {
@@ -33,6 +39,12 @@ namespace basis
         const auto indexing = indexingOrError( mBasisComplex.parametricAtlas().cmap(), c.dim() );
         return mConnectivity.at( indexing( c ) );
     }
+
+    size_t GenericSplineSpace::numFunctions() const
+    {
+        return mNumFunctions;
+    }
+
 
     GenericSplineSpace knotVectorSplineSpace( const BasisComplex1d& bc, const KnotVector& kv )
     {

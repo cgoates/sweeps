@@ -23,8 +23,11 @@ namespace basis
 
         virtual std::vector<FunctionId> connectivity( const topology::Cell& ) const override;
 
+        virtual size_t numFunctions() const override;
+
         private:
         const BasisComplex& mBasisComplex;
+        size_t mNumFunctions;
         std::map<size_t, Eigen::MatrixXd> mExtractionOps;
         std::map<size_t, std::vector<FunctionId>> mConnectivity;
     };
