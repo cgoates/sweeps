@@ -6,6 +6,7 @@ add_library( basis SHARED
   DivConfBasisComplex.cpp
   SplineSpace.cpp
   GenericSplineSpace.cpp
+  TPSplineSpace.cpp
   KnotVector.cpp
 )
 
