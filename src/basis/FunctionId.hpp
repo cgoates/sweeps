@@ -6,22 +6,24 @@ namespace basis
     class FunctionId
     {
         public:
-        FunctionId( const Eigen::Index id ) : mId( id ) {}
-        Eigen::Index operator()() const { return mId; }
+        explicit FunctionId( const Eigen::Index id ) : mId( id ) {}
+        operator Eigen::Index() const { return mId; }
+
+        Eigen::Index id() const { return mId; }
 
         bool operator<( const FunctionId& o ) const
         {
-            return mId < o();
+            return mId < o.id();
         }
 
         bool operator>( const FunctionId& o ) const
         {
-            return mId > o();
+            return mId > o.id();
         }
 
         bool operator==( const FunctionId& o ) const
         {
-            return mId == o();
+            return mId == o.id();
         }
 
         friend std::ostream& operator<<( std::ostream& os, const FunctionId& fid )

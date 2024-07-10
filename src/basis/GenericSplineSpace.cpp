@@ -15,7 +15,7 @@ namespace basis
         mNumFunctions = 0;
         for( const auto& pr : connectivity )
         {
-            for( const FunctionId& fid : pr.second ) mNumFunctions = std::max( mNumFunctions, size_t( fid() ) );
+            for( const FunctionId& fid : pr.second ) mNumFunctions = std::max( mNumFunctions, size_t( fid ) );
         }
     }
 
@@ -65,7 +65,7 @@ namespace basis
             {
                 for( SparseMatrixXd::InnerIterator it( C, col_ii + elem_ii * degree ); it; ++it )
                 {
-                    unique_rows.insert( it.row() );
+                    unique_rows.insert( FunctionId( it.row() ) );
                 }
             }
             return std::vector<FunctionId>( unique_rows.begin(), unique_rows.end() );
