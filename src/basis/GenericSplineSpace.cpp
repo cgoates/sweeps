@@ -15,7 +15,7 @@ namespace basis
         mNumFunctions = 0;
         for( const auto& pr : connectivity )
         {
-            for( const FunctionId& fid : pr.second ) mNumFunctions = std::max( mNumFunctions, size_t( fid ) );
+            for( const FunctionId& fid : pr.second ) mNumFunctions = std::max( mNumFunctions, size_t( fid ) + 1 );
         }
     }
 

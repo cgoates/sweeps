@@ -40,9 +40,9 @@ namespace basis
 
         std::vector<FunctionId> out;
         out.reserve( line_conn.size() * source_conn.size() );
-        for( const FunctionId& source_fid : source_conn )
+        for( const FunctionId& line_fid : line_conn )
         {
-            for( const FunctionId& line_fid : line_conn )
+            for( const FunctionId& source_fid : source_conn )
             {
                 out.push_back( flatten( source_fid, line_fid ) );
             }
