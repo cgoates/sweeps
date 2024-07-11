@@ -3,6 +3,7 @@ add_library( util SHARED
   SmallQueue.cpp
   SmallVector.cpp
   CommonUtils.cpp
+  IndexOperations.cpp
 )
 
 add_dependencies( util eigen )
