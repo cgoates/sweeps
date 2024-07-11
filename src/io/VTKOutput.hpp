@@ -4,6 +4,11 @@
 #include <SweepInput.hpp>
 #include <map>
 
+namespace basis
+{
+    class SplineSpace;
+};
+
 namespace io
 {
     class VTKOutputObject
@@ -25,4 +30,7 @@ namespace io
     };
 
     void outputSimplicialFieldToVTK( const VTKOutputObject& output, const std::string& filename );
+    void outputBezierMeshToVTK( const basis::SplineSpace& ss,
+                                const Eigen::MatrixX3d& geom,
+                                const std::string& filename );
 } // namespace io
