@@ -15,4 +15,9 @@ namespace basis
     {
         return mParentBasis;
     }
+
+    BasisComplex1d reduceDegree( const BasisComplex1d& bc )
+    {
+        return BasisComplex1d( bc.parametricAtlas(), bc.defaultParentBasis().mBasisGroups.at( 0 ).degrees.at( 0 ) );
+    }
 }

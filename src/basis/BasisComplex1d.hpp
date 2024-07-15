@@ -23,4 +23,6 @@ namespace basis
         const param::ParametricAtlas1d& mAtlas;
         const ParentBasis mParentBasis;
     };
+
+    BasisComplex1d reduceDegree( const BasisComplex1d& bc );
 }

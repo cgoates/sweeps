@@ -9,11 +9,13 @@ namespace basis
     {
         public:
         KnotVector( const std::vector<double>& knots, const double parametric_tol );
+        KnotVector( const std::vector<std::pair<double, size_t>>& knot_multiplicities );
         size_t size() const;
         double knot( const size_t knot_ii ) const;
         std::vector<double> uniqueKnots() const;
 
         void iterateUniqueKnots( const std::function<void( const double, const size_t )>& iter ) const;
+        const std::vector<std::pair<double, size_t>>& uniqueKnotMultiplicities() const { return mKnots; }
 
         void duplicate( const size_t knot_ii );
 
@@ -32,4 +34,9 @@ namespace basis
     /// @param degree  The degree of the spline represented by the knot vector
     /// @return  The extraction operator
     Eigen::SparseMatrix<double> globalExtractionOp( const KnotVector& kv, const size_t degree );
+
+    /// @brief Reduces the order of the knot vector, essentially removing one of the beginning and end knots.
+    /// @param kv The knot vector to reduce the order of
+    /// @return The reduced order knot vector
+    KnotVector reducedOrder( const KnotVector& kv );
 }

@@ -23,6 +23,10 @@ namespace basis
         }
     }
 
+    KnotVector::KnotVector( const std::vector<std::pair<double, size_t>>& knot_multiplicities )
+        : mKnots( knot_multiplicities )
+    {}
+
     size_t KnotVector::size() const
     {
         return std::transform_reduce(
@@ -122,5 +126,18 @@ namespace basis
 
         C.makeCompressed();
         return C;
+    }
+
+    KnotVector reducedOrder( const KnotVector& kv )
+    {
+        std::vector<std::pair<double, size_t>> knots = kv.uniqueKnotMultiplicities();
+
+        if( knots.front().second < 2 or knots.back().second < 2 )
+            throw std::runtime_error( "Reducing order of piecewise constant, floating, or periodic splines is unsupported" );
+
+        knots.front().second--;
+        knots.back().second--;
+
+        return KnotVector( knots );
     }
 }
