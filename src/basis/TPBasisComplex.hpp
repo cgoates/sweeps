@@ -12,7 +12,7 @@ namespace basis
     {
         public:
         TPBasisComplex( const param::TPParametricAtlas& pa, const BasisComplex& source_complex, const BasisComplex1d& line_complex );
-        ~TPBasisComplex() = default;
+        virtual ~TPBasisComplex() = default;
 
         virtual const param::TPParametricAtlas& parametricAtlas() const override;
 

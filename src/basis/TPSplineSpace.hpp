@@ -8,6 +8,7 @@ namespace basis
     {
         public:
         TPSplineSpace( const TPBasisComplex& bc, const SplineSpace& source, const BSplineSpace1d& line );
+        virtual ~TPSplineSpace() = default;
 
         virtual const TPBasisComplex& basisComplex() const override;
 

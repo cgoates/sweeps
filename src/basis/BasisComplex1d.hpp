@@ -11,7 +11,7 @@ namespace basis
     {
         public:
         BasisComplex1d( const param::ParametricAtlas1d& pa, const uint degree );
-        ~BasisComplex1d() = default;
+        virtual ~BasisComplex1d() = default;
 
         virtual const param::ParametricAtlas1d& parametricAtlas() const override;
 
