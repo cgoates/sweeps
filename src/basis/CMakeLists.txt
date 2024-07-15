@@ -7,6 +7,7 @@ add_library( basis SHARED
   SplineSpace.cpp
   BSplineSpace1d.cpp
   TPSplineSpace.cpp
+  DivConfTPSplineSpace.cpp
   KnotVector.cpp
 )
 
