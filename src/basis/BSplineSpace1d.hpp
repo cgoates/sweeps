@@ -1,6 +1,7 @@
 #pragma once
 #include <SplineSpace.hpp>
-#include <BasisComplex.hpp>
+#include <BasisComplex1d.hpp>
+#include <KnotVector.hpp>
 #include <map>
 
 namespace basis
@@ -10,14 +11,13 @@ namespace basis
 
     /// @brief A spline space that is encoded simply by storing the extraction operators and connectivity
     /// for each element in the BasisComplex.
-    class GenericSplineSpace : public SplineSpace
+    class BSplineSpace1d : public SplineSpace
     {
         public:
-        GenericSplineSpace( const BasisComplex& bc,
-                            const std::map<size_t, Eigen::MatrixXd>& ex_ops,
-                            const std::map<size_t, std::vector<FunctionId>>& connectivity );
+        BSplineSpace1d( const BasisComplex1d& bc, const KnotVector& kv );
+        virtual ~BSplineSpace1d() = default;
 
-        virtual const BasisComplex& basisComplex() const override;
+        virtual const BasisComplex1d& basisComplex() const override;
 
         virtual Eigen::MatrixXd extractionOperator( const topology::Cell& ) const override;
 
@@ -25,12 +25,12 @@ namespace basis
 
         virtual size_t numFunctions() const override;
 
+        const KnotVector& knotVector() const { return mKnotVector; }
+
         private:
-        const BasisComplex& mBasisComplex;
-        size_t mNumFunctions;
+        const BasisComplex1d& mBasisComplex;
+        const KnotVector mKnotVector;
         std::map<size_t, Eigen::MatrixXd> mExtractionOps;
         std::map<size_t, std::vector<FunctionId>> mConnectivity;
     };
-
-    GenericSplineSpace knotVectorSplineSpace( const BasisComplex1d& bc, const KnotVector& kv );
 }

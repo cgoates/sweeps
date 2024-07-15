@@ -1,5 +1,5 @@
 #pragma once
-#include <GenericSplineSpace.hpp>
+#include <BSplineSpace1d.hpp>
 #include <TPBasisComplex.hpp>
 
 namespace basis
@@ -7,7 +7,7 @@ namespace basis
     class TPSplineSpace : public SplineSpace
     {
         public:
-        TPSplineSpace( const TPBasisComplex& bc, const SplineSpace& source, const GenericSplineSpace& line );
+        TPSplineSpace( const TPBasisComplex& bc, const SplineSpace& source, const BSplineSpace1d& line );
 
         virtual const TPBasisComplex& basisComplex() const override;
 
@@ -17,12 +17,15 @@ namespace basis
 
         virtual size_t numFunctions() const override;
 
+        const BSplineSpace1d& line() const { return mLine; }
+        const SplineSpace& source() const { return mSource; }
+
         private:
 
         FunctionId flatten( const FunctionId& source_fid, const FunctionId& line_fid ) const;
 
         const TPBasisComplex& mBasisComplex;
         const SplineSpace& mSource;
-        const GenericSplineSpace& mLine;
+        const BSplineSpace1d& mLine;
     };
 }

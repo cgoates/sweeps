@@ -3,7 +3,7 @@
 
 namespace basis
 {
-    TPSplineSpace::TPSplineSpace( const TPBasisComplex& bc, const SplineSpace& source, const GenericSplineSpace& line ) :
+    TPSplineSpace::TPSplineSpace( const TPBasisComplex& bc, const SplineSpace& source, const BSplineSpace1d& line ) :
         mBasisComplex( bc ), mSource( source ), mLine( line )
     {}
 

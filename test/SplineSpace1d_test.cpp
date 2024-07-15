@@ -1,5 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
-#include <GenericSplineSpace.hpp>
+#include <BSplineSpace1d.hpp>
 #include <BasisComplex1d.hpp>
 #include <ParametricAtlas1d.hpp>
 #include <CombinatorialMap1d.hpp>
@@ -21,7 +21,7 @@ TEST_CASE( "Extraction of cubic spline with various knot multiplicities" )
     const CombinatorialMap1d cmap( 3 );
     const ParametricAtlas1d param( cmap, parametricLengths( kv ) );
     const BasisComplex1d bc( param, degree );
-    const GenericSplineSpace ss = knotVectorSplineSpace( bc, kv );
+    const BSplineSpace1d ss( bc, kv );
 
     iterateCellsWhile( cmap, 1, [&]( const topology::Edge& e ) {
         const Eigen::MatrixXd op = ss.extractionOperator( e );
@@ -47,8 +47,8 @@ TEST_CASE( "TP Spline space" )
     const ParametricAtlas1d param( cmap, parametricLengths( kv1 ) );
     const BasisComplex1d bc1( param, degree1 );
     const BasisComplex1d bc2( param, degree2 );
-    const GenericSplineSpace ss1 = knotVectorSplineSpace( bc1, kv1 );
-    const GenericSplineSpace ss2 = knotVectorSplineSpace( bc2, kv2 );
+    const BSplineSpace1d ss1( bc1, kv1 );
+    const BSplineSpace1d ss2( bc2, kv2 );
 
     const TPCombinatorialMap cmap_2d( cmap, cmap );
     const TPParametricAtlas param_2d( cmap_2d, param, param );
