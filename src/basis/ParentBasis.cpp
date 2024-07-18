@@ -24,6 +24,38 @@ namespace basis
         return 0;// Added to make linux build happy
     }
 
+    size_t numFunctions( const ParentBasis& pb )
+    {
+        return std::accumulate( pb.mBasisGroups.begin(), pb.mBasisGroups.end(), 1, [&]( const size_t accum, const BarycentricBasis& bb ) {
+            return accum * numFunctions( bb );
+        } );
+    }
+
+    SmallVector<size_t, 3> degrees( const ParentBasis& pb )
+    {
+        SmallVector<size_t, 3> degrees;
+        for( const auto& group : pb.mBasisGroups )
+        {
+            for( const auto& p : group.degrees )
+                degrees.push_back( p );
+        }
+        return degrees;
+    }
+
+    size_t numVectorComponents( const ParentBasis& pb )
+    {
+        if( std::any_of( pb.mBasisGroups.begin(), pb.mBasisGroups.end(), []( const BarycentricBasis& bb ) {
+                return bb.type == BasisType::DivConformingBernstein;
+            } ) )
+        {
+            if( pb.mBasisGroups.size() == 1 )
+                return dim( pb.mParentDomain );
+            else
+                throw std::runtime_error( "Cannot tensor product vector valued bases" );
+        }
+        return 1;
+    }
+
     BarycentricBasis bernsteinBasis( const size_t degree )
     {
         return BarycentricBasis{ BasisType::Bernstein, { degree } };

@@ -30,6 +30,10 @@ namespace basis
         SmallVector<BarycentricBasis, 3> mBasisGroups;
     };
 
+    size_t numFunctions( const ParentBasis& pb );
+    SmallVector<size_t, 3> degrees( const ParentBasis& pb );
+    size_t numVectorComponents( const ParentBasis& pb );
+
     ParentBasis bernsteinSimplex( const size_t dim, const size_t degree );
     ParentBasis bernsteinCube( const size_t dim, const size_t degree );
     ParentBasis divConformingBernsteinCube( const size_t dim, const size_t primal_degree );
