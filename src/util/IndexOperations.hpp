@@ -1,5 +1,6 @@
 #pragma once
 #include <SmallVector.hpp>
+#include <Eigen/Dense>
 #include <functional>
 
 namespace util
@@ -12,4 +13,6 @@ namespace util
     void iterateTensorProduct( const IndexVec& lengths, const std::function<void( const IndexVec& )>& callback );
 
     void iterateVTKTPOrdering( const IndexVec& lengths, const std::function<void( const size_t& )>& callback );
+
+    Eigen::MatrixXd tensorProduct( const SmallVector<Eigen::VectorXd, 3>& vecs );
 }

@@ -152,4 +152,22 @@ namespace util
             break;
         }
     }
+
+    Eigen::MatrixXd tensorProduct( const SmallVector<Eigen::VectorXd, 3>& vecs )
+    {
+        const SmallVector<size_t, 3> lengths = std::accumulate( vecs.begin(), vecs.end(), SmallVector<size_t, 3>(), [&]( SmallVector<size_t, 3> accum, const Eigen::VectorXd& vec ) {
+            accum.push_back( vec.size() );
+            return accum;
+        } );
+        const size_t rows = std::accumulate( lengths.begin(), lengths.end(), 1, []( const size_t a, const size_t b ) { return a * b; } );
+
+        Eigen::MatrixXd result( rows, vecs.size() );
+        iterateTensorProduct( lengths, [&]( const IndexVec& ids ){
+            const size_t row = flatten( ids, lengths );
+            for( size_t i = 0; i < vecs.size(); i++ )
+                result( row, i ) = vecs.at( i )( ids.at( i ) );
+        } );
+
+        return result;
+    }
 }
