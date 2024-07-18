@@ -51,6 +51,11 @@ namespace param
                                 []( size_t acc, const CoordinateSystem& cs ) { return acc + numParametricLengths( cs ); } );
     }
 
+    bool isCartesian( const ParentDomain& pd )
+    {
+        return dim( pd ) == numGroups( pd );
+    }
+
     void iterateGroups( const ParentDomain& pd,
                         const std::function<void( const size_t, const size_t, const CoordinateSystem& )>& callback )
     {

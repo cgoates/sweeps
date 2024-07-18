@@ -65,6 +65,7 @@ namespace param
     size_t dim( const ParentDomain& pd );
     size_t numTotalCoordinates( const ParentDomain& pd );
     size_t numParametricLengths( const ParentDomain& pd );
+    bool isCartesian( const ParentDomain& pd );
     void iterateGroups( const ParentDomain& pd, const std::function<void( const size_t, const size_t, const CoordinateSystem& )>& callback );
     Vector6dMax expandedCoordinates( const ParentDomain& domain, const Vector3dMax& pt );
 }

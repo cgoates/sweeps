@@ -13,7 +13,7 @@ namespace basis
     {
         const ParentBasis primal = mPrimalComplex.parentBasis( c );
         const size_t param_dim = dim( primal.mParentDomain );
-        if( numGroups( primal.mParentDomain ) != param_dim or ( 2 != param_dim and 3 != param_dim ) )
+        if( not isCartesian( primal.mParentDomain ) or ( 2 != param_dim and 3 != param_dim ) )
             throw std::runtime_error( "DivConfBasisComplex only supports 2d or 3d cube-like cells" );
         
         SmallVector<size_t, 3> degrees;
