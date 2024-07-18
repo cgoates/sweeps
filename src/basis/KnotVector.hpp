@@ -28,6 +28,11 @@ namespace basis
     /// @return The differences between each unique knot value
     Eigen::VectorXd parametricLengths( const KnotVector& kv );
 
+    /// @brief Gives the number of parametric elements in the knot vector with non-zero width.
+    /// @param kv The knot vector
+    /// @return Number of nonzero-width knot intervals
+    size_t numElements( const KnotVector& kv );
+
     /// @brief Gives the extraction operator between the given knot vector and one that has all knots duplicated to
     /// multiplicity >= degree
     /// @param kv  The knot vector
@@ -39,4 +44,10 @@ namespace basis
     /// @param kv The knot vector to reduce the order of
     /// @return The reduced order knot vector
     KnotVector reducedOrder( const KnotVector& kv );
+
+    /// @brief Calculate the greville points from a knot vector
+    /// @param kv  The knot vector
+    /// @param degree  The basis degree
+    /// @return  The greville points
+    Eigen::VectorXd grevillePoints( const KnotVector& kv, const size_t degree );
 }

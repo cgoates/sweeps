@@ -74,10 +74,15 @@ namespace basis
 
     Eigen::VectorXd parametricLengths( const KnotVector& kv )
     {
-        std::vector<double> unique_knots = kv.uniqueKnots();
+        const std::vector<double> unique_knots = kv.uniqueKnots();
         if( unique_knots.size() < 2 ) return Eigen::VectorXd();
-        return Eigen::Map<Eigen::VectorXd>( std::next( unique_knots.data() ), unique_knots.size() - 1 ) -
-               Eigen::Map<Eigen::VectorXd>( unique_knots.data(), unique_knots.size() - 1 );
+        return Eigen::Map<const Eigen::VectorXd>( std::next( unique_knots.data() ), unique_knots.size() - 1 ) -
+               Eigen::Map<const Eigen::VectorXd>( unique_knots.data(), unique_knots.size() - 1 );
+    }
+
+    size_t numElements( const KnotVector& kv )
+    {
+        return kv.uniqueKnotMultiplicities().size() - 1;
     }
 
     using SparseMatrixXd = Eigen::SparseMatrix<double>;
@@ -139,5 +144,21 @@ namespace basis
         knots.back().second--;
 
         return KnotVector( knots );
+    }
+
+    Eigen::VectorXd grevillePoints( const KnotVector& kv, const size_t degree )
+    {
+        const auto average_p_points = [&]( const size_t i ) {
+            double ave = 0;
+            for( size_t j = 0; j < degree; j++ ) ave += kv.knot( i + j ) / degree;
+            return ave;
+        };
+
+        Eigen::VectorXd out( kv.size() - degree - 1 );
+        for( size_t i = 1, e = kv.size() - degree; i < e; i++ )
+        {
+            out( i - 1 ) = average_p_points( i );
+        }
+        return out;
     }
 }
