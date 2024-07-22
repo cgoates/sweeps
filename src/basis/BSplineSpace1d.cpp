@@ -11,6 +11,9 @@ namespace basis
         : mBasisComplex( bc ), mKnotVector( kv )
     {
         const size_t degree = bc.defaultParentBasis().mBasisGroups.at( 0 ).degrees.at( 0 );
+        if( kv.uniqueKnotMultiplicities().at( 0 ).second != degree + 1 or kv.uniqueKnotMultiplicities().back().second != degree + 1 )
+            throw std::runtime_error( "Can only create BSplineSpace1d on open knot vector" );
+
         using SparseMatrixXd = Eigen::SparseMatrix<double>;
 
         const SparseMatrixXd C = globalExtractionOp( kv, degree );
