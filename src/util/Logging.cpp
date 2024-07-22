@@ -1,4 +1,5 @@
 #include <Logging.hpp>
+#include <csignal>
 
 std::ostream& operator<<( std::ostream& o, const Eigen::Triplet<double>& t )
 {
@@ -17,4 +18,9 @@ std::ostream& operator<<( std::ostream& o, const std::vector<Eigen::Vector3d>& v
         o << v.back().transpose() << " }";
     }
     return o;
+}
+
+void pauseDebugger()
+{
+    raise( SIGINT );
 }

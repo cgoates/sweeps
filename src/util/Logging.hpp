@@ -5,7 +5,6 @@
 #include <set>
 #include <vector>
 #include <chrono>
-#include <csignal>
 #include <optional>
 #include <SmallVector.hpp>
 
@@ -86,6 +85,8 @@ template <typename T, typename U> std::ostream& operator<<( std::ostream& o, con
     }
     return o;
 }
+
+void pauseDebugger();
 
 class Timer
 {
