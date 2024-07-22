@@ -23,6 +23,8 @@ namespace basis
         std::vector<std::pair<double, size_t>> mKnots;
     };
 
+    std::ostream& operator<<( std::ostream& o, const KnotVector& kv );
+
     /// @brief Gives the parametric lengths of the cells represented by the knot vector.
     /// @param kv The knot vector
     /// @return The differences between each unique knot value

@@ -2,6 +2,8 @@
 #include <numeric>
 #include <CommonUtils.hpp>
 
+#include <iostream>
+
 namespace basis
 {
     KnotVector::KnotVector( const std::vector<double>& knots, const double parametric_tol )
@@ -70,6 +72,15 @@ namespace basis
             }
         }
         throw std::runtime_error( "knot_ii provided is greater than the size of the knot vector" );
+    }
+
+    std::ostream& operator<<( std::ostream& o, const KnotVector& kv )
+    {
+        o << "{";
+        for( size_t i = 0; i < kv.size(); i++ )
+            o << kv.knot( i ) << ", ";
+        o << "}";
+        return o;
     }
 
     Eigen::VectorXd parametricLengths( const KnotVector& kv )
