@@ -18,6 +18,9 @@ namespace basis
 
         virtual ParentBasis parentBasis( const topology::Cell& ) const override;
 
+        const BasisComplex& sourceComplex() const { return mSourceComplex; }
+        const BasisComplex1d& lineComplex() const { return mLineComplex; }
+
         private:
         const param::TPParametricAtlas& mAtlas;
         const BasisComplex& mSourceComplex;

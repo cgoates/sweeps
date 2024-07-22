@@ -5,7 +5,10 @@ namespace basis
 {
     TPSplineSpace::TPSplineSpace( const TPBasisComplex& bc, const SplineSpace& source, const BSplineSpace1d& line ) :
         mBasisComplex( bc ), mSource( source ), mLine( line )
-    {}
+    {
+        if( &source.basisComplex() != &mBasisComplex.sourceComplex() or &line.basisComplex() != &mBasisComplex.lineComplex() )
+            throw std::runtime_error( "Invalid inputs to TPSplineSpace::TPSplineSpace()" );
+    }
 
     const TPBasisComplex& TPSplineSpace::basisComplex() const
     {

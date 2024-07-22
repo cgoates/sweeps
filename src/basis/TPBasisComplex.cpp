@@ -6,7 +6,10 @@ namespace basis
                                     const BasisComplex& source_complex,
                                     const BasisComplex1d& line_complex )
         : mAtlas( pa ), mSourceComplex( source_complex ), mLineComplex( line_complex )
-    {}
+    {
+        if( &source_complex.parametricAtlas() != &pa.source() or &line_complex.parametricAtlas() != &pa.line() )
+            throw std::runtime_error( "Invalid inputs to TPBasisComplex::TPBasisComplex()" );
+    }
 
     const param::TPParametricAtlas& TPBasisComplex::parametricAtlas() const
     {

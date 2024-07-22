@@ -19,6 +19,9 @@ namespace param
         virtual ParentPoint parentPoint( const topology::Vertex& v ) const override;
         virtual Vector6dMax parametricLengths( const topology::Cell& c ) const override;
 
+        const ParametricAtlas& source() const { return mSourceParam; }
+        const ParametricAtlas1d& line() const { return mLineParam; }
+
         private:
         const topology::TPCombinatorialMap& mMap;
         const ParametricAtlas& mSourceParam;
