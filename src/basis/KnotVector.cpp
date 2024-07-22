@@ -96,7 +96,7 @@ namespace basis
         size_t r_ii = 0;
         const auto add_knot = [&]( const double knot_to_add, const size_t interval_ii ) {
             SparseMatrixXd C_ii( num_funcs + r_ii, num_funcs + r_ii + 1 );
-            C_ii.reserve( ( Eigen::VectorXi( num_funcs + r_ii + 1 ) << 1, Eigen::VectorXi( num_funcs + r_ii - 1, 2 ), 1 ).finished() );
+            C_ii.reserve( ( Eigen::VectorXi( num_funcs + r_ii + 1 ) << 1, Eigen::VectorXi::Constant( num_funcs + r_ii - 1, 2 ), 1 ).finished() );
             for( size_t i = 0; i < num_funcs + r_ii + 1; i++ )
             {
                 const double alpha = [&]() {
