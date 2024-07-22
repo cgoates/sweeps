@@ -15,16 +15,16 @@ namespace basis
         primal_1d_bases.reserve( dim );
 
         // Pull out the 1d basis complexes and degree reduce them
-        primal_1d_bases.push_back( std::cref( primal_basis.line() ) );
         if( dim == 3 )
         {
             const TPSplineSpace& source_primal = static_cast<const TPSplineSpace&>( primal_basis.source() );
-            primal_1d_bases.push_back( source_primal.line() );
             primal_1d_bases.push_back( static_cast<const BSplineSpace1d&>( source_primal.source() ) );
+            primal_1d_bases.push_back( source_primal.line() );
         }
         else
             primal_1d_bases.push_back( static_cast<const BSplineSpace1d&>( primal_basis.source() ) );
-        
+        primal_1d_bases.push_back( std::cref( primal_basis.line() ) );
+
         for( const BSplineSpace1d& ss_1d : primal_1d_bases )
         {
             mReducedDegree1dBasisComplex.push_back( reduceDegree( ss_1d.basisComplex() ) );
@@ -102,8 +102,8 @@ namespace basis
         if( scalar_ops.size() == 2 )
         {
             return ( Eigen::MatrixXd( rows, cols ) << scalar_ops.at( 0 ),
-                     Eigen::MatrixXd::Zero( scalar_ops.at( 1 ).rows(), scalar_ops.at( 1 ).cols() ),
-                     Eigen::MatrixXd::Zero( scalar_ops.at( 0 ).rows(), scalar_ops.at( 0 ).cols() ),
+                     Eigen::MatrixXd::Zero( scalar_ops.at( 0 ).rows(), scalar_ops.at( 1 ).cols() ),
+                     Eigen::MatrixXd::Zero( scalar_ops.at( 1 ).rows(), scalar_ops.at( 0 ).cols() ),
                      scalar_ops.at( 1 ) )
                 .finished();
         }
