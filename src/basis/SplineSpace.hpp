@@ -20,5 +20,7 @@ namespace basis
         virtual std::vector<FunctionId> connectivity( const topology::Cell& ) const = 0;
 
         virtual size_t numFunctions() const = 0;
+
+        virtual size_t numVectorComponents() const { return 1; }
     };
 }

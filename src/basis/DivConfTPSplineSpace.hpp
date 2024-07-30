@@ -18,6 +18,8 @@ namespace basis
 
         virtual size_t numFunctions() const override;
 
+        virtual size_t numVectorComponents() const override { return 2; }
+
         private:
         const DivConfBasisComplex& mBasisComplex;
 
