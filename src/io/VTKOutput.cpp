@@ -165,11 +165,12 @@ namespace io
     }
 
     void outputBezierMeshToVTK( const basis::SplineSpace& ss,
-                                const Eigen::MatrixX3d& geom,
+                                const MatrixX3dMax& geom,
                                 const std::string& filename )
     {
         const topology::CombinatorialMap& cmap = ss.basisComplex().parametricAtlas().cmap();
         const size_t param_dim = cmap.dim();
+        const size_t spatial_dim = geom.cols();
         const size_t n_cells = cellCount( cmap, param_dim );
 
         std::ostringstream degrees_string;
@@ -186,10 +187,15 @@ namespace io
 
             const Eigen::MatrixXd ex_op = ss.extractionOperator( c );
             const std::vector<basis::FunctionId> connect = ss.connectivity( c );
-            const Eigen::MatrixX3d bez_points = ex_op.transpose() * geom( connect, Eigen::all );
+            const Eigen::MatrixXd bez_points = ex_op.transpose() * geom( connect, Eigen::all );
             
             util::iterateVTKTPOrdering( tp_lengths, [&] ( const size_t row_ii ) {
-                points_string << bez_points( row_ii, 0 ) << " " << bez_points( row_ii, 1 ) << " " << bez_points( row_ii, 2 ) << std::endl;
+                if( spatial_dim == 3 )
+                    points_string << bez_points( row_ii, 0 ) << " " << bez_points( row_ii, 1 ) << " " << bez_points( row_ii, 2 ) << std::endl;
+                else if( spatial_dim == 2 )
+                    points_string << bez_points( row_ii, 0 ) << " " << bez_points( row_ii, 1 ) << " 0" << std::endl;
+                else if( spatial_dim == 1 )
+                    points_string << bez_points( row_ii, 0 ) << " 0 0" << std::endl;
             } );
 
             for( Eigen::Index i = 0; i < bez_points.rows(); i++ )

@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
-#include <Eigen/Dense>
+#include <CustomEigen.hpp>
 #include <SweepInput.hpp>
 #include <map>
 
@@ -30,7 +30,12 @@ namespace io
     };
 
     void outputSimplicialFieldToVTK( const VTKOutputObject& output, const std::string& filename );
+
+    /// @brief write out a spline as bezier cells to vtk
+    /// @param ss  The spline space
+    /// @param geom The control points, in a n_ctrl_pts x spatial_dim sized matrix
+    /// @param filename The output filename, including the extension.
     void outputBezierMeshToVTK( const basis::SplineSpace& ss,
-                                const Eigen::MatrixX3d& geom,
+                                const MatrixX3dMax& geom,
                                 const std::string& filename );
 } // namespace io
