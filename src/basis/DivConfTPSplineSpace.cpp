@@ -134,7 +134,7 @@ namespace basis
                             std::back_inserter( connectivity ),
                             [&]( const FunctionId& fid ) { return FunctionId( fid + offset ); } );
 
-            offset += scalar_connectivity.size();
+            offset += scalar_basis.numFunctions();
         }
 
         return connectivity;
