@@ -2,9 +2,7 @@
 #include <SmallVector.hpp>
 #include <Eigen/Dense>
 #include <numeric>
-
-using Vector3dMax = Eigen::Matrix<double, Eigen::Dynamic, 1, 0, 3>;
-using Vector6dMax = Eigen::Matrix<double, Eigen::Dynamic, 1, 0, 6>;
+#include <CustomEigen.hpp>
 
 namespace param
 {
