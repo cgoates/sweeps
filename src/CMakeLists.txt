@@ -7,6 +7,7 @@ add_subdirectory( eval )
 add_subdirectory( mapping )
 add_subdirectory( io )
 add_subdirectory( reparam )
+add_subdirectory( api )
 
 add_executable( sweep main.cpp )
 
