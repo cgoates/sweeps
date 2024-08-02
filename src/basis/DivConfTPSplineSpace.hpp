@@ -20,6 +20,8 @@ namespace basis
 
         virtual size_t numVectorComponents() const override { return 2; }
 
+        const std::vector<BSplineSpace1d>& reducedDegree1dBases() const { return mReducedDegree1dBases; }
+
         private:
         const DivConfBasisComplex& mBasisComplex;
 

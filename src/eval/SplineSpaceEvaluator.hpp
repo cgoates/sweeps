@@ -24,6 +24,8 @@ namespace eval
 
         size_t numDerivatives() const { return mNumDerivs; }
 
+        const basis::SplineSpace& splineSpace() const { return mSpline; }
+
         private:
         const size_t mNumDerivs;
         const basis::SplineSpace& mSpline;
