@@ -29,4 +29,6 @@ namespace basis
         const SplineSpace& mSource;
         const BSplineSpace1d& mLine;
     };
+
+    std::optional<std::vector<std::reference_wrapper<const BSplineSpace1d>>> constituentSplines( const TPSplineSpace& ss );
 }

@@ -58,4 +58,29 @@ namespace basis
     {
         return mSource.numFunctions() * mLine.numFunctions();
     }
+
+    std::optional<std::vector<std::reference_wrapper<const BSplineSpace1d>>> constituentSplines( const TPSplineSpace& ss )
+    {
+        const size_t dim = ss.basisComplex().parametricAtlas().cmap().dim();
+        std::vector<std::reference_wrapper<const BSplineSpace1d>> out;
+        out.reserve( dim );
+
+        try
+        {
+            if( dim == 3 )
+            {
+                const TPSplineSpace& source_primal = dynamic_cast<const TPSplineSpace&>( ss.source() );
+                out.push_back( std::cref( dynamic_cast<const BSplineSpace1d&>( source_primal.source() ) ) );
+                out.push_back( std::cref( source_primal.line() ) );
+            }
+            else
+                out.push_back( std::cref( dynamic_cast<const BSplineSpace1d&>( ss.source() ) ) );
+        }
+        catch(const std::bad_cast& e)
+        {
+            return std::nullopt;
+        }
+        out.push_back( std::cref( ss.line() ) );
+        return out;
+    }
 }
