@@ -9,6 +9,9 @@ namespace util
         size_t out = 0;
         for( size_t i = 0; i < tp_indices.size(); i++ )
         {
+            if( tp_indices.at( i ) >= lengths.at( i ) )
+                throw std::runtime_error( "TP index meets or exceeds given length" );
+
             out += multiplier * tp_indices.at( i );
             multiplier *= lengths.at( i );
         }
@@ -26,6 +29,8 @@ namespace util
             out.push_back( ( index % mod_divisor ) / divisor );
             divisor *= lengths.at( i );
         }
+        if( out.at( lengths.size() - 1 ) >= lengths.at( lengths.size() - 1 ) )
+            throw std::runtime_error( "Flat index exceeds greatest index in TP space" );
         return out;
     }
 
