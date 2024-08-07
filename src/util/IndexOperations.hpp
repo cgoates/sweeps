@@ -10,6 +10,8 @@ namespace util
 
     IndexVec unflatten( const size_t index, const IndexVec& lengths );
 
+    IndexVec dropIndex( const IndexVec& vec, const size_t index_to_drop );
+
     void iterateTensorProduct( const IndexVec& lengths, const std::function<void( const IndexVec& )>& callback );
 
     void iterateVTKTPOrdering( const IndexVec& lengths, const std::function<void( const size_t& )>& callback );

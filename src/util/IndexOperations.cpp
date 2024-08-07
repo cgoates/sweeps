@@ -34,6 +34,16 @@ namespace util
         return out;
     }
 
+    IndexVec dropIndex( const util::IndexVec& in, const size_t index_to_drop )
+    {
+        util::IndexVec out;
+        for( size_t i = 0; i < in.size(); i++ )
+        {
+            if( i != index_to_drop ) out.push_back( in.at( i ) );
+        }
+        return out;
+    }
+
     void iterateTensorProduct( const IndexVec& lengths, const std::function<void( const IndexVec& )>& callback )
     {
         const size_t num_ids = std::reduce( lengths.begin(), lengths.end(), 1, std::multiplies<>() );
