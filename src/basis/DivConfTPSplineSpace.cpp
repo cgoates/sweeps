@@ -3,36 +3,42 @@
 
 namespace basis
 {
-    DivConfTPSplineSpace::DivConfTPSplineSpace( const DivConfBasisComplex& bc, const TPSplineSpace& primal_basis ) :
-        mBasisComplex( bc )
+    DivConfTPSplineSpace::DivConfTPSplineSpace( const std::shared_ptr<const DivConfBasisComplex>& bc,
+                                                const TPSplineSpace& primal_basis )
+        : mBasisComplex( bc )
     {
         const size_t dim = primal_basis.basisComplex().parametricAtlas().cmap().dim();
         mReducedDegree1dBasisComplex.reserve( dim );
         mReducedDegree1dBases.reserve( dim );
         mScalarTPBases.reserve( dim );
 
-        const std::vector<std::reference_wrapper<const BSplineSpace1d>> primal_1d_bases = [&primal_basis](){
+        const std::vector<std::shared_ptr<const BSplineSpace1d>> primal_1d_bases = [&primal_basis]() {
             const auto temp = constituentSplines( primal_basis );
-            if( not temp.has_value() ) throw std::runtime_error( "Cannot build DivConfTPSplineSpace except over B-spline patch" );
+            if( not temp.has_value() )
+                throw std::runtime_error( "Cannot build DivConfTPSplineSpace except over B-spline patch" );
             return temp.value();
         }();
 
-        for( const BSplineSpace1d& ss_1d : primal_1d_bases )
+        for( const std::shared_ptr<const BSplineSpace1d>& ss_1d : primal_1d_bases )
         {
-            mReducedDegree1dBasisComplex.push_back( reduceDegree( ss_1d.basisComplex() ) );
-            mReducedDegree1dBases.emplace_back( mReducedDegree1dBasisComplex.back(), reducedOrder( ss_1d.knotVector() ) );
+            mReducedDegree1dBasisComplex.push_back(
+                std::make_shared<const BasisComplex1d>( reduceDegree( ss_1d->basisComplex() ) ) );
+            mReducedDegree1dBases.emplace_back( std::make_shared<const BSplineSpace1d>(
+                mReducedDegree1dBasisComplex.back(), reducedOrder( ss_1d->knotVector() ) ) );
         }
 
         if( dim == 2 )
         {
             mScalarTPBasisComplexes.reserve( dim );
-            mScalarTPBasisComplexes.emplace_back( primal_basis.basisComplex().parametricAtlas(),
-                                                  primal_1d_bases.at( 0 ).get().basisComplex(),
-                                                  mReducedDegree1dBasisComplex.at( 1 ) );
+            mScalarTPBasisComplexes.emplace_back(
+                std::make_shared<TPBasisComplex>( primal_basis.basisComplex().parametricAtlasPtr(),
+                                                  primal_1d_bases.at( 0 )->basisComplexPtr(),
+                                                  mReducedDegree1dBasisComplex.at( 1 ) ) );
             mScalarTPBases.emplace_back( mScalarTPBasisComplexes.back(), primal_1d_bases.at( 0 ), mReducedDegree1dBases.at( 1 ) );
-            mScalarTPBasisComplexes.emplace_back( primal_basis.basisComplex().parametricAtlas(),
+            mScalarTPBasisComplexes.emplace_back(
+                std::make_shared<TPBasisComplex>( primal_basis.basisComplex().parametricAtlasPtr(),
                                                   mReducedDegree1dBasisComplex.at( 0 ),
-                                                  primal_1d_bases.at( 1 ).get().basisComplex() );
+                                                  primal_1d_bases.at( 1 )->basisComplexPtr() ) );
             mScalarTPBases.emplace_back( mScalarTPBasisComplexes.back(), mReducedDegree1dBases.at( 0 ), primal_1d_bases.at( 1 ) );
         }
         else if( dim == 3 )
@@ -40,40 +46,50 @@ namespace basis
             mScalarTPBasisComplexes.reserve( 2 * dim );
             m2dSourceTPBases.reserve( dim );
 
-            const param::TPParametricAtlas& source_param = static_cast<const param::TPParametricAtlas&>( primal_basis.source().basisComplex().parametricAtlas() );
+            const std::shared_ptr<const param::TPParametricAtlas>& source_param =
+                dynamic_cast<const TPBasisComplex&>( primal_basis.source().basisComplex() ).parametricAtlasPtr();
 
             // 2d source of component 0
-            mScalarTPBasisComplexes.emplace_back( source_param,
-                                                  primal_1d_bases.at( 0 ).get().basisComplex(),
-                                                  mReducedDegree1dBasisComplex.at( 1 ) );
-            m2dSourceTPBases.emplace_back( mScalarTPBasisComplexes.back(), primal_1d_bases.at( 0 ), mReducedDegree1dBases.at( 1 ) );
+            mScalarTPBasisComplexes.emplace_back( std::make_shared<TPBasisComplex>(
+                source_param, primal_1d_bases.at( 0 )->basisComplexPtr(), mReducedDegree1dBasisComplex.at( 1 ) ) );
+            m2dSourceTPBases.emplace_back( std::make_shared<TPSplineSpace>(
+                mScalarTPBasisComplexes.back(), primal_1d_bases.at( 0 ), mReducedDegree1dBases.at( 1 ) ) );
             // component 0
-            mScalarTPBasisComplexes.emplace_back( primal_basis.basisComplex().parametricAtlas(), mScalarTPBasisComplexes.back(), mReducedDegree1dBasisComplex.at( 2 ) );
+            mScalarTPBasisComplexes.emplace_back(
+                std::make_shared<TPBasisComplex>( primal_basis.basisComplex().parametricAtlasPtr(),
+                                                  mScalarTPBasisComplexes.back(),
+                                                  mReducedDegree1dBasisComplex.at( 2 ) ) );
             mScalarTPBases.emplace_back( mScalarTPBasisComplexes.back(), m2dSourceTPBases.back(), mReducedDegree1dBases.at( 2 ) );
 
             // 2d source of component 1
-            mScalarTPBasisComplexes.emplace_back( source_param,
-                                                  mReducedDegree1dBasisComplex.at( 0 ),
-                                                  primal_1d_bases.at( 1 ).get().basisComplex() );
-            m2dSourceTPBases.emplace_back( mScalarTPBasisComplexes.back(), mReducedDegree1dBases.at( 0 ), primal_1d_bases.at( 1 ) );
+            mScalarTPBasisComplexes.emplace_back( std::make_shared<TPBasisComplex>(
+                source_param, mReducedDegree1dBasisComplex.at( 0 ), primal_1d_bases.at( 1 )->basisComplexPtr() ) );
+            m2dSourceTPBases.emplace_back( std::make_shared<TPSplineSpace>(
+                mScalarTPBasisComplexes.back(), mReducedDegree1dBases.at( 0 ), primal_1d_bases.at( 1 ) ) );
             // component 1
-            mScalarTPBasisComplexes.emplace_back( primal_basis.basisComplex().parametricAtlas(), mScalarTPBasisComplexes.back(), mReducedDegree1dBasisComplex.at( 2 ) );
+            mScalarTPBasisComplexes.emplace_back(
+                std::make_shared<TPBasisComplex>( primal_basis.basisComplex().parametricAtlasPtr(),
+                                                  mScalarTPBasisComplexes.back(),
+                                                  mReducedDegree1dBasisComplex.at( 2 ) ) );
             mScalarTPBases.emplace_back( mScalarTPBasisComplexes.back(), m2dSourceTPBases.back(), mReducedDegree1dBases.at( 2 ) );
 
             // 2d source of component 1
-            mScalarTPBasisComplexes.emplace_back( source_param,
-                                                  mReducedDegree1dBasisComplex.at( 0 ),
-                                                  mReducedDegree1dBasisComplex.at( 1 ) );
-            m2dSourceTPBases.emplace_back( mScalarTPBasisComplexes.back(), mReducedDegree1dBases.at( 0 ), mReducedDegree1dBases.at( 1 ) );
+            mScalarTPBasisComplexes.emplace_back( std::make_shared<TPBasisComplex>(
+                source_param, mReducedDegree1dBasisComplex.at( 0 ), mReducedDegree1dBasisComplex.at( 1 ) ) );
+            m2dSourceTPBases.emplace_back( std::make_shared<TPSplineSpace>(
+                mScalarTPBasisComplexes.back(), mReducedDegree1dBases.at( 0 ), mReducedDegree1dBases.at( 1 ) ) );
             // component 1
-            mScalarTPBasisComplexes.emplace_back( primal_basis.basisComplex().parametricAtlas(), mScalarTPBasisComplexes.back(), primal_1d_bases.at( 2 ).get().basisComplex() );
+            mScalarTPBasisComplexes.emplace_back(
+                std::make_shared<TPBasisComplex>( primal_basis.basisComplex().parametricAtlasPtr(),
+                                                  mScalarTPBasisComplexes.back(),
+                                                  primal_1d_bases.at( 2 )->basisComplexPtr() ) );
             mScalarTPBases.emplace_back( mScalarTPBasisComplexes.back(), m2dSourceTPBases.back(), primal_1d_bases.at( 2 ) );
         }
     }
 
     const DivConfBasisComplex& DivConfTPSplineSpace::basisComplex() const
     {
-        return mBasisComplex;
+        return *mBasisComplex;
     }
 
     Eigen::MatrixXd DivConfTPSplineSpace::extractionOperator( const topology::Cell& c ) const

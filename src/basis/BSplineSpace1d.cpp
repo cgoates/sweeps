@@ -7,10 +7,10 @@
 
 namespace basis
 {
-    BSplineSpace1d::BSplineSpace1d( const BasisComplex1d& bc, const KnotVector& kv )
+    BSplineSpace1d::BSplineSpace1d( const std::shared_ptr<const BasisComplex1d>& bc, const KnotVector& kv )
         : mBasisComplex( bc ), mKnotVector( kv )
     {
-        const size_t degree = bc.defaultParentBasis().mBasisGroups.at( 0 ).degrees.at( 0 );
+        const size_t degree = bc->defaultParentBasis().mBasisGroups.at( 0 ).degrees.at( 0 );
         if( kv.uniqueKnotMultiplicities().at( 0 ).second != degree + 1 or kv.uniqueKnotMultiplicities().back().second != degree + 1 )
             throw std::runtime_error( "Can only create BSplineSpace1d on open knot vector" );
 
@@ -18,7 +18,7 @@ namespace basis
 
         const SparseMatrixXd C = globalExtractionOp( kv, degree );
 
-        const topology::CombinatorialMap1d& cmap = bc.parametricAtlas().cmap();
+        const topology::CombinatorialMap1d& cmap = bc->parametricAtlas().cmap();
 
         const auto elem_ids = indexingOrError( cmap, 1 );
 
@@ -59,27 +59,27 @@ namespace basis
 
     const BasisComplex1d& BSplineSpace1d::basisComplex() const
     {
-        return mBasisComplex;
+        return *mBasisComplex;
     }
 
     Eigen::MatrixXd BSplineSpace1d::extractionOperator( const topology::Cell& c ) const
     {
-        if( c.dim() != mBasisComplex.parametricAtlas().cmap().dim() )
+        if( c.dim() != mBasisComplex->parametricAtlas().cmap().dim() )
             throw std::runtime_error( "Extraction operators only supported for elements" );
-        const auto indexing = indexingOrError( mBasisComplex.parametricAtlas().cmap(), c.dim() );
+        const auto indexing = indexingOrError( mBasisComplex->parametricAtlas().cmap(), c.dim() );
         return mExtractionOps.at( indexing( c ) );
     }
 
     std::vector<FunctionId> BSplineSpace1d::connectivity( const topology::Cell& c ) const
     {
-        if( c.dim() != mBasisComplex.parametricAtlas().cmap().dim() )
+        if( c.dim() != mBasisComplex->parametricAtlas().cmap().dim() )
             throw std::runtime_error( "Extraction operators only supported for elements" );
-        const auto indexing = indexingOrError( mBasisComplex.parametricAtlas().cmap(), c.dim() );
+        const auto indexing = indexingOrError( mBasisComplex->parametricAtlas().cmap(), c.dim() );
         return mConnectivity.at( indexing( c ) );
     }
 
     size_t BSplineSpace1d::numFunctions() const
     {
-        return mKnotVector.size() - mBasisComplex.defaultParentBasis().mBasisGroups.at( 0 ).degrees.at( 0 ) - 1;
+        return mKnotVector.size() - mBasisComplex->defaultParentBasis().mBasisGroups.at( 0 ).degrees.at( 0 ) - 1;
     }
 }

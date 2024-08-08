@@ -2,13 +2,13 @@
 
 namespace basis
 {
-    BasisComplex1d::BasisComplex1d( const param::ParametricAtlas1d& pa, const uint degree )
+    BasisComplex1d::BasisComplex1d( const std::shared_ptr<const param::ParametricAtlas1d>& pa, const uint degree )
         : mAtlas( pa ), mParentBasis( bernsteinSimplex( 1, degree ) )
     {}
 
     const param::ParametricAtlas1d& BasisComplex1d::parametricAtlas() const
     {
-        return mAtlas;
+        return *mAtlas;
     }
 
     ParentBasis BasisComplex1d::parentBasis( const topology::Cell& ) const
@@ -18,6 +18,7 @@ namespace basis
 
     BasisComplex1d reduceDegree( const BasisComplex1d& bc )
     {
-        return BasisComplex1d( bc.parametricAtlas(), bc.defaultParentBasis().mBasisGroups.at( 0 ).degrees.at( 0 ) - 1 );
+        return BasisComplex1d( bc.parametricAtlasPtr(),
+                               bc.defaultParentBasis().mBasisGroups.at( 0 ).degrees.at( 0 ) - 1 );
     }
 }

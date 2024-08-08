@@ -10,21 +10,21 @@ namespace param
     class TPParametricAtlas : public ParametricAtlas
     {
         public:
-        TPParametricAtlas( const topology::TPCombinatorialMap& cmap,
-                           const ParametricAtlas& source_atlas,
-                           const ParametricAtlas1d& line_atlas );
+        TPParametricAtlas( const std::shared_ptr<const topology::TPCombinatorialMap>& cmap,
+                           const std::shared_ptr<const ParametricAtlas>& source_atlas,
+                           const std::shared_ptr<const ParametricAtlas1d>& line_atlas );
         virtual ~TPParametricAtlas() = default;
-        virtual const topology::TPCombinatorialMap& cmap() const override { return mMap; }
+        virtual const topology::TPCombinatorialMap& cmap() const override { return *mMap; }
         virtual const ParentDomain parentDomain( const topology::Cell& c ) const override;
         virtual ParentPoint parentPoint( const topology::Vertex& v ) const override;
         virtual Vector6dMax parametricLengths( const topology::Cell& c ) const override;
 
-        const ParametricAtlas& source() const { return mSourceParam; }
-        const ParametricAtlas1d& line() const { return mLineParam; }
+        const ParametricAtlas& source() const { return *mSourceParam; }
+        const ParametricAtlas1d& line() const { return *mLineParam; }
 
         private:
-        const topology::TPCombinatorialMap& mMap;
-        const ParametricAtlas& mSourceParam;
-        const ParametricAtlas1d& mLineParam;
+        const std::shared_ptr<const topology::TPCombinatorialMap> mMap;
+        const std::shared_ptr<const ParametricAtlas> mSourceParam;
+        const std::shared_ptr<const ParametricAtlas1d> mLineParam;
     };
 }

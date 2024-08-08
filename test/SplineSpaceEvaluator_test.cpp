@@ -29,29 +29,30 @@ TEST_CASE( "TP Spline space evaluation" )
     const size_t degree2 = 2;
 
     // Built from input info
-    const CombinatorialMap1d cmap1( numElements( kv1 ) );
-    const CombinatorialMap1d cmap2( numElements( kv2 ) );
-    const ParametricAtlas1d param1( cmap1, parametricLengths( kv1 ) );
-    const ParametricAtlas1d param2( cmap2, parametricLengths( kv2 ) );
-    const BasisComplex1d bc1( param1, degree1 );
-    const BasisComplex1d bc2( param2, degree2 );
-    const BSplineSpace1d ss1( bc1, kv1 );
-    const BSplineSpace1d ss2( bc2, kv2 );
+    const auto cmap1 = std::make_shared<const CombinatorialMap1d>( numElements( kv1 ) );
+    const auto cmap2 = std::make_shared<const CombinatorialMap1d>( numElements( kv2 ) );
+    const auto param1 = std::make_shared<const ParametricAtlas1d>( cmap1, parametricLengths( kv1 ) );
+    const auto param2 = std::make_shared<const ParametricAtlas1d>( cmap2, parametricLengths( kv2 ) );
+    const auto bc1 = std::make_shared<const BasisComplex1d>( param1, degree1 );
+    const auto bc2 = std::make_shared<const BasisComplex1d>( param2, degree2 );
+    const auto ss1 = std::make_shared<const BSplineSpace1d>( bc1, kv1 );
+    const auto ss2 = std::make_shared<const BSplineSpace1d>( bc2, kv2 );
 
-    const TPCombinatorialMap cmap_2d( cmap1, cmap2 );
-    const TPParametricAtlas param_2d( cmap_2d, param1, param2 );
-    const TPBasisComplex bc_2d( param_2d, bc1, bc2 );
+    const auto cmap_2d = std::make_shared<const TPCombinatorialMap>( cmap1, cmap2 );
+    const auto param_2d = std::make_shared<const TPParametricAtlas>( cmap_2d, param1, param2 );
+    const auto bc_2d = std::make_shared<const TPBasisComplex>( param_2d, bc1, bc2 );
     const TPSplineSpace ss_2d( bc_2d, ss1, ss2 );
 
     eval::SplineSpaceEvaluator primal_evals( ss_2d, 1 );
 
-    iterateCellsWhile( cmap_2d, 1, [&]( const topology::Edge& e ) {
-        const auto maybe_opp_e = phi( cmap_2d, 2, e.dart() );
+    iterateCellsWhile( *cmap_2d, 1, [&]( const topology::Edge& e ) {
+        const auto maybe_opp_e = phi( *cmap_2d, 2, e.dart() );
         if( maybe_opp_e.has_value() )
         {
             const topology::Face f( e.dart() );
             const topology::Face f_opp( maybe_opp_e.value() );
-            const ParentPoint ppt = pointOnBoundary( param_2d.parentDomain( f ), parentDomainBoundary( param_2d, e ) );
+            const ParentPoint ppt =
+                pointOnBoundary( param_2d->parentDomain( f ), parentDomainBoundary( *param_2d, e ) );
             primal_evals.localizeElement( f );
             primal_evals.localizePoint( ppt );
 
@@ -59,7 +60,9 @@ TEST_CASE( "TP Spline space evaluation" )
             const auto basis = primal_evals.evaluateBasis();
             const auto derv = primal_evals.evaluateFirstDerivatives();
 
-            const ParentPoint ppt_opp = pointOnBoundary( param_2d.parentDomain( f_opp ), parentDomainBoundary( param_2d, topology::Edge( maybe_opp_e.value() ) ) );
+            const ParentPoint ppt_opp =
+                pointOnBoundary( param_2d->parentDomain( f_opp ),
+                                 parentDomainBoundary( *param_2d, topology::Edge( maybe_opp_e.value() ) ) );
             primal_evals.localizeElement( f_opp );
             primal_evals.localizePoint( ppt_opp );
 

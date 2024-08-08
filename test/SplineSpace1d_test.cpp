@@ -18,12 +18,12 @@ TEST_CASE( "Extraction of cubic spline with various knot multiplicities" )
     const KnotVector kv( {0,0,0,0,1,1,2,3,3,3,3}, 1e-10 );
     const size_t degree = 3;
 
-    const CombinatorialMap1d cmap( 3 );
-    const ParametricAtlas1d param( cmap, parametricLengths( kv ) );
-    const BasisComplex1d bc( param, degree );
+    const auto cmap = std::make_shared<const CombinatorialMap1d>( 3 );
+    const auto param = std::make_shared<const ParametricAtlas1d>( cmap, parametricLengths( kv ) );
+    const auto bc = std::make_shared<const BasisComplex1d>( param, degree );
     const BSplineSpace1d ss( bc, kv );
 
-    iterateCellsWhile( cmap, 1, [&]( const topology::Edge& e ) {
+    iterateCellsWhile( *cmap, 1, [&]( const topology::Edge& e ) {
         const Eigen::MatrixXd op = ss.extractionOperator( e );
         CHECK( util::equals( op.colwise().sum(), Eigen::VectorXd::Ones( op.cols() ), 1e-12 ) );
         CHECK( ss.connectivity( e ).size() == degree + 1 );
@@ -43,19 +43,19 @@ TEST_CASE( "TP Spline space" )
     const size_t degree1 = 3;
     const size_t degree2 = 2;
 
-    const CombinatorialMap1d cmap( 2 );
-    const ParametricAtlas1d param( cmap, parametricLengths( kv1 ) );
-    const BasisComplex1d bc1( param, degree1 );
-    const BasisComplex1d bc2( param, degree2 );
-    const BSplineSpace1d ss1( bc1, kv1 );
-    const BSplineSpace1d ss2( bc2, kv2 );
+    const auto cmap = std::make_shared<const CombinatorialMap1d>( 2 );
+    const auto param = std::make_shared<const ParametricAtlas1d>( cmap, parametricLengths( kv1 ) );
+    const auto bc1 = std::make_shared<const BasisComplex1d>( param, degree1 );
+    const auto bc2 = std::make_shared<const BasisComplex1d>( param, degree2 );
+    const auto ss1 = std::make_shared<const BSplineSpace1d>( bc1, kv1 );
+    const auto ss2 = std::make_shared<const BSplineSpace1d>( bc2, kv2 );
 
-    const TPCombinatorialMap cmap_2d( cmap, cmap );
-    const TPParametricAtlas param_2d( cmap_2d, param, param );
-    const TPBasisComplex bc_2d( param_2d, bc1, bc2 );
+    const auto cmap_2d = std::make_shared<const TPCombinatorialMap>( cmap, cmap );
+    const auto param_2d = std::make_shared<const TPParametricAtlas>( cmap_2d, param, param );
+    const auto bc_2d = std::make_shared<const TPBasisComplex>( param_2d, bc1, bc2 );
     const TPSplineSpace ss_2d( bc_2d, ss1, ss2 );
 
-    iterateCellsWhile( cmap_2d, 2, [&]( const topology::Face& f ) {
+    iterateCellsWhile( *cmap_2d, 2, [&]( const topology::Face& f ) {
         const Eigen::MatrixXd op = ss_2d.extractionOperator( f );
         CHECK( util::equals( op.colwise().sum(), Eigen::VectorXd::Ones( op.cols() ), 1e-12 ) );
         CHECK( ss_2d.connectivity( f ).size() == ( degree1 + 1 ) * ( degree2 + 1 ) );

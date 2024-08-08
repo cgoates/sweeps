@@ -106,9 +106,9 @@ namespace fitting
 
     Eigen::MatrixXd coonsPatch( const basis::TPSplineSpace& ss, const std::vector<Eigen::MatrixXd>& boundary_cpts )
     {
-        const std::vector<std::reference_wrapper<const basis::BSplineSpace1d>> spline_1ds =
-            constituentSplines( ss ).value_or( std::vector<std::reference_wrapper<const basis::BSplineSpace1d>>() );
-        
+        const std::vector<std::shared_ptr<const basis::BSplineSpace1d>> spline_1ds =
+            constituentSplines( ss ).value_or( std::vector<std::shared_ptr<const basis::BSplineSpace1d>>() );
+
         if( spline_1ds.size() == 0 ) throw std::runtime_error( "Cannot create a coons patch on TPSplineSpace with non-1d constituents." );
         if( boundary_cpts.size() != 2 * spline_1ds.size() ) throw std::runtime_error( "Incorrect number of boundary coefficient sets specified." );
 
@@ -116,12 +116,12 @@ namespace fitting
         SmallVector<Eigen::VectorXd, 3> linear_coeffs;
         util::IndexVec num_funcs;
 
-        for( const basis::BSplineSpace1d& spline : spline_1ds )
+        for( const auto& spline : spline_1ds )
         {
             linear_coeffs.push_back(
-                grevillePoints( spline.knotVector(), degrees( spline.basisComplex().defaultParentBasis() ).at( 0 ) ) /
-                spline.knotVector().knot( spline.knotVector().size() - 1 ) );
-            num_funcs.push_back( spline.numFunctions() );
+                grevillePoints( spline->knotVector(), degrees( spline->basisComplex().defaultParentBasis() ).at( 0 ) ) /
+                spline->knotVector().knot( spline->knotVector().size() - 1 ) );
+            num_funcs.push_back( spline->numFunctions() );
         }
 
         Eigen::MatrixXd coons_coefficients = Eigen::MatrixXd::Zero( ss.numFunctions(), data_dim );

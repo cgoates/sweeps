@@ -9,16 +9,16 @@ using namespace topology;
 using namespace param;
 TEST_CASE( "3x4 TP combinatorial map" )
 {
-    const CombinatorialMap1d source_topo( 3 );
-    const CombinatorialMap1d line_topo( 4 );
-    const TPCombinatorialMap tp_topo( source_topo, line_topo );
+    const auto source_topo = std::make_shared<const CombinatorialMap1d>( 3 );
+    const auto line_topo = std::make_shared<const CombinatorialMap1d>( 4 );
+    const auto tp_topo = std::make_shared<const TPCombinatorialMap>( source_topo, line_topo );
 
-    const ParametricAtlas1d source( source_topo, Eigen::Vector3d( 1, 2, 3 ) );
-    const ParametricAtlas1d line( line_topo, Eigen::Vector4d( 0.1, 0.2, 0.3, 0.4 ) );
+    const auto source = std::make_shared<const ParametricAtlas1d>( source_topo, Eigen::Vector3d( 1, 2, 3 ) );
+    const auto line = std::make_shared<const ParametricAtlas1d>( line_topo, Eigen::Vector4d( 0.1, 0.2, 0.3, 0.4 ) );
     const TPParametricAtlas tp( tp_topo, source, line );
 
     const ParentDomain expected_domain = cubeDomain( 2 );
-    iterateCellsWhile( tp_topo, 2, [&]( const Cell& c ) {
+    iterateCellsWhile( *tp_topo, 2, [&]( const Cell& c ) {
         CHECK( tp.parentDomain( c ) == expected_domain );
         return true;
     } );
@@ -29,7 +29,7 @@ TEST_CASE( "3x4 TP combinatorial map" )
         ParentPoint( expected_domain, Eigen::Vector2d( 1.0, 1.0 ), { true, false, true, false } ),
         ParentPoint( expected_domain, Eigen::Vector2d( 0.0, 1.0 ), { false, true, true, false } )
     } );
-    iterateDartsWhile( tp_topo, [&]( const Dart& d ) {
+    iterateDartsWhile( *tp_topo, [&]( const Dart& d ) {
         const auto ppt = tp.parentPoint( d );
         const auto& expected_ppt = expected_points.at( d.id() % 4 );
         CHECK( ppt.mDomain == expected_domain );

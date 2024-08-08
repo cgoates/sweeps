@@ -10,14 +10,14 @@ namespace basis
     class DivConfBasisComplex : public BasisComplex
     {
         public:
-        DivConfBasisComplex( const BasisComplex& primal_complex );
-        ~DivConfBasisComplex() = default;
+        DivConfBasisComplex( const std::shared_ptr<const BasisComplex>& primal_complex );
+        virtual ~DivConfBasisComplex() = default;
 
         virtual const param::ParametricAtlas& parametricAtlas() const override;
 
         virtual ParentBasis parentBasis( const topology::Cell& ) const override;
 
         private:
-        const BasisComplex& mPrimalComplex;
+        const std::shared_ptr<const BasisComplex> mPrimalComplex;
     };
 }

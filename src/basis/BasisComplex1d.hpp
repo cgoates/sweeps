@@ -10,17 +10,18 @@ namespace basis
     class BasisComplex1d : public BasisComplex
     {
         public:
-        BasisComplex1d( const param::ParametricAtlas1d& pa, const uint degree );
+        BasisComplex1d( const std::shared_ptr<const param::ParametricAtlas1d>& pa, const uint degree );
         virtual ~BasisComplex1d() = default;
 
         virtual const param::ParametricAtlas1d& parametricAtlas() const override;
+        const std::shared_ptr<const param::ParametricAtlas1d>& parametricAtlasPtr() const { return mAtlas; }
 
         virtual ParentBasis parentBasis( const topology::Cell& ) const override;
 
         ParentBasis defaultParentBasis() const { return mParentBasis; }
 
         private:
-        const param::ParametricAtlas1d& mAtlas;
+        const std::shared_ptr<const param::ParametricAtlas1d> mAtlas;
         const ParentBasis mParentBasis;
     };
 

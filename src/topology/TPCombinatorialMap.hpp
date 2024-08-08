@@ -38,7 +38,8 @@ namespace topology
     class TPCombinatorialMap : public CombinatorialMap
     {
         public:
-        TPCombinatorialMap( const CombinatorialMap& source, const CombinatorialMap1d& line );
+        TPCombinatorialMap( const std::shared_ptr<const CombinatorialMap>& source,
+                            const std::shared_ptr<const CombinatorialMap1d>& line );
         virtual ~TPCombinatorialMap() = default;
 
         virtual std::optional<Dart> phi( const int i, const Dart& d ) const override;
@@ -56,8 +57,8 @@ namespace topology
 
         virtual std::optional<size_t> cellCount( const uint ) const override;
 
-        const CombinatorialMap& sourceCMap() const { return mSource; }
-        const CombinatorialMap1d& lineCMap() const { return mLine; }
+        const CombinatorialMap& sourceCMap() const { return *mSource; }
+        const CombinatorialMap1d& lineCMap() const { return *mLine; }
 
         enum class TPDartPos : Dart::IndexType
         {
@@ -76,7 +77,7 @@ namespace topology
 
         Dart::IndexType dartsPerSourceDart() const { return 2 * dim(); }
 
-        const CombinatorialMap& mSource;
-        const CombinatorialMap1d& mLine;
+        const std::shared_ptr<const CombinatorialMap> mSource;
+        const std::shared_ptr<const CombinatorialMap1d> mLine;
     };
 }; // namespace topology

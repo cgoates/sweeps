@@ -112,11 +112,12 @@ PYBIND11_MODULE( splines, m )
             "elements",
             []( const api::NavierStokesDiscretization& nsd ) {
                 std::vector<topology::Face> out;
-                out.reserve( cellCount( nsd.cmap_2d, 2 ) );
-                iterateCellsWhile( nsd.cmap_2d, 2, [&out]( const topology::Face& f ) {
-                    out.push_back( f );
-                    return true;
-                } );
+                out.reserve( cellCount( nsd.H1_ss.basisComplex().parametricAtlas().cmap(), 2 ) );
+                iterateCellsWhile(
+                    nsd.H1_ss.basisComplex().parametricAtlas().cmap(), 2, [&out]( const topology::Face& f ) {
+                        out.push_back( f );
+                        return true;
+                    } );
                 return out;
             },
             "A list of all the elements in the discretization." )

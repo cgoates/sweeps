@@ -6,8 +6,8 @@
 using namespace topology;
 TEST_CASE( "3x4 TP combinatorial map" )
 {
-    const CombinatorialMap1d source( 3 );
-    const CombinatorialMap1d line( 4 );
+    const auto source = std::make_shared<const CombinatorialMap1d>( 3 );
+    const auto line = std::make_shared<const CombinatorialMap1d>( 4 );
     const TPCombinatorialMap tp( source, line );
 
     const std::array<Dart, 48> phi_ones(
@@ -38,7 +38,7 @@ TEST_CASE( "3x4 TP combinatorial map" )
 
 TEST_CASE( "2x2 TP combinatorial map" )
 {
-    const CombinatorialMap1d two_elems_1d( 2 );
+    const auto two_elems_1d = std::make_shared<const CombinatorialMap1d>( 2 );
     const TPCombinatorialMap tp( two_elems_1d, two_elems_1d );
 
     const std::array<Dart, 16> phi_ones( { 1, 2, 3, 0, 5, 6, 7, 4, 9, 10, 11, 8, 13, 14, 15, 12 } );
@@ -63,8 +63,8 @@ TEST_CASE( "2x2 TP combinatorial map" )
 
 TEST_CASE( "3d TP combinatorial map" )
 {
-    const CombinatorialMap1d one_elem_1d( 1 );
-    const TPCombinatorialMap tp_2d( one_elem_1d, one_elem_1d );
+    const auto one_elem_1d = std::make_shared<const CombinatorialMap1d>( 1 );
+    const auto tp_2d = std::make_shared<const TPCombinatorialMap>( one_elem_1d, one_elem_1d );
     const TPCombinatorialMap tp( tp_2d, one_elem_1d );
 
     const std::array<Dart, 24> phi_ones(

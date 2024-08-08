@@ -24,7 +24,8 @@ inline TPCombinatorialMap::TPDartPos phi2s_2d( const TPCombinatorialMap::TPDartP
     }
 }
 
-TPCombinatorialMap::TPCombinatorialMap( const CombinatorialMap& source, const CombinatorialMap1d& line )
+TPCombinatorialMap::TPCombinatorialMap( const std::shared_ptr<const CombinatorialMap>& source,
+                                        const std::shared_ptr<const CombinatorialMap1d>& line )
     : mSource( source ), mLine( line )
 {}
 
@@ -39,19 +40,19 @@ std::optional<Dart> TPCombinatorialMap::phi( const int i, const Dart& d ) const
             switch( pos )
             {
                 case TPDartPos::DartPos0:
-                    return topology::phi( mLine, -1, line_dart ).transform( [&]( const Dart& new_line_dart ){
+                    return topology::phi( *mLine, -1, line_dart ).transform( [&]( const Dart& new_line_dart ){
                         return flatten( source_dart, new_line_dart, phi2s_2d( pos ) );
                     } );
                 case TPDartPos::DartPos1:
-                    return topology::phi( mSource, 1, source_dart ).transform( [&]( const Dart& new_source_dart ){
+                    return topology::phi( *mSource, 1, source_dart ).transform( [&]( const Dart& new_source_dart ){
                         return flatten( new_source_dart, line_dart, phi2s_2d( pos ) );
                     } );
                 case TPDartPos::DartPos2:
-                    return topology::phi( mLine, 1, line_dart ).transform( [&]( const Dart& new_line_dart ){
+                    return topology::phi( *mLine, 1, line_dart ).transform( [&]( const Dart& new_line_dart ){
                         return flatten( source_dart, new_line_dart, phi2s_2d( pos ) );
                     } );
                 case TPDartPos::DartPos3:
-                    return topology::phi( mSource, -1, source_dart ).transform( [&]( const Dart& new_source_dart ){
+                    return topology::phi( *mSource, -1, source_dart ).transform( [&]( const Dart& new_source_dart ){
                         return flatten( new_source_dart, line_dart, phi2s_2d( pos ) );
                     } );
                 default: throw std::runtime_error( "Cannot have DartPos > 3 in 2d" );
@@ -68,13 +69,13 @@ std::optional<Dart> TPCombinatorialMap::phi( const int i, const Dart& d ) const
                 {
                     case -1:
                     case 1:
-                        return topology::phi( mSource, i, source_dart ).transform( [&]( const Dart& new_source_dart ){
+                        return topology::phi( *mSource, i, source_dart ).transform( [&]( const Dart& new_source_dart ){
                             return flatten( new_source_dart, line_dart, pos );
                         } );
                     case 2:
                         return flatten( source_dart, line_dart, TPDartPos::DartPos1 );
                     case 3:
-                        return topology::phi( mLine, -1, line_dart ).transform( [&]( const Dart& new_line_dart ){
+                        return topology::phi( *mLine, -1, line_dart ).transform( [&]( const Dart& new_line_dart ){
                             return flatten( source_dart, new_line_dart, TPDartPos::DartPos5 );
                         } );
                     default: return std::nullopt;
@@ -91,7 +92,7 @@ std::optional<Dart> TPCombinatorialMap::phi( const int i, const Dart& d ) const
                     case 2:
                         return flatten( source_dart, line_dart, TPDartPos::DartPos0 );
                     case 3:
-                        return topology::phi( mSource, 2, source_dart ).transform( [&]( const Dart& new_source_dart ){
+                        return topology::phi( *mSource, 2, source_dart ).transform( [&]( const Dart& new_source_dart ){
                             return flatten( new_source_dart, line_dart, pos );
                         } );
                     default: return std::nullopt;
@@ -106,11 +107,11 @@ std::optional<Dart> TPCombinatorialMap::phi( const int i, const Dart& d ) const
                     case 1:
                         return flatten( source_dart, line_dart, TPDartPos::DartPos3 );
                     case 2:
-                        return topology::phi( mSource, -1, source_dart ).transform( [&]( const Dart& new_source_dart ){
+                        return topology::phi( *mSource, -1, source_dart ).transform( [&]( const Dart& new_source_dart ){
                             return flatten( new_source_dart, line_dart, TPDartPos::DartPos4 );
                         } );
                     case 3:
-                        return topology::phi( mSource, 2, source_dart ).transform( [&]( const Dart& new_source_dart ){
+                        return topology::phi( *mSource, 2, source_dart ).transform( [&]( const Dart& new_source_dart ){
                             return flatten( new_source_dart, line_dart, TPDartPos::DartPos4 );
                         } );
                     default: return std::nullopt;
@@ -127,7 +128,7 @@ std::optional<Dart> TPCombinatorialMap::phi( const int i, const Dart& d ) const
                     case 2:
                         return flatten( source_dart, line_dart, TPDartPos::DartPos5 );
                     case 3:
-                        return topology::phi( mSource, 2, source_dart ).transform( [&]( const Dart& new_source_dart ){
+                        return topology::phi( *mSource, 2, source_dart ).transform( [&]( const Dart& new_source_dart ){
                             return flatten( new_source_dart, line_dart, pos );
                         } );
                     default: return std::nullopt;
@@ -142,11 +143,11 @@ std::optional<Dart> TPCombinatorialMap::phi( const int i, const Dart& d ) const
                     case 1:
                         return flatten( source_dart, line_dart, TPDartPos::DartPos1 );
                     case 2:
-                        return topology::phi( mSource, 1, source_dart ).transform( [&]( const Dart& new_source_dart ){
+                        return topology::phi( *mSource, 1, source_dart ).transform( [&]( const Dart& new_source_dart ){
                             return flatten( new_source_dart, line_dart, TPDartPos::DartPos2 );
                         } );
                     case 3:
-                        return topology::phi( mSource, 2, source_dart ).transform( [&]( const Dart& new_source_dart ){
+                        return topology::phi( *mSource, 2, source_dart ).transform( [&]( const Dart& new_source_dart ){
                             return flatten( new_source_dart, line_dart, TPDartPos::DartPos2 );
                         } );
                     default: return std::nullopt;
@@ -158,13 +159,13 @@ std::optional<Dart> TPCombinatorialMap::phi( const int i, const Dart& d ) const
                 {
                     case -1:
                     case 1:
-                        return topology::phi( mSource, -1 * i, source_dart ).transform( [&]( const Dart& new_source_dart ){
+                        return topology::phi( *mSource, -1 * i, source_dart ).transform( [&]( const Dart& new_source_dart ){
                             return flatten( new_source_dart, line_dart, pos );
                         } );
                     case 2:
                         return flatten( source_dart, line_dart, TPDartPos::DartPos3 );
                     case 3:
-                        return topology::phi( mLine, 1, line_dart ).transform( [&]( const Dart& new_line_dart ){
+                        return topology::phi( *mLine, 1, line_dart ).transform( [&]( const Dart& new_line_dart ){
                             return flatten( source_dart, new_line_dart, TPDartPos::DartPos0 );
                         } );
                     default: return std::nullopt;
@@ -178,18 +179,18 @@ std::optional<Dart> TPCombinatorialMap::phi( const int i, const Dart& d ) const
 
 Dart::IndexType TPCombinatorialMap::maxDartId() const
 {
-    return ( mSource.maxDartId() + 1 ) * ( mLine.maxDartId() + 1 ) * 2 * dim() - 1;
+    return ( mSource->maxDartId() + 1 ) * ( mLine->maxDartId() + 1 ) * 2 * dim() - 1;
 }
 
 uint TPCombinatorialMap::dim() const
 {
-    return mSource.dim() + 1;
+    return mSource->dim() + 1;
 }
 
 bool TPCombinatorialMap::iterateDartsWhile( const std::function<bool( const Dart& )>& callback ) const
 {
-    return topology::iterateDartsWhile( mSource, [&]( const Dart& source_dart ) {
-        return topology::iterateDartsWhile( mLine, [&]( const Dart& line_dart ) {
+    return topology::iterateDartsWhile( *mSource, [&]( const Dart& source_dart ) {
+        return topology::iterateDartsWhile( *mLine, [&]( const Dart& line_dart ) {
             for( Dart::IndexType pos = 0; pos < dartsPerSourceDart(); pos++ )
             {
                 if( not callback( flatten( source_dart, line_dart, TPDartPos( pos ) ) ) ) return false;
@@ -205,8 +206,8 @@ bool TPCombinatorialMap::iterateCellsWhile( const uint cell_dim,
     if( cell_dim > dim() ) return true;
     if( cell_dim == dim() )
     {
-        return topology::iterateDartsWhile( mSource, [&]( const Dart& source_dart ) {
-            return topology::iterateDartsWhile( mLine, [&]( const Dart& line_dart ) {
+        return topology::iterateDartsWhile( *mSource, [&]( const Dart& source_dart ) {
+            return topology::iterateDartsWhile( *mLine, [&]( const Dart& line_dart ) {
                 return callback( Cell( flatten( source_dart, line_dart, TPDartPos::DartPos0 ), cell_dim ) );
             } );
         } );
@@ -236,8 +237,8 @@ std::optional<size_t> TPCombinatorialMap::cellCount( const uint cell_dim ) const
 {
     if( cell_dim == dim() )
     {
-        return mSource.cellCount( dim() - 1 ).and_then( [&]( const size_t a ) {
-            return mLine.cellCount( 1 ).transform( [&a]( const size_t b ) { return a * b; } );
+        return mSource->cellCount( dim() - 1 ).and_then( [&]( const size_t a ) {
+            return mLine->cellCount( 1 ).transform( [&a]( const size_t b ) { return a * b; } );
         } );
     }
 
@@ -249,12 +250,12 @@ std::optional<size_t> TPCombinatorialMap::cellCount( const uint cell_dim ) const
 Dart TPCombinatorialMap::flatten( const Dart& source_dart, const Dart& line_dart, const TPDartPos& pos ) const
 {
     return Dart( std::to_underlying( pos ) + source_dart.id() * dartsPerSourceDart() +
-                 line_dart.id() * ( mSource.maxDartId() + 1 ) * dartsPerSourceDart() );
+                 line_dart.id() * ( mSource->maxDartId() + 1 ) * dartsPerSourceDart() );
 }
 
 std::tuple<Dart, Dart, TPCombinatorialMap::TPDartPos> TPCombinatorialMap::unflatten( const Dart& d ) const
 {
-    return { Dart( ( d.id() / dartsPerSourceDart() ) % ( mSource.maxDartId() + 1 ) ),
-             Dart( d.id() / ( ( mSource.maxDartId() + 1 ) * dartsPerSourceDart() ) ),
+    return { Dart( ( d.id() / dartsPerSourceDart() ) % ( mSource->maxDartId() + 1 ) ),
+             Dart( d.id() / ( ( mSource->maxDartId() + 1 ) * dartsPerSourceDart() ) ),
              TPDartPos( d.id() % dartsPerSourceDart() ) };
 }

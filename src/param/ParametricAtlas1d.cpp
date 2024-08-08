@@ -3,12 +3,13 @@
 
 namespace param
 {
-    ParametricAtlas1d::ParametricAtlas1d( const topology::CombinatorialMap1d& cmap, const Eigen::VectorXd& lengths )
+    ParametricAtlas1d::ParametricAtlas1d( const std::shared_ptr<const topology::CombinatorialMap1d>& cmap,
+                                          const Eigen::VectorXd& lengths )
         : mMap( cmap ), mLengths( lengths )
     {}
 
-    ParametricAtlas1d::ParametricAtlas1d( const topology::CombinatorialMap1d& cmap )
-        : ParametricAtlas1d( cmap, Eigen::VectorXd::Ones( topology::cellCount( cmap, cmap.dim() ) ) )
+    ParametricAtlas1d::ParametricAtlas1d( const std::shared_ptr<const topology::CombinatorialMap1d>& cmap )
+        : ParametricAtlas1d( cmap, Eigen::VectorXd::Ones( topology::cellCount( *cmap, cmap->dim() ) ) )
     {}
 
     const ParentDomain ParametricAtlas1d::parentDomain( const topology::Cell& c ) const

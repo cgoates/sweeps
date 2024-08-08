@@ -14,10 +14,11 @@ namespace basis
     class BSplineSpace1d : public SplineSpace
     {
         public:
-        BSplineSpace1d( const BasisComplex1d& bc, const KnotVector& kv );
+        BSplineSpace1d( const std::shared_ptr<const BasisComplex1d>& bc, const KnotVector& kv );
         virtual ~BSplineSpace1d() = default;
 
         virtual const BasisComplex1d& basisComplex() const override;
+        const std::shared_ptr<const BasisComplex1d>& basisComplexPtr() const { return mBasisComplex; }
 
         virtual Eigen::MatrixXd extractionOperator( const topology::Cell& ) const override;
 
@@ -28,7 +29,7 @@ namespace basis
         const KnotVector& knotVector() const { return mKnotVector; }
 
         private:
-        const BasisComplex1d& mBasisComplex;
+        const std::shared_ptr<const BasisComplex1d> mBasisComplex;
         const KnotVector mKnotVector;
         std::map<size_t, Eigen::MatrixXd> mExtractionOps;
         std::map<size_t, std::vector<FunctionId>> mConnectivity;
