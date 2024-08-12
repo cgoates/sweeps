@@ -64,7 +64,7 @@ namespace basis
         return mSource->numFunctions() * mLine->numFunctions();
     }
 
-    std::optional<std::vector<std::shared_ptr<const BSplineSpace1d>>> constituentSplines( const TPSplineSpace& ss )
+    std::vector<std::shared_ptr<const BSplineSpace1d>> tensorProductComponentSplines( const TPSplineSpace& ss )
     {
         const size_t dim = ss.basisComplex().parametricAtlas().cmap().dim();
         std::vector<std::shared_ptr<const BSplineSpace1d>> out;
@@ -74,15 +74,15 @@ namespace basis
         {
             const std::shared_ptr<const TPSplineSpace> source_primal =
                 std::dynamic_pointer_cast<const TPSplineSpace>( ss.sourcePtr() );
-            if( source_primal.get() == nullptr ) return std::nullopt;
+            if( source_primal.get() == nullptr ) return {};
             out.push_back( std::dynamic_pointer_cast<const BSplineSpace1d>( source_primal->sourcePtr() ) );
-            if( out.back().get() == nullptr ) return std::nullopt;
+            if( out.back().get() == nullptr ) return {};
             out.push_back( source_primal->linePtr() );
         }
         else
         {
             out.push_back( std::dynamic_pointer_cast<const BSplineSpace1d>( ss.sourcePtr() ) );
-            if( out.back().get() == nullptr ) return std::nullopt;
+            if( out.back().get() == nullptr ) return {};
         }
         out.push_back( ss.linePtr() );
         return out;

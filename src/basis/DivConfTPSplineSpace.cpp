@@ -12,12 +12,9 @@ namespace basis
         mReducedDegree1dBases.reserve( dim );
         mScalarTPBases.reserve( dim );
 
-        const std::vector<std::shared_ptr<const BSplineSpace1d>> primal_1d_bases = [&primal_basis]() {
-            const auto temp = constituentSplines( primal_basis );
-            if( not temp.has_value() )
-                throw std::runtime_error( "Cannot build DivConfTPSplineSpace except over B-spline patch" );
-            return temp.value();
-        }();
+        const std::vector<std::shared_ptr<const BSplineSpace1d>> primal_1d_bases = tensorProductComponentSplines( primal_basis );
+        if( primal_1d_bases.size() == 0 )
+            throw std::runtime_error( "Cannot build DivConfTPSplineSpace except over B-spline patch" );
 
         for( const std::shared_ptr<const BSplineSpace1d>& ss_1d : primal_1d_bases )
         {

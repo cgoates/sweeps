@@ -107,7 +107,7 @@ namespace fitting
     Eigen::MatrixXd coonsPatch( const basis::TPSplineSpace& ss, const std::vector<Eigen::MatrixXd>& boundary_cpts )
     {
         const std::vector<std::shared_ptr<const basis::BSplineSpace1d>> spline_1ds =
-            constituentSplines( ss ).value_or( std::vector<std::shared_ptr<const basis::BSplineSpace1d>>() );
+            tensorProductComponentSplines( ss );
 
         if( spline_1ds.size() == 0 ) throw std::runtime_error( "Cannot create a coons patch on TPSplineSpace with non-1d constituents." );
         if( boundary_cpts.size() != 2 * spline_1ds.size() ) throw std::runtime_error( "Incorrect number of boundary coefficient sets specified." );
