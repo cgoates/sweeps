@@ -59,6 +59,8 @@ namespace topology
 
         const CombinatorialMap& sourceCMap() const { return *mSource; }
         const CombinatorialMap1d& lineCMap() const { return *mLine; }
+        const std::shared_ptr<const CombinatorialMap>& sourceCMapPtr() const { return mSource; }
+        const std::shared_ptr<const CombinatorialMap1d>& lineCMapPtr() const { return mLine; }
 
         enum class TPDartPos : Dart::IndexType
         {
@@ -80,4 +82,6 @@ namespace topology
         const std::shared_ptr<const CombinatorialMap> mSource;
         const std::shared_ptr<const CombinatorialMap1d> mLine;
     };
+
+    std::vector<std::shared_ptr<const CombinatorialMap1d>> tensorProductComponentCMaps( const TPCombinatorialMap& tp_map );
 }; // namespace topology

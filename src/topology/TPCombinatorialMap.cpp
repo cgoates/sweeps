@@ -259,3 +259,30 @@ std::tuple<Dart, Dart, TPCombinatorialMap::TPDartPos> TPCombinatorialMap::unflat
              Dart( d.id() / ( ( mSource->maxDartId() + 1 ) * dartsPerSourceDart() ) ),
              TPDartPos( d.id() % dartsPerSourceDart() ) };
 }
+
+namespace topology
+{
+    std::vector<std::shared_ptr<const CombinatorialMap1d>> tensorProductComponentCMaps( const TPCombinatorialMap& tp_map )
+    {
+        const size_t dim = tp_map.dim();
+        std::vector<std::shared_ptr<const CombinatorialMap1d>> out;
+        out.reserve( dim );
+
+        if( dim == 3 )
+        {
+            const std::shared_ptr<const TPCombinatorialMap> source_primal =
+                std::dynamic_pointer_cast<const TPCombinatorialMap>( tp_map.sourceCMapPtr() );
+            if( source_primal.get() == nullptr ) return {};
+            out.push_back( std::dynamic_pointer_cast<const CombinatorialMap1d>( source_primal->sourceCMapPtr() ) );
+            if( out.back().get() == nullptr ) return {};
+            out.push_back( source_primal->lineCMapPtr() );
+        }
+        else
+        {
+            out.push_back( std::dynamic_pointer_cast<const CombinatorialMap1d>( tp_map.sourceCMapPtr() ) );
+            if( out.back().get() == nullptr ) return {};
+        }
+        out.push_back( tp_map.lineCMapPtr() );
+        return out;
+    }
+}
