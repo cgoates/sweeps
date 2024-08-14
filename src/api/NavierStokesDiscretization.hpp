@@ -25,4 +25,12 @@ namespace api
         eval::SplineSpaceEvaluator HDIV;
         eval::SplineSpaceEvaluator L2;
     };
+
+    enum class PatchSide
+    {
+        S0,
+        S1,
+        T0,
+        T1
+    };
 }

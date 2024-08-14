@@ -23,6 +23,12 @@ PYBIND11_MODULE( splines, m )
         .def( "knot", &basis::KnotVector::knot, "Returns the knot at position ii.", "ii"_a )
         .doc() = "A simple knot vector object for defining a B-spline.";
 
+    py::enum_<api::PatchSide>( m, "PatchSide" )
+        .value( "S0", api::PatchSide::S0 )
+        .value( "S1", api::PatchSide::S1 )
+        .value( "T0", api::PatchSide::T0 )
+        .value( "T1", api::PatchSide::T1 );
+
     py::class_<topology::Face>( m, "Element" )
         .def( py::init( []( const topology::Dart::IndexType& id ) { return topology::Face( topology::Dart( id ) ); } ),
               "Constructs an element with the given dart id.",
@@ -133,6 +139,63 @@ PYBIND11_MODULE( splines, m )
                 return out;
             },
             "A list of all edges on the boundary of the discretization" )
+        .def(
+            "boundaryEdges",
+            []( const api::NavierStokesDiscretization& nsd, const api::PatchSide& side ) {
+                const topology::TPCombinatorialMap& tp_map = static_cast<const topology::TPCombinatorialMap&>(
+                    nsd.H1.splineSpace().basisComplex().parametricAtlas().cmap() );
+                std::vector<topology::Edge> out;
+                switch( side )
+                {
+                    case api::PatchSide::S0:
+                    {
+                        out.reserve( cellCount( tp_map.lineCMap(), 1 ) );
+                        const topology::Dart source_dart( 0 );
+                        iterateDartsWhile( tp_map.lineCMap(), [&]( const topology::Dart& line_dart ) {
+                            out.push_back(
+                                tp_map.flatten( source_dart, line_dart, topology::TPCombinatorialMap::TPDartPos::DartPos3 ) );
+                            return true;
+                        } );
+                        break;
+                    }
+                    case api::PatchSide::S1:
+                    {
+                        out.reserve( cellCount( tp_map.lineCMap(), 1 ) );
+                        const topology::Dart source_dart( tp_map.sourceCMap().maxDartId() );
+                        iterateDartsWhile( tp_map.lineCMap(), [&]( const topology::Dart& line_dart ) {
+                            out.push_back(
+                                tp_map.flatten( source_dart, line_dart, topology::TPCombinatorialMap::TPDartPos::DartPos1 ) );
+                            return true;
+                        } );
+                        break;
+                    }
+                    case api::PatchSide::T0:
+                    {
+                        out.reserve( cellCount( tp_map.sourceCMap(), 1 ) );
+                        const topology::Dart line_dart( 0 );
+                        iterateDartsWhile( tp_map.sourceCMap(), [&]( const topology::Dart& source_dart ) {
+                            out.push_back(
+                                tp_map.flatten( source_dart, line_dart, topology::TPCombinatorialMap::TPDartPos::DartPos0 ) );
+                            return true;
+                        } );
+                        break;
+                    }
+                    case api::PatchSide::T1:
+                    {
+                        out.reserve( cellCount( tp_map.sourceCMap(), 1 ) );
+                        const topology::Dart line_dart( tp_map.sourceCMap().maxDartId() );
+                        iterateDartsWhile( tp_map.sourceCMap(), [&]( const topology::Dart& source_dart ) {
+                            out.push_back(
+                                tp_map.flatten( source_dart, line_dart, topology::TPCombinatorialMap::TPDartPos::DartPos2 ) );
+                            return true;
+                        } );
+                        break;
+                    }
+                }
+                return out;
+            },
+            "A list of all edges on a given side of the discretization spline patch",
+            "side"_a )
         .def(
             "localizeElement",
             []( api::NavierStokesDiscretization& nsd, const topology::Face& elem ) {
