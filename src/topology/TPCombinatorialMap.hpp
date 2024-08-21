@@ -84,4 +84,7 @@ namespace topology
     };
 
     std::vector<std::shared_ptr<const CombinatorialMap1d>> tensorProductComponentCMaps( const TPCombinatorialMap& tp_map );
+
+    SmallVector<Dart, 3> unflattenFull( const TPCombinatorialMap& cmap, const Dart& d );
+    Dart flattenFull( const TPCombinatorialMap& cmap, const SmallVector<Dart, 3>& unflat_darts );
 }; // namespace topology
