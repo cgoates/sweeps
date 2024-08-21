@@ -86,6 +86,12 @@ template <typename T, typename U> std::ostream& operator<<( std::ostream& o, con
     return o;
 }
 
+template <typename T, typename U> std::ostream& operator<<( std::ostream& o, const std::pair<T, U>& v )
+{
+    o << "{ " << v.first << ", " << v.second << " }" << ", ";
+    return o;
+}
+
 void pauseDebugger();
 
 class Timer
