@@ -25,13 +25,17 @@ class SmallVector
 
     const T& at( const size_t n ) const
     {
-        if( n >= mSize ) throw std::out_of_range( "Input index is greater than end of SmallVector" );
+        if( n >= mSize )
+            throw std::out_of_range( "Input index " + std::to_string( n ) + " is greater than end of SmallVector<T, " +
+                                     std::to_string( MAX_SIZE ) + ">" );
         return mData.at( n );
     }
 
     T& at( const size_t n )
     {
-        if( n >= mSize ) throw std::out_of_range( "Input index is greater than end of SmallVector" );
+        if( n >= mSize )
+            throw std::out_of_range( "Input index " + std::to_string( n ) + " is greater than end of SmallVector<T, " +
+                                     std::to_string( MAX_SIZE ) + ">" );
         return mData.at( n );
     }
 
