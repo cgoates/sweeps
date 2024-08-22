@@ -6,10 +6,6 @@ function(add_my_test arg)
     catch_discover_tests(${arg})
 endfunction()
 
-Include(FetchContent)
-
-set( FETCHCONTENT_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../deps")
-
 FetchContent_Declare(
   Catch2
   GIT_REPOSITORY https://github.com/catchorg/Catch2.git

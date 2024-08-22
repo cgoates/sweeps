@@ -36,7 +36,7 @@ namespace param
     class ParentDomain
     {
         public:
-        ParentDomain( std::span<const CoordinateSystem> cs_vec ) : mCoordinateGroups( cs_vec ) {}
+        ParentDomain( std::span<const CoordinateSystem> cs_vec ) : mCoordinateGroups( cs_vec.begin(), cs_vec.end() ) {}
         const SmallVector<CoordinateSystem, 3>& coordinateGroups() const { return mCoordinateGroups; }
 
         bool operator!=( const ParentDomain& o ) const

@@ -25,6 +25,19 @@ file( MAKE_DIRECTORY ${EIGEN_INSTALL_DIR}/include/eigen3 )
 
 include_directories( SYSTEM ${EIGEN_INSTALL_DIR}/include/eigen3 )
 
+include(FetchContent)
+
+set( FETCHCONTENT_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps")
+FetchContent_Declare(
+    ecpp_static_vector
+    GIT_REPOSITORY https://github.com/jmacheta/static_vector.git
+    GIT_TAG v1.0.0
+)
+
+FetchContent_MakeAvailable(ecpp_static_vector)
+
+include_directories( SYSTEM ${FETCHCONTENT_BASE_DIR}/ecpp_static_vector-src/include )
+
 add_subdirectory(src)
 
 enable_testing()

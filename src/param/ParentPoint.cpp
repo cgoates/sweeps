@@ -74,6 +74,7 @@ namespace param
 
     std::ostream& operator<<( std::ostream& o, const ParentPoint& ppt )
     {
+        using ::operator<<;
         o << "ParentPoint( " << ppt.mDomain << ", " << ppt.mPoint.transpose() << ", " << ppt.mBaryCoordIsZero << " )";
         return o;
     }
