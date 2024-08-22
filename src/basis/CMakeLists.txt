@@ -3,10 +3,12 @@ add_library( basis SHARED
   BasisComplex.cpp
   BasisComplex1d.cpp
   TPBasisComplex.cpp
+  MultiPatchBasisComplex.cpp
   DivConfBasisComplex.cpp
   SplineSpace.cpp
   BSplineSpace1d.cpp
   TPSplineSpace.cpp
+  MultiPatchSplineSpace.cpp
   DivConfTPSplineSpace.cpp
   KnotVector.cpp
 )

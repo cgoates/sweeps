@@ -3,6 +3,17 @@
 #include <TPCombinatorialMap.hpp>
 #include <map>
 
+namespace param
+{
+    class MultiPatchParametricAtlas;
+}
+
+namespace basis
+{
+    class MultiPatchBasisComplex;
+    class MultiPatchSplineSpace;
+}
+
 namespace topology
 {
     class DartRange
@@ -32,6 +43,8 @@ namespace topology
         public:
         MultiPatchCombinatorialMap( const std::vector<std::shared_ptr<const TPCombinatorialMap>>& constituents,
                                     const std::map<std::pair<size_t, Dart>, std::pair<size_t, Dart>>& connections );
+
+        virtual ~MultiPatchCombinatorialMap() = default;
 
         virtual std::optional<Dart> phi( const int i, const Dart& d ) const override;
 
@@ -73,5 +86,9 @@ namespace topology
         std::vector<std::shared_ptr<const TPCombinatorialMap>> mSubMaps;
         std::map<ConstituentSide, std::pair<TPPermutation, ConstituentSide>> mInterMapConnections;
         std::vector<DartRange> mRanges;
+
+        friend class param::MultiPatchParametricAtlas;
+        friend class basis::MultiPatchBasisComplex;
+        friend class basis::MultiPatchSplineSpace;
     };
 } // namespace topology
