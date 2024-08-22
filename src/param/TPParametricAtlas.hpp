@@ -15,6 +15,7 @@ namespace param
                            const std::shared_ptr<const ParametricAtlas1d>& line_atlas );
         virtual ~TPParametricAtlas() = default;
         virtual const topology::TPCombinatorialMap& cmap() const override { return *mMap; }
+        const std::shared_ptr<const topology::TPCombinatorialMap>& cmapPtr() const { return mMap; }
         virtual const ParentDomain parentDomain( const topology::Cell& c ) const override;
         virtual ParentPoint parentPoint( const topology::Vertex& v ) const override;
         virtual Vector6dMax parametricLengths( const topology::Cell& c ) const override;
