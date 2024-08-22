@@ -37,4 +37,6 @@ namespace basis
     };
 
     std::vector<std::shared_ptr<const BSplineSpace1d>> tensorProductComponentSplines( const TPSplineSpace& ss );
+
+    TPSplineSpace buildBSpline( const SmallVector<KnotVector, 3>& kvs, const SmallVector<size_t, 3>& degrees );
 }

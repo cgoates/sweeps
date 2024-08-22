@@ -87,4 +87,48 @@ namespace basis
         out.push_back( ss.linePtr() );
         return out;
     }
+
+    TPSplineSpace buildBSpline( const SmallVector<KnotVector, 3>& kvs, const SmallVector<size_t, 3>& degrees )
+    {
+        std::vector<std::shared_ptr<const topology::CombinatorialMap1d>> cmap_1ds;
+        std::vector<std::shared_ptr<const param::ParametricAtlas1d>> atlas_1ds;
+        std::vector<std::shared_ptr<const BasisComplex1d>> bc_1ds;
+        std::vector<std::shared_ptr<const BSplineSpace1d>> ss_1ds;
+
+        cmap_1ds.reserve( kvs.size() );
+        atlas_1ds.reserve( kvs.size() );
+        bc_1ds.reserve( kvs.size() );
+        ss_1ds.reserve( kvs.size() );
+
+        for( size_t i = 0; i < kvs.size(); i++ )
+        {
+            const auto& kv = kvs.at( i );
+            const size_t deg = degrees.at( i );
+            cmap_1ds.push_back( std::make_shared<const topology::CombinatorialMap1d>( numElements( kv ) ) );
+            atlas_1ds.push_back( std::make_shared<const param::ParametricAtlas1d>( cmap_1ds.back(), parametricLengths( kv ) ) );
+            bc_1ds.push_back( std::make_shared<const BasisComplex1d>( atlas_1ds.back(), deg ) );
+            ss_1ds.push_back( std::make_shared<const BSplineSpace1d>( bc_1ds.back(), kv ) );
+        }
+
+        auto cmap = std::make_shared<const topology::TPCombinatorialMap>( cmap_1ds.at( 0 ), cmap_1ds.at( 1 ) );
+        auto atlas = std::make_shared<const param::TPParametricAtlas>( cmap, atlas_1ds.at( 0 ), atlas_1ds.at( 1 ) );
+        auto bc = std::make_shared<const TPBasisComplex>( atlas, bc_1ds.at( 0 ), bc_1ds.at( 1 ) );
+
+        if( kvs.size() == 2 )
+        {
+            return TPSplineSpace( bc, ss_1ds.at( 0 ), ss_1ds.at( 1 ) );
+        }
+        else if( kvs.size() == 3 )
+        {
+            const auto ss = std::make_shared<const TPSplineSpace>( bc, ss_1ds.at( 0 ), ss_1ds.at( 1 ) );
+
+            cmap = std::make_shared<const topology::TPCombinatorialMap>( cmap, cmap_1ds.at( 2 ) );
+            atlas = std::make_shared<const param::TPParametricAtlas>( cmap, atlas, atlas_1ds.at( 2 ) );
+            bc = std::make_shared<const TPBasisComplex>( atlas, bc, bc_1ds.at( 2 ) );
+
+            return TPSplineSpace( bc, ss, ss_1ds.at( 2 ) );
+        }
+        else
+            throw std::runtime_error( "Unsupported BSpline dimesnion" );
+    }
 }
