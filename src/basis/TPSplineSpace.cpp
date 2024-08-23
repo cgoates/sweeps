@@ -64,11 +64,10 @@ namespace basis
         return mSource->numFunctions() * mLine->numFunctions();
     }
 
-    std::vector<std::shared_ptr<const BSplineSpace1d>> tensorProductComponentSplines( const TPSplineSpace& ss )
+    SmallVector<std::shared_ptr<const BSplineSpace1d>, 3> tensorProductComponentSplines( const TPSplineSpace& ss )
     {
         const size_t dim = ss.basisComplex().parametricAtlas().cmap().dim();
-        std::vector<std::shared_ptr<const BSplineSpace1d>> out;
-        out.reserve( dim );
+        SmallVector<std::shared_ptr<const BSplineSpace1d>, 3> out;
 
         if( dim == 3 )
         {
@@ -90,15 +89,10 @@ namespace basis
 
     TPSplineSpace buildBSpline( const SmallVector<KnotVector, 3>& kvs, const SmallVector<size_t, 3>& degrees )
     {
-        std::vector<std::shared_ptr<const topology::CombinatorialMap1d>> cmap_1ds;
-        std::vector<std::shared_ptr<const param::ParametricAtlas1d>> atlas_1ds;
-        std::vector<std::shared_ptr<const BasisComplex1d>> bc_1ds;
-        std::vector<std::shared_ptr<const BSplineSpace1d>> ss_1ds;
-
-        cmap_1ds.reserve( kvs.size() );
-        atlas_1ds.reserve( kvs.size() );
-        bc_1ds.reserve( kvs.size() );
-        ss_1ds.reserve( kvs.size() );
+        SmallVector<std::shared_ptr<const topology::CombinatorialMap1d>, 3> cmap_1ds;
+        SmallVector<std::shared_ptr<const param::ParametricAtlas1d>, 3> atlas_1ds;
+        SmallVector<std::shared_ptr<const BasisComplex1d>, 3> bc_1ds;
+        SmallVector<std::shared_ptr<const BSplineSpace1d>, 3> ss_1ds;
 
         for( size_t i = 0; i < kvs.size(); i++ )
         {

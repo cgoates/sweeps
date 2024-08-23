@@ -27,7 +27,7 @@ namespace fitting
                                         const SmallVector<Eigen::VectorXd, 3>& linear_coeffs,
                                         const util::IndexVec& num_funcs,
                                         const size_t data_dim,
-                                        const std::vector<Eigen::MatrixXd>& boundary_cpts )
+                                        const SmallVector<Eigen::MatrixXd, 6>& boundary_cpts )
     {
         const size_t dim = linear_coeffs.size();
 
@@ -104,9 +104,9 @@ namespace fitting
         return result;
     }
 
-    Eigen::MatrixXd coonsPatch( const basis::TPSplineSpace& ss, const std::vector<Eigen::MatrixXd>& boundary_cpts )
+    Eigen::MatrixXd coonsPatch( const basis::TPSplineSpace& ss, const SmallVector<Eigen::MatrixXd, 6>& boundary_cpts )
     {
-        const std::vector<std::shared_ptr<const basis::BSplineSpace1d>> spline_1ds =
+        const SmallVector<std::shared_ptr<const basis::BSplineSpace1d>, 3> spline_1ds =
             tensorProductComponentSplines( ss );
 
         if( spline_1ds.size() == 0 ) throw std::runtime_error( "Cannot create a coons patch on TPSplineSpace with non-1d constituents." );

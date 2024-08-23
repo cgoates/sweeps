@@ -262,11 +262,10 @@ std::tuple<Dart, Dart, TPCombinatorialMap::TPDartPos> TPCombinatorialMap::unflat
 
 namespace topology
 {
-    std::vector<std::shared_ptr<const CombinatorialMap1d>> tensorProductComponentCMaps( const TPCombinatorialMap& tp_map )
+    SmallVector<std::shared_ptr<const CombinatorialMap1d>, 3> tensorProductComponentCMaps( const TPCombinatorialMap& tp_map )
     {
         const size_t dim = tp_map.dim();
-        std::vector<std::shared_ptr<const CombinatorialMap1d>> out;
-        out.reserve( dim );
+        SmallVector<std::shared_ptr<const CombinatorialMap1d>, 3> out;
 
         if( dim == 3 )
         {

@@ -8,11 +8,8 @@ namespace basis
         : mBasisComplex( bc )
     {
         const size_t dim = primal_basis.basisComplex().parametricAtlas().cmap().dim();
-        mReducedDegree1dBasisComplex.reserve( dim );
-        mReducedDegree1dBases.reserve( dim );
-        mScalarTPBases.reserve( dim );
 
-        const std::vector<std::shared_ptr<const BSplineSpace1d>> primal_1d_bases = tensorProductComponentSplines( primal_basis );
+        const SmallVector<std::shared_ptr<const BSplineSpace1d>, 3> primal_1d_bases = tensorProductComponentSplines( primal_basis );
         if( primal_1d_bases.size() == 0 )
             throw std::runtime_error( "Cannot build DivConfTPSplineSpace except over B-spline patch" );
 
@@ -26,7 +23,6 @@ namespace basis
 
         if( dim == 2 )
         {
-            mScalarTPBasisComplexes.reserve( dim );
             mScalarTPBasisComplexes.emplace_back(
                 std::make_shared<TPBasisComplex>( primal_basis.basisComplex().parametricAtlasPtr(),
                                                   primal_1d_bases.at( 0 )->basisComplexPtr(),
@@ -40,9 +36,6 @@ namespace basis
         }
         else if( dim == 3 )
         {
-            mScalarTPBasisComplexes.reserve( 2 * dim );
-            m2dSourceTPBases.reserve( dim );
-
             const std::shared_ptr<const param::TPParametricAtlas>& source_param =
                 dynamic_cast<const TPBasisComplex&>( primal_basis.source().basisComplex() ).parametricAtlasPtr();
 
@@ -91,8 +84,7 @@ namespace basis
 
     Eigen::MatrixXd DivConfTPSplineSpace::extractionOperator( const topology::Cell& c ) const
     {
-        std::vector<Eigen::MatrixXd> scalar_ops;
-        scalar_ops.reserve( mScalarTPBases.size() );
+        SmallVector<Eigen::MatrixXd, 3> scalar_ops;
         std::transform( mScalarTPBases.begin(), mScalarTPBases.end(), std::back_inserter( scalar_ops ), [&]( const TPSplineSpace& scalar_basis ) {
             return scalar_basis.extractionOperator( c );
         } );

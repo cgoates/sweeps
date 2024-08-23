@@ -32,7 +32,7 @@ TEST_CASE( "2d coons patch square" )
 
     const Eigen::VectorXd grev = grevillePoints( kv, degree );
 
-    const std::vector<Eigen::MatrixXd> bdry_coeffs{
+    const SmallVector<Eigen::MatrixXd, 6> bdry_coeffs{
         ( Eigen::MatrixXd( grev.size(), 2 ) << Eigen::VectorXd::Zero( grev.size() ), grev ).finished(),
         ( Eigen::MatrixXd( grev.size(), 2 ) << Eigen::VectorXd::Constant( grev.size(), 6 ), grev ).finished(),
         ( Eigen::MatrixXd( grev.size(), 2 ) << grev, Eigen::VectorXd::Zero( grev.size() ) ).finished(),
@@ -74,7 +74,7 @@ TEST_CASE( "3d coons patch perturbed cube" )
     const Eigen::VectorXd zeros = Eigen::VectorXd::Zero( grev2d.rows() );
     const Eigen::VectorXd sixes = Eigen::VectorXd::Constant( grev2d.rows(), 6 );
 
-    std::vector<Eigen::MatrixXd> bdry_coeffs{
+    SmallVector<Eigen::MatrixXd, 6> bdry_coeffs{
         ( Eigen::MatrixXd( grev2d.rows(), 3 ) << zeros, grev2d ).finished(),
         ( Eigen::MatrixXd( grev2d.rows(), 3 ) << sixes, grev2d ).finished(),
         ( Eigen::MatrixXd( grev2d.rows(), 3 ) << grev2d.col( 0 ), zeros, grev2d.col( 1 ) ).finished(),

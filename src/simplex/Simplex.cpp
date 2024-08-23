@@ -28,8 +28,7 @@ BarycentricPoint addVertex( const BarycentricPoint lower_dim_pt, const VertexId&
 {
     if( new_point_pos > lower_dim_pt.simplex.dim() + 1 ) throw std::runtime_error( "Bad new point position" );
 
-    std::vector<VertexId> new_simplex;
-    new_simplex.reserve( lower_dim_pt.simplex.dim() + 2 );
+    SmallVector<VertexId, 4> new_simplex;
 
     Eigen::Matrix<double, Eigen::Dynamic, 1, 0, 3> new_point( lower_dim_pt.simplex.dim() + 2 );
 
