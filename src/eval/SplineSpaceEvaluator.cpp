@@ -14,12 +14,13 @@ namespace eval
     {
         mConnect = mSpline.connectivity( c );
         mExOp = mSpline.extractionOperator( c );
-        mCurrentCell = c;
+        mCurrentCell.emplace( c );
     }
 
     void SplineSpaceEvaluator::localizePoint( const param::ParentPoint& ppt )
     {
-        mLocalEvals = ParentBasisEval( mSpline.basisComplex().parentBasis( mCurrentCell ), ppt, mNumDerivs );
+        if( not mCurrentCell.has_value() ) throw std::runtime_error( "Must localize cell before locaizing point" );
+        mLocalEvals.emplace( ParentBasisEval( mSpline.basisComplex().parentBasis( mCurrentCell.value() ), ppt, mNumDerivs ) );
     }
 
     Eigen::VectorXd SplineSpaceEvaluator::evaluateManifold( const Eigen::MatrixXd& cpts ) const
@@ -46,25 +47,28 @@ namespace eval
 
     Eigen::MatrixXd SplineSpaceEvaluator::evaluateBasis() const
     {
-        return mExOp * mLocalEvals.mEvals.leftCols( mSpline.numVectorComponents() );
+        if( not mLocalEvals.has_value() ) throw std::runtime_error( "Must localize evaluator before evaluating" );
+        return mExOp * mLocalEvals->mEvals.leftCols( mSpline.numVectorComponents() );
     }
 
     Eigen::MatrixXd SplineSpaceEvaluator::evaluateFirstDerivatives() const
     {
+        if( not mLocalEvals.has_value() ) throw std::runtime_error( "Must localize evaluator before evaluating" );
         if( numDerivatives() < 1 )
             throw std::runtime_error( "Insufficient derivatives requested on SplineSpaceEvaluator construction." );
-        return mExOp * mLocalEvals.mEvals.middleCols( mSpline.numVectorComponents(),
+        return mExOp * mLocalEvals->mEvals.middleCols( mSpline.numVectorComponents(),
                                                       mSpline.basisComplex().parametricAtlas().cmap().dim() *
                                                           mSpline.numVectorComponents() );
     }
 
     Eigen::MatrixXd SplineSpaceEvaluator::evaluateSecondDerivatives() const
     {
+        if( not mLocalEvals.has_value() ) throw std::runtime_error( "Must localize evaluator before evaluating" );
         if( numDerivatives() < 2 )
             throw std::runtime_error( "Insufficient derivatives requested on SplineSpaceEvaluator construction." );
         const size_t param_dim = mSpline.basisComplex().parametricAtlas().cmap().dim();
         const size_t vec_comps = mSpline.numVectorComponents();
-        return mExOp * mLocalEvals.mEvals.middleCols( vec_comps * ( 1 + param_dim ), vec_comps * param_dim * ( param_dim + 1 ) / 2 );
+        return mExOp * mLocalEvals->mEvals.middleCols( vec_comps * ( 1 + param_dim ), vec_comps * param_dim * ( param_dim + 1 ) / 2 );
     }
 
     double determinant( const Eigen::MatrixXd& jac )

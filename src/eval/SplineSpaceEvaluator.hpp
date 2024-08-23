@@ -29,10 +29,10 @@ namespace eval
         private:
         const size_t mNumDerivs;
         const basis::SplineSpace& mSpline;
-        topology::Cell mCurrentCell;
+        std::optional<topology::Cell> mCurrentCell;
         std::vector<basis::FunctionId> mConnect;
         Eigen::MatrixXd mExOp;
-        ParentBasisEval mLocalEvals;
+        std::optional<ParentBasisEval> mLocalEvals;
     };
 
     Eigen::MatrixXd piolaTransformedVectorBasis( const SplineSpaceEvaluator& vec_evals, const SplineSpaceEvaluator& geom_evals, const Eigen::MatrixXd& cpts );
