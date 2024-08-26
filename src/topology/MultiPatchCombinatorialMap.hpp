@@ -3,17 +3,6 @@
 #include <TPCombinatorialMap.hpp>
 #include <map>
 
-namespace param
-{
-    class MultiPatchParametricAtlas;
-}
-
-namespace basis
-{
-    class MultiPatchBasisComplex;
-    class MultiPatchSplineSpace;
-}
-
 namespace topology
 {
     class DartRange
@@ -78,7 +67,6 @@ namespace topology
             Flip1d
         };
 
-        protected:
         std::pair<size_t, Dart> toLocalDart( const Dart& global_dart ) const;
         Dart toGlobalDart( const size_t patch_id, const Dart& local_dart ) const;
 
@@ -86,9 +74,5 @@ namespace topology
         std::vector<std::shared_ptr<const TPCombinatorialMap>> mSubMaps;
         std::map<ConstituentSide, std::pair<TPPermutation, ConstituentSide>> mInterMapConnections;
         std::vector<DartRange> mRanges;
-
-        friend class param::MultiPatchParametricAtlas;
-        friend class basis::MultiPatchBasisComplex;
-        friend class basis::MultiPatchSplineSpace;
     };
 } // namespace topology
