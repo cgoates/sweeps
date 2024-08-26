@@ -17,6 +17,6 @@ namespace basis
     {
         const auto [patch_id, local_d] = mAtlas->cmap().toLocalDart( c.dart() );
         const topology::Cell local_c( local_d, c.dim() );
-        return mSubComplexes.at( patch_id )->parentBasis( c );
+        return mSubComplexes.at( patch_id )->parentBasis( local_c );
     }
 }
