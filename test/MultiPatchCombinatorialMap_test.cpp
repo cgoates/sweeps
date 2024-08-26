@@ -82,6 +82,15 @@ TEST_CASE( "Simple 3d multipatch cmap" )
     const auto cmap_tp_1 = std::make_shared<const TPCombinatorialMap>( cmap_2d_1, cmap_1d_1 );
     const auto cmap_tp_2 = std::make_shared<const TPCombinatorialMap>( cmap_2d_2, cmap_1d_1 );
 
+    const auto check_phi3 = [&]( const CombinatorialMap& cmap, const Dart& d, const Dart& expected ) {
+        const auto phi3 = phi( cmap, 3, d );
+        CHECK( phi3.has_value() );
+        if( phi3.has_value() )
+        {
+            CHECK( phi3.value() == expected );
+        }
+    };
+
     {
         const MultiPatchCombinatorialMap cmap( { cmap_tp_1, cmap_tp_2 }, { { { 0, Dart( 1 ) }, { 1, Dart( 19 ) } } } );
 
@@ -90,22 +99,14 @@ TEST_CASE( "Simple 3d multipatch cmap" )
         CHECK( cellCount( cmap, 1 ) == 33 );
         CHECK( cellCount( cmap, 0 ) == 18 );
 
-        const auto check_phi3 = [&]( const Dart& d, const Dart& expected ) {
-            const auto phi3 = phi( cmap, 3, d );
-            CHECK( phi3.has_value() );
-            if( phi3.has_value() )
-            {
-                CHECK( phi3.value() == expected );
-            }
-        };
-        check_phi3( 1, 67 );
-        check_phi3( 2, 70 );
-        check_phi3( 3, 69 );
-        check_phi3( 4, 68 );
-        check_phi3( 25, 91 );
-        check_phi3( 26, 94 );
-        check_phi3( 27, 93 );
-        check_phi3( 28, 92 );
+        check_phi3( cmap, 1, 67 );
+        check_phi3( cmap, 2, 70 );
+        check_phi3( cmap, 3, 69 );
+        check_phi3( cmap, 4, 68 );
+        check_phi3( cmap, 25, 91 );
+        check_phi3( cmap, 26, 94 );
+        check_phi3( cmap, 27, 93 );
+        check_phi3( cmap, 28, 92 );
 
         CHECK( not phi( cmap, 3, Dart( 0 ) ).has_value() );
         CHECK( not phi( cmap, 3, Dart( 20 ) ).has_value() );
@@ -127,11 +128,48 @@ TEST_CASE( "Simple 3d multipatch cmap" )
     }
 
     {
-        const MultiPatchCombinatorialMap cmap( { cmap_tp_1, cmap_tp_2 }, { { { 0, Dart( 1 ) }, { 1, Dart( 33 ) } } } );
+        const MultiPatchCombinatorialMap cmap( { cmap_tp_1, cmap_tp_2 }, { { { 0, Dart( 1 ) }, { 1, Dart( 9 ) } } } );
 
         CHECK( cellCount( cmap, 3 ) == 4 );
         CHECK( cellCount( cmap, 2 ) == 20 );
         CHECK( cellCount( cmap, 1 ) == 33 );
         CHECK( cellCount( cmap, 0 ) == 18 );
+
+        check_phi3( cmap, 1, 57 );
+        check_phi3( cmap, 2, 56 );
+        check_phi3( cmap, 3, 55 );
+        check_phi3( cmap, 4, 58 );
+        size_t n_bdry_darts = 0;
+        iterateDartsWhile( cmap, [&]( const Dart& d ) {
+            if( onBoundary( cmap, d ) ) n_bdry_darts++;
+            return true;
+        } );
+        CHECK( n_bdry_darts == 64 );
+    }
+
+    {
+        const MultiPatchCombinatorialMap cmap( { cmap_tp_1, cmap_tp_1 }, { { { 0, Dart( 1 ) }, { 1, Dart( 25 ) } } } );
+
+        CHECK( cellCount( cmap, 3 ) == 4 );
+        CHECK( cellCount( cmap, 2 ) == 20 );
+        CHECK( cellCount( cmap, 1 ) == 33 );
+        CHECK( cellCount( cmap, 0 ) == 18 );
+
+        check_phi3( cmap, 1, 73 );
+        check_phi3( cmap, 2, 76 );
+        check_phi3( cmap, 3, 75 );
+        check_phi3( cmap, 4, 74 );
+
+        check_phi3( cmap, 25, 49 );
+        check_phi3( cmap, 26, 52 );
+        check_phi3( cmap, 27, 51 );
+        check_phi3( cmap, 28, 50 );
+
+        size_t n_bdry_darts = 0;
+        iterateDartsWhile( cmap, [&]( const Dart& d ) {
+            if( onBoundary( cmap, d ) ) n_bdry_darts++;
+            return true;
+        } );
+        CHECK( n_bdry_darts == 64 );
     }
 }
