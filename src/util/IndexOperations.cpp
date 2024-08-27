@@ -51,6 +51,116 @@ namespace util
             callback( unflatten( id, lengths ) );
     }
 
+    void iterateTensorProduct( const IndexVec& lengths,
+                               const util::IndexVec& order,
+                               const std::function<void( const IndexVec& )>& callback )
+    {
+        iterateTensorProduct(
+            lengths,
+            order,
+            SmallVector<std::variant<bool, size_t>, 3>( lengths.size(), std::variant<bool, size_t>{ true } ),
+            callback );
+    }
+
+    void iterateTensorProduct( const IndexVec& lengths,
+                               const util::IndexVec& order,
+                               const SmallVector<std::variant<bool, size_t>, 3>& direction,
+                               const std::function<void( const IndexVec& )>& callback )
+    {
+        if( lengths.size() != order.size() or order.size() != direction.size() )
+            throw std::runtime_error( "Inconsistent sizes of inputs to iterateTensorProduct" );
+
+        const std::function<void( const IndexVec& )> recurse = [&]( const IndexVec& iv ) {
+            if( iv.size() == lengths.size() )
+            {
+                IndexVec new_iv( iv );
+                for( size_t i = 0; i < iv.size(); i++ ) new_iv.at( order.at( i ) ) = iv.at( i );
+                callback( new_iv );
+            }
+            else
+            {
+                const size_t current_slot = order.at( lengths.size() - iv.size() - 1 );
+                const auto continue_recursing = [&]( const size_t i ) {
+                    IndexVec new_iv;
+                    new_iv.push_back( i );
+                    for( const size_t ii : iv ) new_iv.push_back( ii );
+                    recurse( new_iv );
+                };
+                std::visit(
+                    [&]( const auto& dir ) {
+                        if constexpr( std::is_same_v<std::remove_cvref_t<decltype( dir )>, size_t> )
+                            continue_recursing( dir );
+                        else if constexpr( std::is_same_v<std::remove_cvref_t<decltype( dir )>, bool> )
+                            for( size_t i = 0, len = lengths.at( current_slot ); i < len; i++ )
+                                continue_recursing( dir ? i : len - i - 1 );
+                    },
+                    direction.at( current_slot ) );
+            }
+        };
+
+        recurse( {} );
+    }
+
+    void iterateTensorProductSynchronized( const IndexVec& lengths1,
+                                           const IndexVec& lengths2,
+                                           const util::IndexVec& order1,
+                                           const util::IndexVec& order2,
+                                           const SmallVector<std::variant<bool, size_t>, 3>& direction1,
+                                           const SmallVector<std::variant<bool, size_t>, 3>& direction2,
+                                           const std::function<void( const IndexVec&, const IndexVec& )>& callback )
+    {
+        if( lengths1.size() != order1.size() or order1.size() != direction1.size() or
+            lengths2.size() != order2.size() or order2.size() != direction2.size() or
+            lengths1.size() != lengths2.size() )
+            throw std::runtime_error( "Inconsistent sizes of inputs to iterateTensorProductSynchronized" );
+
+        const std::function<void( const IndexVec&, const IndexVec& )> recurse = [&]( const IndexVec& iv1, const IndexVec& iv2 ) {
+            if( iv1.size() == lengths1.size() )
+            {
+                IndexVec new_iv1( iv1 );
+                IndexVec new_iv2( iv2 );
+                for( size_t i = 0; i < iv1.size(); i++ )
+                {
+                    new_iv1.at( order1.at( i ) ) = iv1.at( i );
+                    new_iv2.at( order2.at( i ) ) = iv2.at( i );
+                }
+                callback( new_iv1, new_iv2 );
+            }
+            else
+            {
+                const size_t current_slot1 = order1.at( lengths1.size() - iv1.size() - 1 );
+                const size_t current_slot2 = order2.at( lengths2.size() - iv2.size() - 1 );
+
+                if( lengths1.at( current_slot1 ) != lengths2.at( current_slot2 ) or
+                    direction1.at( current_slot1 ).index() != direction2.at( current_slot2 ).index() )
+                    throw std::runtime_error( "Incompatible TP setups for synchronized iteration" );
+
+                const auto continue_recursing = [&]( const size_t i, const size_t j ) {
+                    IndexVec new_iv1;
+                    IndexVec new_iv2;
+                    new_iv1.push_back( i );
+                    new_iv2.push_back( j );
+                    for( const size_t ii : iv1 ) new_iv1.push_back( ii );
+                    for( const size_t ii : iv2 ) new_iv2.push_back( ii );
+                    recurse( new_iv1, new_iv2 );
+                };
+                std::visit(
+                    [&]( const auto& dir ) {
+                        if constexpr( std::is_same_v<std::remove_cvref_t<decltype( dir )>, size_t> )
+                            continue_recursing( dir, std::get<size_t>( direction2.at( current_slot2 ) ) );
+                        else if constexpr( std::is_same_v<std::remove_cvref_t<decltype( dir )>, bool> )
+                            for( size_t i = 0, len = lengths1.at( current_slot1 ); i < len; i++ )
+                                continue_recursing( dir ? i : len - i - 1,
+                                                    std::get<bool>( direction2.at( current_slot2 ) ) ? i
+                                                                                                     : len - i - 1 );
+                    },
+                    direction1.at( current_slot1 ) );
+            }
+        };
+
+        recurse( {}, {} );
+    }
+
     void iterateVTKTPOrdering( const IndexVec& lengths, const std::function<void( const size_t& )>& callback )
     {
         // There is probably a more unified way to write this...
