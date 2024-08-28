@@ -1,6 +1,7 @@
 #include <TPParametricAtlas.hpp>
 #include <utility>
 #include <CombinatorialMapMethods.hpp>
+#include <IndexOperations.hpp>
 
 namespace param
 {
@@ -70,5 +71,90 @@ namespace param
         const Vector6dMax source_lengths = mSourceParam->parametricLengths( topology::Cell( source_dart, mSourceParam->cmap().dim() ) );
         const Vector6dMax line_lengths = mLineParam->parametricLengths( topology::Cell( line_dart, mLineParam->cmap().dim() ) );
         return ( Vector6dMax( source_lengths.size() + line_lengths.size() ) << source_lengths, line_lengths ).finished();
+    }
+
+    SmallVector<topology::Cell, 12> cornerCells( const TPParametricAtlas& atlas, const uint cell_dim )
+    {
+        using namespace topology;
+        const TPCombinatorialMap& cmap = atlas.cmap();
+        const auto comps = tensorProductComponentCMaps( cmap );
+        if( comps.size() != cmap.dim() )
+            throw std::runtime_error( "cornerCells only works on cube-like TP regions" );
+
+        if( cell_dim >= cmap.dim() )
+            throw std::runtime_error( "cornerCells requires a cell dim less than the cmap dim" );
+
+        const util::IndexVec lengths = [&comps]() {
+            util::IndexVec out;
+            for( const auto& comp : comps ) out.push_back( cellCount( *comp, comp->dim() ) );
+            return out;
+        }();
+
+        const auto iterate_combinations =
+            []( const size_t dim, const size_t num, const std::function<void( const util::IndexVec& )>& callback ) {
+                SmallVector<bool, 3> a( num, true );
+                a.resize( dim, false );
+                do
+                {
+                    util::IndexVec out;
+                    for( size_t i = 0; i < dim; i++ )
+                        if( a.at( i ) ) out.push_back( i );
+                    callback( out );
+                } while( std::prev_permutation( a.begin(), a.end() ) );
+            };
+
+        SmallVector<Cell, 12> out;
+        for( size_t i = 0, n = pow( 2, lengths.size() - cell_dim ); i < n; i++ )
+        {
+            const util::IndexVec partial_bdry = util::unflatten( i, util::IndexVec( lengths.size() - cell_dim, 2 ) );
+
+            iterate_combinations( cmap.dim(), cell_dim, [&]( const util::IndexVec& zeros_to_add ) {
+                util::IndexVec which_bdry = partial_bdry;
+                for( const size_t coord : zeros_to_add )
+                    which_bdry.insert( std::next( which_bdry.begin(), coord ), 0 );
+
+                SmallVector<Dart, 3> unflat_darts;
+                std::transform( which_bdry.begin(),
+                                which_bdry.end(),
+                                lengths.begin(),
+                                std::back_inserter( unflat_darts ),
+                                []( const size_t which_bdry, const size_t len ) { return Dart( which_bdry * ( len - 1 ) ); } );
+
+                const Dart flat_dart = flattenFull( cmap, unflat_darts );
+
+                const BaryCoordIsZeroVec bdry_zero_vec = [&]() {
+                    BaryCoordIsZeroVec out;
+                    for( size_t i = 0, partial_i = 0; i < cmap.dim(); i++ )
+                    {
+                        if( std::ranges::find( zeros_to_add, i ) == zeros_to_add.end() )
+                        {
+                            const bool is_zero = partial_bdry.at( partial_i ) == 0;
+                            out.push_back( not is_zero );
+                            out.push_back( is_zero );
+                            partial_i++;
+                        }
+                        else
+                        {
+                            out.push_back( false );
+                            out.push_back( false );
+                        }
+                    }
+                    return out;
+                }();
+
+                const bool found_one = not iterateDartsOfCell( cmap, Cell( flat_dart, cmap.dim() ), [&]( const Dart& d ) {
+                    const Cell c( d, cell_dim );
+                    if( parentDomainBoundary( atlas, c ) == bdry_zero_vec )
+                    {
+                        out.push_back( c );
+                        return false;
+                    }
+                    return true;
+                } );
+
+                if( not found_one ) std::runtime_error( "Issue here!" );
+            } );
+        }
+        return out;
     }
 }

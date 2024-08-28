@@ -28,4 +28,11 @@ namespace param
         const std::shared_ptr<const ParametricAtlas> mSourceParam;
         const std::shared_ptr<const ParametricAtlas1d> mLineParam;
     };
+
+    /// @brief Given a cell dimension, returns one cell on each cell_dim-boundary of the TP region.
+    /// Only defined for TPs of ParametricAtlas1ds.
+    /// For example, with a 3d cmap and cell_dim of 0, returns eight vertices on the eight corners of the TP region.
+    /// With a 3d cmap and cell_dim=1, returns twelve edges on the 12 corner curves of the TP region.
+    /// With a 3d cmap and cell_dim=2, returns a face from each of the six boundary surfaces of the TP region.
+    SmallVector<topology::Cell, 12> cornerCells( const TPParametricAtlas& atlas, const uint cell_dim );
 }
