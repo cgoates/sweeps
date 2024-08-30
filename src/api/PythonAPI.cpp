@@ -97,7 +97,7 @@ PYBIND11_MODULE( splines, m )
                        const basis::KnotVector&,
                        const size_t,
                        const size_t,
-                       const Eigen::MatrixX2d&>(),
+                       const Eigen::Matrix2Xd&>(),
               "Create a B-spline discretization for Navier Stokes problems, consisting of an H1 spline space with the "
               "given knot vectors, an HDiv spline space taking the H1 space as its primal basis, and an L2 spline "
               "space, which has reduced degree from H1 in both directions. The geometry is defined by the H1 space and "
@@ -259,14 +259,14 @@ PYBIND11_MODULE( splines, m )
         .def(
             "mapping",
             []( const api::NavierStokesDiscretization& nsd ) {
-                return nsd.H1.evaluateManifold( nsd.cpts.transpose() );
+                return nsd.H1.evaluateManifold( nsd.cpts );
             },
             "Evaluates the spatial position of the spline geometry at the parametric position from the latest calls to "
             "localizeElement and localizePoint." )
         .def(
             "jacobianDeterminant",
             []( const api::NavierStokesDiscretization& nsd ) {
-                return nsd.H1.evaluateJacobian( nsd.cpts.transpose() ).determinant();
+                return nsd.H1.evaluateJacobian( nsd.cpts ).determinant();
             },
             "Evaluates the Jacobian determinant of the spline geometry at the parametric position from the latest "
             "calls to localizeElement and LocalizePoint." )
@@ -309,8 +309,8 @@ PYBIND11_MODULE( splines, m )
     m.def(
         "grevillePoints",
         []( const basis::KnotVector& kv_s, const basis::KnotVector& kv_t, const size_t degree_s, const size_t degree_t )
-            -> Eigen::MatrixX2d {
-            return util::tensorProduct( { grevillePoints( kv_s, degree_s ), grevillePoints( kv_t, degree_t ) } );
+            -> Eigen::Matrix2Xd {
+            return util::tensorProduct( { grevillePoints( kv_s, degree_s ), grevillePoints( kv_t, degree_t ) } ).transpose();
         },
         "Returns the greville points of the 2d B-spline patch defined by the given knot vectors and degrees.  These "
         "points, when used as control points, create a linear spatial spline geometry corresponding exactly to the "

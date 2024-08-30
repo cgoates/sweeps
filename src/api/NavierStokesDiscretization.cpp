@@ -44,7 +44,7 @@ namespace api
                                                             const basis::KnotVector& kv_t,
                                                             const size_t degree_s,
                                                             const size_t degree_t,
-                                                            const Eigen::MatrixX2d& cpts )
+                                                            const Eigen::Matrix2Xd& cpts )
         : H1_ss( buildH1( kv_s, kv_t, degree_s, degree_t ) ),
           HDIV_ss( buildHDIV( H1_ss ) ),
           L2_ss( buildL2( H1_ss.basisComplex().parametricAtlasPtr(), HDIV_ss ) ),

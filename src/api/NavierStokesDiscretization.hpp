@@ -11,7 +11,7 @@ namespace api
                                     const basis::KnotVector& kv_t,
                                     const size_t degree_s,
                                     const size_t degree_t,
-                                    const Eigen::MatrixX2d& cpts );
+                                    const Eigen::Matrix2Xd& cpts );
 
         const basis::TPSplineSpace H1_ss;
         const basis::DivConfTPSplineSpace HDIV_ss;
@@ -19,7 +19,7 @@ namespace api
 
         const topology::CombinatorialMapBoundary cmap_bdry;
 
-        const Eigen::MatrixX2d cpts;
+        const Eigen::Matrix2Xd cpts;
 
         eval::SplineSpaceEvaluator H1;
         eval::SplineSpaceEvaluator HDIV;
