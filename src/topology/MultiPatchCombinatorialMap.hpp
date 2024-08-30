@@ -2,31 +2,10 @@
 #include <CombinatorialMap.hpp>
 #include <TPCombinatorialMap.hpp>
 #include <map>
+#include <DartRange.hpp>
 
 namespace topology
 {
-    class DartRange
-    {
-        public:
-        DartRange( const Dart::IndexType min_id, const Dart::IndexType max_id ) : mMin( min_id ), mMax( max_id ) {}
-        DartRange( const Dart::IndexType min_id, const CombinatorialMap& cmap )
-            : DartRange( min_id, min_id + cmap.maxDartId() )
-        {}
-
-        bool contains( const Dart& d ) const { return mMin <= d.id() and mMax >= d.id(); }
-
-        Dart toGlobalDart( const Dart& local_d ) const { return Dart( mMin + local_d.id() ); }
-
-        Dart toLocalDart( const Dart& global_d ) const { return Dart( global_d.id() - mMin ); }
-
-        Dart::IndexType min() const { return mMin; }
-        Dart::IndexType max() const { return mMax; }
-
-        private:
-        const Dart::IndexType mMin;
-        const Dart::IndexType mMax;
-    };
-
     class MultiPatchCombinatorialMap : public CombinatorialMap
     {
         public:
@@ -73,6 +52,6 @@ namespace topology
         private:
         std::vector<std::shared_ptr<const TPCombinatorialMap>> mSubMaps;
         std::map<ConstituentSide, std::pair<TPPermutation, ConstituentSide>> mInterMapConnections;
-        std::vector<DartRange> mRanges;
+        const DartRanges mRanges;
     };
 } // namespace topology

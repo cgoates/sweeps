@@ -192,23 +192,10 @@ namespace topology
         return Dart( flattenFull( cmap, unflat_darts ).id() + local_dart_id );
     }
 
-    std::vector<DartRange> intializeRanges( const std::vector<std::shared_ptr<const TPCombinatorialMap>>& constituents )
-    {
-        std::vector<DartRange> out;
-        out.reserve( constituents.size() );
-        Dart::IndexType next_min = 0;
-        for( const auto& patch : constituents )
-        {
-            out.emplace_back( next_min, *patch );
-            next_min = out.back().max() + 1;
-        }
-        return out;
-    }
-
     MultiPatchCombinatorialMap::MultiPatchCombinatorialMap(
         const std::vector<std::shared_ptr<const TPCombinatorialMap>>& constituents,
         const std::map<std::pair<size_t, Dart>, std::pair<size_t, Dart>>& connections )
-        : mSubMaps( constituents ), mRanges( intializeRanges( constituents ) )
+        : mSubMaps( constituents ), mRanges( initializeRanges( constituents ) )
     {
         if( constituents.size() == 0 ) throw std::runtime_error( "Cannot create multipatch of zero patches" );
 
@@ -244,19 +231,12 @@ namespace topology
 
     std::pair<size_t, Dart> MultiPatchCombinatorialMap::toLocalDart( const Dart& global_dart ) const
     {
-        const auto it = std::lower_bound(
-            mRanges.begin(), mRanges.end(), global_dart.id(), []( const DartRange& range, const Dart::IndexType d ) {
-                return range.max() < d;
-            } );
-        if( it == mRanges.end() ) throw std::runtime_error( "Dart out of range of multi patch cmap" );
-
-        const size_t patch_id = std::distance( mRanges.begin(), it );
-        return { patch_id, mRanges.at( patch_id ).toLocalDart( global_dart ) };
+        return mRanges.toLocalDart( global_dart );
     }
 
     Dart MultiPatchCombinatorialMap::toGlobalDart( const size_t patch_id, const Dart& local_dart ) const
     {
-        return mRanges.at( patch_id ).toGlobalDart( local_dart );
+        return mRanges.toGlobalDart( patch_id, local_dart );
     }
 
     std::optional<Dart> MultiPatchCombinatorialMap::phi( const int i, const Dart& d ) const
@@ -293,7 +273,7 @@ namespace topology
 
     Dart::IndexType MultiPatchCombinatorialMap::maxDartId() const
     {
-        return mRanges.back().max();
+        return mRanges.maxDartId();
     }
 
     uint MultiPatchCombinatorialMap::dim() const
