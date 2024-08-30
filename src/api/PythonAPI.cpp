@@ -197,6 +197,46 @@ PYBIND11_MODULE( splines, m )
             "A list of all edges on a given side of the discretization spline patch",
             "side"_a )
         .def(
+            "boundaryPerpendicularHDivFuncs",
+            []( const api::NavierStokesDiscretization& nsd, const api::PatchSide& side ) {
+                const basis::DivConfTPSplineSpace& tp_ss = nsd.HDIV_ss;
+                const auto& component_bases = tp_ss.scalarTPBases();
+                const bool is_S = side == api::PatchSide::S0 or side == api::PatchSide::S1;
+
+                const util::IndexVec lengths = [&]() {
+                    const basis::TPSplineSpace& comp = is_S ? component_bases.at( 0 ) : component_bases.at( 1 );
+                    const auto component_comps = tensorProductComponentSplines( comp );
+                    util::IndexVec out;
+                    for( const auto& comp : component_comps ) out.push_back( comp->numFunctions() );
+                    return out;
+                }();
+
+                const auto iter_dir =
+                    [&lengths]( const api::PatchSide& side ) -> SmallVector<std::variant<bool, size_t>, 3> {
+                    switch( side )
+                    {
+                        case api::PatchSide::S0: return { size_t{ 0 }, true };
+                        case api::PatchSide::S1: return { lengths.at( 0 ) - 1, true };
+                        case api::PatchSide::T0: return { true, size_t{ 0 } };
+                        case api::PatchSide::T1: return { true, lengths.at( 1 ) - 1 };
+                    }
+                }( side );
+
+                std::vector<size_t> out;
+                out.reserve( lengths.at( is_S ? 0 : 1 ) );
+
+                const size_t offset = is_S ? 0 : component_bases.at( 0 ).numFunctions();
+
+                util::iterateTensorProduct( lengths, { 0, 1 }, iter_dir, [&]( const util::IndexVec& iv ) {
+                    out.emplace_back( util::flatten( iv, lengths ) + offset );
+                } );
+
+                return out;
+            },
+            "A list of all HDIV functions which are nonzero on and perpendicular to a given side of the discretization "
+            "spline patch",
+            "side"_a )
+        .def(
             "localizeElement",
             []( api::NavierStokesDiscretization& nsd, const topology::Face& elem ) {
                 nsd.H1.localizeElement( elem );

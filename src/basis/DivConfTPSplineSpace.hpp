@@ -25,6 +25,8 @@ namespace basis
             return mReducedDegree1dBases;
         }
 
+        const SmallVector<TPSplineSpace, 3>& scalarTPBases() const { return mScalarTPBases; }
+
         private:
         const std::shared_ptr<const DivConfBasisComplex> mBasisComplex;
 
@@ -35,6 +37,6 @@ namespace basis
         SmallVector<std::shared_ptr<const TPSplineSpace>, 3> m2dSourceTPBases; // only used in 3d
 
         // These are the scalar bases we use directly to create the vector basis.
-        std::vector<TPSplineSpace> mScalarTPBases;
+        SmallVector<TPSplineSpace, 3> mScalarTPBases;
     };
 }
