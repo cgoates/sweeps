@@ -285,10 +285,10 @@ namespace topology
         return out;
     }
 
-    SmallVector<Dart, 3> unflattenFull( const TPCombinatorialMap& cmap, const Dart& d )
+    FullyUnflattenedDart unflattenFull( const TPCombinatorialMap& cmap, const Dart& d )
     {
         const size_t dim = cmap.dim();
-        SmallVector<Dart, 3> out;
+        FullyUnflattenedDart out;
 
         const auto unflat = cmap.unflatten( d );
 
@@ -297,23 +297,25 @@ namespace topology
             const std::shared_ptr<const TPCombinatorialMap> source =
                 std::dynamic_pointer_cast<const TPCombinatorialMap>( cmap.sourceCMapPtr() );
             if( source.get() == nullptr )
-                out.push_back( std::get<0>( unflat ) );
+                out.unflat_darts.push_back( std::get<0>( unflat ) );
             else
             {
                 const auto unflat2 = source->unflatten( std::get<0>( unflat ) );
-                out.push_back( std::get<0>( unflat2 ) );
-                out.push_back( std::get<1>( unflat2 ) );
+                out.unflat_darts.push_back( std::get<0>( unflat2 ) );
+                out.unflat_darts.push_back( std::get<1>( unflat2 ) );
+                out.dart_pos.push_back( std::get<2>( unflat2 ) );
             }
         }
         else
         {
-            out.push_back( std::get<0>( unflat ) );
+            out.unflat_darts.push_back( std::get<0>( unflat ) );
         }
-        out.push_back( std::get<1>( unflat ) );
+        out.unflat_darts.push_back( std::get<1>( unflat ) );
+        out.dart_pos.push_back( std::get<2>( unflat ) );
         return out;
     }
 
-    Dart flattenFull( const TPCombinatorialMap& cmap, const SmallVector<Dart, 3>& unflat_darts )
+    Dart flattenFull( const TPCombinatorialMap& cmap, const FullyUnflattenedDart& unflat_darts )
     {
         if( cmap.dim() == 3 )
         {
@@ -323,12 +325,12 @@ namespace topology
                 throw std::runtime_error( "Cannot flattenFull on 3d TP cmap with non TP source." );
 
             const Dart source_d =
-                source->flatten( unflat_darts.at( 0 ), unflat_darts.at( 1 ), TPCombinatorialMap::TPDartPos::DartPos0 );
-            return cmap.flatten( source_d, unflat_darts.at( 2 ), TPCombinatorialMap::TPDartPos::DartPos0 );
+                source->flatten( unflat_darts.unflat_darts.at( 0 ), unflat_darts.unflat_darts.at( 1 ), unflat_darts.dart_pos.at( 0 ) );
+            return cmap.flatten( source_d, unflat_darts.unflat_darts.at( 2 ), unflat_darts.dart_pos.at( 1 ) );
         }
         else
         {
-            return cmap.flatten( unflat_darts.at( 0 ), unflat_darts.at( 1 ), TPCombinatorialMap::TPDartPos::DartPos0 );
+            return cmap.flatten( unflat_darts.unflat_darts.at( 0 ), unflat_darts.unflat_darts.at( 1 ), unflat_darts.dart_pos.at( 0 ) );
         }
     }
 }

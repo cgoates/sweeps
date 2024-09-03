@@ -123,7 +123,7 @@ namespace topology
                 return TPDartPos( local_dart_to_bdry_2d.at( d.id() % 4 ) );
         }();
 
-        const SmallVector<Dart, 3> full_unflat = unflattenFull( cmap, d );
+        const SmallVector<Dart, 3> full_unflat = unflattenFull( cmap, d ).unflat_darts;
 
         // Drop the correct dart to get to the boundary
         SmallVector<Dart, 2> bdry_unflat;

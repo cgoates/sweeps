@@ -85,6 +85,22 @@ namespace topology
 
     SmallVector<std::shared_ptr<const CombinatorialMap1d>, 3> tensorProductComponentCMaps( const TPCombinatorialMap& tp_map );
 
-    SmallVector<Dart, 3> unflattenFull( const TPCombinatorialMap& cmap, const Dart& d );
-    Dart flattenFull( const TPCombinatorialMap& cmap, const SmallVector<Dart, 3>& unflat_darts );
+    struct FullyUnflattenedDart
+    {
+        FullyUnflattenedDart( const SmallVector<Dart, 3>& darts,
+                              const SmallVector<TPCombinatorialMap::TPDartPos, 2>& pos )
+            : unflat_darts( darts ), dart_pos( pos )
+        {}
+        FullyUnflattenedDart( const SmallVector<Dart, 3>& darts )
+            : FullyUnflattenedDart( darts,
+                                    SmallVector<TPCombinatorialMap::TPDartPos, 2>(
+                                        darts.size() - 1, TPCombinatorialMap::TPDartPos::DartPos0 ) )
+        {}
+        FullyUnflattenedDart() = default;
+        SmallVector<Dart, 3> unflat_darts;
+        SmallVector<TPCombinatorialMap::TPDartPos, 2> dart_pos;
+    };
+
+    FullyUnflattenedDart unflattenFull( const TPCombinatorialMap& cmap, const Dart& d );
+    Dart flattenFull( const TPCombinatorialMap& cmap, const FullyUnflattenedDart& unflat_d );
 }; // namespace topology
