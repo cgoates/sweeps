@@ -13,6 +13,7 @@ add_library( topology SHARED
   CombinatorialMap1d.cpp
   TPCombinatorialMap.cpp
   MultiPatchCombinatorialMap.cpp
+  HierarchicalTPCombinatorialMap.cpp
 )
 
 target_link_libraries( topology PUBLIC util simplex )
