@@ -66,6 +66,9 @@ namespace param
     size_t numTotalCoordinates( const ParentDomain& pd );
     size_t numParametricLengths( const ParentDomain& pd );
     bool isCartesian( const ParentDomain& pd );
+    /// @brief Iterate the groups of the parent domain.
+    /// @param pd Parent domain to iterate.
+    /// @param callback Calls back on each group with the first expanded coordinate and explicit coordinate belonging to the group, in that order.
     void iterateGroups( const ParentDomain& pd, const std::function<void( const size_t, const size_t, const CoordinateSystem& )>& callback );
     Vector6dMax expandedCoordinates( const ParentDomain& domain, const Vector3dMax& pt );
     SmallVector<size_t, 6> changingCoordinates( const ParentDomain& pd, const BaryCoordIsZeroVec& bdry );
