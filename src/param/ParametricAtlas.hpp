@@ -14,4 +14,6 @@ namespace param
     };
 
     BaryCoordIsZeroVec parentDomainBoundary( const ParametricAtlas& atlas, const topology::Cell& cell );
+
+    size_t parametricLengthIndexAlongEdge( const ParametricAtlas& atlas, const topology::Edge& e );
 }
