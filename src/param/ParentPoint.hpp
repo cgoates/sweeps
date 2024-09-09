@@ -18,9 +18,11 @@ namespace param
 
     ParentPoint pointOnBoundary( const ParentDomain& domain, const BaryCoordIsZeroVec& is_zero );
     Vector6dMax expandedCoordinates( const ParentPoint& pt );
+    ParentPoint compressCoordinates( const ParentDomain& domain, const Vector6dMax& coords, const BaryCoordIsZeroVec& zeros );
     ParentPoint compressCoordinates( const ParentDomain& domain, const Vector6dMax& expanded_coords, const double is_zero_tol );
     ParentPoint average( const ParentPoint& pt1, const ParentPoint& pt2 );
     ParentPoint tensorProduct( const ParentPoint& pt1, const ParentPoint& pt2 );
+    ParentPoint liftFromBoundary( const ParentPoint& bdry_point, const ParentDomain& interior_domain, const BaryCoordIsZeroVec& bdry );
     std::ostream& operator<<( std::ostream& o, const ParentPoint& ppt );
     BaryCoordIsZeroVec join( const BaryCoordIsZeroVec& v1, const BaryCoordIsZeroVec& v2 );
 }

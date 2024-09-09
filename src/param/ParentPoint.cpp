@@ -7,12 +7,8 @@ namespace param
     ParentPoint::ParentPoint( const ParentDomain& domain, const Vector3dMax& point, const BaryCoordIsZeroVec& zero_vec ) :
         mDomain( domain ), mPoint( point ), mBaryCoordIsZero( zero_vec )
     {}
-    ParentPoint compressCoordinates( const ParentDomain& domain, const Vector6dMax& coords, const double is_zero_tol ){
-        BaryCoordIsZeroVec zeros( coords.size(), false );
-        for( Eigen::Index i = 0; i < coords.size(); i++ )
-        {
-            if( util::equals( coords( i ), 0.0, is_zero_tol ) ) zeros.at( i ) = true;
-        }
+
+    ParentPoint compressCoordinates( const ParentDomain& domain, const Vector6dMax& coords, const BaryCoordIsZeroVec& zeros ){
         Vector3dMax point = Vector3dMax::Zero( dim( domain ) );
         iterateGroups( domain, [&]( const size_t expanded_start, const size_t explicit_start, const param::CoordinateSystem& cs ) {
             for( size_t ii = 0; ii < cs.dim(); ii++ )
@@ -21,6 +17,15 @@ namespace param
             }
         } );
         return ParentPoint( domain, point, zeros );
+    }
+
+    ParentPoint compressCoordinates( const ParentDomain& domain, const Vector6dMax& coords, const double is_zero_tol ){
+        BaryCoordIsZeroVec zeros( coords.size(), false );
+        for( Eigen::Index i = 0; i < coords.size(); i++ )
+        {
+            if( util::equals( coords( i ), 0.0, is_zero_tol ) ) zeros.at( i ) = true;
+        }
+        return compressCoordinates( domain, coords, zeros );
     }
 
     ParentPoint pointOnBoundary( const ParentDomain& domain, const BaryCoordIsZeroVec& is_zero )
@@ -70,6 +75,32 @@ namespace param
             tensorProduct( pt1.mDomain, pt2.mDomain ),
             ( Vector3dMax( pt1.mPoint.size() + pt2.mPoint.size() ) << pt1.mPoint, pt2.mPoint ).finished(),
             zero_vec );
+    }
+
+    ParentPoint liftFromBoundary( const ParentPoint& bdry_point, const ParentDomain& interior_domain, const BaryCoordIsZeroVec& bdry )
+    {
+        const Vector6dMax bdry_point_expanded = expandedCoordinates( bdry_point );
+        Vector6dMax interior_point_expanded( numTotalCoordinates( interior_domain ) );
+        BaryCoordIsZeroVec point_bdry( bdry.size() );
+
+        const SmallVector<size_t, 6> changing_coords = changingCoordinates( interior_domain, bdry );
+
+        for( size_t i = 0, bdry_i = 0; i < bdry.size(); i++ )
+        {
+            if( std::ranges::find( changing_coords, i ) != changing_coords.end() )
+            {
+                interior_point_expanded( i ) = bdry_point_expanded( bdry_i );
+                point_bdry.at( i ) = bdry_point.mBaryCoordIsZero.at( bdry_i );
+                bdry_i++;
+            }
+            else
+            {
+                interior_point_expanded( i ) = bdry.at( i ) ? 0.0 : 1.0;
+                point_bdry.at( i ) = bdry.at( i );
+            }
+        }
+
+        return compressCoordinates( interior_domain, interior_point_expanded, point_bdry );
     }
 
     std::ostream& operator<<( std::ostream& o, const ParentPoint& ppt )
