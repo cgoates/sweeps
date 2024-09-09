@@ -6,6 +6,8 @@
 
 namespace param
 {
+    using BaryCoordIsZeroVec = SmallVector<bool, 6>;
+
     /// @brief Represents a barycentric coordinate system of a given dimension.
     class CoordinateSystem
     {
@@ -66,4 +68,5 @@ namespace param
     bool isCartesian( const ParentDomain& pd );
     void iterateGroups( const ParentDomain& pd, const std::function<void( const size_t, const size_t, const CoordinateSystem& )>& callback );
     Vector6dMax expandedCoordinates( const ParentDomain& domain, const Vector3dMax& pt );
+    SmallVector<size_t, 6> changingCoordinates( const ParentDomain& pd, const BaryCoordIsZeroVec& bdry );
 }

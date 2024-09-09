@@ -87,6 +87,20 @@ namespace param
         return out;
     }
 
+    SmallVector<size_t, 6> changingCoordinates( const ParentDomain& pd, const BaryCoordIsZeroVec& bdry )
+    {
+        SmallVector<size_t, 6> out;
+        iterateGroups( pd, [&]( const size_t first_expanded_coord, const size_t, const CoordinateSystem& cs ) {
+            SmallVector<size_t, 3> group_nonzero;
+            for( size_t i = 0; i < numTotalCoordinates( cs ); i++ )
+            {
+                if( not bdry.at( first_expanded_coord + i ) ) group_nonzero.push_back( first_expanded_coord + i );
+            }
+            if( group_nonzero.size() > 1 ) out.insert( out.end(), group_nonzero.begin(), group_nonzero.end() );
+        } );
+        return out;
+    }
+
     std::ostream& operator<<( std::ostream& o, const ParentDomain& pd )
     {
         o << "ParentDomain( ";
