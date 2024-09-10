@@ -157,9 +157,10 @@ void boundaryTracingDebugOutput( const topology::CombinatorialMap& map,
 
     const auto& d = curr_cell.dart();
     const auto vertex_ids = indexingOrError( map, 0 );
-    const auto field_values = field( { vertex_ids( topology::Vertex( d ) ),
-                                       vertex_ids( topology::Vertex( phi( map, 1, d ).value() ) ),
-                                       vertex_ids( topology::Vertex( phi( map, -1, d ).value() ) ) } );
+    const auto field_values =
+        field( std::vector<size_t>{ vertex_ids( topology::Vertex( d ) ),
+                                    vertex_ids( topology::Vertex( phi( map, 1, d ).value() ) ),
+                                    vertex_ids( topology::Vertex( phi( map, -1, d ).value() ) ) } );
 
     // Add the triangles of the current tet to tets
     const size_t next_vid = tris.points.size();
@@ -631,9 +632,10 @@ Trace traceBoundaryField( const topology::CombinatorialMap& map,
         };
         const auto grads_func = [&]( const topology::Face& f ) -> Eigen::Vector3d {
             const topology::Dart& d = f.dart();
-            const auto face_field = field( { vertex_ids( topology::Vertex( d ) ),
-                                             vertex_ids( topology::Vertex( phi( map, 1, d ).value() ) ),
-                                             vertex_ids( topology::Vertex( phi( map, -1, d ).value() ) ) } );
+            const auto face_field =
+                field( std::vector<size_t>{ vertex_ids( topology::Vertex( d ) ),
+                                            vertex_ids( topology::Vertex( phi( map, 1, d ).value() ) ),
+                                            vertex_ids( topology::Vertex( phi( map, -1, d ).value() ) ) } );
             return gradient( triangleOfFace<3>( map, positions, f ), face_field );
         };
         const std::optional<topology::Cell> adjusted_start_cell =

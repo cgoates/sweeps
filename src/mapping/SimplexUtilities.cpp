@@ -31,11 +31,9 @@ Triangle<DIM> triangleOfFace( const topology::CombinatorialMap& map,
 {
     const topology::Dart& d = f.dart();
 
-    const Vector3dMax pos1 = vertex_position( topology::Vertex( d ) );
-    const Vector3dMax pos2 = vertex_position( topology::Vertex( phi( map, 1, d ).value() ) );
-    const Vector3dMax pos3 = vertex_position( topology::Vertex( phi( map, -1, d ).value() ) );
-
-    if( pos1.size() != DIM ) throw std::runtime_error( "Bad positions vector size in triangleOfFace" );
+    const Eigen::Matrix<double, DIM, 1> pos1 = vertex_position( topology::Vertex( d ) );
+    const Eigen::Matrix<double, DIM, 1> pos2 = vertex_position( topology::Vertex( phi( map, 1, d ).value() ) );
+    const Eigen::Matrix<double, DIM, 1> pos3 = vertex_position( topology::Vertex( phi( map, -1, d ).value() ) );
 
     return Triangle<DIM>{ pos1, pos2, pos3 };
 }
