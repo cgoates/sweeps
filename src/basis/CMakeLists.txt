@@ -11,6 +11,7 @@ add_library( basis SHARED
   MultiPatchSplineSpace.cpp
   DivConfTPSplineSpace.cpp
   KnotVector.cpp
+  HierarchicalTPBasisComplex.cpp
 )
 
 target_link_libraries( basis PUBLIC util topology param )
