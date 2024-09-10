@@ -14,10 +14,10 @@ namespace basis
                 throw std::runtime_error( "Bad func_ids input to MultiPatchSplineSpace" );
         }
 
-        mNumFunctions = std::reduce(
-            func_ids.begin(), func_ids.end(), 0, []( const Eigen::Index accum, const std::vector<FunctionId>& fid ) {
-                return std::max( accum, std::max_element( fid.begin(), fid.end() )->id() );
-            } ) + 1;
+        mNumFunctions = std::transform_reduce(
+            func_ids.begin(), func_ids.end(), Eigen::Index{0}, []( const Eigen::Index accum, const Eigen::Index max_elem ) {
+                return std::max( accum, max_elem );
+            }, []( const std::vector<FunctionId>& fid ) { return std::max_element( fid.begin(), fid.end() )->id(); } ) + 1;
     }
 
     const MultiPatchBasisComplex& MultiPatchSplineSpace::basisComplex() const

@@ -14,7 +14,6 @@
 #include <DivConfTPSplineSpace.hpp>
 #include <SplineSpaceEvaluator.hpp>
 #include <VTKOutput.hpp>
-#include <format>
 
 using namespace basis;
 using namespace param;

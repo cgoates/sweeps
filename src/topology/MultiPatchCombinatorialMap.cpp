@@ -5,6 +5,7 @@
 #include <CombinatorialMapMethods.hpp>
 #include <GlobalCellMarker.hpp>
 #include <algorithm>
+#include <numeric>
 
 #include <Logging.hpp>
 

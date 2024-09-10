@@ -2,6 +2,7 @@
 #include <SmallVector.hpp>
 #include <Eigen/Dense>
 #include <functional>
+#include <variant>
 
 namespace util
 {

@@ -68,7 +68,12 @@ TEST_CASE( "corners" )
                 const auto temp = parentDomainBoundary( tp, item );
                 CHECK( std::find( vecs.begin(), vecs.end(), temp ) );
                 vecs.push_back( temp );
-                CHECK( tp.cmap().dim() - i == std::reduce( vecs.back().begin(), vecs.back().end(), size_t{0}, []( const size_t accum, const bool b ){ return accum + size_t(b); } ) );
+                CHECK( tp.cmap().dim() - i == std::transform_reduce(
+                                                  vecs.back().begin(),
+                                                  vecs.back().end(),
+                                                  size_t{ 0 },
+                                                  []( const size_t accum, const size_t b ) { return accum + b; },
+                                                  []( const bool b ) { return b ? 1 : 0; } ) );
             }
             CHECK( vecs.size() == ( i == 0 ? 1 : dim ) * pow( 2, dim - i ) );
         }

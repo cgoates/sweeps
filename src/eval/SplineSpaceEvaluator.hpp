@@ -2,6 +2,7 @@
 #include <SplineSpace.hpp>
 #include <ParentBasisEval.hpp>
 #include <Cell.hpp>
+#include <optional>
 
 namespace eval
 {

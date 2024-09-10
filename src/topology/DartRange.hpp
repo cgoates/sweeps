@@ -2,6 +2,7 @@
 #include <Dart.hpp>
 #include <vector>
 #include <CombinatorialMap.hpp>
+#include <memory>
 
 namespace topology
 {
