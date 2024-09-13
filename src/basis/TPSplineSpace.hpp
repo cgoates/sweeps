@@ -39,4 +39,6 @@ namespace basis
     SmallVector<std::shared_ptr<const BSplineSpace1d>, 3> tensorProductComponentSplines( const TPSplineSpace& ss );
 
     TPSplineSpace buildBSpline( const SmallVector<KnotVector, 3>& kvs, const SmallVector<size_t, 3>& degrees );
+
+    Eigen::SparseMatrix<double> refinementOp( const TPSplineSpace& coarse, const TPSplineSpace& fine, const double param_tol );
 }

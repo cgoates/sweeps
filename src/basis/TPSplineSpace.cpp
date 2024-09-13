@@ -1,5 +1,6 @@
 #include <TPSplineSpace.hpp>
 #include <unsupported/Eigen/KroneckerProduct>
+#include <IndexOperations.hpp>
 
 namespace basis
 {
@@ -124,5 +125,50 @@ namespace basis
         }
         else
             throw std::runtime_error( "Unsupported BSpline dimesnion" );
+    }
+
+    Eigen::SparseMatrix<double> refinementOp( const TPSplineSpace& coarse, const TPSplineSpace& fine, const double param_tol )
+    {
+        const auto fine_comps = tensorProductComponentSplines( fine );
+        const auto coarse_comps = tensorProductComponentSplines( coarse );
+
+        if( fine_comps.size() != coarse_comps.size() )
+            throw std::runtime_error(
+                "Cannot create refinement operator between spaces of different parametric dimensions." );
+
+        if( fine_comps.size() == 0 )
+            throw std::runtime_error( "Refinement operator only available on tensor products of 1d splines." );
+
+        const util::IndexVec degrees = [&]() {
+            util::IndexVec degrees;
+            std::transform( fine_comps.begin(),
+                            fine_comps.end(),
+                            std::back_inserter( degrees ),
+                            []( const std::shared_ptr<const BSplineSpace1d>& bspl ) {
+                                return bspl->basisComplex().defaultParentBasis().mBasisGroups.at( 0 ).degrees.at( 0 );
+                            } );
+
+            for( size_t i = 0; i < degrees.size(); i++ )
+            {
+                if( degrees.at( i ) != coarse_comps.at( i )->basisComplex().defaultParentBasis().mBasisGroups.at( 0 ).degrees.at( 0 ) )
+                    throw std::runtime_error(
+                        "p refinement is not supported. Fine and coarse spline spaces must have the same degree." );
+            }
+
+            return degrees;
+        }();
+
+        const auto refinement_op = [&]( const size_t i ) {
+            return refinementOp(
+                coarse_comps.at( i )->knotVector(), fine_comps.at( i )->knotVector(), degrees.at( i ), param_tol );
+        };
+
+        Eigen::SparseMatrix<double> op = refinement_op( 0 );
+        for( size_t i = 1; i < degrees.size(); i++ )
+        {
+            op = Eigen::kroneckerProduct( refinement_op( i ), op ).eval();
+        }
+
+        return op;
     }
 }
