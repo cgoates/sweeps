@@ -74,6 +74,23 @@ namespace basis
         throw std::runtime_error( "knot_ii provided is greater than the size of the knot vector" );
     }
 
+    void KnotVector::insert( const double knot_to_add, const double param_tol )
+    {
+        for( size_t i = 0; i < mKnots.size(); i++ )
+        {
+            if( util::equals( mKnots.at( i ).first, knot_to_add, param_tol ) )
+            {
+                mKnots.at( i ).second++;
+                break;
+            }
+            else if( mKnots.at( i ).first > knot_to_add )
+            {
+                mKnots.insert( std::next( mKnots.begin(), i ), std::pair<double, size_t>{ knot_to_add, 1 } );
+                break;
+            }
+        }
+    }
+
     std::ostream& operator<<( std::ostream& o, const KnotVector& kv )
     {
         o << "{";
@@ -97,6 +114,37 @@ namespace basis
     }
 
     using SparseMatrixXd = Eigen::SparseMatrix<double>;
+    std::pair<KnotVector, SparseMatrixXd> addKnot( const KnotVector& knots,
+                                                   const size_t degree,
+                                                   const double knot_to_add,
+                                                   const size_t interval_ii,
+                                                   const double param_tol )
+    {
+        const size_t num_funcs = knots.size() - degree - 1;
+        SparseMatrixXd C_ii( num_funcs, num_funcs + 1 );
+        C_ii.reserve( ( Eigen::VectorXi( num_funcs + 1 ) << 1, Eigen::VectorXi::Constant( num_funcs - 1, 2 ), 1 ).finished() );
+        for( size_t i = 0; i < num_funcs + 1; i++ )
+        {
+            const double alpha = [&]() {
+                if( i <= interval_ii - degree )
+                    return 1.0;
+                else if( i <= interval_ii )// Would need to be <= if we weren't adding an existing knot
+                    return ( knot_to_add - knots.knot( i ) ) / ( knots.knot( i + degree ) - knots.knot( i ) );
+                else
+                    return 0.0;
+            }();
+
+            if( i > interval_ii - degree )
+                C_ii.insert( i - 1, i ) = 1 - alpha;
+            if( i < num_funcs and i <= interval_ii )
+                C_ii.insert( i, i ) = alpha;
+        }
+
+        KnotVector new_knots = knots;
+        new_knots.insert( knot_to_add, param_tol );
+        return { new_knots, C_ii };
+    }
+
     SparseMatrixXd globalExtractionOp( const KnotVector& kv, const size_t degree )
     {
         const size_t num_funcs = kv.size() - degree - 1;
@@ -104,37 +152,14 @@ namespace basis
         C.setIdentity();
         KnotVector knots = kv;
 
-        size_t r_ii = 0;
-        const auto add_knot = [&]( const double knot_to_add, const size_t interval_ii ) {
-            SparseMatrixXd C_ii( num_funcs + r_ii, num_funcs + r_ii + 1 );
-            C_ii.reserve( ( Eigen::VectorXi( num_funcs + r_ii + 1 ) << 1, Eigen::VectorXi::Constant( num_funcs + r_ii - 1, 2 ), 1 ).finished() );
-            for( size_t i = 0; i < num_funcs + r_ii + 1; i++ )
-            {
-                const double alpha = [&]() {
-                    if( i <= interval_ii - degree )
-                        return 1.0;
-                    else if( i < interval_ii )// Would need to be <= if we weren't adding an existing knot
-                        return ( knot_to_add - knots.knot( i ) ) / ( knots.knot( i + degree ) - knots.knot( i ) );
-                    else
-                        return 0.0;
-                }();
-
-                if( i > interval_ii - degree )
-                    C_ii.insert( i - 1, i ) = 1 - alpha;
-                if( i < num_funcs + r_ii and i < interval_ii )
-                    C_ii.insert( i, i ) = alpha;
-            }
-            C = ( C * C_ii ).eval();
-            knots.duplicate( interval_ii );
-            r_ii++;
-        };
-
         size_t knot_accumulator = 0;
         kv.iterateUniqueKnots( [&]( const double knot_val, size_t mult ) {
             knot_accumulator += mult;
             while( mult < degree )
             {
-                add_knot( knot_val, knot_accumulator - 1 );
+                SparseMatrixXd C_ii;
+                std::tie( knots, C_ii ) = addKnot( knots, degree, knot_val, knot_accumulator - 1, 1e-12 );
+                C = ( C * C_ii ).eval();
                 mult++;
                 knot_accumulator++;
             }
@@ -143,6 +168,47 @@ namespace basis
         C.makeCompressed();
         return C;
     }
+
+    SparseMatrixXd refinementOp( const KnotVector& kv_coarse, const KnotVector& kv_fine, const size_t degree, const double param_tol )
+    {
+        // FIXME: Check for nestedness of kvs?
+        const size_t num_funcs = kv_coarse.size() - degree - 1;
+        SparseMatrixXd C( num_funcs, num_funcs );
+        C.setIdentity();
+        KnotVector knots = kv_coarse;
+
+        const auto& fine_knots = kv_fine.uniqueKnotMultiplicities();
+        size_t knot_accumulator = 0;
+        for( size_t i = 0; i < fine_knots.size(); i++ )
+        {
+            const double coarse_knot = knots.uniqueKnotMultiplicities().at( i ).first;
+            if( util::equals( coarse_knot, fine_knots.at( i ).first, param_tol ) )
+            {
+                knot_accumulator += knots.uniqueKnotMultiplicities().at( i ).second;
+                while( knots.uniqueKnotMultiplicities().at( i ).second < fine_knots.at( i ).second )
+                {
+                    SparseMatrixXd C_ii;
+                    std::tie( knots, C_ii ) = addKnot( knots, degree, coarse_knot, knot_accumulator - 1, param_tol );
+                    C = ( C * C_ii ).eval();
+                    knot_accumulator++;
+                }
+            }
+            else if( coarse_knot > fine_knots.at( i ).first )
+            {
+                do
+                {
+                    SparseMatrixXd C_ii;
+                    std::tie( knots, C_ii ) = addKnot( knots, degree, fine_knots.at( i ).first, knot_accumulator - 1, param_tol );
+                    C = ( C * C_ii ).eval();
+                    knot_accumulator++;
+                } while ( knots.uniqueKnotMultiplicities().at( i ).second < fine_knots.at( i ).second );
+            }
+        }
+
+        C.makeCompressed();
+        return C;
+    }
+
 
     KnotVector reducedOrder( const KnotVector& kv )
     {

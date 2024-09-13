@@ -18,6 +18,7 @@ namespace basis
         const std::vector<std::pair<double, size_t>>& uniqueKnotMultiplicities() const { return mKnots; }
 
         void duplicate( const size_t knot_ii );
+        void insert( const double knot, const double param_tol );
 
         private:
         std::vector<std::pair<double, size_t>> mKnots;
@@ -41,6 +42,16 @@ namespace basis
     /// @param degree  The degree of the spline represented by the knot vector
     /// @return  The extraction operator
     Eigen::SparseMatrix<double> globalExtractionOp( const KnotVector& kv, const size_t degree );
+
+    /// @brief Gives an expression of the coarse basis in terms of the fine basis.
+    /// @param kv_coarse The knot vector representing the coarse basis.
+    /// @param kv_fine The knot vector representing the fine basis.  Must be nested within kv_coarse.
+    /// @param degree The degree of both bases.
+    /// @return An extraction operator of the coarse basis in terms of the fine basis.
+    Eigen::SparseMatrix<double> refinementOp( const KnotVector& kv_coarse,
+                                              const KnotVector& kv_fine,
+                                              const size_t degree,
+                                              const double param_tol );
 
     /// @brief Reduces the order of the knot vector, essentially removing one of the beginning and end knots.
     /// @param kv The knot vector to reduce the order of
