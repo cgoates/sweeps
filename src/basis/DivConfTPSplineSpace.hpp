@@ -29,14 +29,7 @@ namespace basis
 
         private:
         const std::shared_ptr<const DivConfBasisComplex> mBasisComplex;
-
-        // These are stored just for ownership and lifetime purposes.
-        SmallVector<std::shared_ptr<const BasisComplex1d>, 3> mReducedDegree1dBasisComplex;
         SmallVector<std::shared_ptr<const BSplineSpace1d>, 3> mReducedDegree1dBases;
-        SmallVector<std::shared_ptr<const TPBasisComplex>, 3> mScalarTPBasisComplexes;
-        SmallVector<std::shared_ptr<const TPSplineSpace>, 3> m2dSourceTPBases; // only used in 3d
-
-        // These are the scalar bases we use directly to create the vector basis.
         SmallVector<TPSplineSpace, 3> mScalarTPBases;
     };
 }
