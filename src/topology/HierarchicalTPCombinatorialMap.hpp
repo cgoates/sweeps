@@ -33,6 +33,10 @@ namespace topology
 
         const DartRanges& dartRanges() const { return mRanges; }
 
+        bool iterateChildren( const Cell& local_cell,
+                              const size_t cell_level,
+                              const std::function<bool( const Cell& )>& callback ) const;
+
         private:
         bool iterateDartLineage( const Dart& global_d,
                                  const size_t ancestor_or_descendant_level,

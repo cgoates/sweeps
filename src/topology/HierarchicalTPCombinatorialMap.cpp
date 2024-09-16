@@ -320,3 +320,45 @@ bool HierarchicalTPCombinatorialMap::iterateLeafDescendants( const Dart& global_
 
     return recursive_depth_first_iter( global_d );
 }
+
+bool HierarchicalTPCombinatorialMap::iterateChildren( const Cell& local_cell,
+                                                      const size_t cell_level,
+                                                      const std::function<bool( const Cell& )>& callback ) const
+{
+    if ( local_cell.dim() != dim() )
+        throw std::runtime_error( "iterateChildren only supports elements." );
+
+    const size_t descendant_level = cell_level + 1;
+
+    // Iterate several descendants.
+    // TODO: Assumes dyadic refinement, which is currently checked for in constructor.
+    constexpr size_t darts_per_ancestor_dart = 2;
+
+    if( mRefinementLevels.size() <= descendant_level ) return true;
+
+    const FullyUnflattenedDart unflat = unflattenFull( *mRefinementLevels.at( cell_level ), local_cell.dart() );
+
+    FullyUnflattenedDart start_dart( {}, unflat.dart_pos );
+    std::transform(
+        unflat.unflat_darts.begin(),
+        unflat.unflat_darts.end(),
+        std::back_inserter( start_dart.unflat_darts ),
+        []( const Dart& d ) { return Dart( d.id() * darts_per_ancestor_dart ); } );
+
+    // Add a series of TP indices to the start_dart, flatten, and call back.
+    const util::IndexVec lengths( dim(), darts_per_ancestor_dart );
+
+    bool continue_iter = true;
+    util::iterateTensorProduct( lengths, [&]( const util::IndexVec& iv ){
+        if( not continue_iter ) return;
+        FullyUnflattenedDart descendant_unflat = start_dart;
+        std::transform( descendant_unflat.unflat_darts.begin(),
+                        descendant_unflat.unflat_darts.end(),
+                        iv.begin(),
+                        descendant_unflat.unflat_darts.begin(),
+                        []( const Dart& d, const size_t offset ) { return Dart( d.id() + offset ); } );
+        continue_iter = callback( topology::Cell( flattenFull( *mRefinementLevels.at( descendant_level ), descendant_unflat ), local_cell.dim() ) );
+    } );
+
+    return continue_iter;
+}
