@@ -27,4 +27,8 @@ namespace basis
         const std::vector<std::shared_ptr<const TPSplineSpace>> mRefinementLevels;
         std::vector<Eigen::SparseMatrix<double>> mLevelExtractionOps;
     };
+
+    HierarchicalTPSplineSpace
+        buildHierarchicalSplineSpace( const std::vector<std::shared_ptr<const TPSplineSpace>>& refinement_levels,
+                                      const std::vector<std::vector<topology::Cell>>& leaf_elements );
 }
