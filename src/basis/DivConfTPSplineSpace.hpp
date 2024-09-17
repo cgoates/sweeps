@@ -25,11 +25,11 @@ namespace basis
             return mReducedDegree1dBases;
         }
 
-        const SmallVector<TPSplineSpace, 3>& scalarTPBases() const { return mScalarTPBases; }
+        const SmallVector<std::shared_ptr<const TPSplineSpace>, 3>& scalarTPBases() const { return mScalarTPBases; }
 
         private:
         const std::shared_ptr<const DivConfBasisComplex> mBasisComplex;
         SmallVector<std::shared_ptr<const BSplineSpace1d>, 3> mReducedDegree1dBases;
-        SmallVector<TPSplineSpace, 3> mScalarTPBases;
+        SmallVector<std::shared_ptr<const TPSplineSpace>, 3> mScalarTPBases;
     };
 }

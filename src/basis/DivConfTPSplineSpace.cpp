@@ -30,12 +30,12 @@ namespace basis
                 std::make_shared<TPBasisComplex>( primal_basis.basisComplex().parametricAtlasPtr(),
                                                   primal_1d_bases.at( 0 )->basisComplexPtr(),
                                                   reduced_1d_bcs.at( 1 ) ) );
-            mScalarTPBases.emplace_back( scalar_tp_bcs.back(), primal_1d_bases.at( 0 ), mReducedDegree1dBases.at( 1 ) );
+            mScalarTPBases.push_back( std::make_shared<const TPSplineSpace>( scalar_tp_bcs.back(), primal_1d_bases.at( 0 ), mReducedDegree1dBases.at( 1 ) ) );
             scalar_tp_bcs.emplace_back(
                 std::make_shared<TPBasisComplex>( primal_basis.basisComplex().parametricAtlasPtr(),
                                                   reduced_1d_bcs.at( 0 ),
                                                   primal_1d_bases.at( 1 )->basisComplexPtr() ) );
-            mScalarTPBases.emplace_back( scalar_tp_bcs.back(), mReducedDegree1dBases.at( 0 ), primal_1d_bases.at( 1 ) );
+            mScalarTPBases.push_back( std::make_shared<const TPSplineSpace>( scalar_tp_bcs.back(), mReducedDegree1dBases.at( 0 ), primal_1d_bases.at( 1 ) ) );
         }
         else if( dim == 3 )
         {
@@ -52,7 +52,7 @@ namespace basis
             // component 0
             scalar_tp_bcs.emplace_back( std::make_shared<TPBasisComplex>(
                 primal_basis.basisComplex().parametricAtlasPtr(), scalar_tp_bcs.back(), reduced_1d_bcs.at( 2 ) ) );
-            mScalarTPBases.emplace_back( scalar_tp_bcs.back(), tp_2d_bases.back(), mReducedDegree1dBases.at( 2 ) );
+            mScalarTPBases.push_back( std::make_shared<const TPSplineSpace>( scalar_tp_bcs.back(), tp_2d_bases.back(), mReducedDegree1dBases.at( 2 ) ) );
 
             // 2d source of component 1
             scalar_tp_bcs.emplace_back( std::make_shared<TPBasisComplex>(
@@ -62,7 +62,7 @@ namespace basis
             // component 1
             scalar_tp_bcs.emplace_back( std::make_shared<TPBasisComplex>(
                 primal_basis.basisComplex().parametricAtlasPtr(), scalar_tp_bcs.back(), reduced_1d_bcs.at( 2 ) ) );
-            mScalarTPBases.emplace_back( scalar_tp_bcs.back(), tp_2d_bases.back(), mReducedDegree1dBases.at( 2 ) );
+            mScalarTPBases.push_back( std::make_shared<const TPSplineSpace>( scalar_tp_bcs.back(), tp_2d_bases.back(), mReducedDegree1dBases.at( 2 ) ) );
 
             // 2d source of component 1
             scalar_tp_bcs.emplace_back(
@@ -74,7 +74,7 @@ namespace basis
                 std::make_shared<TPBasisComplex>( primal_basis.basisComplex().parametricAtlasPtr(),
                                                   scalar_tp_bcs.back(),
                                                   primal_1d_bases.at( 2 )->basisComplexPtr() ) );
-            mScalarTPBases.emplace_back( scalar_tp_bcs.back(), tp_2d_bases.back(), primal_1d_bases.at( 2 ) );
+            mScalarTPBases.push_back( std::make_shared<const TPSplineSpace>( scalar_tp_bcs.back(), tp_2d_bases.back(), primal_1d_bases.at( 2 ) ) );
         }
     }
 
@@ -86,8 +86,8 @@ namespace basis
     Eigen::MatrixXd DivConfTPSplineSpace::extractionOperator( const topology::Cell& c ) const
     {
         SmallVector<Eigen::MatrixXd, 3> scalar_ops;
-        std::transform( mScalarTPBases.begin(), mScalarTPBases.end(), std::back_inserter( scalar_ops ), [&]( const TPSplineSpace& scalar_basis ) {
-            return scalar_basis.extractionOperator( c );
+        std::transform( mScalarTPBases.begin(), mScalarTPBases.end(), std::back_inserter( scalar_ops ), [&]( const auto& scalar_basis ) {
+            return scalar_basis->extractionOperator( c );
         } );
         const auto [rows, cols] = std::accumulate( scalar_ops.begin(),
                                                    scalar_ops.end(),
@@ -122,9 +122,9 @@ namespace basis
         std::vector<FunctionId> connectivity;
 
         size_t offset = 0;
-        for( const TPSplineSpace& scalar_basis : mScalarTPBases )
+        for( const auto& scalar_basis : mScalarTPBases )
         {
-            const std::vector<FunctionId> scalar_connectivity = scalar_basis.connectivity( c );
+            const std::vector<FunctionId> scalar_connectivity = scalar_basis->connectivity( c );
             connectivity.reserve( connectivity.size() + scalar_connectivity.size() );
 
             std::transform( scalar_connectivity.begin(),
@@ -132,7 +132,7 @@ namespace basis
                             std::back_inserter( connectivity ),
                             [&]( const FunctionId& fid ) { return FunctionId( fid + offset ); } );
 
-            offset += scalar_basis.numFunctions();
+            offset += scalar_basis->numFunctions();
         }
 
         return connectivity;
@@ -140,8 +140,8 @@ namespace basis
 
     size_t DivConfTPSplineSpace::numFunctions() const
     {
-        return std::accumulate( mScalarTPBases.begin(), mScalarTPBases.end(), 0, [&]( const size_t accum, const TPSplineSpace& ss ) {
-            return accum + ss.numFunctions();
+        return std::accumulate( mScalarTPBases.begin(), mScalarTPBases.end(), 0, [&]( const size_t accum, const auto& ss ) {
+            return accum + ss->numFunctions();
         } );
     }
 }

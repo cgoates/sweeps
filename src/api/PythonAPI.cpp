@@ -204,7 +204,7 @@ PYBIND11_MODULE( splines, m )
                 const bool is_S = side == api::PatchSide::S0 or side == api::PatchSide::S1;
 
                 const util::IndexVec lengths = [&]() {
-                    const basis::TPSplineSpace& comp = is_S ? component_bases.at( 0 ) : component_bases.at( 1 );
+                    const basis::TPSplineSpace& comp = is_S ? *component_bases.at( 0 ) : *component_bases.at( 1 );
                     const auto component_comps = tensorProductComponentSplines( comp );
                     util::IndexVec out;
                     for( const auto& comp : component_comps ) out.push_back( comp->numFunctions() );
@@ -225,7 +225,7 @@ PYBIND11_MODULE( splines, m )
                 std::vector<size_t> out;
                 out.reserve( lengths.at( is_S ? 0 : 1 ) );
 
-                const size_t offset = is_S ? 0 : component_bases.at( 0 ).numFunctions();
+                const size_t offset = is_S ? 0 : component_bases.at( 0 )->numFunctions();
 
                 util::iterateTensorProduct( lengths, { 0, 1 }, iter_dir, [&]( const util::IndexVec& iv ) {
                     out.emplace_back( util::flatten( iv, lengths ) + offset );

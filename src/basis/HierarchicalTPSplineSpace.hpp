@@ -20,6 +20,8 @@ namespace basis
 
         virtual size_t numFunctions() const override;
 
+        const std::vector<std::shared_ptr<const TPSplineSpace>>& refinementLevels() const { return mRefinementLevels; }
+
         private:
 
         const std::shared_ptr<const HierarchicalTPBasisComplex> mBasisComplex;
