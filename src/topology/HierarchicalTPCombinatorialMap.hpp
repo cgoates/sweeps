@@ -33,6 +33,8 @@ namespace topology
 
         const DartRanges& dartRanges() const { return mRanges; }
 
+        size_t numLevels() const { return mRefinementLevels.size(); }
+
         bool iterateChildren( const Cell& local_cell,
                               const size_t cell_level,
                               const std::function<bool( const Cell& )>& callback ) const;
@@ -54,4 +56,6 @@ namespace topology
         std::map<Dart, Dart> mPhiOnes;
         std::map<Dart, Dart> mPhiMinusOnes;
     };
+
+    std::vector<std::vector<Cell>> leafElements( const HierarchicalTPCombinatorialMap& cmap );
 }; // namespace topology

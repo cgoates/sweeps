@@ -40,12 +40,50 @@ Eigen::SparseMatrix<double> verticalConcat( const Eigen::SparseMatrix<double>& m
     return result;
 }
 
+std::vector<std::vector<FunctionId>>
+    activeFuncs( const topology::HierarchicalTPCombinatorialMap& cmap,
+                 const std::vector<std::shared_ptr<const TPSplineSpace>>& refinement_levels )
+{
+    const std::vector<std::vector<topology::Cell>> leaf_elements = leafElements( cmap );
+    std::set<topology::Cell> pruned_cells;
+    std::vector<std::vector<FunctionId>> active_funcs;
+
+    for( size_t i = 0; i < refinement_levels.size(); i++ )
+    {
+        const auto& level_ss = refinement_levels.at( i );
+        std::set<topology::Cell> next_pruned_cells;
+        std::set<FunctionId> level_active_funcs;
+        for( const topology::Cell& leaf_elem : leaf_elements.at( i ) )
+        {
+            const std::vector<FunctionId> conn = level_ss->connectivity( leaf_elem );
+            level_active_funcs.insert( conn.begin(), conn.end() );
+            cmap.iterateChildren( leaf_elem, i, [&]( const topology::Cell& c ) {
+                next_pruned_cells.insert( c );
+                return true;
+            } );
+        }
+
+        for( const topology::Cell& pruned_cell : pruned_cells )
+        {
+            const std::vector<FunctionId> conn = level_ss->connectivity( pruned_cell );
+            for( const FunctionId& fid : conn ) level_active_funcs.erase( fid );
+            cmap.iterateChildren( pruned_cell, i, [&]( const topology::Cell& c ) {
+                next_pruned_cells.insert( c );
+                return true;
+            } );
+        }
+        pruned_cells = next_pruned_cells;
+        active_funcs.emplace_back( level_active_funcs.begin(), level_active_funcs.end() );
+    }
+    return active_funcs;
+}
+
 HierarchicalTPSplineSpace::HierarchicalTPSplineSpace(
     const std::shared_ptr<const HierarchicalTPBasisComplex>& bc,
-    const std::vector<std::shared_ptr<const TPSplineSpace>>& refinement_levels,
-    const std::vector<std::vector<FunctionId>>& active_funcs )
+    const std::vector<std::shared_ptr<const TPSplineSpace>>& refinement_levels )
     : mBasisComplex( bc ), mRefinementLevels( refinement_levels )
 {
+    const std::vector<std::vector<FunctionId>> active_funcs = activeFuncs( bc->parametricAtlas().cmap(), refinement_levels );
     const auto active_mat = [&active_funcs,this]( const size_t level_ii ) {
         Eigen::SparseMatrix<double> A( active_funcs.at( level_ii ).size(), mRefinementLevels.at( level_ii )->numFunctions() );
         A.reserve( Eigen::VectorXi::Constant( A.cols(), 1 ) );
@@ -171,34 +209,6 @@ namespace basis
         const auto atlas = std::make_shared<const param::HierarchicalTPParametricAtlas>( cmap, atlas_levels );
         const auto bc = std::make_shared<const HierarchicalTPBasisComplex>( atlas, bc_levels );
 
-        for( size_t i = 0; i < refinement_levels.size(); i++ )
-        {
-            const auto& ss = refinement_levels.at( i );
-            std::set<topology::Cell> next_pruned_cells;
-            std::set<FunctionId> level_active_funcs;
-            for( const topology::Cell& leaf_elem : leaf_elements.at( i ) )
-            {
-                const std::vector<FunctionId> conn = ss->connectivity( leaf_elem );
-                level_active_funcs.insert( conn.begin(), conn.end() );
-                cmap->iterateChildren( leaf_elem, i, [&]( const topology::Cell& c ) {
-                    next_pruned_cells.insert( c );
-                    return true;
-                } );
-            }
-
-            for( const topology::Cell& pruned_cell : pruned_cells )
-            {
-                const std::vector<FunctionId> conn = ss->connectivity( pruned_cell );
-                for( const FunctionId& fid : conn ) level_active_funcs.erase( fid );
-                cmap->iterateChildren( pruned_cell, i, [&]( const topology::Cell& c ) {
-                    next_pruned_cells.insert( c );
-                    return true;
-                } );
-            }
-            pruned_cells = next_pruned_cells;
-            active_funcs.emplace_back( level_active_funcs.begin(), level_active_funcs.end() );
-        }
-
-        return HierarchicalTPSplineSpace( bc, refinement_levels, active_funcs );
+        return HierarchicalTPSplineSpace( bc, refinement_levels ); // NOTE: leaf_elements are recalculated here. Fix if this is a bottleneck.
     }
 }

@@ -362,3 +362,17 @@ bool HierarchicalTPCombinatorialMap::iterateChildren( const Cell& local_cell,
 
     return continue_iter;
 }
+
+namespace topology
+{
+    std::vector<std::vector<Cell>> leafElements( const HierarchicalTPCombinatorialMap& cmap )
+    {
+        std::vector<std::vector<Cell>> out( cmap.numLevels(), std::vector<Cell>() );
+        iterateCellsWhile( cmap, cmap.dim(), [&]( const Cell& c ) {
+            const auto [level, dart] = cmap.unrefinedAncestorDart( c.dart() );
+            out.at( level ).push_back( Cell( dart, cmap.dim() ) );
+            return true;
+        } );
+        return out;
+    }
+}

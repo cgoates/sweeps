@@ -8,8 +8,7 @@ namespace basis
     {
         public:
         HierarchicalTPSplineSpace( const std::shared_ptr<const HierarchicalTPBasisComplex>& bc,
-                                   const std::vector<std::shared_ptr<const TPSplineSpace>>& refinement_levels,
-                                   const std::vector<std::vector<FunctionId>>& active_funcs );
+                                   const std::vector<std::shared_ptr<const TPSplineSpace>>& refinement_levels );
         virtual ~HierarchicalTPSplineSpace() = default;
 
         virtual const HierarchicalTPBasisComplex& basisComplex() const override;
