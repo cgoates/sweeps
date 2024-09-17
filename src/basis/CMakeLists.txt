@@ -13,6 +13,7 @@ add_library( basis SHARED
   KnotVector.cpp
   HierarchicalTPBasisComplex.cpp
   HierarchicalTPSplineSpace.cpp
+  DivConfHierarchicalTPSplineSpace.cpp
 )
 
 target_link_libraries( basis PUBLIC util topology param )
