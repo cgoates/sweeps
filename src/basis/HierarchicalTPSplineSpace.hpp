@@ -22,11 +22,16 @@ namespace basis
 
         const std::vector<std::shared_ptr<const TPSplineSpace>>& refinementLevels() const { return mRefinementLevels; }
 
+        const std::vector<std::vector<FunctionId>>& activeFunctions() const { return mActiveFunctions; }
+
+        const std::vector<Eigen::SparseMatrix<double>>& levelExtractionOperators() const { return mLevelExtractionOps; }
+
         private:
 
         const std::shared_ptr<const HierarchicalTPBasisComplex> mBasisComplex;
         const std::vector<std::shared_ptr<const TPSplineSpace>> mRefinementLevels;
         std::vector<Eigen::SparseMatrix<double>> mLevelExtractionOps;
+        std::vector<std::vector<FunctionId>> mActiveFunctions;
     };
 
     HierarchicalTPSplineSpace

@@ -48,25 +48,26 @@ std::vector<std::vector<FunctionId>>
 HierarchicalTPSplineSpace::HierarchicalTPSplineSpace(
     const std::shared_ptr<const HierarchicalTPBasisComplex>& bc,
     const std::vector<std::shared_ptr<const TPSplineSpace>>& refinement_levels )
-    : mBasisComplex( bc ), mRefinementLevels( refinement_levels )
+    : mBasisComplex( bc ),
+      mRefinementLevels( refinement_levels ),
+      mActiveFunctions( activeFuncs( bc->parametricAtlas().cmap(), refinement_levels ) )
 {
-    const std::vector<std::vector<FunctionId>> active_funcs = activeFuncs( bc->parametricAtlas().cmap(), refinement_levels );
-    const auto active_mat = [&active_funcs,this]( const size_t level_ii ) {
-        Eigen::SparseMatrix<double> A( active_funcs.at( level_ii ).size(), mRefinementLevels.at( level_ii )->numFunctions() );
+    const auto active_mat = [this]( const size_t level_ii ) {
+        Eigen::SparseMatrix<double> A( mActiveFunctions.at( level_ii ).size(), mRefinementLevels.at( level_ii )->numFunctions() );
         A.reserve( Eigen::VectorXi::Constant( A.cols(), 1 ) );
         size_t row_ii = 0;
-        for( const FunctionId& fid : active_funcs.at( level_ii ) )
+        for( const FunctionId& fid : mActiveFunctions.at( level_ii ) )
             A.coeffRef( row_ii++, fid ) = 1.0;
 
         return A;
     };
-    const auto active_mask = [&active_funcs, this]( const size_t level_ii ) {
+    const auto active_mask = [this]( const size_t level_ii ) {
         const Eigen::Index num_funcs = mRefinementLevels.at( level_ii )->numFunctions();
         Eigen::SparseMatrix<double> A( num_funcs, num_funcs );
         A.reserve( Eigen::VectorXi::Constant( A.cols(), 1 ) );
         for( Eigen::Index col_ii = 0; col_ii < A.cols(); col_ii++ )
-            if( std::find( active_funcs.at( level_ii ).begin(), active_funcs.at( level_ii ).end(), FunctionId( col_ii ) ) ==
-                active_funcs.at( level_ii ).end() )
+            if( std::find( mActiveFunctions.at( level_ii ).begin(), mActiveFunctions.at( level_ii ).end(), FunctionId( col_ii ) ) ==
+                mActiveFunctions.at( level_ii ).end() )
                 A.coeffRef( col_ii, col_ii ) = 1.0;
 
         return A;
