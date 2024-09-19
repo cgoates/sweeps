@@ -96,6 +96,7 @@ Eigen::SparseMatrix<double> nonzeroRowsOfColumns( const Eigen::SparseMatrix<doub
 {
     std::set<Eigen::Index> nonzero_rows;
     std::vector<Eigen::Triplet<double>> triplets;
+    triplets.reserve( mat.nonZeros() ); // Overkill, but I don't see a better number to use here.
 
     for( size_t col_ii = 0; col_ii < cols.size(); ++col_ii )
     {
@@ -161,8 +162,6 @@ namespace basis
         atlas_levels.reserve( refinement_levels.size() );
         std::vector<std::shared_ptr<const topology::TPCombinatorialMap>> cmap_levels;
         cmap_levels.reserve( refinement_levels.size() );
-        std::vector<std::vector<FunctionId>> active_funcs;
-        active_funcs.reserve( refinement_levels.size() );
 
         std::set<topology::Cell> pruned_cells;
 
