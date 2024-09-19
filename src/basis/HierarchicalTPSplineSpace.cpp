@@ -2,43 +2,10 @@
 #include <set>
 #include <algorithm>
 #include <Logging.hpp>//FIXME
+#include <SparseMatrixUtilities.hpp>
+#include <Eigen/SparseLU>
 
 using namespace basis;
-
-Eigen::SparseMatrix<double> verticalConcat( const Eigen::SparseMatrix<double>& mat1,
-                                            const Eigen::SparseMatrix<double>& mat2 )
-{
-    if( mat1.cols() != mat2.cols() )
-    {
-        std::cerr << "Matrix 1 has size " << mat1.rows() << ", " << mat1.cols() << ".\n";
-        std::cerr << "Matrix 2 has size " << mat2.rows() << ", " << mat2.cols() << ".\n";
-        throw std::invalid_argument( "Input matrices must have the same number of columns." );
-    }
-
-    std::vector<Eigen::Triplet<double>> triplets;
-    triplets.reserve( mat1.nonZeros() + mat2.nonZeros() );
-
-    for( Eigen::Index k = 0; k < mat1.outerSize(); ++k )
-    {
-        for( Eigen::SparseMatrix<double>::InnerIterator it( mat1, k ); it; ++it )
-        {
-            triplets.emplace_back( it.row(), it.col(), it.value() );
-        }
-    }
-
-    for( Eigen::Index k = 0; k < mat2.outerSize(); ++k )
-    {
-        for( Eigen::SparseMatrix<double>::InnerIterator it( mat2, k ); it; ++it )
-        {
-            triplets.emplace_back( it.row() + mat1.rows(), it.col(), it.value() );
-        }
-    }
-
-    Eigen::SparseMatrix<double> result( mat1.rows() + mat2.rows(), mat1.cols() );
-    result.setFromTriplets( triplets.begin(), triplets.end() );
-
-    return result;
-}
 
 std::vector<std::vector<FunctionId>>
     activeFuncs( const topology::HierarchicalTPCombinatorialMap& cmap,
@@ -109,7 +76,7 @@ HierarchicalTPSplineSpace::HierarchicalTPSplineSpace(
     for( size_t i = 1; i < mRefinementLevels.size(); i++ )
     {
         const auto D = refinementOp( *mRefinementLevels.at( i - 1 ), *mRefinementLevels.at( i ), 1e-10 );
-        const Eigen::SparseMatrix<double> S = verticalConcat( mLevelExtractionOps.back() * D * active_mask( i ), active_mat( i ) );
+        const Eigen::SparseMatrix<double> S = util::verticalConcat( mLevelExtractionOps.back() * D * active_mask( i ), active_mat( i ) );
 
         mLevelExtractionOps.push_back( S );
     }

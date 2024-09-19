@@ -4,6 +4,7 @@ add_library( util SHARED
   SmallVector.cpp
   CommonUtils.cpp
   IndexOperations.cpp
+  SparseMatrixUtilities.cpp
 )
 
 add_dependencies( util eigen )
