@@ -178,4 +178,30 @@ namespace basis
 
         return HierarchicalTPSplineSpace( bc, refinement_levels ); // NOTE: leaf_elements are recalculated here. Fix if this is a bottleneck.
     }
+
+    Eigen::SparseMatrix<double> prolongationOperator( const HierarchicalTPSplineSpace& hier_ss )
+    {
+        const std::vector<std::vector<FunctionId>>& active_funcs = hier_ss.activeFunctions();
+        const auto& refinement_levels = hier_ss.refinementLevels();
+        const auto active_mat = [&]( const size_t level_ii ) {
+            Eigen::SparseMatrix<double> A( active_funcs.at( level_ii ).size(), refinement_levels.at( level_ii )->numFunctions() );
+            A.reserve( Eigen::VectorXi::Constant( A.cols(), 1 ) );
+            size_t row_ii = 0;
+            for( const FunctionId& fid : active_funcs.at( level_ii ) )
+                A.coeffRef( row_ii++, fid ) = 1.0;
+
+            return A;
+        };
+
+        Eigen::SparseMatrix<double> D_accum = util::sparseIdentity( refinement_levels.at( 0 )->numFunctions() );
+        Eigen::SparseMatrix<double> A_stack = active_mat( 0 );
+        for( size_t i = 1; i < refinement_levels.size(); i++ )
+        {
+            const auto D = refinementOp( *refinement_levels.at( i - 1 ), *refinement_levels.at( i ), 1e-10 );
+            D_accum = ( D_accum * D ).eval();
+            A_stack = util::verticalConcat( A_stack, active_mat( i ) * D_accum.transpose() );
+        }
+
+        return A_stack;
+    }
 }

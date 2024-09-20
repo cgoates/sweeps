@@ -37,4 +37,10 @@ namespace basis
     HierarchicalTPSplineSpace
         buildHierarchicalSplineSpace( const std::vector<std::shared_ptr<const TPSplineSpace>>& refinement_levels,
                                       const std::vector<std::vector<topology::Cell>>& leaf_elements );
+
+    /// @brief Builds the operator that transforms coefficients from the unrefined space to the hierarchical space.
+    /// @param hier_ss The hierarchical space to transform the coefficients to.  Coefficients should correspond to
+    ///                the spline space hier_ss.refinementLevels().at( 0 ).
+    /// @return An operator to transform the coefficients.
+    Eigen::SparseMatrix<double> prolongationOperator( const HierarchicalTPSplineSpace& hier_ss );
 }
