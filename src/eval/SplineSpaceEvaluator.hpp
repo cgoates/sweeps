@@ -3,6 +3,7 @@
 #include <ParentBasisEval.hpp>
 #include <Cell.hpp>
 #include <optional>
+#include <CustomEigen.hpp>
 
 namespace eval
 {
@@ -17,7 +18,9 @@ namespace eval
         Eigen::VectorXd evaluateManifold( const Eigen::MatrixXd& cpts ) const;
         Eigen::MatrixXd evaluateJacobian( const Eigen::MatrixXd& cpts ) const;
         Eigen::MatrixXd evaluateHessian( const Eigen::MatrixXd& cpts ) const;// FIXME: Document the returned matrix ordering. Flattening a 3-tensor into a matrix here.
-        Eigen::MatrixXd evaluatePiola( const Eigen::MatrixXd& cpts ) const;
+
+        Eigen::MatrixXd evaluateParamToSpatialJacobian( const Eigen::MatrixXd& cpts ) const;
+        Eigen::MatrixXd evaluateParamToSpatialHessian( const Eigen::MatrixXd& cpts ) const;
 
         Eigen::MatrixXd evaluateBasis() const;
         Eigen::MatrixXd evaluateFirstDerivatives() const;
@@ -31,6 +34,7 @@ namespace eval
         const size_t mNumDerivs;
         const basis::SplineSpace& mSpline;
         std::optional<topology::Cell> mCurrentCell;
+        Vector6dMax mParametricLengths;
         std::vector<basis::FunctionId> mConnect;
         Eigen::MatrixXd mExOp;
         std::optional<ParentBasisEval> mLocalEvals;
