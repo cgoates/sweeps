@@ -63,4 +63,7 @@ namespace basis
     /// @param degree  The basis degree
     /// @return  The greville points
     Eigen::VectorXd grevillePoints( const KnotVector& kv, const size_t degree );
+
+    KnotVector dyadicRefine( const KnotVector& kv );
+    KnotVector nAdicRefine( const KnotVector& kv, const size_t n );
 }

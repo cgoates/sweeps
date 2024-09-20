@@ -238,4 +238,27 @@ namespace basis
         }
         return out;
     }
+
+    KnotVector dyadicRefine( const KnotVector& kv )
+    {
+        return nAdicRefine( kv, 2 );
+    }
+
+    KnotVector nAdicRefine( const KnotVector& kv, const size_t n )
+    {
+        const auto& original_unique_knots = kv.uniqueKnotMultiplicities();
+        std::vector<std::pair<double, size_t>> new_unique_knots;
+        new_unique_knots.push_back( original_unique_knots.front() );
+        for( size_t i = 1; i < original_unique_knots.size(); i++ )
+        {
+            for( size_t n_ii = 1; n_ii < n; n_ii++ )
+            {
+                const double x = (double)n_ii / (double)n;
+                new_unique_knots.push_back( { ( 1.0 - x ) * original_unique_knots.at( i - 1 ).first + x * original_unique_knots.at( i ).first, 1 } );
+            }
+
+            new_unique_knots.push_back( original_unique_knots.at( i ) );
+        }
+        return KnotVector( new_unique_knots );
+    }
 }
