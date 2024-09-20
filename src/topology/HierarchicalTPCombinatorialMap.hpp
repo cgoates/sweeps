@@ -55,6 +55,7 @@ namespace topology
         std::vector<bool> mUnrefinedDarts;
         std::map<Dart, Dart> mPhiOnes;
         std::map<Dart, Dart> mPhiMinusOnes;
+        std::vector<size_t> mRefinementRatios;
     };
 
     std::vector<std::vector<Cell>> leafElements( const HierarchicalTPCombinatorialMap& cmap );

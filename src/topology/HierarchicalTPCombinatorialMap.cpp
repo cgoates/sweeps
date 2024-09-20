@@ -14,12 +14,29 @@ HierarchicalTPCombinatorialMap::HierarchicalTPCombinatorialMap(
       mLeafDarts( mRanges.maxDartId(), false ),
       mUnrefinedDarts( mRanges.maxDartId(), false )
 {
-    // TODO: For now I am assuming dyadic refinement only.  This checks that is the case, though imperfectly.
+    const auto get_tp_lengths = []( const TPCombinatorialMap& cmap ) -> util::IndexVec {
+        const auto cmaps = tensorProductComponentCMaps( cmap );
+        util::IndexVec out;
+        std::transform( cmaps.begin(), cmaps.end(), std::back_inserter( out ), []( const auto& c ) { return topology::cellCount( *c, 1 ); } );
+        return out;
+    };
+
+    // For now I am assuming uniform refinement only.
+    util::IndexVec lower_sizes = get_tp_lengths( *refinement_levels.at( 0 ) );
     for( size_t level = 1; level < refinement_levels.size(); level++ )
     {
-        if( topology::cellCount( *refinement_levels.at( level - 1 ), dim() ) * 4 !=
-            topology::cellCount( *refinement_levels.at( level ), dim() ) )
-            throw std::runtime_error( "Hierarchical only supports dyadic refinement currently.  Input refinement levels do not form a dyadic refinement." );
+        const util::IndexVec higher_sizes = get_tp_lengths( *refinement_levels.at( level ) );
+        mRefinementRatios.push_back( higher_sizes.front() / lower_sizes.front() );
+
+        if( higher_sizes.front() % lower_sizes.front() != 0 )
+            throw std::invalid_argument( "Refinement levels must be uniform refinements of each other." );
+
+        for( size_t i = 0; i < lower_sizes.size(); i++ )
+        {
+            if( higher_sizes.at( i ) / lower_sizes.at( i ) != mRefinementRatios.back() or higher_sizes.at( i ) % lower_sizes.at( i ) != 0 )
+                throw std::invalid_argument( "Refinement levels must be uniform refinements of each other." );
+        }
+        lower_sizes = higher_sizes;
     }
 
     // Mark unrefined and leaf darts
@@ -232,8 +249,10 @@ bool HierarchicalTPCombinatorialMap::iterateDartLineage( const Dart& global_d,
     if( dart_level > ancestor_or_descendant_level )
     {
         // Call back on a single ancestor dart
-        // TODO: Assumes dyadic refinement, which is currently checked for in constructor.
-        const size_t darts_per_ancestor_dart = 2 * ( dart_level - ancestor_or_descendant_level );
+        const size_t darts_per_ancestor_dart =
+            std::reduce( std::next( mRefinementRatios.begin(), ancestor_or_descendant_level ),
+                         std::next( mRefinementRatios.begin(), dart_level ),
+                         1, std::multiplies<>() );
 
         const FullyUnflattenedDart unflat = unflattenFull( *mRefinementLevels.at( dart_level ), local_d );
 
@@ -252,8 +271,10 @@ bool HierarchicalTPCombinatorialMap::iterateDartLineage( const Dart& global_d,
     else
     {
         // Iterate several descendants.
-        // TODO: Assumes dyadic refinement, which is currently checked for in constructor.
-        const size_t darts_per_ancestor_dart = 2 * ( ancestor_or_descendant_level - dart_level );
+        const size_t darts_per_ancestor_dart =
+            std::reduce( std::next( mRefinementRatios.begin(), dart_level ),
+                         std::next( mRefinementRatios.begin(), ancestor_or_descendant_level ),
+                         1, std::multiplies<>() );
 
         const FullyUnflattenedDart unflat = unflattenFull( *mRefinementLevels.at( dart_level ), local_d );
 
@@ -330,11 +351,10 @@ bool HierarchicalTPCombinatorialMap::iterateChildren( const Cell& local_cell,
 
     const size_t descendant_level = cell_level + 1;
 
-    // Iterate several descendants.
-    // TODO: Assumes dyadic refinement, which is currently checked for in constructor.
-    constexpr size_t darts_per_ancestor_dart = 2;
-
     if( mRefinementLevels.size() <= descendant_level ) return true;
+
+    // Iterate several descendants.
+    const size_t darts_per_ancestor_dart = mRefinementRatios.at( cell_level );
 
     const FullyUnflattenedDart unflat = unflattenFull( *mRefinementLevels.at( cell_level ), local_cell.dart() );
 
@@ -343,7 +363,7 @@ bool HierarchicalTPCombinatorialMap::iterateChildren( const Cell& local_cell,
         unflat.unflat_darts.begin(),
         unflat.unflat_darts.end(),
         std::back_inserter( start_dart.unflat_darts ),
-        []( const Dart& d ) { return Dart( d.id() * darts_per_ancestor_dart ); } );
+        [&darts_per_ancestor_dart]( const Dart& d ) { return Dart( d.id() * darts_per_ancestor_dart ); } );
 
     // Add a series of TP indices to the start_dart, flatten, and call back.
     const util::IndexVec lengths( dim(), darts_per_ancestor_dart );
