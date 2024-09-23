@@ -147,7 +147,7 @@ std::vector<FunctionId> HierarchicalTPSplineSpace::connectivity( const topology:
 
 size_t HierarchicalTPSplineSpace::numFunctions() const
 {
-    return mLevelExtractionOps.back().cols();
+    return mLevelExtractionOps.back().rows();
 }
 
 namespace basis
