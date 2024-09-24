@@ -264,6 +264,11 @@ PYBIND11_MODULE( splines, m )
             "Evaluates the spatial position of the spline geometry at the parametric position from the latest calls to "
             "localizeElement and localizePoint." )
         .def(
+            "jacobian",
+            []( const api::NavierStokesDiscretization& nsd ) { return nsd.H1.evaluateJacobian( nsd.cpts ); },
+            "Evaluates the parent to spatial Jacobian of the spline geometry mapping at the parametric position specified "
+            "in the latest calls to localizeElement and LocalizePoint." )
+        .def(
             "jacobianDeterminant",
             []( const api::NavierStokesDiscretization& nsd ) {
                 return nsd.H1.evaluateJacobian( nsd.cpts ).determinant();
