@@ -21,6 +21,11 @@ PYBIND11_MODULE( splines, m )
               "param_tol"_a )
         .def( "size", &basis::KnotVector::size, "The number of knot values in the knot vector." )
         .def( "knot", &basis::KnotVector::knot, "Returns the knot at position ii.", "ii"_a )
+        .def( "__repr__", []( const basis::KnotVector& kv ) {
+            std::stringstream ss;
+            ss << kv;
+            return ss.str();
+        } )
         .doc() = "A simple knot vector object for defining a B-spline.";
 
     py::enum_<api::PatchSide>( m, "PatchSide" )
@@ -309,7 +314,11 @@ PYBIND11_MODULE( splines, m )
             "Evaluates the piola transformed derivatives of the L2 basis at the parametric position from the latest "
             "calls to localizeElement and localizePoint. The basis is returned as a matrix with L2.numFunctions( elem "
             ") rows and two columns, with the ith row corresponding to the ith global id in the connectivity, and the "
-            "columns ordered as dp/ds, dp/dt." );
+            "columns ordered as dp/ds, dp/dt." )
+        .def( "knotVectors", []( const api::NavierStokesDiscretization& nsd ) {
+            const auto comps = tensorProductComponentSplines( nsd.H1_ss );
+            return std::vector<basis::KnotVector>{ comps.at( 0 )->knotVector(), comps.at( 1 )->knotVector() };
+        } );
 
     m.def(
         "grevillePoints",
