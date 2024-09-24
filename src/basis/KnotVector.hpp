@@ -2,6 +2,7 @@
 #include <vector>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
+#include <SmallVector.hpp>
 
 namespace basis
 {
@@ -51,6 +52,16 @@ namespace basis
     Eigen::SparseMatrix<double> refinementOp( const KnotVector& kv_coarse,
                                               const KnotVector& kv_fine,
                                               const size_t degree,
+                                              const double param_tol );
+
+    /// @brief Gives an expression of the coarse basis in terms of the fine basis for a tensor product B-spline.
+    /// @param kvs_coarse The knot vectors representing the coarse basis.
+    /// @param kvs_fine The knot vectors representing the fine basis.  Must be nested within kvs_coarse.
+    /// @param degrees The degrees of both bases.
+    /// @return An extraction operator of the coarse basis in terms of the fine basis.
+    Eigen::SparseMatrix<double> refinementOp( const SmallVector<KnotVector, 3>& kvs_coarse,
+                                              const SmallVector<KnotVector, 3>& kvs_fine,
+                                              const SmallVector<size_t, 3> degrees,
                                               const double param_tol );
 
     /// @brief Reduces the order of the knot vector, essentially removing one of the beginning and end knots.

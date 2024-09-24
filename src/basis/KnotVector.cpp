@@ -1,7 +1,7 @@
 #include <KnotVector.hpp>
 #include <numeric>
 #include <CommonUtils.hpp>
-
+#include <unsupported/Eigen/KroneckerProduct>
 #include <iostream>
 
 namespace basis
@@ -209,6 +209,23 @@ namespace basis
         return C;
     }
 
+    Eigen::SparseMatrix<double> refinementOp( const SmallVector<KnotVector, 3>& kvs_coarse,
+                                              const SmallVector<KnotVector, 3>& kvs_fine,
+                                              const SmallVector<size_t, 3> degrees,
+                                              const double param_tol )
+    {
+        const auto refinement_op = [&]( const size_t i ) {
+            return refinementOp( kvs_coarse.at( i ), kvs_fine.at( i ), degrees.at( i ), param_tol );
+        };
+
+        Eigen::SparseMatrix<double> op = refinement_op( 0 );
+        for( size_t i = 1; i < degrees.size(); i++ )
+        {
+            op = Eigen::kroneckerProduct( refinement_op( i ), op ).eval();
+        }
+
+        return op;
+    }
 
     KnotVector reducedOrder( const KnotVector& kv )
     {

@@ -158,17 +158,12 @@ namespace basis
             return degrees;
         }();
 
-        const auto refinement_op = [&]( const size_t i ) {
-            return refinementOp(
-                coarse_comps.at( i )->knotVector(), fine_comps.at( i )->knotVector(), degrees.at( i ), param_tol );
-        };
+        SmallVector<KnotVector, 3> kvs_coarse;
+        std::transform( coarse_comps.begin(), coarse_comps.end(), std::back_inserter( kvs_coarse ), []( const auto& comp ) { return comp->knotVector(); } );
 
-        Eigen::SparseMatrix<double> op = refinement_op( 0 );
-        for( size_t i = 1; i < degrees.size(); i++ )
-        {
-            op = Eigen::kroneckerProduct( refinement_op( i ), op ).eval();
-        }
+        SmallVector<KnotVector, 3> kvs_fine;
+        std::transform( fine_comps.begin(), fine_comps.end(), std::back_inserter( kvs_fine ), []( const auto& comp ) { return comp->knotVector(); } );
 
-        return op;
+        return refinementOp( kvs_coarse, kvs_fine, degrees, param_tol );
     }
 }
