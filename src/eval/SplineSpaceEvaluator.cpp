@@ -85,6 +85,20 @@ namespace eval
         return mExOp * mLocalEvals->mEvals.leftCols( mSpline.numVectorComponents() );
     }
 
+    Eigen::MatrixXd SplineSpaceEvaluator::evaluateFirstDerivativesFromParamToSpatial() const
+    {
+        const auto first_derivs = evaluateFirstDerivatives();
+        if( not param::isCartesian( mSpline.basisComplex().parametricAtlas().parentDomain( mCurrentCell.value() ) ) )
+            throw std::runtime_error( "ParamToSpatial not supported on non-square domains" );
+
+        const Vector6dMax doubled_lengths =
+            ( Eigen::MatrixX2d( mParametricLengths.rows(), 2 ) << mParametricLengths, mParametricLengths )
+                .finished()
+                .transpose()
+                .reshaped();
+        return first_derivs * doubled_lengths.array().inverse().matrix().asDiagonal();
+    }
+
     Eigen::MatrixXd SplineSpaceEvaluator::evaluateFirstDerivatives() const
     {
         if( not mLocalEvals.has_value() ) throw std::runtime_error( "Must localize evaluator before evaluating" );
@@ -159,7 +173,7 @@ namespace eval
         const Eigen::MatrixXd second_term = det_inverse * modified_hessian() * vector_basis;
 
         const Eigen::MatrixXd third_term =
-            ( det_inverse * jac * vec_evals.evaluateFirstDerivatives().transpose().reshaped( dim, n_funcs * dim ) )
+            ( det_inverse * jac * vec_evals.evaluateFirstDerivativesFromParamToSpatial().transpose().reshaped( dim, n_funcs * dim ) )
                 .reshaped( dim * dim, n_funcs );
 
         return ( first_term + second_term + third_term ).transpose();
@@ -178,7 +192,7 @@ namespace eval
         const auto jac = geom_evals.evaluateParamToSpatialJacobian( cpts );
         const double det_inverse = 1.0 / determinant( jac );
         const auto jac_inverse_transpose = jac.inverse().transpose();
-        return ( det_inverse * jac_inverse_transpose * bivec_evals.evaluateFirstDerivatives().transpose() -
+        return ( det_inverse * jac_inverse_transpose * bivec_evals.evaluateFirstDerivativesFromParamToSpatial().transpose() -
                  det_inverse * det_inverse * jac_inverse_transpose * paramToSpatialGradDeterminant( geom_evals, cpts ) *
                      bivec_evals.evaluateBasis().transpose() )
             .transpose();

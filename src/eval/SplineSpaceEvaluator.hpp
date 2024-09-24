@@ -26,6 +26,8 @@ namespace eval
         Eigen::MatrixXd evaluateFirstDerivatives() const;
         Eigen::MatrixXd evaluateSecondDerivatives() const;// FIXME: Document the returned matrix ordering.
 
+        Eigen::MatrixXd evaluateFirstDerivativesFromParamToSpatial() const;
+
         size_t numDerivatives() const { return mNumDerivs; }
 
         const basis::SplineSpace& splineSpace() const { return mSpline; }
