@@ -324,4 +324,39 @@ PYBIND11_MODULE( splines, m )
         "kv_t"_a,
         "degree_s"_a,
         "degree_t"_a );
+
+    m.def(
+        "globallyHRefine",
+        []( const api::NavierStokesDiscretization& coarse_nsd, const size_t num_divisions, const double param_tol ) {
+            const auto component_bsplines = tensorProductComponentSplines( coarse_nsd.H1_ss );
+            SmallVector<basis::KnotVector, 3> coarse_kvs;
+            std::transform( component_bsplines.begin(),
+                            component_bsplines.end(),
+                            std::back_inserter( coarse_kvs ),
+                            []( const auto& comp ) { return comp->knotVector(); } );
+
+            SmallVector<basis::KnotVector, 3> fine_kvs;
+            std::transform( coarse_kvs.begin(),
+                            coarse_kvs.end(),
+                            std::back_inserter( fine_kvs ),
+                            [&num_divisions]( const auto& kv ) { return basis::nAdicRefine( kv, num_divisions ); } );
+
+            util::IndexVec degrees;
+            std::transform( component_bsplines.begin(),
+                            component_bsplines.end(),
+                            std::back_inserter( degrees ),
+                            []( const auto& comp ) {
+                                return comp->basisComplex().defaultParentBasis().mBasisGroups.at( 0 ).degrees.at( 0 );
+                            } );
+
+            const Eigen::Matrix2Xd fine_cpts = coarse_nsd.cpts * basis::refinementOp( coarse_kvs, fine_kvs, degrees, param_tol );
+
+            return api::NavierStokesDiscretization(
+                fine_kvs.at( 0 ), fine_kvs.at( 1 ), degrees.at( 0 ), degrees.at( 1 ), fine_cpts );
+        },
+        "Globally h-refines the given navier stokes discretization by evenly dividing each cell into num_divisions "
+        "cells in each parametric dimension.",
+        "coarse_nsd"_a,
+        "num_divisions"_a,
+        "parametric_tolerance"_a );
 }
