@@ -96,7 +96,10 @@ namespace eval
                 .finished()
                 .transpose()
                 .reshaped();
-        return first_derivs * doubled_lengths.array().inverse().matrix().asDiagonal();
+
+        const Eigen::MatrixXd scaling = doubled_lengths.array().inverse().matrix().asDiagonal();
+
+        return first_derivs * scaling;
     }
 
     Eigen::MatrixXd SplineSpaceEvaluator::evaluateFirstDerivatives() const
