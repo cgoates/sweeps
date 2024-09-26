@@ -323,6 +323,74 @@ PYBIND11_MODULE( splines, m )
             return std::vector<basis::KnotVector>{ comps.at( 0 )->knotVector(), comps.at( 1 )->knotVector() };
         } );
 
+    py::class_<api::NavierStokesHierarchicalDiscretization, api::NavierStokesDiscretization>( m, "NavierStokesHierarchicalDiscretization" )
+        .def( py::init<const basis::KnotVector&,
+                       const basis::KnotVector&,
+                       const size_t,
+                       const size_t,
+                       const Eigen::Matrix2Xd&,
+                       const std::vector<std::vector<util::IndexVec>>>(),
+              "Create a B-spline discretization for Navier Stokes problems, consisting of an H1 spline space with the "
+              "given knot vectors, an HDiv spline space taking the H1 space as its primal basis, and an L2 spline "
+              "space, which has reduced degree from H1 in both directions. The geometry is defined by the H1 space and "
+              "the provided control points."
+              "knot_vec_s"_a,
+              "knot_vec_t"_a,
+              "degree_s"_a,
+              "degree_t"_a,
+              "control_points"_a,
+              "elems_to_refine"_a )
+        .def(
+            "boundaryPerpendicularHDivFuncs",
+            []( const api::NavierStokesHierarchicalDiscretization& nsd, const api::PatchSide& side ) {
+                const bool is_S = side == api::PatchSide::S0 or side == api::PatchSide::S1;
+
+                const auto& scalar_hier_bases = nsd.HDIV_ss.scalarBases();
+                const basis::HierarchicalTPSplineSpace& hier_comp = is_S ? *scalar_hier_bases.at( 0 ) : *scalar_hier_bases.at( 1 );
+
+                const auto get_tp_lengths = []( const basis::TPSplineSpace& comp ) {
+                    const auto component_comps = tensorProductComponentSplines( comp );
+                    util::IndexVec out;
+                    for( const auto& comp : component_comps ) out.push_back( comp->numFunctions() );
+                    return out;
+                };
+
+                const auto get_iter_dir = [&side]( const util::IndexVec& lengths ) -> SmallVector<std::variant<bool, size_t>, 3> {
+                    switch( side )
+                    {
+                        case api::PatchSide::S0: return { size_t{ 0 }, true };
+                        case api::PatchSide::S1: return { lengths.at( 0 ) - 1, true };
+                        case api::PatchSide::T0: return { true, size_t{ 0 } };
+                        case api::PatchSide::T1: return { true, lengths.at( 1 ) - 1 };
+                    }
+                };
+
+                const size_t offset = is_S ? 0 : scalar_hier_bases.at( 0 )->numFunctions();
+                const size_t num_levels = hier_comp.basisComplex().parametricAtlas().cmap().numLevels();
+
+                std::vector<size_t> result; // LIKELY SLOW as I'm not reserving.
+                for( size_t i = 0; i < num_levels; i++ )
+                {
+                    const basis::TPSplineSpace& comp = *hier_comp.refinementLevels().at( i );
+                    const util::IndexVec lengths = get_tp_lengths( comp );
+                    const auto iter_dir = get_iter_dir( lengths );
+                    const auto& exop = hier_comp.levelExtractionOperators().at( i );
+
+                    util::iterateTensorProduct( lengths, { 0, 1 }, iter_dir, [&]( const util::IndexVec& iv ) {
+                        const size_t fid = util::flatten( iv, lengths );
+                        for( Eigen::SparseMatrix<double>::InnerIterator it( exop, fid ); it; ++it )
+                            result.push_back( it.row() + offset );
+                    } );
+                }
+
+                std::ranges::sort( result );
+                result.erase( std::ranges::unique( result ).end(), result.end() );
+                return result;
+            },
+            "A list of all HDIV functions which are nonzero on and perpendicular to a given side of the discretization "
+            "spline patch",
+            "side"_a );
+
     m.def(
         "grevillePoints",
         []( const basis::KnotVector& kv_s, const basis::KnotVector& kv_t, const size_t degree_s, const size_t degree_t )

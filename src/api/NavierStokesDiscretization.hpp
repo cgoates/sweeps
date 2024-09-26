@@ -71,4 +71,43 @@ namespace api
         T0,
         T1
     };
+
+    class NavierStokesHierarchicalDiscretization : public NavierStokesDiscretization
+    {
+        public:
+        NavierStokesHierarchicalDiscretization( const basis::KnotVector& kv_s,
+                                                const basis::KnotVector& kv_t,
+                                                const size_t degree_s,
+                                                const size_t degree_t,
+                                                const Eigen::Matrix2Xd& unrefined_cpts,
+                                                const std::vector<std::vector<util::IndexVec>>& elems_to_refine );
+
+        virtual ~NavierStokesHierarchicalDiscretization() = default;
+
+        virtual const Eigen::Matrix2Xd& controlPoints() const override { return cpts; }
+
+        virtual const topology::CombinatorialMapBoundary& cmapBdry() const override { return cmap_bdry; }
+
+        virtual eval::SplineSpaceEvaluator& getH1() override { return H1; }
+        virtual eval::SplineSpaceEvaluator& getHDIV() override { return HDIV; }
+        virtual eval::SplineSpaceEvaluator& getL2() override { return L2; }
+
+        virtual const eval::SplineSpaceEvaluator& getH1() const override { return H1; }
+        virtual const eval::SplineSpaceEvaluator& getHDIV() const override { return HDIV; }
+        virtual const eval::SplineSpaceEvaluator& getL2() const override { return L2; }
+
+        const basis::HierarchicalTPSplineSpace H1_ss;
+        const basis::DivConfHierarchicalTPSplineSpace HDIV_ss;
+        const basis::HierarchicalTPSplineSpace L2_ss;
+
+        private:
+
+        const topology::CombinatorialMapBoundary cmap_bdry;
+
+        const Eigen::Matrix2Xd cpts;
+
+        eval::SplineSpaceEvaluator H1;
+        eval::SplineSpaceEvaluator HDIV;
+        eval::SplineSpaceEvaluator L2;
+    };
 }
