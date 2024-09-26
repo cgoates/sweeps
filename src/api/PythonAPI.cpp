@@ -98,6 +98,117 @@ PYBIND11_MODULE( splines, m )
               "derivative of all of the vector components with respect to t (another column for each component)." );
 
     py::class_<api::NavierStokesDiscretization>( m, "NavierStokesDiscretization" )
+        .def_property_readonly(
+            "H1", []( const api::NavierStokesDiscretization& d ) { return d.getH1(); }, "The H1 spline space." )
+        .def_property_readonly(
+            "HDIV",
+            []( const api::NavierStokesDiscretization& d ) { return d.getHDIV(); },
+            "The HDiv spline space, with two vector components." )
+        .def_property_readonly(
+            "L2", []( const api::NavierStokesDiscretization& d ) { return d.getL2(); }, "The L2 spline space." )
+        .def_property_readonly( "control_points",
+                                &api::NavierStokesDiscretization::controlPoints,
+                                "The control points which define the geometry along with the H1 space." )
+        .def(
+            "elements",
+            []( const api::NavierStokesDiscretization& nsd ) {
+                std::vector<topology::Face> out;
+                out.reserve( cellCount( nsd.getH1().splineSpace().basisComplex().parametricAtlas().cmap(), 2 ) );
+                iterateCellsWhile(
+                    nsd.getH1().splineSpace().basisComplex().parametricAtlas().cmap(), 2, [&out]( const topology::Face& f ) {
+                        out.push_back( f );
+                        return true;
+                    } );
+                return out;
+            },
+            "A list of all the elements in the discretization." )
+        .def(
+            "boundaryEdges",
+            []( const api::NavierStokesDiscretization& nsd ) {
+                std::vector<topology::Edge> out;
+                out.reserve( cellCount( nsd.cmapBdry(), 1 ) );
+                iterateCellsWhile( nsd.cmapBdry(), 1, [&out]( const topology::Edge& e ) {
+                    out.push_back( e );
+                    return true;
+                } );
+                return out;
+            },
+            "A list of all edges on the boundary of the discretization" )
+        .def(
+            "localizeElement",
+            []( api::NavierStokesDiscretization& nsd, const topology::Face& elem ) {
+                nsd.getH1().localizeElement( elem );
+                nsd.getHDIV().localizeElement( elem );
+                nsd.getL2().localizeElement( elem );
+            },
+            "Sets all future evaluations of the spline spaces to be on element elem, until localizeElement is called "
+            "again.",
+            "elem"_a )
+        .def(
+            "localizePoint",
+            []( api::NavierStokesDiscretization& nsd, const Eigen::Vector2d& pt ) {
+                const param::ParentPoint ppt( param::cubeDomain( 2 ), pt, { false, false, false, false } );
+                nsd.getH1().localizePoint( ppt );
+                nsd.getHDIV().localizePoint( ppt );
+                nsd.getL2().localizePoint( ppt );
+            },
+            "Sets all future evaluations of the spline spaces to be on point pt, until localizePoint is called again.",
+            "pt"_a )
+        .def(
+            "mapping",
+            []( const api::NavierStokesDiscretization& nsd ) { return nsd.getH1().evaluateManifold( nsd.controlPoints() ); },
+            "Evaluates the spatial position of the spline geometry at the parametric position from the latest calls to "
+            "localizeElement and localizePoint." )
+        .def(
+            "jacobian",
+            []( const api::NavierStokesDiscretization& nsd ) { return nsd.getH1().evaluateJacobian( nsd.controlPoints() ); },
+            "Evaluates the parent to spatial Jacobian of the spline geometry mapping at the parametric position "
+            "specified "
+            "in the latest calls to localizeElement and LocalizePoint." )
+        .def(
+            "jacobianDeterminant",
+            []( const api::NavierStokesDiscretization& nsd ) {
+                return nsd.getH1().evaluateJacobian( nsd.controlPoints() ).determinant();
+            },
+            "Evaluates the Jacobian determinant of the spline geometry at the parametric position from the latest "
+            "calls to localizeElement and LocalizePoint." )
+        .def(
+            "piolaTransformedHDIVBasis",
+            []( const api::NavierStokesDiscretization& nsd ) {
+                return piolaTransformedVectorBasis( nsd.getHDIV(), nsd.getH1(), nsd.controlPoints() );
+            },
+            "Evaluates the Piola transformed HDiv basis at the parametric position from the latest calls to "
+            "localizeElement and localizePoint. The basis is returned as a matrix with HDIV.numFunctions( elem ) rows "
+            "and two columns, with the ith row corresponding to the ith global id in the connectivity, and the jth "
+            "column corresponding to the jth component of the vector valued basis." )
+        .def(
+            "piolaTransformedHDIVFirstDerivatives",
+            []( const api::NavierStokesDiscretization& nsd ) {
+                return piolaTransformedVectorFirstDerivatives( nsd.getHDIV(), nsd.getH1(), nsd.controlPoints() );
+            },
+            "Evaluates the Piola transformed first derivatives of the HDiv basis at the parametric position from the "
+            "latest calls to localizeElement and localizePoint. The basis is returned as a matrix with "
+            "HDIV.numFunctions( elem ) rows and four columns, with the ith row corresponding to the ith global id in "
+            "the connectivity, and the columns ordered as dv_x/ds, dv_y/ds, dv_x/dt, dv_y/dt." )
+        .def(
+            "piolaTransformedL2",
+            []( const api::NavierStokesDiscretization& nsd ) {
+                return piolaTransformedBivectorBasis( nsd.getL2(), nsd.getH1(), nsd.controlPoints() );
+            },
+            "Evaluates the Piola transformed L2 basis at the parametric position from the latest calls to "
+            "localizeElement and localizePoint. The basis is returned as a matrix with L2.numFunctions( elem ) rows "
+            "and one column, with the ith row corresponding to the ith global id in the connectivity." )
+        .def(
+            "piolaTransformedL2FirstDerivatives",
+            []( const api::NavierStokesDiscretization& nsd ) {
+                return piolaTransformedBivectorFirstDerivatives( nsd.getL2(), nsd.getH1(), nsd.controlPoints() );
+            },
+            "Evaluates the piola transformed derivatives of the L2 basis at the parametric position from the latest "
+            "calls to localizeElement and localizePoint. The basis is returned as a matrix with L2.numFunctions( elem "
+            ") rows and two columns, with the ith row corresponding to the ith global id in the connectivity, and the "
+            "columns ordered as dp/ds, dp/dt." );
+
+    py::class_<api::NavierStokesTPDiscretization, api::NavierStokesDiscretization>( m, "NavierStokesTPDiscretization" )
         .def( py::init<const basis::KnotVector&,
                        const basis::KnotVector&,
                        const size_t,
@@ -112,43 +223,10 @@ PYBIND11_MODULE( splines, m )
               "degree_s"_a,
               "degree_t"_a,
               "control_points"_a )
-        .def_readonly( "H1", &api::NavierStokesDiscretization::H1, "The H1 spline space." )
-        .def_readonly(
-            "HDIV", &api::NavierStokesDiscretization::HDIV, "The HDiv spline space, with two vector components." )
-        .def_readonly( "L2", &api::NavierStokesDiscretization::L2, "The L2 spline space." )
-        .def_readonly( "control_points",
-                       &api::NavierStokesDiscretization::cpts,
-                       "The control points which define the geometry along with the H1 space." )
-        .def(
-            "elements",
-            []( const api::NavierStokesDiscretization& nsd ) {
-                std::vector<topology::Face> out;
-                out.reserve( cellCount( nsd.H1_ss.basisComplex().parametricAtlas().cmap(), 2 ) );
-                iterateCellsWhile(
-                    nsd.H1_ss.basisComplex().parametricAtlas().cmap(), 2, [&out]( const topology::Face& f ) {
-                        out.push_back( f );
-                        return true;
-                    } );
-                return out;
-            },
-            "A list of all the elements in the discretization." )
         .def(
             "boundaryEdges",
-            []( const api::NavierStokesDiscretization& nsd ) {
-                std::vector<topology::Edge> out;
-                out.reserve( cellCount( nsd.cmap_bdry, 1 ) );
-                iterateCellsWhile( nsd.cmap_bdry, 1, [&out]( const topology::Edge& e ) {
-                    out.push_back( e );
-                    return true;
-                } );
-                return out;
-            },
-            "A list of all edges on the boundary of the discretization" )
-        .def(
-            "boundaryEdges",
-            []( const api::NavierStokesDiscretization& nsd, const api::PatchSide& side ) {
-                const topology::TPCombinatorialMap& tp_map = static_cast<const topology::TPCombinatorialMap&>(
-                    nsd.H1.splineSpace().basisComplex().parametricAtlas().cmap() );
+            []( const api::NavierStokesTPDiscretization& nsd, const api::PatchSide& side ) {
+                const topology::TPCombinatorialMap& tp_map = nsd.H1_ss.basisComplex().parametricAtlas().cmap();
                 std::vector<topology::Edge> out;
                 switch( side )
                 {
@@ -203,9 +281,8 @@ PYBIND11_MODULE( splines, m )
             "side"_a )
         .def(
             "boundaryPerpendicularHDivFuncs",
-            []( const api::NavierStokesDiscretization& nsd, const api::PatchSide& side ) {
-                const basis::DivConfTPSplineSpace& tp_ss = nsd.HDIV_ss;
-                const auto& component_bases = tp_ss.scalarTPBases();
+            []( const api::NavierStokesTPDiscretization& nsd, const api::PatchSide& side ) {
+                const auto& component_bases = nsd.HDIV_ss.scalarTPBases();
                 const bool is_S = side == api::PatchSide::S0 or side == api::PatchSide::S1;
 
                 const util::IndexVec lengths = [&]() {
@@ -241,81 +318,7 @@ PYBIND11_MODULE( splines, m )
             "A list of all HDIV functions which are nonzero on and perpendicular to a given side of the discretization "
             "spline patch",
             "side"_a )
-        .def(
-            "localizeElement",
-            []( api::NavierStokesDiscretization& nsd, const topology::Face& elem ) {
-                nsd.H1.localizeElement( elem );
-                nsd.HDIV.localizeElement( elem );
-                nsd.L2.localizeElement( elem );
-            },
-            "Sets all future evaluations of the spline spaces to be on element elem, until localizeElement is called "
-            "again.",
-            "elem"_a )
-        .def(
-            "localizePoint",
-            []( api::NavierStokesDiscretization& nsd, const Eigen::Vector2d& pt ) {
-                const param::ParentPoint ppt( param::cubeDomain( 2 ), pt, { false, false, false, false } );
-                nsd.H1.localizePoint( ppt );
-                nsd.HDIV.localizePoint( ppt );
-                nsd.L2.localizePoint( ppt );
-            },
-            "Sets all future evaluations of the spline spaces to be on point pt, until localizePoint is called again.",
-            "pt"_a )
-        .def(
-            "mapping",
-            []( const api::NavierStokesDiscretization& nsd ) {
-                return nsd.H1.evaluateManifold( nsd.cpts );
-            },
-            "Evaluates the spatial position of the spline geometry at the parametric position from the latest calls to "
-            "localizeElement and localizePoint." )
-        .def(
-            "jacobian",
-            []( const api::NavierStokesDiscretization& nsd ) { return nsd.H1.evaluateJacobian( nsd.cpts ); },
-            "Evaluates the parent to spatial Jacobian of the spline geometry mapping at the parametric position specified "
-            "in the latest calls to localizeElement and LocalizePoint." )
-        .def(
-            "jacobianDeterminant",
-            []( const api::NavierStokesDiscretization& nsd ) {
-                return nsd.H1.evaluateJacobian( nsd.cpts ).determinant();
-            },
-            "Evaluates the Jacobian determinant of the spline geometry at the parametric position from the latest "
-            "calls to localizeElement and LocalizePoint." )
-        .def(
-            "piolaTransformedHDIVBasis",
-            []( const api::NavierStokesDiscretization& nsd ) {
-                return piolaTransformedVectorBasis( nsd.HDIV, nsd.H1, nsd.cpts );
-            },
-            "Evaluates the Piola transformed HDiv basis at the parametric position from the latest calls to "
-            "localizeElement and localizePoint. The basis is returned as a matrix with HDIV.numFunctions( elem ) rows "
-            "and two columns, with the ith row corresponding to the ith global id in the connectivity, and the jth "
-            "column corresponding to the jth component of the vector valued basis." )
-        .def(
-            "piolaTransformedHDIVFirstDerivatives",
-            []( const api::NavierStokesDiscretization& nsd ) {
-                return piolaTransformedVectorFirstDerivatives( nsd.HDIV, nsd.H1, nsd.cpts );
-            },
-            "Evaluates the Piola transformed first derivatives of the HDiv basis at the parametric position from the "
-            "latest calls to localizeElement and localizePoint. The basis is returned as a matrix with "
-            "HDIV.numFunctions( elem ) rows and four columns, with the ith row corresponding to the ith global id in "
-            "the connectivity, and the columns ordered as dv_x/ds, dv_y/ds, dv_x/dt, dv_y/dt." )
-        .def(
-            "piolaTransformedL2",
-            []( const api::NavierStokesDiscretization& nsd ) {
-                return piolaTransformedBivectorBasis( nsd.L2, nsd.H1, nsd.cpts );
-            },
-            "Evaluates the Piola transformed L2 basis at the parametric position from the latest calls to "
-            "localizeElement and localizePoint. The basis is returned as a matrix with L2.numFunctions( elem ) rows "
-            "and one column, with the ith row corresponding to the ith global id in the connectivity." )
-        .def(
-            "piolaTransformedL2FirstDerivatives",
-            []( const api::NavierStokesDiscretization& nsd ) {
-                return piolaTransformedBivectorFirstDerivatives( nsd.L2, nsd.H1, nsd.cpts );
-            },
-            "Evaluates the piola transformed derivatives of the L2 basis at the parametric position from the latest "
-            "calls to localizeElement and localizePoint. The basis is returned as a matrix with L2.numFunctions( elem "
-            ") rows and two columns, with the ith row corresponding to the ith global id in the connectivity, and the "
-            "columns ordered as dp/ds, dp/dt." )
-        .def( "knotVectors", []( const api::NavierStokesDiscretization& nsd ) {
+        .def( "knotVectors", []( const api::NavierStokesTPDiscretization& nsd ) {
             const auto comps = tensorProductComponentSplines( nsd.H1_ss );
             return std::vector<basis::KnotVector>{ comps.at( 0 )->knotVector(), comps.at( 1 )->knotVector() };
         } );
@@ -336,7 +339,7 @@ PYBIND11_MODULE( splines, m )
 
     m.def(
         "globallyHRefine",
-        []( const api::NavierStokesDiscretization& coarse_nsd, const size_t num_divisions, const double param_tol ) {
+        []( const api::NavierStokesTPDiscretization& coarse_nsd, const size_t num_divisions, const double param_tol ) {
             const auto component_bsplines = tensorProductComponentSplines( coarse_nsd.H1_ss );
             SmallVector<basis::KnotVector, 3> coarse_kvs;
             std::transform( component_bsplines.begin(),
@@ -358,9 +361,9 @@ PYBIND11_MODULE( splines, m )
                                 return comp->basisComplex().defaultParentBasis().mBasisGroups.at( 0 ).degrees.at( 0 );
                             } );
 
-            const Eigen::Matrix2Xd fine_cpts = coarse_nsd.cpts * basis::refinementOp( coarse_kvs, fine_kvs, degrees, param_tol );
+            const Eigen::Matrix2Xd fine_cpts = coarse_nsd.controlPoints() * basis::refinementOp( coarse_kvs, fine_kvs, degrees, param_tol );
 
-            return api::NavierStokesDiscretization(
+            return api::NavierStokesTPDiscretization(
                 fine_kvs.at( 0 ), fine_kvs.at( 1 ), degrees.at( 0 ), degrees.at( 1 ), fine_cpts );
         },
         "Globally h-refines the given navier stokes discretization by evenly dividing each cell into num_divisions "

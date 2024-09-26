@@ -9,6 +9,7 @@ namespace basis
     {
         public:
         DivConfTPSplineSpace( const std::shared_ptr<const DivConfBasisComplex>& bc, const TPSplineSpace& primal_basis );
+        virtual ~DivConfTPSplineSpace() = default;
 
         virtual const DivConfBasisComplex& basisComplex() const override;
 

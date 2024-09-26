@@ -19,12 +19,12 @@ namespace api
         return basis::TPSplineSpace( L2_bc, HDIV.reducedDegree1dBases().at( 0 ), HDIV.reducedDegree1dBases().at( 1 ) );
     }
 
-    NavierStokesDiscretization::NavierStokesDiscretization( const basis::KnotVector& kv_s,
-                                                            const basis::KnotVector& kv_t,
-                                                            const size_t degree_s,
-                                                            const size_t degree_t,
-                                                            const Eigen::Matrix2Xd& cpts )
-        : H1_ss( basis::buildBSpline( {kv_s, kv_t}, {degree_s, degree_t} ) ),
+    NavierStokesTPDiscretization::NavierStokesTPDiscretization( const basis::KnotVector& kv_s,
+                                                                const basis::KnotVector& kv_t,
+                                                                const size_t degree_s,
+                                                                const size_t degree_t,
+                                                                const Eigen::Matrix2Xd& cpts )
+        : H1_ss( basis::buildBSpline( { kv_s, kv_t }, { degree_s, degree_t } ) ),
           HDIV_ss( buildHDIV( H1_ss ) ),
           L2_ss( buildL2( H1_ss.basisComplex().parametricAtlasPtr(), HDIV_ss ) ),
           cmap_bdry( H1_ss.basisComplex().parametricAtlas().cmap(), { topology::Dart( 0 ) } ),
