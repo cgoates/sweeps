@@ -33,6 +33,8 @@ namespace topology
 
         const DartRanges& dartRanges() const { return mRanges; }
 
+        const std::vector<std::shared_ptr<const TPCombinatorialMap>>& refinementLevels() const { return mRefinementLevels; }
+
         size_t numLevels() const { return mRefinementLevels.size(); }
 
         bool iterateChildren( const Cell& local_cell,

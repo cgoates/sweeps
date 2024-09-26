@@ -21,6 +21,8 @@ namespace param
         virtual ParentPoint parentPoint( const topology::Vertex& v ) const override;
         virtual Vector6dMax parametricLengths( const topology::Cell& c ) const override;
 
+        const std::vector<std::shared_ptr<const TPParametricAtlas>>& refinementLevels() const { return mRefinementLevels; }
+
         private:
         const std::shared_ptr<const topology::HierarchicalTPCombinatorialMap> mMap;
         const std::vector<std::shared_ptr<const TPParametricAtlas>> mRefinementLevels;

@@ -20,6 +20,8 @@ namespace basis
 
         virtual size_t numVectorComponents() const override { return 2; }
 
+        const SmallVector<std::shared_ptr<const HierarchicalTPSplineSpace>, 3>& scalarBases() const { return mScalarTPBases; }
+
         private:
         const std::shared_ptr<const DivConfBasisComplex> mBasisComplex;
         SmallVector<std::shared_ptr<const HierarchicalTPSplineSpace>, 3> mScalarTPBases;
