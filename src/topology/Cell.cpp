@@ -1,6 +1,7 @@
 #include <Cell.hpp>
 
-
+namespace topology
+{
 std::ostream& operator<<( std::ostream& o, const topology::Cell& c )
 {
     switch( c.dim() )
@@ -22,4 +23,5 @@ std::ostream& operator<<( std::ostream& o, const topology::Cell& c )
     }
     o << c.dart() << " )";
     return o;
+}
 }

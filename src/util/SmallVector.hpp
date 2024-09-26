@@ -7,6 +7,8 @@
 template<typename T, size_t MAX_SIZE>
 using SmallVector = ecpp::static_vector<T, MAX_SIZE>;
 
+namespace ecpp
+{
 template <typename T, size_t N> std::ostream& operator<<( std::ostream& o, const ecpp::static_vector<T, N>& v )
 {
     if( v.size() == 0 )
@@ -18,4 +20,5 @@ template <typename T, size_t N> std::ostream& operator<<( std::ostream& o, const
         o << *( v.end() - 1 ) << " }";
     }
     return o;
+}
 }
