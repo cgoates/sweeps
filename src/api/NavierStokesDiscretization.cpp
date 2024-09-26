@@ -124,7 +124,7 @@ namespace api
     }
 
     basis::HierarchicalTPSplineSpace buildL2( const std::shared_ptr<const param::HierarchicalTPParametricAtlas>& param,
-                                  const basis::DivConfHierarchicalTPSplineSpace& HDIV )
+                                              const basis::DivConfHierarchicalTPSplineSpace& HDIV )
     {
         std::vector<std::shared_ptr<const basis::TPBasisComplex>> refinement_level_bcs;
         std::vector<std::shared_ptr<const basis::TPSplineSpace>> refinement_level_ss;

@@ -41,7 +41,12 @@ PYBIND11_MODULE( splines, m )
         .def_property_readonly(
             "dart",
             []( const topology::Face& f ) { return f.dart().id(); },
-            "Returns the id of a dart (or half edge) on the element." );
+            "Returns the id of a dart (or half edge) on the element." )
+        .def( "__repr__", []( const topology::Face& f ) {
+            std::stringstream ss;
+            ss << f;
+            return ss.str();
+        } );
 
     py::class_<topology::Edge>( m, "Edge" )
         .def( py::init( []( const topology::Dart::IndexType& id ) { return topology::Edge( topology::Dart( id ) ); } ),
