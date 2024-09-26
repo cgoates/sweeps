@@ -11,8 +11,8 @@ HierarchicalTPCombinatorialMap::HierarchicalTPCombinatorialMap(
     const std::vector<std::vector<Cell>>& leaf_elements )
     : mRefinementLevels( refinement_levels ),
       mRanges( initializeRanges( refinement_levels ) ),
-      mLeafDarts( mRanges.maxDartId(), false ),
-      mUnrefinedDarts( mRanges.maxDartId(), false )
+      mLeafDarts( mRanges.maxDartId() + 1, false ),
+      mUnrefinedDarts( mRanges.maxDartId() + 1, false )
 {
     const auto get_tp_lengths = []( const TPCombinatorialMap& cmap ) -> util::IndexVec {
         const auto cmaps = tensorProductComponentCMaps( cmap );
