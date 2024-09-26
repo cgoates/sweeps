@@ -40,7 +40,7 @@ namespace api
 
     std::vector<std::vector<topology::Cell>>
         leafElements( const std::vector<std::shared_ptr<const topology::TPCombinatorialMap>>& refinement_levels,
-                      const std::vector<std::vector<util::IndexVec>>& elem_indices_to_refine )
+                      const std::vector<std::vector<std::pair<size_t, size_t>>>& elem_indices_to_refine )
     {
         const size_t dim = refinement_levels.front()->dim();
 
@@ -52,13 +52,14 @@ namespace api
             return true;
         } );
 
+        if( elem_indices_to_refine.size() == 0 ) return out;
+
         // Helper for iterating children
         const topology::HierarchicalTPCombinatorialMap temp_cmap( refinement_levels, out );
 
         // Convert the input indices to elements
-        const auto elem_of_indices = [&refinement_levels,&dim]( const size_t level_ii, const util::IndexVec& iv ) {
-            SmallVector<topology::Dart, 3> unflat_darts;
-            std::transform( iv.begin(), iv.end(), std::back_inserter( unflat_darts ), []( const size_t id ){ return topology::Dart( id ); } );
+        const auto elem_of_indices = [&refinement_levels,&dim]( const size_t level_ii, const std::pair<size_t, size_t>& iv ) {
+            const SmallVector<topology::Dart, 3> unflat_darts( { topology::Dart( iv.first ), topology::Dart( iv.second ) } );
             return topology::Cell( flattenFull( *refinement_levels.at( level_ii ), topology::FullyUnflattenedDart( unflat_darts ) ), dim );
         };
 
@@ -67,7 +68,7 @@ namespace api
         {
             auto& level_out = out.at( level_ii );
             const auto& level_refine = elem_indices_to_refine.at( level_ii );
-            for( const util::IndexVec& elem_indices : level_refine )
+            for( const std::pair<size_t, size_t>& elem_indices : level_refine )
             {
                 const topology::Cell elem = elem_of_indices( level_ii, elem_indices );
                 const auto it = std::remove( level_out.begin(), level_out.end(), elem );
@@ -88,7 +89,7 @@ namespace api
         const basis::KnotVector& kv_t,
         const size_t degree_s,
         const size_t degree_t,
-        const std::vector<std::vector<util::IndexVec>>& elems_to_refine )
+        const std::vector<std::vector<std::pair<size_t, size_t>>>& elems_to_refine )
     {
         std::vector<std::shared_ptr<const basis::TPSplineSpace>> refinement_levels;
         refinement_levels.reserve( elems_to_refine.size() + 1 );
@@ -157,7 +158,7 @@ namespace api
         const size_t degree_s,
         const size_t degree_t,
         const Eigen::Matrix2Xd& unrefined_cpts,
-        const std::vector<std::vector<util::IndexVec>>& elems_to_refine )
+        const std::vector<std::vector<std::pair<size_t, size_t>>>& elems_to_refine )
         : H1_ss( buildHierarchicalH1( kv_s, kv_t, degree_s, degree_t, elems_to_refine ) ),
           HDIV_ss( buildHDIV( H1_ss ) ),
           L2_ss( buildL2( H1_ss.basisComplex().parametricAtlasPtr(), HDIV_ss ) ),

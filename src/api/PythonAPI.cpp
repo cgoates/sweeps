@@ -329,7 +329,7 @@ PYBIND11_MODULE( splines, m )
                        const size_t,
                        const size_t,
                        const Eigen::Matrix2Xd&,
-                       const std::vector<std::vector<util::IndexVec>>>(),
+                       const std::vector<std::vector<std::pair<size_t, size_t>>>>(),
               "Create a B-spline discretization for Navier Stokes problems, consisting of an H1 spline space with the "
               "given knot vectors, an HDiv spline space taking the H1 space as its primal basis, and an L2 spline "
               "space, which has reduced degree from H1 in both directions. The geometry is defined by the H1 space and "

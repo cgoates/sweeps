@@ -80,7 +80,7 @@ namespace api
                                                 const size_t degree_s,
                                                 const size_t degree_t,
                                                 const Eigen::Matrix2Xd& unrefined_cpts,
-                                                const std::vector<std::vector<util::IndexVec>>& elems_to_refine );
+                                                const std::vector<std::vector<std::pair<size_t, size_t>>>& elems_to_refine );
 
         virtual ~NavierStokesHierarchicalDiscretization() = default;
 
