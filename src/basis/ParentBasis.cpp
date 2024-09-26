@@ -92,4 +92,25 @@ namespace basis
         for( const auto& group : pb2.mBasisGroups ) combined_groups.push_back( group );
         return ParentBasis{ tensorProduct( pb1.mParentDomain, pb2.mParentDomain ), combined_groups };
     }
+
+    std::ostream& operator<<( std::ostream& o, const BarycentricBasis& bb )
+    {
+        o << "BarycentricBasis( ";
+        switch( bb.type )
+        {
+            case BasisType::Bernstein:
+                o << "Bernstein";
+                break;
+            case BasisType::DivConformingBernstein:
+                o << "DivConformingBernstein";
+        }
+        o << ", " << bb.degrees << " )";
+        return o;
+    }
+
+    std::ostream& operator<<( std::ostream& o, const ParentBasis& pb )
+    {
+        o << "ParentBasis( " << pb.mParentDomain << ", " << pb.mBasisGroups << " )";
+        return o;
+    }
 }

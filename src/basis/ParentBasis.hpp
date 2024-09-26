@@ -38,4 +38,7 @@ namespace basis
     ParentBasis bernsteinCube( const size_t dim, const size_t degree );
     ParentBasis divConformingBernsteinCube( const size_t dim, const size_t primal_degree );
     ParentBasis tensorProduct( const ParentBasis& pb1, const ParentBasis& pb2 );
+
+    std::ostream& operator<<( std::ostream& o, const ParentBasis& pb );
+    std::ostream& operator<<( std::ostream& o, const BarycentricBasis& bb );
 }
