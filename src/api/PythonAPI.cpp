@@ -341,6 +341,72 @@ PYBIND11_MODULE( splines, m )
               "control_points"_a,
               "elems_to_refine"_a )
         .def(
+            "boundaryEdges",
+            []( const api::NavierStokesHierarchicalDiscretization& nsd, const api::PatchSide& side ) {
+                const topology::HierarchicalTPCombinatorialMap& cmap = nsd.H1_ss.basisComplex().parametricAtlas().cmap();
+                const topology::TPCombinatorialMap& base_cmap = *cmap.refinementLevels().front();
+                std::vector<topology::Edge> out;
+
+                const auto add_active_descendants = [&]( const topology::Edge& e ) {
+                    const topology::Dart global_d = cmap.dartRanges().toGlobalDart( 0, e.dart() );
+                    cmap.iterateLeafDescendants( global_d, [&]( const topology::Dart& leaf_d ) {
+                        out.push_back( leaf_d );
+                        return true;
+                    } );
+                };
+
+                switch( side )
+                {
+                    case api::PatchSide::S0:
+                    {
+                        out.reserve( cellCount( base_cmap.lineCMap(), 1 ) );
+                        const topology::Dart source_dart( 0 );
+                        iterateDartsWhile( base_cmap.lineCMap(), [&]( const topology::Dart& line_dart ) {
+                            add_active_descendants(
+                                base_cmap.flatten( source_dart, line_dart, topology::TPCombinatorialMap::TPDartPos::DartPos3 ) );
+                            return true;
+                        } );
+                        break;
+                    }
+                    case api::PatchSide::S1:
+                    {
+                        out.reserve( cellCount( base_cmap.lineCMap(), 1 ) );
+                        const topology::Dart source_dart( base_cmap.sourceCMap().maxDartId() );
+                        iterateDartsWhile( base_cmap.lineCMap(), [&]( const topology::Dart& line_dart ) {
+                            add_active_descendants(
+                                base_cmap.flatten( source_dart, line_dart, topology::TPCombinatorialMap::TPDartPos::DartPos1 ) );
+                            return true;
+                        } );
+                        break;
+                    }
+                    case api::PatchSide::T0:
+                    {
+                        out.reserve( cellCount( base_cmap.sourceCMap(), 1 ) );
+                        const topology::Dart line_dart( 0 );
+                        iterateDartsWhile( base_cmap.sourceCMap(), [&]( const topology::Dart& source_dart ) {
+                            add_active_descendants(
+                                base_cmap.flatten( source_dart, line_dart, topology::TPCombinatorialMap::TPDartPos::DartPos0 ) );
+                            return true;
+                        } );
+                        break;
+                    }
+                    case api::PatchSide::T1:
+                    {
+                        out.reserve( cellCount( base_cmap.sourceCMap(), 1 ) );
+                        const topology::Dart line_dart( base_cmap.sourceCMap().maxDartId() );
+                        iterateDartsWhile( base_cmap.sourceCMap(), [&]( const topology::Dart& source_dart ) {
+                            add_active_descendants(
+                                base_cmap.flatten( source_dart, line_dart, topology::TPCombinatorialMap::TPDartPos::DartPos2 ) );
+                            return true;
+                        } );
+                        break;
+                    }
+                }
+                return out;
+            },
+            "A list of all edges on a given side of the discretization spline patch",
+            "side"_a )
+        .def(
             "boundaryPerpendicularHDivFuncs",
             []( const api::NavierStokesHierarchicalDiscretization& nsd, const api::PatchSide& side ) {
                 const bool is_S = side == api::PatchSide::S0 or side == api::PatchSide::S1;

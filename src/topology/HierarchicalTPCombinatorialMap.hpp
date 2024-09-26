@@ -41,6 +41,8 @@ namespace topology
                               const size_t cell_level,
                               const std::function<bool( const Cell& )>& callback ) const;
 
+        bool iterateLeafDescendants( const Dart& global_d, const std::function<bool( const Dart& )>& callback ) const;
+
         private:
         bool iterateDartLineage( const Dart& global_d,
                                  const size_t ancestor_or_descendant_level,
@@ -48,8 +50,6 @@ namespace topology
 
         bool iterateAncestors( const Dart& global_d,
                                const std::function<bool( const Dart& )>& callback ) const;
-
-        bool iterateLeafDescendants( const Dart& global_d, const std::function<bool( const Dart& )>& callback ) const;
 
         const std::vector<std::shared_ptr<const TPCombinatorialMap>> mRefinementLevels;
         const DartRanges mRanges;
