@@ -2,6 +2,7 @@
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
 #include <pybind11/eigen.h>
+#include <pybind11/operators.h>
 #include <KnotVector.hpp>
 #include <NavierStokesDiscretization.hpp>
 #include <CombinatorialMapMethods.hpp>
@@ -34,28 +35,35 @@ PYBIND11_MODULE( splines, m )
         .value( "T0", api::PatchSide::T0 )
         .value( "T1", api::PatchSide::T1 );
 
-    py::class_<topology::Face>( m, "Element" )
+    py::class_<topology::Cell>( m, "Cell" )
+        .def_property_readonly(
+            "dart",
+            []( const topology::Cell& c ) { return c.dart().id(); },
+            "Returns the id of a dart (or half edge) on the element." );
+
+    py::class_<topology::Face, topology::Cell>( m, "Element" )
         .def( py::init( []( const topology::Dart::IndexType& id ) { return topology::Face( topology::Dart( id ) ); } ),
               "Constructs an element with the given dart id.",
               "dart"_a )
-        .def_property_readonly(
-            "dart",
-            []( const topology::Face& f ) { return f.dart().id(); },
-            "Returns the id of a dart (or half edge) on the element." )
-        .def( "__repr__", []( const topology::Face& f ) {
+        .def( "__repr__", []( const topology::Face& c ) {
             std::stringstream ss;
-            ss << f;
+            ss << c;
             return ss.str();
-        } );
+        } )
+        .def( pybind11::self < pybind11::self )
+        .def( pybind11::self == pybind11::self );
 
     py::class_<topology::Edge>( m, "Edge" )
         .def( py::init( []( const topology::Dart::IndexType& id ) { return topology::Edge( topology::Dart( id ) ); } ),
               "Constructs an edge with the given dart id.",
               "dart"_a )
-        .def_property_readonly(
-            "dart",
-            []( const topology::Edge& e ) { return e.dart().id(); },
-            "Returns the id of a dart (or half edge) on the edge." );
+        .def( "__repr__", []( const topology::Edge& c ) {
+            std::stringstream ss;
+            ss << c;
+            return ss.str();
+        } )
+        .def( pybind11::self < pybind11::self )
+        .def( pybind11::self == pybind11::self );
 
     py::class_<eval::SplineSpaceEvaluator>( m, "SplineSpace" )
         .def(
@@ -127,18 +135,6 @@ PYBIND11_MODULE( splines, m )
                 return out;
             },
             "A list of all the elements in the discretization." )
-        .def(
-            "boundaryEdges",
-            []( const api::NavierStokesDiscretization& nsd ) {
-                std::vector<topology::Edge> out;
-                out.reserve( cellCount( nsd.cmapBdry(), 1 ) );
-                iterateCellsWhile( nsd.cmapBdry(), 1, [&out]( const topology::Edge& e ) {
-                    out.push_back( e );
-                    return true;
-                } );
-                return out;
-            },
-            "A list of all edges on the boundary of the discretization" )
         .def(
             "localizeElement",
             []( api::NavierStokesDiscretization& nsd, const topology::Face& elem ) {
@@ -285,6 +281,18 @@ PYBIND11_MODULE( splines, m )
             "A list of all edges on a given side of the discretization spline patch",
             "side"_a )
         .def(
+            "boundaryEdges",
+            []( const api::NavierStokesDiscretization& nsd ) {
+                std::vector<topology::Edge> out;
+                out.reserve( cellCount( nsd.cmapBdry(), 1 ) );
+                iterateCellsWhile( nsd.cmapBdry(), 1, [&out]( const topology::Edge& e ) {
+                    out.push_back( e );
+                    return true;
+                } );
+                return out;
+            },
+            "A list of all edges on the boundary of the discretization" )
+        .def(
             "boundaryPerpendicularHDivFuncs",
             []( const api::NavierStokesTPDiscretization& nsd, const api::PatchSide& side ) {
                 const auto& component_bases = nsd.HDIV_ss.scalarTPBases();
@@ -411,6 +419,18 @@ PYBIND11_MODULE( splines, m )
             },
             "A list of all edges on a given side of the discretization spline patch",
             "side"_a )
+        .def(
+            "boundaryEdges",
+            []( const api::NavierStokesDiscretization& nsd ) {
+                std::vector<topology::Edge> out;
+                out.reserve( cellCount( nsd.cmapBdry(), 1 ) );
+                iterateCellsWhile( nsd.cmapBdry(), 1, [&out]( const topology::Edge& e ) {
+                    out.push_back( e );
+                    return true;
+                } );
+                return out;
+            },
+            "A list of all edges on the boundary of the discretization" )
         .def(
             "boundaryPerpendicularHDivFuncs",
             []( const api::NavierStokesHierarchicalDiscretization& nsd, const api::PatchSide& side ) {
