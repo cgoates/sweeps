@@ -64,7 +64,7 @@ namespace api
         };
 
         // Make changes according to the refinement for each level
-        for( size_t level_ii = 0; level_ii < elem_indices_to_refine.size() - 1; level_ii++ )
+        for( size_t level_ii = 0; level_ii < elem_indices_to_refine.size(); level_ii++ )
         {
             auto& level_out = out.at( level_ii );
             const auto& level_refine = elem_indices_to_refine.at( level_ii );
