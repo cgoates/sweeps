@@ -522,7 +522,7 @@ PYBIND11_MODULE( splines, m )
 
             const Eigen::Matrix2Xd fine_cpts = coarse_nsd.controlPoints() * basis::refinementOp( coarse_kvs, fine_kvs, degrees, param_tol );
 
-            return api::NavierStokesTPDiscretization(
+            return std::make_unique<api::NavierStokesTPDiscretization>(
                 fine_kvs.at( 0 ), fine_kvs.at( 1 ), degrees.at( 0 ), degrees.at( 1 ), fine_cpts );
         },
         "Globally h-refines the given navier stokes discretization by evenly dividing each cell into num_divisions "
