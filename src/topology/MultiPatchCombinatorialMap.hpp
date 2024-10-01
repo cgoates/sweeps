@@ -49,6 +49,8 @@ namespace topology
         std::pair<size_t, Dart> toLocalDart( const Dart& global_dart ) const;
         Dart toGlobalDart( const size_t patch_id, const Dart& local_dart ) const;
 
+        const std::vector<std::shared_ptr<const TPCombinatorialMap>>& constituents() const { return mSubMaps; }
+
         private:
         std::vector<std::shared_ptr<const TPCombinatorialMap>> mSubMaps;
         std::map<ConstituentSide, std::pair<TPPermutation, ConstituentSide>> mInterMapConnections;
