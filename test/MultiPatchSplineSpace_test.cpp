@@ -92,10 +92,7 @@ TEST_CASE( "Simple 2d multipatch spline space" )
         const auto bc = std::make_shared<const MultiPatchBasisComplex>(
             atlas, std::vector<std::shared_ptr<const TPBasisComplex>>{ bc_tp_1, bc_tp_2 } );
 
-        const MultiPatchSplineSpace ss( bc,
-                                        { ss_tp_1, ss_tp_2 },
-                                        { { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 },
-                                          { 14, 11, 8, 5, 2, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24 } } );
+        const MultiPatchSplineSpace ss( bc, { ss_tp_1, ss_tp_2 } );
 
         test_c0( ss, *cmap_tp_1, 25, degree2 + 1 );
     }
@@ -108,10 +105,7 @@ TEST_CASE( "Simple 2d multipatch spline space" )
         const auto bc = std::make_shared<const MultiPatchBasisComplex>(
             atlas, std::vector<std::shared_ptr<const TPBasisComplex>>{ bc_tp_1, bc_tp_2 } );
 
-        const MultiPatchSplineSpace ss( bc,
-                                        { ss_tp_1, ss_tp_2 },
-                                        { { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 },
-                                          { 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 2, 5, 8, 11, 14 } } );
+        const MultiPatchSplineSpace ss( bc, { ss_tp_1, ss_tp_2 } );
 
         test_c0( ss, *cmap_tp_1, 25, degree2 + 1 );
     }
@@ -142,13 +136,7 @@ TEST_CASE( "Simple 3d multipatch spline space" )
         const auto bc = std::make_shared<const MultiPatchBasisComplex>(
             atlas, std::vector<std::shared_ptr<const TPBasisComplex>>{ bc_tp_1, bc_tp_2 } );
 
-        const MultiPatchSplineSpace ss(
-            bc,
-            { ss_tp_1, ss_tp_2 },
-            { { 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
-                23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44 },
-              { 0,  45, 46, 1,  47, 48, 2,  49, 50, 3,  51, 52, 4,  53, 54, 15, 55, 56, 16, 57, 58, 17, 59,
-                60, 18, 61, 62, 19, 63, 64, 30, 65, 66, 31, 67, 68, 32, 69, 70, 33, 71, 72, 34, 73, 74 } } );
+        const MultiPatchSplineSpace ss( bc, { ss_tp_1, ss_tp_2 } );
 
         test_c0( ss, *cmap_tp_1, 75, ( degree2 + 1 ) * ( degree1 + 1 ) );
     }
@@ -161,13 +149,7 @@ TEST_CASE( "Simple 3d multipatch spline space" )
         const auto bc = std::make_shared<const MultiPatchBasisComplex>(
             atlas, std::vector<std::shared_ptr<const TPBasisComplex>>{ bc_tp_1, bc_tp_2 } );
 
-        const MultiPatchSplineSpace ss(
-            bc,
-            { ss_tp_1, ss_tp_2 },
-            { { 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
-                23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44 },
-              { 45,  46,  30,  47,  48,  31,  49,  50,  32,  51,  52, 33, 53, 54, 34, 55, 56, 15, 57, 58, 16, 59, 60,
-                17, 61, 62, 18, 63, 64, 19, 65, 66, 0, 67, 68, 1, 69, 70, 2, 71, 72, 3, 73, 74, 4 } } );
+        const MultiPatchSplineSpace ss( bc, { ss_tp_1, ss_tp_2 } );
 
         test_c0( ss, *cmap_tp_1, 75, ( degree2 + 1 ) * ( degree1 + 1 ) );
     }

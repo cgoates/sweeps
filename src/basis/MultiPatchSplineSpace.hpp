@@ -8,8 +8,7 @@ namespace basis
     {
         public:
         MultiPatchSplineSpace( const std::shared_ptr<const MultiPatchBasisComplex>& bc,
-                               const std::vector<std::shared_ptr<const TPSplineSpace>>& constituents,
-                               const std::vector<std::vector<FunctionId>>& func_ids );
+                               const std::vector<std::shared_ptr<const TPSplineSpace>>& constituents );
 
         virtual ~MultiPatchSplineSpace() = default;
 
@@ -24,7 +23,7 @@ namespace basis
         private:
         const std::shared_ptr<const MultiPatchBasisComplex> mBasisComplex;
         const std::vector<std::shared_ptr<const TPSplineSpace>> mSubSpaces;
-        const std::vector<std::vector<FunctionId>> mFuncIds;
+        std::vector<std::vector<FunctionId>> mFuncIds;
         size_t mNumFunctions;
     };
 } // namespace basis
