@@ -32,64 +32,79 @@ namespace util
     inline std::string resetl() { return "\033[0m\n"; }
 }
 
-std::ostream& operator<<( std::ostream& o, const Eigen::Triplet<double>& t );
-
-template <typename T> std::ostream& operator<<( std::ostream& o, const std::vector<T>& v )
+namespace Eigen
 {
-    if( v.size() == 0 )
-        o << "{}";
-    else
-    {
-        o << "{ ";
-        for( auto it = v.begin(); it != v.end() - 1; it++ ) o << *it << ", ";
-        o << v.back() << " }";
-    }
-    return o;
+    std::ostream& operator<<( std::ostream& o, const Eigen::Triplet<double>& t );
 }
 
-std::ostream& operator<<( std::ostream& o, const std::vector<Eigen::Vector3d>& v );
-
-template <typename T> std::ostream& operator<<( std::ostream& o, const std::set<T>& v )
+namespace std
 {
-    if( v.size() == 0 )
-        o << "{}";
-    else
+    template <typename T> std::ostream& operator<<( std::ostream& o, const std::vector<T>& v )
     {
-        o << "{ ";
-        for( auto it = v.begin(); it != v.end(); it++ ) o << *it << ", ";
-        o << " }";
+        if( v.size() == 0 )
+            o << "{}";
+        else
+        {
+            o << "{ ";
+            for( auto it = v.begin(); it != v.end() - 1; it++ ) o << *it << ", ";
+            o << v.back() << " }";
+        }
+        return o;
     }
-    return o;
-}
 
-template <typename T> std::ostream& operator<<( std::ostream& o, const std::optional<T>& v )
-{
-    if( not v.has_value() )
-        o << "{}";
-    else
+    std::ostream& operator<<( std::ostream& o, const std::vector<Eigen::Vector3d>& v );
+
+    template <typename T> std::ostream& operator<<( std::ostream& o, const std::set<T>& v )
     {
-        o << v.value();
+        if( v.size() == 0 )
+            o << "{}";
+        else
+        {
+            o << "{ ";
+            for( auto it = v.begin(); it != v.end(); it++ ) o << *it << ", ";
+            o << " }";
+        }
+        return o;
     }
-    return o;
-}
 
-template <typename T, typename U> std::ostream& operator<<( std::ostream& o, const std::map<T, U>& v )
-{
-    if( v.size() == 0 )
-        o << "{}";
-    else
+    template <typename T> std::ostream& operator<<( std::ostream& o, const std::optional<T>& v )
     {
-        o << "{ ";
-        for( auto it = v.begin(); it != v.end(); it++ ) o << "{ " << it->first << ", " << it->second << " }" << ", ";
-        o << " }";
+        if( not v.has_value() )
+            o << "{}";
+        else
+        {
+            o << v.value();
+        }
+        return o;
     }
-    return o;
-}
 
-template <typename T, typename U> std::ostream& operator<<( std::ostream& o, const std::pair<T, U>& v )
-{
-    o << "{ " << v.first << ", " << v.second << " }" << ", ";
-    return o;
+    template <typename T, typename U> std::ostream& operator<<( std::ostream& o, const std::map<T, U>& v )
+    {
+        if( v.size() == 0 )
+            o << "{}";
+        else
+        {
+            o << "{ ";
+            for( auto it = v.begin(); it != v.end(); it++ ) o << "{ " << it->first << ", " << it->second << " }" << ", ";
+            o << " }";
+        }
+        return o;
+    }
+
+    template <typename T, typename U> std::ostream& operator<<( std::ostream& o, const std::pair<T, U>& v )
+    {
+        o << "{ " << v.first << ", " << v.second << " }" << ", ";
+        return o;
+    }
+
+    template<typename... Ts>
+    auto operator<<(std::ostream& os, const std::variant<Ts...>& v)
+        -> std::enable_if_t<(sizeof...(Ts) > 0), std::ostream&>
+    {
+        std::visit([&](const auto& x) { os << "variant{type:" << v.index() << ", " << x << "}"; }, v);
+        return os;
+    }
+
 }
 
 void pauseDebugger();
