@@ -298,13 +298,7 @@ PYBIND11_MODULE( splines, m )
                 const auto& component_bases = nsd.HDIV_ss.scalarTPBases();
                 const bool is_S = side == api::PatchSide::S0 or side == api::PatchSide::S1;
 
-                const util::IndexVec lengths = [&]() {
-                    const basis::TPSplineSpace& comp = is_S ? *component_bases.at( 0 ) : *component_bases.at( 1 );
-                    const auto component_comps = tensorProductComponentSplines( comp );
-                    util::IndexVec out;
-                    for( const auto& comp : component_comps ) out.push_back( comp->numFunctions() );
-                    return out;
-                }();
+                const util::IndexVec lengths = getTPLengths( is_S ? *component_bases.at( 0 ) : *component_bases.at( 1 ) );
 
                 const auto iter_dir =
                     [&lengths]( const api::PatchSide& side ) -> SmallVector<std::variant<bool, size_t>, 3> {
@@ -439,13 +433,6 @@ PYBIND11_MODULE( splines, m )
                 const auto& scalar_hier_bases = nsd.HDIV_ss.scalarBases();
                 const basis::HierarchicalTPSplineSpace& hier_comp = is_S ? *scalar_hier_bases.at( 0 ) : *scalar_hier_bases.at( 1 );
 
-                const auto get_tp_lengths = []( const basis::TPSplineSpace& comp ) {
-                    const auto component_comps = tensorProductComponentSplines( comp );
-                    util::IndexVec out;
-                    for( const auto& comp : component_comps ) out.push_back( comp->numFunctions() );
-                    return out;
-                };
-
                 const auto get_iter_dir = [&side]( const util::IndexVec& lengths ) -> SmallVector<std::variant<bool, size_t>, 3> {
                     switch( side )
                     {
@@ -463,7 +450,7 @@ PYBIND11_MODULE( splines, m )
                 for( size_t i = 0; i < num_levels; i++ )
                 {
                     const basis::TPSplineSpace& comp = *hier_comp.refinementLevels().at( i );
-                    const util::IndexVec lengths = get_tp_lengths( comp );
+                    const util::IndexVec lengths = getTPLengths( comp );
                     const auto iter_dir = get_iter_dir( lengths );
                     const auto& exop = hier_comp.levelExtractionOperators().at( i );
 

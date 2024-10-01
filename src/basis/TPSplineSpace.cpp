@@ -88,6 +88,14 @@ namespace basis
         return out;
     }
 
+    util::IndexVec getTPLengths( const basis::TPSplineSpace& tpss )
+    {
+        const auto component_comps = tensorProductComponentSplines( tpss );
+        util::IndexVec out;
+        for( const auto& comp : component_comps ) out.push_back( comp->numFunctions() );
+        return out;
+    };
+
     TPSplineSpace buildBSpline( const SmallVector<KnotVector, 3>& kvs, const SmallVector<size_t, 3>& degrees )
     {
         SmallVector<std::shared_ptr<const topology::CombinatorialMap1d>, 3> cmap_1ds;
