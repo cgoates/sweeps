@@ -67,7 +67,17 @@ void test_c0( const MultiPatchSplineSpace& ss,
     } );
 }
 
-TEST_CASE( "Simple 2d multipatch spline space" )
+void test_c0( const MultiPatchSplineSpace& ss,
+              const size_t n_funcs_expected,
+              const size_t num_overlapping_expected )
+{
+    const auto& cmap = ss.basisComplex().parametricAtlas().cmap();
+
+    for( const auto& submap : cmap.constituents() )
+        test_c0( ss, *submap, n_funcs_expected, num_overlapping_expected );
+}
+
+TEST_CASE( "Simple 2d two-patch spline space" )
 {
     const double ptol = 1e-9;
     const KnotVector kv1( { 0, 0, 0, 1, 1, 1 }, ptol );
@@ -111,7 +121,7 @@ TEST_CASE( "Simple 2d multipatch spline space" )
     }
 }
 
-TEST_CASE( "Simple 3d multipatch spline space" )
+TEST_CASE( "Simple 3d two-patch spline space" )
 {
     const double ptol = 1e-9;
     const KnotVector kv1( { 0, 0, 0, 1, 1, 1 }, ptol );
@@ -152,5 +162,85 @@ TEST_CASE( "Simple 3d multipatch spline space" )
         const MultiPatchSplineSpace ss( bc, { ss_tp_1, ss_tp_2 } );
 
         test_c0( ss, *cmap_tp_1, 75, ( degree2 + 1 ) * ( degree1 + 1 ) );
+    }
+}
+
+TEST_CASE( "More complex 2d multipatch spline space" )
+{
+    const double ptol = 1e-9;
+    const KnotVector kv( { 0, 0, 0, 1, 2, 3, 3, 3 }, ptol );
+    const size_t degree = 2;
+
+    const auto ss_tp = std::make_shared<const TPSplineSpace>( buildBSpline( {kv, kv}, {degree, degree} ) );
+    const auto& bc_tp = ss_tp->basisComplexPtr();
+    const auto& atlas_tp = bc_tp->parametricAtlasPtr();
+    const auto& cmap_tp = atlas_tp->cmapPtr();
+
+    {
+        const auto cmap = std::make_shared<const MultiPatchCombinatorialMap>(
+            MultiPatchCombinatorialMap( { cmap_tp, cmap_tp, cmap_tp },
+                                        { { { 0, Dart( 26 ) }, { 1, Dart( 0 ) } },
+                                          { { 0, Dart( 27 ) }, { 2, Dart( 8 ) } },
+                                          { { 1, Dart( 3 ) }, { 2, Dart( 9 ) } } } ) );
+        const auto atlas = std::make_shared<const MultiPatchParametricAtlas>(
+            cmap, std::vector<std::shared_ptr<const TPParametricAtlas>>{ atlas_tp, atlas_tp, atlas_tp } );
+        const auto bc = std::make_shared<const MultiPatchBasisComplex>(
+            atlas, std::vector<std::shared_ptr<const TPBasisComplex>>{ bc_tp, bc_tp, bc_tp } );
+
+        const MultiPatchSplineSpace ss( bc, { ss_tp, ss_tp, ss_tp } );
+
+        test_c0( ss, 61, degree + 1 );
+    }
+
+    {
+        const auto cmap = std::make_shared<const MultiPatchCombinatorialMap>(
+            MultiPatchCombinatorialMap( std::vector<std::shared_ptr<const topology::TPCombinatorialMap>>( 8, cmap_tp ),
+                                        { { { 0, Dart( 9 ) }, { 1, Dart( 3 ) } },
+                                          { { 0, Dart( 26 ) }, { 3, Dart( 0 ) } },
+                                          { { 1, Dart( 9 ) }, { 2, Dart( 3 ) } },
+                                          { { 2, Dart( 26 ) }, { 4, Dart( 0 ) } },
+                                          { { 3, Dart( 26 ) }, { 5, Dart( 0 ) } },
+                                          { { 4, Dart( 26 ) }, { 7, Dart( 0 ) } },
+                                          { { 5, Dart( 9 ) }, { 6, Dart( 3 ) } },
+                                          { { 6, Dart( 9 ) }, { 7, Dart( 3 ) } } } ) );
+        const auto atlas = std::make_shared<const MultiPatchParametricAtlas>(
+            cmap, std::vector<std::shared_ptr<const TPParametricAtlas>>( 8, atlas_tp ) );
+        const auto bc = std::make_shared<const MultiPatchBasisComplex>(
+            atlas, std::vector<std::shared_ptr<const TPBasisComplex>>( 8, bc_tp ) );
+
+        const MultiPatchSplineSpace ss( bc, std::vector<std::shared_ptr<const TPSplineSpace>>( 8, ss_tp ) );
+
+        test_c0( ss, 160, degree + 1 );
+    }
+}
+
+TEST_CASE( "More complex 3d multipatch spline space" )
+{
+    const double ptol = 1e-9;
+    const KnotVector kv( { 0, 0, 0, 1, 1, 1 }, ptol );
+    const size_t degree = 2;
+
+    const auto ss_tp = std::make_shared<const TPSplineSpace>( buildBSpline( {kv, kv, kv}, {degree, degree, degree} ) );
+    const auto& bc_tp = ss_tp->basisComplexPtr();
+    const auto& atlas_tp = bc_tp->parametricAtlasPtr();
+    const auto& cmap_tp = atlas_tp->cmapPtr();
+
+    {
+        const auto cmap = std::make_shared<const MultiPatchCombinatorialMap>(
+            MultiPatchCombinatorialMap( { cmap_tp, cmap_tp, cmap_tp, cmap_tp },
+                                        { { { 0, Dart( 0 ) }, { 1, Dart( 5 ) } },
+                                          { { 0, Dart( 8 ) }, { 2, Dart( 5 ) } },
+                                          { { 0, Dart( 16 ) }, { 3, Dart( 23 ) } },
+                                          { { 1, Dart( 8 ) }, { 2, Dart( 22 ) } },
+                                          { { 1, Dart( 16 ) }, { 3, Dart( 2 ) } },
+                                          { { 2, Dart( 16 ) }, { 3, Dart( 8 ) } } } ) );
+        const auto atlas = std::make_shared<const MultiPatchParametricAtlas>(
+            cmap, std::vector<std::shared_ptr<const TPParametricAtlas>>{ atlas_tp, atlas_tp, atlas_tp, atlas_tp } );
+        const auto bc = std::make_shared<const MultiPatchBasisComplex>(
+            atlas, std::vector<std::shared_ptr<const TPBasisComplex>>{ bc_tp, bc_tp, bc_tp, bc_tp } );
+
+        const MultiPatchSplineSpace ss( bc, { ss_tp, ss_tp, ss_tp, ss_tp } );
+
+        test_c0( ss, 65, ( degree + 1 ) * ( degree + 1 ) );
     }
 }
