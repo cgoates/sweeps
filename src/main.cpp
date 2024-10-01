@@ -7,6 +7,7 @@
 #include <CombinatorialMapRestriction.hpp>
 #include <GlobalCellMarker.hpp>
 #include <VTKOutput.hpp>
+#include <OBJOutput.hpp>
 #include <Logging.hpp>
 #include <Tracing.hpp>
 #include <queue>
@@ -596,6 +597,10 @@ int main( int argc, char* argv[] )
             output.addVertexField( "param", param.transpose() );
             output.addVertexField( "laplace", ans );
             io::outputSimplicialFieldToVTK( output, "param.vtu" );
+        }
+        else if( input_args.at( 0 ) == "output-bdry-obj" )
+        {
+            io::outputSimplicialMeshToOBJ( map, "bdry.obj" );
         }
     }
     else

@@ -2,6 +2,7 @@ add_library( io SHARED
   VTKOutput.cpp
   AbaqusInput.cpp
   QuadLayoutInput.cpp
+  OBJOutput.cpp
 )
 
 target_link_libraries( io PUBLIC util topology basis )
