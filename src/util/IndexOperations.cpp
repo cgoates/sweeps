@@ -112,7 +112,12 @@ namespace util
         if( lengths1.size() != order1.size() or order1.size() != direction1.size() or
             lengths2.size() != order2.size() or order2.size() != direction2.size() or
             lengths1.size() != lengths2.size() )
+        {
+            std::cerr << "Lengths: " << lengths1 << " | " << lengths2 << std::endl;
+            std::cerr << "Order: " << order1 << " | " << order2 << std::endl;
+            std::cerr << "dir: " << direction1 << " | " << direction2 << std::endl;
             throw std::runtime_error( "Inconsistent sizes of inputs to iterateTensorProductSynchronized" );
+        }
 
         const std::function<void( const IndexVec&, const IndexVec& )> recurse = [&]( const IndexVec& iv1, const IndexVec& iv2 ) {
             if( iv1.size() == lengths1.size() )
@@ -131,9 +136,15 @@ namespace util
                 const size_t current_slot1 = order1.at( lengths1.size() - iv1.size() - 1 );
                 const size_t current_slot2 = order2.at( lengths2.size() - iv2.size() - 1 );
 
-                if( lengths1.at( current_slot1 ) != lengths2.at( current_slot2 ) or
+                if( ( direction1.at( current_slot1 ).index() == 0 and // Lengths only need to match if it's a bool
+                      lengths1.at( current_slot1 ) != lengths2.at( current_slot2 ) ) or
                     direction1.at( current_slot1 ).index() != direction2.at( current_slot2 ).index() )
+                {
+                    std::cerr << "Lengths: " << lengths1 << " | " << lengths2 << std::endl;
+                    std::cerr << "Order: " << order1 << " | " << order2 << std::endl;
+                    std::cerr << "dir: " << direction1 << " | " << direction2 << std::endl;
                     throw std::runtime_error( "Incompatible TP setups for synchronized iteration" );
+                }
 
                 const auto continue_recursing = [&]( const size_t i, const size_t j ) {
                     IndexVec new_iv1;
