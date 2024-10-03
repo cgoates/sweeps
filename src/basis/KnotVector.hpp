@@ -75,6 +75,8 @@ namespace basis
     /// @return  The greville points
     Eigen::VectorXd grevillePoints( const KnotVector& kv, const size_t degree );
 
+    KnotVector integerKnotsWithNElems( const size_t n_elems, const size_t degree );
+
     KnotVector dyadicRefine( const KnotVector& kv );
     KnotVector nAdicRefine( const KnotVector& kv, const size_t n );
 }
