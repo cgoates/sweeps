@@ -206,9 +206,9 @@ bool TPCombinatorialMap::iterateCellsWhile( const uint cell_dim,
     if( cell_dim > dim() ) return true;
     if( cell_dim == dim() )
     {
-        return topology::iterateDartsWhile( *mSource, [&]( const Dart& source_dart ) {
+        return topology::iterateCellsWhile( *mSource, cell_dim - 1, [&]( const Cell& source_cell ) {
             return topology::iterateDartsWhile( *mLine, [&]( const Dart& line_dart ) {
-                return callback( Cell( flatten( source_dart, line_dart, TPDartPos::DartPos0 ), cell_dim ) );
+                return callback( Cell( flatten( source_cell.dart(), line_dart, TPDartPos::DartPos0 ), cell_dim ) );
             } );
         } );
     }
