@@ -26,4 +26,8 @@ namespace basis
         std::vector<std::vector<FunctionId>> mFuncIds;
         size_t mNumFunctions;
     };
+
+    MultiPatchSplineSpace buildMultiPatchSplineSpace(
+        const std::vector<std::shared_ptr<const TPSplineSpace>>& patches,
+        const std::map<std::pair<size_t, topology::Dart>, std::pair<size_t, topology::Dart>>& connections );
 } // namespace basis
