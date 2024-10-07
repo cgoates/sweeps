@@ -193,7 +193,10 @@ namespace basis
                                 if( constituent_fids.at( this_fid ) == -1 or
                                     ( other_constituent_fids.at( other_fid ) != -1 and
                                       other_constituent_fids.at( other_fid ) != constituent_fids.at( this_fid ) ) )
+                                {
+                                    std::cerr << constituent_fids.at( this_fid ) << " vs " << other_constituent_fids.at( other_fid ) << std::endl;
                                     throw std::runtime_error( "Problem connecting neighboring functions!" );
+                                }
 
                                 other_constituent_fids.at( other_fid ) = constituent_fids.at( this_fid );
 
