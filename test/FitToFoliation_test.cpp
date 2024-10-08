@@ -434,10 +434,8 @@ TEST_CASE( "Level set parameterization of hook" )
     const std::string output_prefix = "hook";
     const std::vector<double> level_set_values = linspace( 0, 1.0, 100 );
 
-    // 0, 0.015, 0.16, 0.173
-
     const basis::KnotVector kv_u( concatenate( { 0, 0, 0, 0.015, 0.015, 0.16, 0.16515 },
-                                               concatenate( linspace( 0.173, 1.0, 15 ), { 1.0, 1.0 } ) ),
+                                               concatenate( linspace( 0.173, 0.73, 15 ), concatenate( linspace( 0.75, 1.0, 5 ), { 1.0, 1.0 } ) ) ),
                                   1e-9 );
 
     // fitToPringlesSinglePatch( sweep_input, level_set_values, output_prefix, 2, 20, 4 );
