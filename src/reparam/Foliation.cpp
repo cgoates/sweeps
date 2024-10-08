@@ -6,6 +6,15 @@
 #include <LevelSetCMap.hpp>
 #include <Logging.hpp>
 
+#include <TetMeshCombinatorialMap.hpp>
+#include <CombinatorialMapRestriction.hpp>
+#include <DelaunayTriangulation.hpp>
+#include <ReversedCombinatorialMap.hpp>
+#include <TriangleParametricAtlas.hpp>
+#include <TriangleMeshCircleMapping.hpp>
+#include <TriangleMeshMapping.hpp>
+#include <Laplace.hpp>
+
 namespace reparam
 {
     std::vector<TraceLevelSetIntersection> levelSetIntersections( const Trace& trace,
@@ -86,5 +95,179 @@ namespace reparam
         }
 
         return out;
+    }
+
+    constexpr bool log_level_set_based_tracing = false;
+    void levelSetBasedTracing( const SweepInput& sweep_input,
+                               const std::vector<double> level_set_values,
+                               const std::function<void( const std::vector<FoliationLeaf>& )>& callback )
+    {
+        const topology::TetMeshCombinatorialMap map( sweep_input.mesh );
+        const std::vector<Normal> normals = faceNormals( map );
+        const Eigen::VectorXd sol = reparam::sweepEmbedding( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
+
+        LOG( log_level_set_based_tracing ) << "FINISHED LAPLACE\n\n";
+
+        const topology::CombinatorialMapBoundary bdry( map );
+
+        const auto bdry_vertex_ids = indexingOrError( bdry, 0 );
+        const auto map_face_ids = indexingOrError( map, 2 );
+
+        const auto keep_face_sides = [&]( const topology::Face& f ) {
+            return ( not sweep_input.zero_bcs.at( bdry_vertex_ids( topology::Vertex( f.dart() ) ) ) or
+                    not sweep_input.zero_bcs.at(
+                        bdry_vertex_ids( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ) ) or
+                    not sweep_input.zero_bcs.at(
+                        bdry_vertex_ids( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ) ) ) and
+                ( not sweep_input.one_bcs.at( bdry_vertex_ids( topology::Vertex( f.dart() ) ) ) or
+                    not sweep_input.one_bcs.at(
+                        bdry_vertex_ids( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ) ) or
+                    not sweep_input.one_bcs.at(
+                        bdry_vertex_ids( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ) ) );
+        };
+
+        const auto keep_face_base = [&]( const topology::Face& f ) {
+            return sweep_input.zero_bcs.at( bdry_vertex_ids( topology::Vertex( f.dart() ) ) ) and
+                sweep_input.zero_bcs.at( bdry_vertex_ids( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ) ) and
+                sweep_input.zero_bcs.at( bdry_vertex_ids( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ) );
+        };
+
+        const auto keep_face_target = [&]( const topology::Face& f ) {
+            return sweep_input.one_bcs.at( bdry_vertex_ids( topology::Vertex( f.dart() ) ) ) and
+                sweep_input.one_bcs.at( bdry_vertex_ids( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ) ) and
+                sweep_input.one_bcs.at( bdry_vertex_ids( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ) );
+        };
+
+        const topology::CombinatorialMapRestriction sides( bdry, keep_face_sides );
+        const topology::CombinatorialMapRestriction base( bdry, keep_face_base, true );
+        const topology::CombinatorialMapRestriction target( bdry, keep_face_target, true );
+
+        const auto vertex_positions = [&sweep_input]( const topology::CombinatorialMap& map ) {
+            const auto vertex_ids = indexingOrError( map, 0 );
+            return [&sweep_input, vertex_ids]( const topology::Vertex& v ) -> Eigen::Vector3d {
+                return sweep_input.mesh.points.at( vertex_ids( v ) );
+            };
+        };
+
+        const topology::Edge start_edge = [&]() {
+            std::optional<topology::Edge> out;
+            iterateDartsWhile( sides, [&]( const topology::Dart& d ) {
+                const auto phi2 = phi( bdry, 2, d );
+                if( keep_face_base( phi2.value() ) )
+                {
+                    out.emplace( d );
+                    return false;
+                }
+                return true;
+            } );
+            if( not out.has_value() ) throw std::runtime_error( "Unable to find tracing start edge" );
+            return out.value();
+        }();
+        const reparam::Trace trace =
+            reparam::traceBoundaryField( sides, start_edge, 0.5, sol, vertex_positions( sides ), false );
+
+        LOG( log_level_set_based_tracing ) << "FINISHED TRACE\n\n";
+
+        const std::vector<reparam::TraceLevelSetIntersection> intersections =
+            reparam::levelSetIntersections( trace, sides, level_set_values );
+        if( intersections.size() != level_set_values.size() )
+            throw std::runtime_error( "Wrong number of intersections" );
+
+        const auto vertex_ids = indexingOrError( map, 0 );
+
+        const auto harmonic_func = [&]( const topology::Vertex& v ) { return sol( vertex_ids( v ) ); };
+
+        const auto process_param =
+            [&]( const topology::CombinatorialMap& cmap, const auto& positions, const auto& thetas, FoliationLeaf& leaf ) {
+                const auto base_vert_ids = indexingOrError( cmap, 0 );
+                const std::map<size_t, double> thetas_by_id = [&]() {
+                    std::map<size_t, double> out;
+                    for( const auto& pr : thetas )
+                    {
+                        out.insert( { base_vert_ids( pr.first ), pr.second } );
+                    }
+                    return out;
+                }();
+
+                const auto constraints_func = [&]( const topology::Vertex& v ) -> std::optional<Eigen::Vector2d> {
+                    if( boundaryAdjacent( cmap, v ) )
+                    {
+                        const double theta = thetas_by_id.at( base_vert_ids( v ) );
+                        return Eigen::Vector2d( cos( theta ), sin( theta ) );
+                    }
+                    else
+                        return std::nullopt;
+                };
+
+                leaf.tutte = std::make_unique<const Eigen::MatrixX2d>(
+                    reparam::tutteEmbedding( cmap, positions, constraints_func, true ) );
+
+                leaf.atlas = std::make_unique<param::TriangleParametricAtlas>( cmap );
+                const auto vert_positions = [tutte = *( leaf.tutte ), base_vert_ids]( const topology::Vertex& v ) {
+                    return tutte.row( base_vert_ids( v ) );
+                };
+                leaf.circle_mapping = std::make_unique<mapping::TriangleMeshCircleMapping>( *leaf.atlas, vert_positions );
+                leaf.space_mapping = std::make_unique<mapping::TriangleMeshMapping>( *leaf.atlas, positions, 3 );
+            };
+
+        std::vector<FoliationLeaf> leaves;
+        leaves.reserve( level_set_values.size() );
+
+        { // Base level set
+            const auto base_positions = vertex_positions( bdry );
+            const auto face_ids_of_edge = [&]( const topology::Edge& e ) {
+                return map_face_ids( bdry.toUnderlyingCell( topology::Face( phi( bdry, 2, e.dart() ).value() ) ) );
+            };
+            const std::map<topology::Vertex, double> thetas =
+                reparam::thetaValues( base, base_positions, face_ids_of_edge, intersections[0] );
+
+            leaves.push_back( {} );
+            process_param( base, base_positions, thetas, leaves.back() );
+        }
+
+        LOG( log_level_set_based_tracing ) << "FINISHED BASE\n\n";
+
+        for( size_t level_ii = 1; level_ii < level_set_values.size() - 1; level_ii++ )
+        { // Midway level set
+            leaves.push_back( {} );
+            leaves.back().level_set_cmap =
+                std::make_unique<topology::LevelSetCMap>( map, harmonic_func, level_set_values[level_ii] );
+            const auto v_pos = vertex_positions( map );
+            const auto& level_set = *leaves.back().level_set_cmap;
+            const auto level_set_positions = topology::levelSetVertexPositions( level_set, v_pos );
+            const auto face_ids_of_edge = [&]( const topology::Edge& e ) {
+                return map_face_ids( level_set.underlyingCell( e ) );
+            };
+            const std::map<topology::Vertex, double> thetas =
+                reparam::thetaValues( level_set, level_set_positions, face_ids_of_edge, intersections[level_ii] );
+
+            leaves.back().level_set_tri =
+                std::make_unique<topology::DelaunayTriangulation>( level_set, level_set_positions );
+            const auto tri_positions =
+                topology::delaunayTriangulationVertexPositions( *leaves.back().level_set_tri, level_set_positions );
+
+            process_param( *leaves.back().level_set_tri, tri_positions, thetas, leaves.back() );
+
+            LOG( log_level_set_based_tracing ) << "FINISHED LEVEL " << ( level_ii + 1 ) << std::endl << std::endl;
+        }
+
+        { // target level set
+            leaves.push_back( {} );
+            const auto target_positions = vertex_positions( bdry );
+            leaves.back().reversed_cmap = std::make_unique<topology::ReversedCombinatorialMap>( target );
+            const auto& rev_map = *leaves.back().reversed_cmap;
+            const auto rev_positions = reversedVertexPositions( rev_map, target_positions );
+            const auto face_ids_of_edge = [&]( const topology::Edge& e ) {
+                return map_face_ids( bdry.toUnderlyingCell(
+                    topology::Face( phi( bdry, 2, rev_map.toUnderlyingCell( e ).dart() ).value() ) ) );
+            };
+            const std::map<topology::Vertex, double> thetas =
+                reparam::thetaValues( rev_map, rev_positions, face_ids_of_edge, intersections.back() );
+
+            process_param( rev_map, rev_positions, thetas, leaves.back() );
+        }
+        LOG( log_level_set_based_tracing ) << "FINISHED TARGET\n\n";
+
+        callback( leaves );
     }
 } // namespace reparam

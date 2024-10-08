@@ -3,18 +3,51 @@
 #include <map>
 #include <VertexPositionsFunc.hpp>
 
+struct SweepInput;
+
 namespace topology
 {
     class Cell;
     class Vertex;
     class Edge;
     class CombinatorialMap;
+    class DelaunayTriangulation;
+    class ReversedCombinatorialMap;
+    class LevelSetCMap;
+}
+
+namespace param
+{
+    class TriangleParametricAtlas;
+}
+
+namespace mapping
+{
+    class TriangleMeshMapping;
+    class TriangleMeshCircleMapping;
 }
 
 namespace reparam
 {
     class Trace;
     using TraceLevelSetIntersection = std::pair<Eigen::Vector3d, size_t>;
+
+    /// @brief A storage class for the leaves of the foliation
+    struct FoliationLeaf
+    {
+        // For the middle leaves
+        std::shared_ptr<topology::LevelSetCMap> level_set_cmap;
+        std::shared_ptr<topology::DelaunayTriangulation> level_set_tri;
+
+        // For the target surface
+        std::shared_ptr<topology::ReversedCombinatorialMap> reversed_cmap;
+
+        // For all leaves
+        std::shared_ptr<const Eigen::MatrixX2d> tutte;
+        std::shared_ptr<param::TriangleParametricAtlas> atlas;
+        std::shared_ptr<mapping::TriangleMeshCircleMapping> circle_mapping;
+        std::shared_ptr<mapping::TriangleMeshMapping> space_mapping;
+    };
 
     /// @brief Find locations where a trace intersects level sets.
     /// @param trace            The trace that is to be processed.
@@ -36,4 +69,8 @@ namespace reparam
                      const VertexPositionsFunc& level_set_positions,
                      const std::function<size_t( const topology::Edge& )>& underlying_face_id_of_edge,
                      const TraceLevelSetIntersection& intersection );
+
+    void levelSetBasedTracing( const SweepInput& sweep_input,
+                               const std::vector<double> level_set_values,
+                               const std::function<void( const std::vector<FoliationLeaf>& )>& callback );
 } // namespace reparam
