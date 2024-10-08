@@ -32,4 +32,27 @@ namespace util
     {
         return equals( normalizeAngle( a ), normalizeAngle( b ), tol );
     }
+
+    std::vector<double> linspace( const double left_val, const double right_val, const size_t n_levels )
+    {
+        std::vector<double> out;
+        out.reserve( n_levels );
+        const double diff = ( right_val - left_val ) / ( n_levels - 1 );
+        for( size_t i = 0; i < n_levels; i++ )
+        {
+            out.push_back( left_val + i * diff );
+        }
+        return out;
+    }
+
+    std::vector<double> concatenate( const std::vector<double>& first, const std::vector<double>& second )
+    {
+        std::vector<double> out;
+        out.reserve( first.size() + second.size() );
+
+        out.insert( out.end(), first.begin(), first.end() );
+        out.insert( out.end(), second.begin(), second.end() );
+
+        return out;
+    }
 } // namespace util
