@@ -89,31 +89,6 @@ Eigen::Vector2d toUnitSquare( const topology::TPCombinatorialMap& cmap, const to
     return Eigen::Vector2d( ( (double)d1.id() + pt( 0 ) ) / (double)cellCount( cmap.sourceCMap(), 1 ), ( (double)d2.id() + pt( 1 ) ) / (double)cellCount( cmap.lineCMap(), 1 ) );
 }
 
-// transforms [0,1]x[0,1] to the unit circle.  Found with a public domain license at
-// https://github.com/erich666/jgt-code/blob/master/Volume_02/Number_3/Shirley1997/disk.cc
-Eigen::Vector2d toUnitDisk1( const Eigen::Vector2d& square_coords )
-{
-    double phi, r;
-    const double a = 2 * square_coords( 0 ) - 1;
-    const double b = 2 * square_coords( 1 ) - 1;
-    if( a == 0 and b == 0 )
-    {
-        r = 0;
-        phi = 0;
-    }
-    if( a * a > b * b )
-    {
-        r = a;
-        phi = ( std::numbers::pi / 4 ) * ( b / a );
-    }
-    else
-    {
-        r = b;
-        phi = ( std::numbers::pi / 2 ) - ( std::numbers::pi / 4 ) * ( a / b );
-    }
-    return Eigen::Vector2d( r * cos( phi ), r * sin( phi ) );
-}
-
 Eigen::Vector2d toUnitDisk( const Eigen::Vector2d& square_coords )
 {
     const double a = 2 * square_coords( 0 ) - 1;
@@ -152,6 +127,60 @@ Eigen::Vector2d multiPatchToUnitDisk( const size_t patch_ii, const Eigen::Vector
     }
 }
 
+Eigen::MatrixXd fitToLeaves(
+    const SweepInput& sweep_input,
+    eval::SplineSpaceEvaluator& evaler,
+    const std::vector<double>& level_set_values,
+    const size_t n_points,
+    const std::function<void(
+        const size_t,
+        const std::function<Eigen::Vector3d( const topology::Cell&, const param::ParentPoint&, const Eigen::Vector2d& )>& )>&
+        leaf_point_iterator )
+{
+    const param::ParentDomain pd_3d = param::cubeDomain( 3 );
+
+    // If not covering the whole domain, add source and target surface
+    std::vector<double> level_set_values2;
+    const bool add_front = not util::equals( level_set_values.front(), 0.0, 1e-9 );
+    const bool add_back = not util::equals( level_set_values.back(), 1.0, 1e-9 );
+    if( add_front ) level_set_values2.push_back( 0 );
+    level_set_values2.insert( level_set_values2.end(), level_set_values.begin(), level_set_values.end() );
+    if( add_back ) level_set_values2.push_back( 1.0 );
+
+    Eigen::MatrixXd fit_cpts;
+
+    reparam::levelSetBasedTracing( sweep_input, level_set_values2, [&]( const std::vector<FoliationLeaf>& leaves2 ) {
+        const std::vector<FoliationLeaf> leaves( add_front ? std::next( leaves2.begin() ) : leaves2.begin(), add_back ? std::prev( leaves2.end() ) : leaves2.end() );
+        std::cout << "About to fit\n";
+
+        fit_cpts = fitting::leastSquaresFitting(
+            evaler,
+            n_points,
+            3,
+            [&]( const std::function<void( const topology::Cell&, const param::ParentPoint&, const Eigen::VectorXd& )>&
+                    add_least_squares_point ) {
+                for( size_t leaf_ii = 0; leaf_ii < leaves.size(); leaf_ii++ )
+                {
+                    leaf_point_iterator( leaf_ii, [&]( const topology::Cell& cell, const param::ParentPoint& vol_ppt, const Eigen::Vector2d& circle_pt ) {
+                        const auto param_pt = leaves.at( leaf_ii ).circle_mapping->maybeInverse( circle_pt );
+                        CHECK( param_pt.has_value() );
+                        if( not param_pt.has_value() )
+                        {
+                            std::cerr << "NO VALUE" << std::endl;
+                            pauseDebugger();
+                        }
+                        const Eigen::Vector3d field_pt = leaves.at( leaf_ii ).space_mapping->evaluate( param_pt.value().first, param_pt.value().second );
+
+                        add_least_squares_point( cell, vol_ppt, field_pt );
+                        return field_pt;
+                    } );
+                }
+            } );
+    } );
+
+    return fit_cpts;
+}
+
 void fitToPringlesSinglePatch( const SweepInput& sweep_input,
                                const std::vector<double>& level_set_values,
                                const std::string& output_prefix,
@@ -159,106 +188,72 @@ void fitToPringlesSinglePatch( const SweepInput& sweep_input,
                                const size_t n_elems_u,
                                const size_t n_elems_st )
 {
-    std::vector<double> level_set_values2;
-    level_set_values2.push_back( 0 );
-    level_set_values2.insert( level_set_values2.end(), level_set_values.begin(), level_set_values.end() );
-    level_set_values2.push_back( 1.0 );
-    levelSetBasedTracing( sweep_input, level_set_values2, [&]( const std::vector<FoliationLeaf>& leaves2 ) {
-        std::vector<FoliationLeaf> leaves( std::next( leaves2.begin() ), leaves2.end() );
-        leaves.pop_back();
+    const basis::KnotVector kv1 = basis::integerKnotsWithNElems( n_elems_st, degree );
+    const basis::KnotVector kv2 = basis::integerKnotsWithNElems( n_elems_u, degree );
 
-        const basis::KnotVector kv1 = basis::integerKnotsWithNElems( n_elems_st, degree );
-        const basis::KnotVector kv2 = basis::integerKnotsWithNElems( n_elems_u, degree );
+    const basis::TPSplineSpace vol_ss = basis::buildBSpline( {kv1, kv1, kv2}, {degree, degree, degree} );
+    const basis::TPSplineSpace& source_ss = static_cast<const basis::TPSplineSpace&>( vol_ss.source() );
+    const topology::TPCombinatorialMap& vol_cmap = vol_ss.basisComplex().parametricAtlas().cmap();
 
-        // TODO: use multipatch
-        const basis::TPSplineSpace vol_ss = basis::buildBSpline( {kv1, kv1, kv2}, {degree, degree, degree} );
-        const basis::TPSplineSpace& source_ss = static_cast<const basis::TPSplineSpace&>( vol_ss.source() );
-        const topology::TPCombinatorialMap& vol_cmap = vol_ss.basisComplex().parametricAtlas().cmap();
+    const std::vector<std::pair<topology::Cell, param::ParentPoint>> ppt_u =
+        parentPointsOfParamPoints( level_set_values, vol_ss.line().basisComplex().parametricAtlas(), 1e-9 );
 
-        const std::vector<std::pair<topology::Cell, param::ParentPoint>> ppt_u =
-            parentPointsOfParamPoints( level_set_values, vol_ss.line().basisComplex().parametricAtlas(), 1e-9 );
+    const size_t n_points = cellCount( source_ss.basisComplex().parametricAtlas().cmap(), 2 ) * 4 * level_set_values.size();
 
-        const size_t n_points = cellCount( source_ss.basisComplex().parametricAtlas().cmap(), 2 ) * 4 * leaves.size();
+    const SmallVector<double, 2> source_points{ 0.1, 0.9 };
 
-        const SmallVector<double, 2> source_points{ 0.1, 0.9 };
+    const param::ParentDomain pd_3d = param::cubeDomain( 3 );
 
-        const param::ParentDomain pd_3d = param::cubeDomain( 3 );
+    std::cout << "About to fit\n";
 
-        std::cout << "About to fit\n";
+    SimplicialComplex fitting_points;
 
-        SimplicialComplex fitting_points;
+    eval::SplineSpaceEvaluator evaler( vol_ss, 0 );
 
-        eval::SplineSpaceEvaluator evaler( vol_ss, 0 );
-        const auto fit_cpts = fitting::leastSquaresFitting(
-            evaler,
-            n_points,
-            3,
-            [&]( const std::function<void( const topology::Cell&, const param::ParentPoint&, const Eigen::VectorXd& )>&
-                    callback ) {
-                        // std::cout << "Inside callback!\n";
-                for( size_t leaf_ii = 0; leaf_ii < leaves.size(); leaf_ii++ )
-                {
-                    // std::cout << "Leaf " << leaf_ii << std::endl;
-                    iterateCellsWhile(
-                        source_ss.basisComplex().parametricAtlas().cmap(), 2, [&]( const topology::Cell& f ) {
-                            // std::cout << "Source cell " << f << std::endl;
-                            util::iterateTensorProduct(
-                                { source_points.size(), source_points.size() }, [&]( const util::IndexVec& indices ) {
-                                    const Eigen::Vector3d pt( source_points.at( indices.at( 0 ) ),
-                                                            source_points.at( indices.at( 1 ) ),
-                                                            ppt_u.at( leaf_ii ).second.mPoint( 0 ) );
-                                    // std::cout << "Point: " << pt.transpose() << std::endl;
-                                    const param::ParentPoint vol_ppt(
-                                        pd_3d,
-                                        pt,
-                                        { false,
-                                        false,
-                                        false,
-                                        false,
-                                        ppt_u.at( leaf_ii ).second.mBaryCoordIsZero.at( 0 ),
-                                        ppt_u.at( leaf_ii ).second.mBaryCoordIsZero.at( 1 ) } );
+    const Eigen::MatrixXd fit_cpts = fitToLeaves( sweep_input, evaler, level_set_values, n_points, [&]( const size_t leaf_ii, const auto& point_callback ) {
+        iterateCellsWhile(
+            source_ss.basisComplex().parametricAtlas().cmap(), 2, [&]( const topology::Cell& f ) {
+                util::iterateTensorProduct(
+                    { source_points.size(), source_points.size() }, [&]( const util::IndexVec& indices ) {
+                        const Eigen::Vector3d pt( source_points.at( indices.at( 0 ) ),
+                                                source_points.at( indices.at( 1 ) ),
+                                                ppt_u.at( leaf_ii ).second.mPoint( 0 ) );
+                        const param::ParentPoint vol_ppt(
+                            pd_3d,
+                            pt,
+                            { false,
+                            false,
+                            false,
+                            false,
+                            ppt_u.at( leaf_ii ).second.mBaryCoordIsZero.at( 0 ),
+                            ppt_u.at( leaf_ii ).second.mBaryCoordIsZero.at( 1 ) } );
 
-                                    const topology::Volume cell(
-                                        vol_cmap.flatten( f.dart(),
-                                                        ppt_u.at( leaf_ii ).first.dart(),
-                                                        topology::TPCombinatorialMap::TPDartPos::DartPos0 ) );
+                        const topology::Volume cell(
+                            vol_cmap.flatten( f.dart(),
+                                            ppt_u.at( leaf_ii ).first.dart(),
+                                            topology::TPCombinatorialMap::TPDartPos::DartPos0 ) );
 
-                                    const Eigen::Vector2d circle_pt = toUnitDisk( toUnitSquare( source_ss.basisComplex().parametricAtlas().cmap(), f, pt.head( 2 ) ) );
+                        const Eigen::Vector2d circle_pt = toUnitDisk( toUnitSquare( source_ss.basisComplex().parametricAtlas().cmap(), f, pt.head( 2 ) ) );
 
-                                    // std::cout << "About to invert circle point " << circle_pt.transpose() << std::endl;
-                                    // std::cout << "Circle mapping spatial dims: " << leaves.at( leaf_ii ).circle_mapping->spatialDim() << std::endl;
-                                    const auto param_pt = leaves.at( leaf_ii ).circle_mapping->maybeInverse( circle_pt );
-                                    // std::cout << "Inverted it!" << std::endl;
-                                    CHECK( param_pt.has_value() );
-                                    if( not param_pt.has_value() )
-                                    {
-                                        std::cerr << "NO VALUE" << std::endl;
-                                        pauseDebugger();
-                                    }
-                                    const Eigen::Vector3d field_pt = leaves.at( leaf_ii ).space_mapping->evaluate( param_pt.value().first, param_pt.value().second );
+                        const Eigen::Vector3d field_pt = point_callback( cell, vol_ppt, circle_pt );
 
-                                    fitting_points.simplices.emplace_back( fitting_points.points.size() );
-                                    fitting_points.points.push_back( field_pt );
-
-                                    // std::cout << "Call back on " << cell << " " << vol_ppt << " " << field_pt.transpose() << std::endl;
-                                    callback( cell, vol_ppt, field_pt );
-                                } );
-                            return true;
-                        } );
-                }
+                        fitting_points.simplices.emplace_back( fitting_points.points.size() );
+                        fitting_points.points.push_back( field_pt );
+                    } );
+                return true;
             } );
-
-        io::VTKOutputObject fitting_points_output( fitting_points );
-        io::outputSimplicialFieldToVTK( fitting_points_output, output_prefix + "fitting_points.vtu" );
-
-        std::cout << "Finished fit\n";
-
-        std::cout << "Vol cells: " << cellCount( vol_cmap, 3 ) << std::endl;
-
-        io::outputBezierMeshToVTK( vol_ss,
-                                    fit_cpts,
-                                    "fit_to_" + output_prefix + ".vtu" );
     } );
+
+    io::VTKOutputObject fitting_points_output( fitting_points );
+    io::outputSimplicialFieldToVTK( fitting_points_output, output_prefix + "fitting_points.vtu" );
+
+    std::cout << "Finished fit\n";
+
+    std::cout << "Vol cells: " << cellCount( vol_cmap, 3 ) << std::endl;
+
+    io::outputBezierMeshToVTK( vol_ss,
+                                fit_cpts,
+                                "fit_to_" + output_prefix + ".vtu" );
 }
 
 void fitToPringles5Patch( const SweepInput& sweep_input,
@@ -269,120 +264,83 @@ void fitToPringles5Patch( const SweepInput& sweep_input,
                           const size_t n_elems_st )
 {
     using namespace topology;
-    std::vector<double> level_set_values2;
-    const bool add_front = not util::equals( level_set_values.front(), 0.0, 1e-9 );
-    const bool add_back = not util::equals( level_set_values.back(), 1.0, 1e-9 );
-    if( add_front ) level_set_values2.push_back( 0 );
-    level_set_values2.insert( level_set_values2.end(), level_set_values.begin(), level_set_values.end() );
-    if( add_back ) level_set_values2.push_back( 1.0 );
-    levelSetBasedTracing( sweep_input, level_set_values2, [&]( const std::vector<FoliationLeaf>& leaves2 ) {
-        const std::vector<FoliationLeaf> leaves( add_front ? std::next( leaves2.begin() ) : leaves2.begin(), add_back ? std::prev( leaves2.end() ) : leaves2.end() );
-        const basis::KnotVector kv_st = basis::integerKnotsWithNElems( n_elems_st, degree );
 
-        const std::shared_ptr<const basis::TPSplineSpace> TP_ss = std::make_shared<const basis::TPSplineSpace>( basis::buildBSpline( {kv_st, kv_st, kv_u}, {degree, degree, degree} ) );
-        const auto& vol_cmap = TP_ss->basisComplex().parametricAtlas().cmap();
-        const basis::TPSplineSpace& source_ss = static_cast<const basis::TPSplineSpace&>( TP_ss->source() );
-        const std::vector<std::pair<topology::Cell, param::ParentPoint>> ppt_u =
-            parentPointsOfParamPoints( level_set_values, TP_ss->line().basisComplex().parametricAtlas(), 1e-9 );
+    const basis::KnotVector kv_st = basis::integerKnotsWithNElems( n_elems_st, degree );
 
-        const basis::MultiPatchSplineSpace mp_ss = basis::buildMultiPatchSplineSpace(
-            std::vector<std::shared_ptr<const basis::TPSplineSpace>>( 5, TP_ss ),
-            { // FIXME: only valid for n_elems_st = 2
-                { { 0, Dart( 31 ) }, { 1, Dart( 19 ) } },
-                { { 0, Dart( 85 ) }, { 2, Dart( 19 ) } },
-                { { 0, Dart( 67 ) }, { 3, Dart( 19 ) } },
-                { { 0, Dart( 1 ) }, { 4, Dart( 19 ) } },
-                { { 1, Dart( 61 ) }, { 2, Dart( 1 ) } },
-                { { 2, Dart( 61 ) }, { 3, Dart( 1 ) } },
-                { { 3, Dart( 61 ) }, { 4, Dart( 1 ) } },
-                { { 4, Dart( 61 ) }, { 1, Dart( 1 ) } },
-            } );
+    const std::shared_ptr<const basis::TPSplineSpace> TP_ss = std::make_shared<const basis::TPSplineSpace>(
+        basis::buildBSpline( { kv_st, kv_st, kv_u }, { degree, degree, degree } ) );
+    const auto& vol_cmap = TP_ss->basisComplex().parametricAtlas().cmap();
+    const basis::TPSplineSpace& source_ss = static_cast<const basis::TPSplineSpace&>( TP_ss->source() );
+    const std::vector<std::pair<topology::Cell, param::ParentPoint>> ppt_u =
+        parentPointsOfParamPoints( level_set_values, TP_ss->line().basisComplex().parametricAtlas(), 1e-9 );
 
-        const size_t n_points = cellCount( source_ss.basisComplex().parametricAtlas().cmap(), 2 ) * 4 * 5 * leaves.size();
+    const basis::MultiPatchSplineSpace mp_ss = basis::buildMultiPatchSplineSpace(
+        std::vector<std::shared_ptr<const basis::TPSplineSpace>>( 5, TP_ss ),
+        { // FIXME: only valid for n_elems_st = 2
+            { { 0, Dart( 31 ) }, { 1, Dart( 19 ) } },
+            { { 0, Dart( 85 ) }, { 2, Dart( 19 ) } },
+            { { 0, Dart( 67 ) }, { 3, Dart( 19 ) } },
+            { { 0, Dart( 1 ) }, { 4, Dart( 19 ) } },
+            { { 1, Dart( 61 ) }, { 2, Dart( 1 ) } },
+            { { 2, Dart( 61 ) }, { 3, Dart( 1 ) } },
+            { { 3, Dart( 61 ) }, { 4, Dart( 1 ) } },
+            { { 4, Dart( 61 ) }, { 1, Dart( 1 ) } },
+        } );
 
-        const SmallVector<double, 2> source_points{ 0.1, 0.9 };
+    
+    const SmallVector<double, 2> source_points{ 0.1, 0.9 };
+    const param::ParentDomain pd_3d = param::cubeDomain( 3 );
 
-        const param::ParentDomain pd_3d = param::cubeDomain( 3 );
+    SimplicialComplex fitting_points;
+    eval::SplineSpaceEvaluator evaler( mp_ss, 0 );
 
-        std::cout << "About to fit\n";
+    const size_t n_points = cellCount( source_ss.basisComplex().parametricAtlas().cmap(), 2 ) * 4 * 5 * level_set_values.size();
 
-        SimplicialComplex fitting_points;
+    Eigen::MatrixXd fit_cpts = fitToLeaves( sweep_input, evaler, level_set_values, n_points, [&]( const size_t leaf_ii, const auto& point_callback ) {
+        for( size_t patch_ii = 0; patch_ii < 5; patch_ii++ )
+        {
+            iterateCellsWhile(
+                source_ss.basisComplex().parametricAtlas().cmap(), 2, [&]( const topology::Cell& f ) {
+                    util::iterateTensorProduct(
+                        { source_points.size(), source_points.size() }, [&]( const util::IndexVec& indices ) {
+                            const Eigen::Vector3d pt( source_points.at( indices.at( 0 ) ),
+                                                    source_points.at( indices.at( 1 ) ),
+                                                    ppt_u.at( leaf_ii ).second.mPoint( 0 ) );
+                            const param::ParentPoint vol_ppt(
+                                pd_3d,
+                                pt,
+                                { false,
+                                false,
+                                false,
+                                false,
+                                ppt_u.at( leaf_ii ).second.mBaryCoordIsZero.at( 0 ),
+                                ppt_u.at( leaf_ii ).second.mBaryCoordIsZero.at( 1 ) } );
 
-        eval::SplineSpaceEvaluator evaler( mp_ss, 0 );
-        const auto fit_cpts = fitting::leastSquaresFitting(
-            evaler,
-            n_points,
-            3,
-            [&]( const std::function<void( const topology::Cell&, const param::ParentPoint&, const Eigen::VectorXd& )>&
-                    callback ) {
-                        // std::cout << "Inside callback!\n";
-                for( size_t leaf_ii = 0; leaf_ii < leaves.size(); leaf_ii++ )
-                {
-                    for( size_t patch_ii = 0; patch_ii < 5; patch_ii++ )
-                    {
-                        // std::cout << "Leaf " << leaf_ii << std::endl;
-                        iterateCellsWhile(
-                            source_ss.basisComplex().parametricAtlas().cmap(), 2, [&]( const topology::Cell& f ) {
-                                // std::cout << "Source cell " << f << std::endl;
-                                util::iterateTensorProduct(
-                                    { source_points.size(), source_points.size() }, [&]( const util::IndexVec& indices ) {
-                                        const Eigen::Vector3d pt( source_points.at( indices.at( 0 ) ),
-                                                                source_points.at( indices.at( 1 ) ),
-                                                                ppt_u.at( leaf_ii ).second.mPoint( 0 ) );
-                                        // std::cout << "Point: " << pt.transpose() << std::endl;
-                                        const param::ParentPoint vol_ppt(
-                                            pd_3d,
-                                            pt,
-                                            { false,
-                                            false,
-                                            false,
-                                            false,
-                                            ppt_u.at( leaf_ii ).second.mBaryCoordIsZero.at( 0 ),
-                                            ppt_u.at( leaf_ii ).second.mBaryCoordIsZero.at( 1 ) } );
+                            const topology::Volume patch_cell(
+                                vol_cmap.flatten( f.dart(),
+                                                ppt_u.at( leaf_ii ).first.dart(),
+                                                topology::TPCombinatorialMap::TPDartPos::DartPos0 ) );
 
-                                        const topology::Volume patch_cell(
-                                            vol_cmap.flatten( f.dart(),
-                                                            ppt_u.at( leaf_ii ).first.dart(),
-                                                            topology::TPCombinatorialMap::TPDartPos::DartPos0 ) );
+                            const topology::Volume cell( mp_ss.basisComplex().parametricAtlas().cmap().toGlobalDart( patch_ii, patch_cell.dart() ) );
 
-                                        const topology::Volume cell( mp_ss.basisComplex().parametricAtlas().cmap().toGlobalDart( patch_ii, patch_cell.dart() ) );
-
-                                        const Eigen::Vector2d circle_pt = multiPatchToUnitDisk(
-                                            patch_ii,
-                                            toUnitSquare(
-                                                source_ss.basisComplex().parametricAtlas().cmap(), f, pt.head( 2 ) ) );
-
-                                        // std::cout << "About to invert circle point " << circle_pt.transpose() << std::endl;
-                                        // std::cout << "Circle mapping spatial dims: " << leaves.at( leaf_ii ).circle_mapping->spatialDim() << std::endl;
-                                        const auto param_pt = leaves.at( leaf_ii ).circle_mapping->maybeInverse( circle_pt );
-                                        // std::cout << "Inverted it!" << std::endl;
-                                        CHECK( param_pt.has_value() );
-                                        if( not param_pt.has_value() )
-                                        {
-                                            std::cerr << "NO VALUE" << std::endl;
-                                            pauseDebugger();
-                                        }
-                                        const Eigen::Vector3d field_pt = leaves.at( leaf_ii ).space_mapping->evaluate( param_pt.value().first, param_pt.value().second );
-
-                                        fitting_points.simplices.emplace_back( fitting_points.points.size() );
-                                        fitting_points.points.push_back( field_pt );
-
-                                        // std::cout << "Call back on " << cell << " " << vol_ppt << " " << field_pt.transpose() << std::endl;
-                                        callback( cell, vol_ppt, field_pt );
-                                    } );
-                                return true;
-                            } );
-                    }
-                }
-            } );
-
-        io::VTKOutputObject fitting_points_output( fitting_points );
-        io::outputSimplicialFieldToVTK( fitting_points_output, output_prefix + "fitting_points.vtu" );
-
-        io::outputBezierMeshToVTK( mp_ss,
-                                    fit_cpts,
-                                    "fit_to_" + output_prefix + "_multi_patch.vtu" );
+                            const Eigen::Vector2d circle_pt = multiPatchToUnitDisk(
+                                patch_ii,
+                                toUnitSquare(
+                                    source_ss.basisComplex().parametricAtlas().cmap(), f, pt.head( 2 ) ) );
+                            
+                            const Eigen::Vector3d field_pt = point_callback( cell, vol_ppt, circle_pt );
+                            fitting_points.simplices.emplace_back( fitting_points.points.size() );
+                            fitting_points.points.push_back( field_pt );
+                        } );
+                    return true;
+                } );
+        }
     } );
+
+    io::VTKOutputObject fitting_points_output( fitting_points );
+    io::outputSimplicialFieldToVTK( fitting_points_output, output_prefix + "fitting_points.vtu" );
+
+    io::outputBezierMeshToVTK( mp_ss, fit_cpts, "fit_to_" + output_prefix + "_multi_patch.vtu" );
 }
 
 void fitToPringles5Patch( const SweepInput& sweep_input,
@@ -420,28 +378,12 @@ TEST_CASE( "Level set parameterization of left ventricle" )
 TEST_CASE( "Level set parameterization of part of left ventricle" )
 {
     const SweepInput sweep_input = io::loadINPFile( SRC_HOME "/test/data/left_ventricle.inp", "Surface3", "Surface2" );
-
-    // level set every 0.02 until 0.75, then ~30 levels between 0.75 and 0.85, then every 0.2 until 1.0.
-    // const std::vector<double> level_set_values =
-    //     concatenate(
-    //         concatenate( linspace( 0, 0.78, 40 ), linspace( 0.8, 0.819, 20 ) ),
-    //         concatenate( concatenate( linspace( 0.81925, 0.81975, 3 ), linspace( 0.82, 0.85, 31 ) ), linspace( 0.86, 1.0, 13 ) ) );
-    // const std::vector<double> level_set_values =
-    //     concatenate(
-    //         concatenate( linspace( 0, 0.78, 20 ), linspace( 0.8, 0.819, 10 ) ),
-    //         concatenate( concatenate( linspace( 0.81925, 0.81975, 3 ), linspace( 0.82, 0.85, 15 ) ), linspace( 0.86, 1.0, 7 ) ) );
-    // const std::vector<double> level_set_values = linspace( 0, 1.0, 80 );
     // const std::vector<double> level_set_values = linspace( 0.75, 0.85, 80 );
     const std::vector<double> level_set_values =
         concatenate( concatenate( linspace( 0.75, 0.8, 4 ), linspace( 0.8, 0.818, 14 ) ),
                      concatenate( linspace( 0.81825, 0.82275, 19 ), linspace( 0.823, 0.85, 31 ) ) );
     const std::string output_prefix = "part_ventricle";
 
-    // fitToPringlesSinglePatch( sweep_input, level_set_values, output_prefix, 2, 20, 4 );
-
-    // const basis::KnotVector kv_u( {
-    //     0, 0, 0, 6, 10, 12, 12.5, 13, 13.2, 13.4, 13.6, 13.8, 14, 14.2, 14.4, 14.6, 14.8, 15, 15.5, 16, 17, 18, 20, 20, 20 
-    // }, 1e-9 );
     const basis::KnotVector kv_u( {
         0, 0, 0, 6, 12, 12.7, 13, 13.25, 13.5, 13.75, 14, 14.25, 14.5, 14.75, 15, 15.4, 16, 17, 18, 19, 20, 20, 20 
     }, 1e-9 );
@@ -453,8 +395,14 @@ TEST_CASE( "Level set parameterization of hook" )
     const SweepInput sweep_input = io::loadINPFile( SRC_HOME "/test/data/hook.inp", "Surface12", "Surface10" );
 
     const std::string output_prefix = "hook";
-    const std::vector<double> level_set_values = linspace( 0, 1.0, 30 );
+    const std::vector<double> level_set_values = linspace( 0, 1.0, 100 );
+
+    // 0, 0.015, 0.16, 0.173
+
+    const basis::KnotVector kv_u( concatenate( { 0, 0, 0, 0.015, 0.015, 0.16, 0.16515 },
+                                               concatenate( linspace( 0.173, 1.0, 15 ), { 1.0, 1.0 } ) ),
+                                  1e-9 );
 
     // fitToPringlesSinglePatch( sweep_input, level_set_values, output_prefix, 2, 20, 4 );
-    fitToPringles5Patch( sweep_input, level_set_values, output_prefix, 2, 20, 2 );
+    fitToPringles5Patch( sweep_input, level_set_values, output_prefix, 2, kv_u, 2 );
 }
