@@ -93,8 +93,9 @@ int main( int argc, char* argv[] )
     {
         // const SweepInput sweep_input =
         //     io::loadINPFile( SRC_HOME "/test/data/macaroni.inp", "Surface3", "Surface4" );
-        const SweepInput sweep_input =
-            io::loadINPFile( SRC_HOME "/test/data/hook.inp", "Surface12", "Surface10" );
+        // const SweepInput sweep_input =
+        //     io::loadINPFile( SRC_HOME "/test/data/hook.inp", "Surface12", "Surface10" );
+        const SweepInput sweep_input = io::loadINPFile( SRC_HOME "/test/data/left_ventricle.inp", "Surface3", "Surface2" );
 
         // const SweepInput sweep_input = SweepInputTestCases::twelveTetCube();
 
