@@ -294,7 +294,9 @@ void fitToPringles5Patch( const SweepInput& sweep_input,
     SimplicialComplex fitting_points;
     eval::SplineSpaceEvaluator evaler( mp_ss, 0 );
 
-    const size_t n_points = cellCount( source_ss.basisComplex().parametricAtlas().cmap(), 2 ) * 4 * 5 * level_set_values.size();
+    const size_t n_bdry_pts = 8 * level_set_values.size();
+
+    const size_t n_points = cellCount( source_ss.basisComplex().parametricAtlas().cmap(), 2 ) * 4 * 5 * level_set_values.size() + n_bdry_pts;
 
     Eigen::MatrixXd fit_cpts = fitToLeaves( sweep_input, evaler, level_set_values, n_points, [&]( const size_t leaf_ii, const auto& point_callback ) {
         for( size_t patch_ii = 0; patch_ii < 5; patch_ii++ )
@@ -334,6 +336,41 @@ void fitToPringles5Patch( const SweepInput& sweep_input,
                         } );
                     return true;
                 } );
+
+
+            if( patch_ii > 1 )
+            {
+                for( const topology::Edge& e : { topology::Edge( 5 ), topology::Edge( 13 ) } )
+                {
+                    const param::ParentPoint surf_ppt = param::pointOnBoundary( param::cubeDomain( 2 ), param::parentDomainBoundary( source_ss.basisComplex().parametricAtlas(), e ) );
+                    const Eigen::Vector3d pt( surf_ppt.mPoint( 0 ), surf_ppt.mPoint( 1 ), ppt_u.at( leaf_ii ).second.mPoint( 0 ) );
+                    const param::ParentPoint vol_ppt(
+                        pd_3d,
+                        pt,
+                        { surf_ppt.mBaryCoordIsZero.at( 0 ),
+                        surf_ppt.mBaryCoordIsZero.at( 1 ),
+                        surf_ppt.mBaryCoordIsZero.at( 2 ),
+                        surf_ppt.mBaryCoordIsZero.at( 3 ),
+                        ppt_u.at( leaf_ii ).second.mBaryCoordIsZero.at( 0 ),
+                        ppt_u.at( leaf_ii ).second.mBaryCoordIsZero.at( 1 ) } );
+
+                    const topology::Volume patch_cell(
+                        vol_cmap.flatten( e.dart(),
+                                        ppt_u.at( leaf_ii ).first.dart(),
+                                        topology::TPCombinatorialMap::TPDartPos::DartPos0 ) );
+
+                    const topology::Volume cell( mp_ss.basisComplex().parametricAtlas().cmap().toGlobalDart( patch_ii, patch_cell.dart() ) );
+
+                    const Eigen::Vector2d circle_pt = multiPatchToUnitDisk(
+                        patch_ii,
+                        toUnitSquare(
+                            source_ss.basisComplex().parametricAtlas().cmap(), topology::Face( e.dart() ), pt.head( 2 ) ) );
+
+                    const Eigen::Vector3d field_pt = point_callback( cell, vol_ppt, circle_pt );
+                    fitting_points.simplices.emplace_back( fitting_points.points.size() );
+                    fitting_points.points.push_back( field_pt );
+                }
+            }
         }
     } );
 
