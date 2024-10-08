@@ -1,3 +1,4 @@
+#pragma once
 #include <GeometricMapping.hpp>
 #include <TriangleParametricAtlas.hpp>
 #include <VertexPositionsFunc.hpp>
