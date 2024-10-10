@@ -6,20 +6,8 @@
 
 namespace io
 {
-//    class OBJOutputObject
-//    {
-//        public:
-//        OBJOutputObject( const topology::CombinatorialMap& cmap ) : mCmap( cmap ) {}
-//
-//        const CombinatorialMap& cmap() const { return mCmap; }
-//
-//        private:
-//        const CombinatorialMap& mCmap;
-//    };
-//
-    /// @brief write out a simplicial mesh to OBJ file format
-    /// @param output the output object
+    /// @brief write out the boundary of a tet mesh to OBJ file format
+    /// @param to_output The tet mesh
     /// @param filename The output filename, including the extension.
-    void outputSimplicialMeshToOBJ( const topology::TetMeshCombinatorialMap& to_output, const std::string& filename );
-
+    void outputTetMeshBoundaryToOBJ( const topology::TetMeshCombinatorialMap& to_output, const std::string& filename );
 } // namespace io

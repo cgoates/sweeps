@@ -600,7 +600,7 @@ int main( int argc, char* argv[] )
         }
         else if( input_args.at( 0 ) == "output-bdry-obj" )
         {
-            io::outputSimplicialMeshToOBJ( map, "bdry.obj" );
+            io::outputTetMeshBoundaryToOBJ( map, "bdry.obj" );
         }
     }
     else
