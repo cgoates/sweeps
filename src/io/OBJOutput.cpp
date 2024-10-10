@@ -52,14 +52,48 @@ namespace io
 
         file << "# File created on " << std::ctime(&start_time);
 
+        // Need to make a map that goes from vertex index to vertex position, and then
+        // iterate over all vertices to pull out the positions in correct order
+        std::map<int,const topology::Vertex*> vert_idx_to_vert;
+        std::map<int,const Eigen::Vector3d> vert_to_position;
+        const auto bdry_vertex_ids = indexingOrError( bdry, 0 );
+
+        std::vector<int> vert_idxs;
+
+//        std::cout << " Got here 0" << std::endl;
+        int max_vert = 0;
         iterateCellsWhile( bdry, 0, [&]( const topology::Vertex& v ) {
-            const Eigen::Vector3d point = bdry_positions( v );  
-            file << "v " << point( 0 ) << " " << point( 1 ) << " " << point( 2 ) << std::endl;
+            const int idx = bdry_vertex_ids(v);
+            vert_idx_to_vert.insert({idx, &v});
+            if ( idx > max_vert )
+            {
+                max_vert = idx;
+            }
+            vert_idxs.push_back(idx);
+            const Eigen::Vector3d point = bdry_positions( v );
+            vert_to_position.insert({idx, point});
             return true;
         } );
 
-        const auto bdry_vertex_ids = indexingOrError( bdry, 0 );
+//        std::cout << vert_idxs << std::endl;
+//        std::sort (vert_idxs.begin(), vert_idxs.end());
+//        std::cout << vert_idxs << std::endl;
 
+//        std::cout << " Got here 1" << std::endl;
+        for (int i = 0; i < max_vert+1; ++i)
+        {
+//            std::cout << "a" << std::endl;
+            const topology::Vertex* v = vert_idx_to_vert.at(i);
+//            std::cout << "b";
+            const topology::Vertex& v1 = *v;
+//            std::cout << "c";
+            const Eigen::Vector3d point = vert_to_position.at(i);
+//            std::cout << "d";
+            file << "v " << point( 0 ) << " " << point( 1 ) << " " << point( 2 ) << std::endl;
+        }
+
+
+//        std::cout << " Got here 2" << std::endl;
 
         iterateCellsWhile( bdry, 2, [&]( const topology::Face& f) {
             topology::Dart current_d = f.dart();

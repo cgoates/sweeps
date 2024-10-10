@@ -28,7 +28,7 @@ namespace topology
         Vertex( const Dart& d ) : Cell( d, 0 ) {}
         Vertex( const Cell& c ) : Cell( c )
         {
-            if( c.dim() != 0 ) throw std::runtime_error( "Cannot convert cell with incorrect dimension to Vertex" );
+            if( c.dim() != 0 ) throw std::runtime_error( "Cannot convert cell with incorrect dimension to Vertex: this is a cell of dimension" + c.dim() );
         }
         Vertex() {}
     };
