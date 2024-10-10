@@ -28,7 +28,8 @@ namespace topology
         Vertex( const Dart& d ) : Cell( d, 0 ) {}
         Vertex( const Cell& c ) : Cell( c )
         {
-            if( c.dim() != 0 ) throw std::runtime_error( "Cannot convert cell with incorrect dimension to Vertex: this is a cell of dimension" + c.dim() );
+            if( c.dim() != 0 )
+                throw std::runtime_error( "Cannot convert cell with dimension " + std::to_string( c.dim() ) + " to Vertex" );
         }
         Vertex() {}
     };
@@ -39,7 +40,8 @@ namespace topology
         Edge( const Dart& d ) : Cell( d, 1 ) {}
         Edge( const Cell& c ) : Cell( c )
         {
-            if( c.dim() != 1 ) throw std::runtime_error( "Cannot convert cell with incorrect dimension to Edge" );
+            if( c.dim() != 1 )
+                throw std::runtime_error( "Cannot convert cell with dimension " + std::to_string( c.dim() ) + " to Edge" );
         }
         Edge() {}
     };
@@ -50,7 +52,8 @@ namespace topology
         Face( const Dart& d ) : Cell( d, 2 ) {}
         Face( const Cell& c ) : Cell( c )
         {
-            if( c.dim() != 2 ) throw std::runtime_error( "Cannot convert cell with incorrect dimension to Face" );
+            if( c.dim() != 2 )
+                throw std::runtime_error( "Cannot convert cell with dimension " + std::to_string( c.dim() ) + " to Face" );
         }
         Face() {}
     };
@@ -61,7 +64,8 @@ namespace topology
         Volume( const Dart& d ) : Cell( d, 3 ) {}
         Volume( const Cell& c ) : Cell( c )
         {
-            if( c.dim() != 3 ) throw std::runtime_error( "Cannot convert cell with incorrect dimension to Volume" );
+            if( c.dim() != 3 )
+                throw std::runtime_error( "Cannot convert cell with dimension " + std::to_string( c.dim() ) + " to Volume" );
         }
         Volume() {}
     };
