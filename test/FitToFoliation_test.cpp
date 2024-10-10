@@ -441,3 +441,38 @@ TEST_CASE( "Level set parameterization of hook" )
     // fitToPringlesSinglePatch( sweep_input, level_set_values, output_prefix, 2, 20, 4 );
     fitToPringles5Patch( sweep_input, level_set_values, output_prefix, 2, kv_u, 2 );
 }
+
+TEST_CASE( "Level set parameterization of femur" )
+{
+    const SweepInput sweep_input = [&](){
+        SweepInput sweep_input =
+            io::loadINPFile( SRC_HOME "/test/data/femur.inp", "Surface5", "Surface2" );
+        for( size_t i = 0; i < sweep_input.mesh.points.size(); i++ )
+            sweep_input.one_bcs.at( i ) = sweep_input.mesh.points.at( i )( 1 ) > -30;
+        return sweep_input;
+    }();
+
+    const std::string output_prefix = "femur";
+    const std::vector<double> level_set_values = linspace( 0, 1.0, 100 );
+
+    // const basis::KnotVector kv_u = basis::integerKnotsWithNElems( 20, 2 );
+    const basis::KnotVector kv_u( concatenate( {0, 0}, concatenate( linspace( 0, 16, 9 ), concatenate( linspace( 16.5, 20, 15 ), {20, 20} ) ) ), 1e-9 );
+
+    // fitToPringlesSinglePatch( sweep_input, level_set_values, output_prefix, 2, 20, 4 );
+    fitToPringles5Patch( sweep_input, level_set_values, output_prefix, 2, kv_u, 2 );
+}
+
+TEST_CASE( "Level set parameterization of spring" )
+{
+    const SweepInput sweep_input =
+            io::loadINPFile( SRC_HOME "/test/data/spring.inp", "Surface2", "Surface3" );
+
+    const std::string output_prefix = "spring";
+    const std::vector<double> level_set_values = linspace( 0, 1.0, 200 );
+
+    const basis::KnotVector kv_u = basis::integerKnotsWithNElems( 100, 2 );
+    // const basis::KnotVector kv_u( concatenate( {0}, concatenate( linspace( 0, 16, 9 ), concatenate( linspace( 16.5, 20, 15 ), {20} ) ) ), 1e-9 );
+
+    // fitToPringlesSinglePatch( sweep_input, level_set_values, output_prefix, 2, 20, 4 );
+    fitToPringles5Patch( sweep_input, level_set_values, output_prefix, 2, kv_u, 2 );
+}
