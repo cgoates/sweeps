@@ -5,9 +5,10 @@
 
 namespace mapping
 {
-    TriangleMeshMapping::TriangleMeshMapping( const param::TriangleParametricAtlas& atlas, const VertexPositionsFunc& vertex_positions ) :
-        mAtlas( atlas ),
-        mPositions( vertex_positions )
+    TriangleMeshMapping::TriangleMeshMapping( const param::TriangleParametricAtlas& atlas,
+                                              const VertexPositionsFunc& vertex_positions,
+                                              const size_t dim )
+        : mAtlas( atlas ), mPositions( vertex_positions ), mDim( dim )
     {}
 
     Eigen::VectorXd TriangleMeshMapping::evaluate( const topology::Cell& c, const param::ParentPoint& pt ) const

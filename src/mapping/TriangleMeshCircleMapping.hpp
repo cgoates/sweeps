@@ -17,6 +17,8 @@ namespace mapping
 
         virtual Eigen::VectorXd evaluate( const topology::Cell& c, const param::ParentPoint& pt ) const override;
 
+        virtual size_t spatialDim() const override { return 2; }
+
         std::optional<param::ParentPoint> maybeInverse( const topology::Face& f, const Eigen::Vector2d& pt ) const;
 
         //FIXME: PROBABLY VERY SLOW

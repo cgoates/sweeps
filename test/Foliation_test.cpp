@@ -261,7 +261,7 @@ void testLevelSetBasedTracing( const SweepInput& sweep_input, const std::vector<
                 return tutte.row( base_vert_ids( v ) );
             };
             leaf.circle_mapping = std::make_unique<mapping::TriangleMeshCircleMapping>( *leaf.atlas, vert_positions );
-            leaf.space_mapping = std::make_unique<mapping::TriangleMeshMapping>( *leaf.atlas, positions );
+            leaf.space_mapping = std::make_unique<mapping::TriangleMeshMapping>( *leaf.atlas, positions, 3 );
 
             if( output_prefix )
                 iterateCellsWhile( cmap, 2, [&]( const topology::Face& f ) {

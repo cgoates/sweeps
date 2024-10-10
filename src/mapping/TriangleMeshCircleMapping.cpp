@@ -7,7 +7,7 @@ namespace mapping
 {
     TriangleMeshCircleMapping::TriangleMeshCircleMapping( const param::TriangleParametricAtlas& atlas, const VertexPositionsFunc& vertex_positions ) :
         mAtlas( atlas ),
-        mTriMapping( atlas, vertex_positions )
+        mTriMapping( atlas, vertex_positions, 2 )
     {
         const auto vert_ids = indexingOrError( mAtlas.cmap(), 0 );
         iterateCellsWhile( mAtlas.cmap(), 0, [&]( const topology::Vertex& v ) {

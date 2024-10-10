@@ -193,7 +193,10 @@ namespace basis
                                 if( constituent_fids.at( this_fid ) == -1 or
                                     ( other_constituent_fids.at( other_fid ) != -1 and
                                       other_constituent_fids.at( other_fid ) != constituent_fids.at( this_fid ) ) )
+                                {
+                                    std::cerr << constituent_fids.at( this_fid ) << " vs " << other_constituent_fids.at( other_fid ) << std::endl;
                                     throw std::runtime_error( "Problem connecting neighboring functions!" );
+                                }
 
                                 other_constituent_fids.at( other_fid ) = constituent_fids.at( this_fid );
 
@@ -240,5 +243,32 @@ namespace basis
     size_t MultiPatchSplineSpace::numFunctions() const
     {
         return mNumFunctions;
+    }
+
+    MultiPatchSplineSpace buildMultiPatchSplineSpace(
+        const std::vector<std::shared_ptr<const TPSplineSpace>>& patches,
+        const std::map<std::pair<size_t, topology::Dart>, std::pair<size_t, topology::Dart>>& connections )
+    {
+        std::vector<std::shared_ptr<const TPBasisComplex>> bc_patches;
+        bc_patches.reserve( patches.size() );
+        std::vector<std::shared_ptr<const param::TPParametricAtlas>> atlas_patches;
+        atlas_patches.reserve( patches.size() );
+        std::vector<std::shared_ptr<const topology::TPCombinatorialMap>> cmap_patches;
+        cmap_patches.reserve( patches.size() );
+
+        std::set<topology::Cell> pruned_cells;
+
+        for( const auto& ss : patches )
+        {
+            bc_patches.push_back( ss->basisComplexPtr() );
+            atlas_patches.push_back( bc_patches.back()->parametricAtlasPtr() );
+            cmap_patches.push_back( atlas_patches.back()->cmapPtr() );
+        }
+
+        const auto cmap = std::make_shared<const topology::MultiPatchCombinatorialMap>( cmap_patches, connections );
+        const auto atlas = std::make_shared<const param::MultiPatchParametricAtlas>( cmap, atlas_patches );
+        const auto bc = std::make_shared<const MultiPatchBasisComplex>( atlas, bc_patches );
+
+        return MultiPatchSplineSpace( bc, patches );
     }
 }
