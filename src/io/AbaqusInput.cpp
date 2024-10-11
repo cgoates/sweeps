@@ -42,7 +42,8 @@ namespace io
                 }
                 else if( line.rfind( "*ELEMENT", 0 ) == 0 )
                 {
-                    if( line.rfind( " type=C3D4," ) != line.npos )
+                    if( line.rfind( " type=C3D4," ) != line.npos or
+                        line.rfind( " TYPE=C3D4," ) != line.npos )
                         state = ReadState::Tets;
                     else if( line.rfind( " type=CPS3," ) != line.npos )
                     {
