@@ -5,6 +5,11 @@
 #include <Eigen/Dense>
 #include <SimplicialComplex.hpp>
 #include <SweepInput.hpp>
+#include <AbaqusInput.hpp>
+#include <CommonUtils.hpp>
+#include <TetMeshCombinatorialMap.hpp>
+#include <CombinatorialMapBoundary.hpp>
+#include <CombinatorialMapMethods.hpp>
 
 class SweepInputTestCases
 {
@@ -170,6 +175,55 @@ class SweepInputTestCases
         const SweepInput out( { cube.mesh.simplices, new_points }, cube.zero_bcs, cube.one_bcs );
 
         return out;
+    }
+
+    static SweepInput macaroni()
+    {
+        return io::loadINPFile( SRC_HOME "/test/data/macaroni.inp", "Surface3", "Surface4" );
+    }
+
+    static SweepInput hook()
+    {
+        return io::loadINPFile( SRC_HOME "/test/data/hook.inp", "Surface12", "Surface10" );
+    }
+
+    static SweepInput ventricle()
+    {
+        return io::loadINPFile( SRC_HOME "/test/data/left_ventricle.inp", "Surface3", "Surface2" );
+    }
+
+    static SweepInput femur()
+    {
+        SweepInput sweep_input =
+            io::loadINPFile( SRC_HOME "/test/data/femur.inp", "Surface5", "Surface2" );
+        for( size_t i = 0; i < sweep_input.mesh.points.size(); i++ )
+            sweep_input.one_bcs.at( i ) = sweep_input.mesh.points.at( i )( 1 ) > -30;
+        return sweep_input;
+    }
+
+    static SweepInput flange()
+    {
+        SweepInput sweep_input = io::loadINPFile( SRC_HOME "/test/data/Wide_angle_flange.inp", "SS1_S3", "SS2_S3" );
+        for( size_t i = 0; i < sweep_input.mesh.points.size(); i++ )
+        {
+            sweep_input.zero_bcs.at( i ) = util::equals( sweep_input.mesh.points.at( i )( 2 ), 0.0, 1e-9 );
+            sweep_input.one_bcs.at( i ) = false;
+        }
+
+        const topology::TetMeshCombinatorialMap cmap( sweep_input.mesh );
+        const topology::CombinatorialMapBoundary bdry( cmap );
+
+        const auto vert_ids = indexingOrError( bdry, 0 );
+        iterateCellsWhile( bdry, 0, [&]( const topology::Vertex& v ) {
+            const size_t i = vert_ids( v );
+            const auto& pt = sweep_input.mesh.points.at( i );
+            sweep_input.one_bcs.at( i ) =
+                util::equals( pt( 2 ), 7.0, 1e-3 ) or
+                ( pt( 2 ) > ( 4.0 - 1e-9 ) and pt.head( 2 ).norm() > 1.1 );
+            return true;
+        } );
+
+        return sweep_input;
     }
 };
 

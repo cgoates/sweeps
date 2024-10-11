@@ -91,13 +91,20 @@ int main( int argc, char* argv[] )
 
     if( input_args.size() > 0 )
     {
-        // const SweepInput sweep_input =
-        //     io::loadINPFile( SRC_HOME "/test/data/macaroni.inp", "Surface3", "Surface4" );
-        // const SweepInput sweep_input =
-        //     io::loadINPFile( SRC_HOME "/test/data/hook.inp", "Surface12", "Surface10" );
-        const SweepInput sweep_input = io::loadINPFile( SRC_HOME "/test/data/left_ventricle.inp", "Surface3", "Surface2" );
-
-        // const SweepInput sweep_input = SweepInputTestCases::twelveTetCube();
+        const SweepInput sweep_input = [&]() {
+            if( std::find( input_args.begin(), input_args.end(), "femur" ) != input_args.end() )
+                return SweepInputTestCases::femur();
+            else if( std::find( input_args.begin(), input_args.end(), "hook" ) != input_args.end() )
+                return SweepInputTestCases::hook();
+            else if( std::find( input_args.begin(), input_args.end(), "ventricle" ) != input_args.end() )
+                return SweepInputTestCases::ventricle();
+            else if( std::find( input_args.begin(), input_args.end(), "flange" ) != input_args.end() )
+                return SweepInputTestCases::flange();
+            else if( std::find( input_args.begin(), input_args.end(), "cube" ) != input_args.end() )
+                return SweepInputTestCases::twelveTetCube();
+            else
+                return SweepInputTestCases::macaroni();
+        }();
 
         if( input_args.front() == "transpose-barycoords" )
         {
