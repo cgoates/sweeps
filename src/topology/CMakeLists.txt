@@ -15,6 +15,7 @@ add_library( topology SHARED
   MultiPatchCombinatorialMap.cpp
   HierarchicalTPCombinatorialMap.cpp
   SimplexUtilities.cpp
+  Dijkstra.cpp
 )
 
 target_link_libraries( topology PUBLIC util simplex )
