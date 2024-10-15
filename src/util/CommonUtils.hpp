@@ -15,5 +15,15 @@ namespace util
 
     std::vector<double> linspace( const double left_val, const double right_val, const size_t n_levels );
 
-    std::vector<double> concatenate( const std::vector<double>& first, const std::vector<double>& second );
+    template<typename T>
+    std::vector<T> concatenate( const std::vector<T>& first, const std::vector<T>& second )
+    {
+        std::vector<T> out;
+        out.reserve( first.size() + second.size() );
+
+        out.insert( out.end(), first.begin(), first.end() );
+        out.insert( out.end(), second.begin(), second.end() );
+
+        return out;
+    }
 } // namespace util

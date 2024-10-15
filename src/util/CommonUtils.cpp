@@ -44,15 +44,4 @@ namespace util
         }
         return out;
     }
-
-    std::vector<double> concatenate( const std::vector<double>& first, const std::vector<double>& second )
-    {
-        std::vector<double> out;
-        out.reserve( first.size() + second.size() );
-
-        out.insert( out.end(), first.begin(), first.end() );
-        out.insert( out.end(), second.begin(), second.end() );
-
-        return out;
-    }
 } // namespace util
