@@ -210,7 +210,7 @@ namespace reparam
                 const auto vert_positions = [tutte = *( leaf.tutte ), base_vert_ids]( const topology::Vertex& v ) {
                     return tutte.row( base_vert_ids( v ) );
                 };
-                leaf.circle_mapping = std::make_shared<mapping::TriangleMeshCircleMapping>( atlas, vert_positions );
+                leaf.tutte_mapping = std::make_shared<mapping::TriangleMeshCircleMapping>( atlas, vert_positions );
                 leaf.space_mapping = std::make_shared<mapping::TriangleMeshMapping>( atlas, positions, 3 );
             };
 
@@ -234,10 +234,10 @@ namespace reparam
         for( size_t level_ii = 1; level_ii < level_set_values.size() - 1; level_ii++ )
         { // Midway level set
             leaves.push_back( {} );
-            leaves.back().level_set_cmap =
+            const auto level_set_cmap =
                 std::make_shared<topology::LevelSetCMap>( map, harmonic_func, level_set_values[level_ii] );
             const auto v_pos = vertex_positions( map );
-            const auto& level_set = *leaves.back().level_set_cmap;
+            const auto& level_set = *level_set_cmap;
             const auto level_set_positions = topology::levelSetVertexPositions( level_set, v_pos );
             const auto face_ids_of_edge = [&]( const topology::Edge& e ) {
                 return map_face_ids( level_set.underlyingCell( e ) );
@@ -245,12 +245,12 @@ namespace reparam
             const std::map<topology::Vertex, double> thetas =
                 reparam::thetaValues( level_set, level_set_positions, face_ids_of_edge, intersections[level_ii] );
 
-            leaves.back().level_set_tri =
-                std::make_shared<topology::DelaunayTriangulation>( level_set, level_set_positions );
+            const auto level_set_tri =
+                std::make_shared<topology::DelaunayTriangulation>( level_set_cmap, level_set_positions );
             const auto tri_positions =
-                topology::delaunayTriangulationVertexPositions( *leaves.back().level_set_tri, level_set_positions );
+                topology::delaunayTriangulationVertexPositions( *level_set_tri, level_set_positions );
 
-            process_param( leaves.back().level_set_tri, tri_positions, thetas, leaves.back() );
+            process_param( level_set_tri, tri_positions, thetas, leaves.back() );
 
             LOG( log_level_set_based_tracing ) << "FINISHED LEVEL " << ( level_ii + 1 ) << std::endl << std::endl;
         }
@@ -258,8 +258,8 @@ namespace reparam
         { // target level set
             leaves.push_back( {} );
             const auto target_positions = vertex_positions( bdry );
-            leaves.back().reversed_cmap = std::make_shared<topology::ReversedCombinatorialMap>( target );
-            const auto& rev_map = *leaves.back().reversed_cmap;
+            const auto reversed_cmap = std::make_shared<topology::ReversedCombinatorialMap>( target );
+            const auto& rev_map = *reversed_cmap;
             const auto rev_positions = reversedVertexPositions( rev_map, target_positions );
             const auto face_ids_of_edge = [&]( const topology::Edge& e ) {
                 return map_face_ids( bdry.toUnderlyingCell(
@@ -268,7 +268,7 @@ namespace reparam
             const std::map<topology::Vertex, double> thetas =
                 reparam::thetaValues( rev_map, rev_positions, face_ids_of_edge, intersections.back() );
 
-            process_param( leaves.back().reversed_cmap, rev_positions, thetas, leaves.back() );
+            process_param( reversed_cmap, rev_positions, thetas, leaves.back() );
         }
         LOG( log_level_set_based_tracing ) << "FINISHED TARGET\n\n";
 

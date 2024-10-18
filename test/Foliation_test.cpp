@@ -170,7 +170,7 @@ void testLevelSetBasedTracing( const SweepInput& sweep_input,
                 size_t i = 0;
                 for( const auto& leaf : leaves )
                 {
-                    const auto& param_pt = leaf.circle_mapping->maybeInverse( circle_pt );
+                    const auto& param_pt = leaf.tutte_mapping->maybeInverse( circle_pt );
                     CHECK( param_pt.has_value() );
                     if( not param_pt.has_value() )
                     {

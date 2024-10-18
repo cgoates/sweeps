@@ -417,8 +417,8 @@ int main( int argc, char* argv[] )
             };
             for( const double val : values )
             {
-                const topology::LevelSetCMap level( map, func, val );
-                const auto level_positions = levelSetVertexPositions( level, vertex_positions( map ) );
+                const auto level = std::make_shared<const topology::LevelSetCMap>( map, func, val );
+                const auto level_positions = levelSetVertexPositions( *level, vertex_positions( map ) );
                 const topology::DelaunayTriangulation level_tri( level, level_positions );
                 const auto level_tri_positions = delaunayTriangulationVertexPositions( level_tri, level_positions );
 
@@ -443,8 +443,8 @@ int main( int argc, char* argv[] )
             };
             for( const double val : values )
             {
-                const topology::LevelSetCMap level( map, func, val );
-                const auto level_positions = levelSetVertexPositions( level, vertex_positions( map ) );
+                const auto level = std::make_shared<const topology::LevelSetCMap>( map, func, val );
+                const auto level_positions = levelSetVertexPositions( *level, vertex_positions( map ) );
                 const topology::DelaunayTriangulation level_tri( level, level_positions );
                 const auto level_tri_positions = delaunayTriangulationVertexPositions( level_tri, level_positions );
 

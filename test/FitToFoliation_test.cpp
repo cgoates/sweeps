@@ -11,9 +11,6 @@
 #include <Laplace.hpp>
 #include <Tracing.hpp>
 #include <Foliation.hpp>
-#include <LevelSetCMap.hpp>
-#include <ReversedCombinatorialMap.hpp>
-#include <DelaunayTriangulation.hpp>
 #include <VTKOutput.hpp>
 #include <AbaqusInput.hpp>
 #include <iomanip>
@@ -161,7 +158,7 @@ Eigen::MatrixXd fitToLeaves(
                 for( size_t leaf_ii = 0; leaf_ii < leaves.size(); leaf_ii++ )
                 {
                     leaf_point_iterator( leaf_ii, [&]( const topology::Cell& cell, const param::ParentPoint& vol_ppt, const Eigen::Vector2d& circle_pt ) {
-                        const auto param_pt = leaves.at( leaf_ii ).circle_mapping->maybeInverse( circle_pt );
+                        const auto param_pt = leaves.at( leaf_ii ).tutte_mapping->maybeInverse( circle_pt );
                         CHECK( param_pt.has_value() );
                         if( not param_pt.has_value() )
                         {

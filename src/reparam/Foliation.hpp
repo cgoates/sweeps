@@ -20,6 +20,7 @@ namespace mapping
 {
     class TriangleMeshMapping;
     class TriangleMeshCircleMapping;
+    class GeometricMapping;
 }
 
 namespace reparam
@@ -30,16 +31,8 @@ namespace reparam
     /// @brief A storage class for the leaves of the foliation
     struct FoliationLeaf
     {
-        // For the middle leaves
-        std::shared_ptr<topology::LevelSetCMap> level_set_cmap;
-        std::shared_ptr<topology::DelaunayTriangulation> level_set_tri;
-
-        // For the target surface
-        std::shared_ptr<topology::ReversedCombinatorialMap> reversed_cmap;
-
-        // For all leaves
         std::shared_ptr<const Eigen::MatrixX2d> tutte;
-        std::shared_ptr<mapping::TriangleMeshCircleMapping> circle_mapping;
+        std::shared_ptr<mapping::GeometricMapping> tutte_mapping;
         std::shared_ptr<mapping::TriangleMeshMapping> space_mapping;
     };
 

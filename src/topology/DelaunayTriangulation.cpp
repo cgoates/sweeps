@@ -23,17 +23,17 @@ bool shouldConnectFirstThree( const std::array<Eigen::Vector3d, 4>& points )
 }
 
 
-DelaunayTriangulation::DelaunayTriangulation( const CombinatorialMap& base, const VertexPositionsFunc& vert_positions )
-    : mBaseMap( base ), mLowerBound( base.maxDartId() + base.maxDartId() % 2 ), mMaxDartId( mLowerBound )
+DelaunayTriangulation::DelaunayTriangulation( const std::shared_ptr<const CombinatorialMap>& base, const VertexPositionsFunc& vert_positions )
+    : mBaseMap( base ), mLowerBound( base->maxDartId() + base->maxDartId() % 2 ), mMaxDartId( mLowerBound )
 {
     //TODO: Add the extra edges
     const auto split_face = [&]( const Face& f ) {
         const Dart new_d1( ++mMaxDartId );
         const Dart new_d2( ++mMaxDartId );
 
-        const Dart old_phi_1 = topology::phi( base, -1, f.dart() ).value();
-        const Dart old_phi1 = topology::phi( base, 1, f.dart() ).value();
-        const Dart old_phi11 = topology::phi( base, {1, 1}, f.dart() ).value();
+        const Dart old_phi_1 = topology::phi( *base, -1, f.dart() ).value();
+        const Dart old_phi1 = topology::phi( *base, 1, f.dart() ).value();
+        const Dart old_phi11 = topology::phi( *base, {1, 1}, f.dart() ).value();
 
         mAlteredPhi1s.emplace( new_d1, f.dart() );
         mAlteredPhi_1s.emplace( f.dart(), new_d1 );
@@ -48,7 +48,7 @@ DelaunayTriangulation::DelaunayTriangulation( const CombinatorialMap& base, cons
         mAlteredPhi_1s.emplace( old_phi11, new_d2 );
     };
 
-    topology::iterateCellsWhile( base, 2, [&]( const Face& f ) {
+    topology::iterateCellsWhile( *base, 2, [&]( const Face& f ) {
         size_t n_verts = 0;
         std::array<Eigen::Vector3d, 4> points;
         Dart d = f.dart();
@@ -56,7 +56,7 @@ DelaunayTriangulation::DelaunayTriangulation( const CombinatorialMap& base, cons
         {
             points[ n_verts ] = vert_positions( Vertex( d ) );
             n_verts++;
-            d = topology::phi( base, 1, d ).value();
+            d = topology::phi( *base, 1, d ).value();
         } while( d != f.dart() );
 
         if( n_verts == 3 ) return true;
@@ -67,7 +67,7 @@ DelaunayTriangulation::DelaunayTriangulation( const CombinatorialMap& base, cons
         }
         else
         {
-            split_face( topology::phi( base, 1, f.dart() ).value() );
+            split_face( topology::phi( *base, 1, f.dart() ).value() );
         }
         return true;
     } );
@@ -81,7 +81,7 @@ std::optional<Dart> DelaunayTriangulation::phi( const int i, const Dart& d ) con
         if( it == mAlteredPhi1s.end() )
         {
             if( d.id() > mLowerBound ) throw std::runtime_error( "Missing phi1 of dart " + std::to_string( d.id() ) );
-            else return topology::phi( mBaseMap, i, d );
+            else return topology::phi( *mBaseMap, i, d );
         }
         else
             return it->second;
@@ -92,7 +92,7 @@ std::optional<Dart> DelaunayTriangulation::phi( const int i, const Dart& d ) con
         if( it == mAlteredPhi_1s.end() )
         {
             if( d.id() > mLowerBound ) throw std::runtime_error( "Missing phi-1 of dart " + std::to_string( d.id() ) );
-            else return topology::phi( mBaseMap, i, d );
+            else return topology::phi( *mBaseMap, i, d );
         }
         else
             return it->second;
@@ -102,7 +102,7 @@ std::optional<Dart> DelaunayTriangulation::phi( const int i, const Dart& d ) con
         if( d.id() > mLowerBound )
             return Dart( d.id() + ( d.id() % 2 == 0 ? -1 : 1 ) );
         else
-            return topology::phi( mBaseMap, i, d );
+            return topology::phi( *mBaseMap, i, d );
     }
     else
         throw std::runtime_error( "Bad phi value" );
@@ -110,7 +110,7 @@ std::optional<Dart> DelaunayTriangulation::phi( const int i, const Dart& d ) con
 
 bool DelaunayTriangulation::iterateDartsWhile( const std::function<bool( const Dart& )>& callback ) const
 {
-    const bool keep_iterating = topology::iterateDartsWhile( mBaseMap, callback );
+    const bool keep_iterating = topology::iterateDartsWhile( *mBaseMap, callback );
     if( keep_iterating )
     {
         for( Dart::IndexType i = mLowerBound + 1; i <= mMaxDartId; i++ )
@@ -126,11 +126,11 @@ bool DelaunayTriangulation::iterateCellsWhile( const uint cell_dim,
 {
     if( cell_dim == 0 )
     {
-        return topology::iterateCellsWhile( mBaseMap, cell_dim, callback );
+        return topology::iterateCellsWhile( *mBaseMap, cell_dim, callback );
     }
     else if( cell_dim == 1 )
     {
-        const bool keep_iterating = topology::iterateCellsWhile( mBaseMap, cell_dim, callback );
+        const bool keep_iterating = topology::iterateCellsWhile( *mBaseMap, cell_dim, callback );
         if( keep_iterating )
         {
             for( Dart::IndexType i = mLowerBound + 1; i <= mMaxDartId; i = i + 2 )
@@ -143,7 +143,7 @@ bool DelaunayTriangulation::iterateCellsWhile( const uint cell_dim,
     else if( cell_dim == 2 )
     {
         GlobalCellMarker m( *this, cell_dim );
-        const bool keep_iterating = topology::iterateCellsWhile( mBaseMap, cell_dim, [&]( const Face& f ) {
+        const bool keep_iterating = topology::iterateCellsWhile( *mBaseMap, cell_dim, [&]( const Face& f ) {
             m.mark( *this, f );
             return callback( f );
         } );
@@ -168,7 +168,7 @@ std::optional<IndexingFunc> DelaunayTriangulation::indexing( const uint cell_dim
 {
     if( cell_dim == 0 )
     {
-        return mBaseMap.indexing( cell_dim )
+        return mBaseMap->indexing( cell_dim )
             .transform( [this]( const IndexingFunc& underlying_indexing ) -> IndexingFunc {
                 return [this, underlying_indexing]( const Vertex& v ) {
                     std::optional<size_t> out = std::nullopt;
@@ -196,8 +196,8 @@ std::optional<IndexingFunc> DelaunayTriangulation::indexing( const uint cell_dim
 std::optional<size_t> DelaunayTriangulation::cellCount( const uint cell_dim ) const
 {
     if( cell_dim > 2 ) return 0;
-    else if( cell_dim == 0 ) return mBaseMap.cellCount( cell_dim );
-    else return topology::cellCount( mBaseMap, cell_dim ) + ( mMaxDartId - mLowerBound ) / 2;
+    else if( cell_dim == 0 ) return mBaseMap->cellCount( cell_dim );
+    else return topology::cellCount( *mBaseMap, cell_dim ) + ( mMaxDartId - mLowerBound ) / 2;
 }
 
 namespace topology

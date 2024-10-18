@@ -8,7 +8,7 @@ namespace topology
     class DelaunayTriangulation : public CombinatorialMap
     {
         public:
-        DelaunayTriangulation( const CombinatorialMap& base, const VertexPositionsFunc& vert_positions );
+        DelaunayTriangulation( const std::shared_ptr<const CombinatorialMap>& base, const VertexPositionsFunc& vert_positions );
 
         virtual ~DelaunayTriangulation() = default;
 
@@ -26,10 +26,10 @@ namespace topology
 
         virtual std::optional<size_t> cellCount( const uint cell_dim ) const override;
 
-        const CombinatorialMap& baseMap() const { return mBaseMap; }
+        const CombinatorialMap& baseMap() const { return *mBaseMap; }
 
         private:
-        const CombinatorialMap& mBaseMap;
+        const std::shared_ptr<const CombinatorialMap> mBaseMap;
         std::map<Dart, Dart> mAlteredPhi1s;
         std::map<Dart, Dart> mAlteredPhi_1s;
         const Dart::IndexType mLowerBound;
