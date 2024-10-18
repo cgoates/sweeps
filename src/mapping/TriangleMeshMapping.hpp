@@ -9,11 +9,13 @@ namespace mapping
     class TriangleMeshMapping : public GeometricMapping
     {
         public:
-        TriangleMeshMapping( const param::TriangleParametricAtlas& atlas, const VertexPositionsFunc& vertex_positions, const size_t dim );
+        TriangleMeshMapping( const std::shared_ptr<const param::TriangleParametricAtlas>& atlas,
+                             const VertexPositionsFunc& vertex_positions,
+                             const size_t dim );
 
         virtual ~TriangleMeshMapping() = default;
 
-        virtual const param::TriangleParametricAtlas& parametricAtlas() const override { return mAtlas; }
+        virtual const param::TriangleParametricAtlas& parametricAtlas() const override { return *mAtlas; }
 
         virtual Eigen::VectorXd evaluate( const topology::Cell& c, const param::ParentPoint& pt ) const override;
 
@@ -27,7 +29,7 @@ namespace mapping
         const VertexPositionsFunc& vertPositions() const { return mPositions; }
 
         private:
-        const param::TriangleParametricAtlas& mAtlas;
+        const std::shared_ptr<const param::TriangleParametricAtlas> mAtlas;
         VertexPositionsFunc mPositions;
         size_t mDim;
     };

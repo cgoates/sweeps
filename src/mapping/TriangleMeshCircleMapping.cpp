@@ -5,13 +5,14 @@
 
 namespace mapping
 {
-    TriangleMeshCircleMapping::TriangleMeshCircleMapping( const param::TriangleParametricAtlas& atlas, const VertexPositionsFunc& vertex_positions ) :
-        mAtlas( atlas ),
-        mTriMapping( atlas, vertex_positions, 2 )
+    TriangleMeshCircleMapping::TriangleMeshCircleMapping(
+        const std::shared_ptr<const param::TriangleParametricAtlas>& atlas,
+        const VertexPositionsFunc& vertex_positions )
+        : mAtlas( atlas ), mTriMapping( atlas, vertex_positions, 2 )
     {
-        const auto vert_ids = indexingOrError( mAtlas.cmap(), 0 );
-        iterateCellsWhile( mAtlas.cmap(), 0, [&]( const topology::Vertex& v ) {
-            if( boundaryAdjacent( mAtlas.cmap(), v ) )
+        const auto vert_ids = indexingOrError( mAtlas->cmap(), 0 );
+        iterateCellsWhile( mAtlas->cmap(), 0, [&]( const topology::Vertex& v ) {
+            if( boundaryAdjacent( mAtlas->cmap(), v ) )
             {
                 const Eigen::Vector2d pos = mTriMapping.vertPositions()( v );
                 mBoundaryAngles.emplace( vert_ids( v ), atan2( pos( 1 ), pos( 0 ) ) );
@@ -71,7 +72,7 @@ namespace mapping
     {
         if( c.dim() != 2 ) throw std::runtime_error( "Bad cell dimension for TriangleMeshCircleMapping::evaluate" );
 
-        const SmallVector<topology::Edge, 3> boundary_edges = maybeBoundaryEdges( mAtlas.cmap(), c );
+        const SmallVector<topology::Edge, 3> boundary_edges = maybeBoundaryEdges( mAtlas->cmap(), c );
         switch( boundary_edges.size() )
         {
             case 0: return mTriMapping.evaluate( c, pt );
@@ -79,22 +80,22 @@ namespace mapping
             {
                 const topology::Edge& boundary_edge = boundary_edges.at( 0 );
                 const Vector6dMax expanded_coords = expandedCoordinates( pt );
-                const auto vert_ids = indexingOrError( mAtlas.cmap(), 0 );
+                const auto vert_ids = indexingOrError( mAtlas->cmap(), 0 );
                 const std::array<topology::Vertex, 3> vertices{
                     topology::Vertex( boundary_edge.dart() ),
-                    topology::Vertex( phi( mAtlas.cmap(), 1, boundary_edge.dart() ).value() ),
-                    topology::Vertex( phi( mAtlas.cmap(), -1, boundary_edge.dart() ).value() )
+                    topology::Vertex( phi( mAtlas->cmap(), 1, boundary_edge.dart() ).value() ),
+                    topology::Vertex( phi( mAtlas->cmap(), -1, boundary_edge.dart() ).value() )
                 };
                 const std::array<size_t, 3> corner_ids{
-                    vertex_ii( mAtlas, vertices[0] ),
-                    vertex_ii( mAtlas, vertices[1] ),
-                    vertex_ii( mAtlas, vertices[2] )
+                    vertex_ii( *mAtlas, vertices[0] ),
+                    vertex_ii( *mAtlas, vertices[1] ),
+                    vertex_ii( *mAtlas, vertices[2] )
                 };
 
                 const std::array<double, 3> bary{
-                    expanded_coords( vertex_ii( mAtlas, vertices[0] ) ),
-                    expanded_coords( vertex_ii( mAtlas, vertices[1] ) ),
-                    expanded_coords( vertex_ii( mAtlas, vertices[2] ) )
+                    expanded_coords( vertex_ii( *mAtlas, vertices[0] ) ),
+                    expanded_coords( vertex_ii( *mAtlas, vertices[1] ) ),
+                    expanded_coords( vertex_ii( *mAtlas, vertices[2] ) )
                 };
                 const double theta0 = mBoundaryAngles.at( vert_ids( vertices[0] ) );
                 const double theta1 = mBoundaryAngles.at( vert_ids( vertices[1] ) );
@@ -107,22 +108,22 @@ namespace mapping
             case 2:
             {
                 const Vector6dMax expanded_coords = expandedCoordinates( pt );
-                const auto vert_ids = indexingOrError( mAtlas.cmap(), 0 );
+                const auto vert_ids = indexingOrError( mAtlas->cmap(), 0 );
                 const std::array<topology::Vertex, 3> vertices{
                     topology::Vertex( boundary_edges.at( 0 ).dart() ),
                     topology::Vertex( boundary_edges.at( 1 ).dart() ),
-                    topology::Vertex( phi( mAtlas.cmap(), 1, boundary_edges.at( 1 ).dart() ).value() )
+                    topology::Vertex( phi( mAtlas->cmap(), 1, boundary_edges.at( 1 ).dart() ).value() )
                 };
                 const std::array<size_t, 3> corner_ids{
-                    vertex_ii( mAtlas, vertices[0] ),
-                    vertex_ii( mAtlas, vertices[1] ),
-                    vertex_ii( mAtlas, vertices[2] )
+                    vertex_ii( *mAtlas, vertices[0] ),
+                    vertex_ii( *mAtlas, vertices[1] ),
+                    vertex_ii( *mAtlas, vertices[2] )
                 };
 
                 const std::array<double, 3> bary{
-                    expanded_coords( vertex_ii( mAtlas, vertices[0] ) ),
-                    expanded_coords( vertex_ii( mAtlas, vertices[1] ) ),
-                    expanded_coords( vertex_ii( mAtlas, vertices[2] ) )
+                    expanded_coords( vertex_ii( *mAtlas, vertices[0] ) ),
+                    expanded_coords( vertex_ii( *mAtlas, vertices[1] ) ),
+                    expanded_coords( vertex_ii( *mAtlas, vertices[2] ) )
                 };
 
                 if( pt.mBaryCoordIsZero.at( corner_ids[1] ) )
@@ -207,7 +208,7 @@ namespace mapping
 
     std::optional<param::ParentPoint> TriangleMeshCircleMapping::maybeInverse( const topology::Face& f, const Eigen::Vector2d& pt ) const
     {
-        const SmallVector<topology::Edge, 3> boundary_edges = maybeBoundaryEdges( mAtlas.cmap(), f );
+        const SmallVector<topology::Edge, 3> boundary_edges = maybeBoundaryEdges( mAtlas->cmap(), f );
         switch( boundary_edges.size() )
         {
             case 0: return mTriMapping.maybeInverse( f, pt );
@@ -215,26 +216,26 @@ namespace mapping
             {
                 const std::array<topology::Vertex, 3> vertices{
                     topology::Vertex( boundary_edges.at( 0 ).dart() ),
-                    topology::Vertex( phi( mAtlas.cmap(), 1, boundary_edges.at( 0 ).dart() ).value() ),
-                    topology::Vertex( phi( mAtlas.cmap(), -1, boundary_edges.at( 0 ).dart() ).value() )
+                    topology::Vertex( phi( mAtlas->cmap(), 1, boundary_edges.at( 0 ).dart() ).value() ),
+                    topology::Vertex( phi( mAtlas->cmap(), -1, boundary_edges.at( 0 ).dart() ).value() )
                 };
                 
                 const Eigen::Vector2d non_bdry_point = mTriMapping.vertPositions()( vertices[ 2 ] );
 
                 const Eigen::Vector2d one_bdry_vert_point = mTriMapping.vertPositions()( vertices[ 0 ] );
-                if( ( pt - non_bdry_point ).norm() < 1e-10 * ( one_bdry_vert_point - non_bdry_point ).norm() ) return mAtlas.parentPoint( vertices[ 2 ] );
+                if( ( pt - non_bdry_point ).norm() < 1e-10 * ( one_bdry_vert_point - non_bdry_point ).norm() ) return mAtlas->parentPoint( vertices[ 2 ] );
 
-                const auto vert_ids = indexingOrError( mAtlas.cmap(), 0 );
+                const auto vert_ids = indexingOrError( mAtlas->cmap(), 0 );
                 const double theta0 = mBoundaryAngles.at( vert_ids( vertices[ 0 ] ) );
                 const double theta1 = mBoundaryAngles.at( vert_ids( vertices[ 1 ] ) );
 
                 return invertTriangleWithArcEdgeEval( pt, non_bdry_point, { theta0, theta1 } )
                     .transform( [&]( const Eigen::Vector3d& bary ) {
                         Eigen::Vector3d reordered_bary;
-                        reordered_bary( vertex_ii( mAtlas, vertices[0] ) ) = bary( 0 );
-                        reordered_bary( vertex_ii( mAtlas, vertices[1] ) ) = bary( 1 );
-                        reordered_bary( vertex_ii( mAtlas, vertices[2] ) ) = bary( 2 );
-                        const param::ParentDomain pd = mAtlas.parentDomain( f );
+                        reordered_bary( vertex_ii( *mAtlas, vertices[0] ) ) = bary( 0 );
+                        reordered_bary( vertex_ii( *mAtlas, vertices[1] ) ) = bary( 1 );
+                        reordered_bary( vertex_ii( *mAtlas, vertices[2] ) ) = bary( 2 );
+                        const param::ParentDomain pd = mAtlas->parentDomain( f );
                         return compressCoordinates( pd, reordered_bary, 1e-5 );
                     } );
             }
@@ -243,7 +244,7 @@ namespace mapping
                 const std::array<topology::Vertex, 3> vertices{
                     topology::Vertex( boundary_edges.at( 0 ).dart() ),
                     topology::Vertex( boundary_edges.at( 1 ).dart() ),
-                    topology::Vertex( phi( mAtlas.cmap(), 1, boundary_edges.at( 1 ).dart() ).value() )
+                    topology::Vertex( phi( mAtlas->cmap(), 1, boundary_edges.at( 1 ).dart() ).value() )
                 };
 
                 const Eigen::Vector2d non_bdry_point =
@@ -251,9 +252,9 @@ namespace mapping
 
                 const Eigen::Vector2d one_bdry_vert_point = mTriMapping.vertPositions()( vertices[ 0 ] );
                 if( ( pt - non_bdry_point ).norm() < 1e-10 * ( one_bdry_vert_point - non_bdry_point ).norm() )
-                    return average( mAtlas.parentPoint( vertices[2] ), mAtlas.parentPoint( vertices[0] ) );
+                    return average( mAtlas->parentPoint( vertices[2] ), mAtlas->parentPoint( vertices[0] ) );
 
-                const auto vert_ids = indexingOrError( mAtlas.cmap(), 0 );
+                const auto vert_ids = indexingOrError( mAtlas->cmap(), 0 );
                 const double theta0 = mBoundaryAngles.at( vert_ids( vertices[ 0 ] ) );
                 const double theta1 = mBoundaryAngles.at( vert_ids( vertices[ 1 ] ) );
                 const double theta2 = mBoundaryAngles.at( vert_ids( vertices[ 2 ] ) );
@@ -268,17 +269,17 @@ namespace mapping
                         Eigen::Vector3d reordered_bary;
                         if( first_side )
                         {
-                            reordered_bary( vertex_ii( mAtlas, vertices[0] ) ) = bary( 0 ) + 0.5 * bary( 2 );
-                            reordered_bary( vertex_ii( mAtlas, vertices[1] ) ) = bary( 1 );
-                            reordered_bary( vertex_ii( mAtlas, vertices[2] ) ) = 0.5 * bary( 2 );
+                            reordered_bary( vertex_ii( *mAtlas, vertices[0] ) ) = bary( 0 ) + 0.5 * bary( 2 );
+                            reordered_bary( vertex_ii( *mAtlas, vertices[1] ) ) = bary( 1 );
+                            reordered_bary( vertex_ii( *mAtlas, vertices[2] ) ) = 0.5 * bary( 2 );
                         }
                         else
                         {
-                            reordered_bary( vertex_ii( mAtlas, vertices[0] ) ) = 0.5 * bary( 2 );
-                            reordered_bary( vertex_ii( mAtlas, vertices[1] ) ) = bary( 0 );
-                            reordered_bary( vertex_ii( mAtlas, vertices[2] ) ) = bary( 1 ) + 0.5 * bary( 2 );
+                            reordered_bary( vertex_ii( *mAtlas, vertices[0] ) ) = 0.5 * bary( 2 );
+                            reordered_bary( vertex_ii( *mAtlas, vertices[1] ) ) = bary( 0 );
+                            reordered_bary( vertex_ii( *mAtlas, vertices[2] ) ) = bary( 1 ) + 0.5 * bary( 2 );
                         }
-                        const param::ParentDomain pd = mAtlas.parentDomain( f );
+                        const param::ParentDomain pd = mAtlas->parentDomain( f );
                         return compressCoordinates( pd, reordered_bary, 1e-5 );
                     } );
             }
@@ -291,7 +292,7 @@ namespace mapping
     {
         if( pt.norm() > 1.0 + 1e-15 ) return std::nullopt;
         std::optional<std::pair<topology::Face, param::ParentPoint>> out;
-        iterateCellsWhile( mAtlas.cmap(), 2, [&]( const topology::Face& f ) {
+        iterateCellsWhile( mAtlas->cmap(), 2, [&]( const topology::Face& f ) {
             out = maybeInverse( f, pt ).transform( [&f]( const param::ParentPoint& ppt ) {
                 return std::pair<topology::Face, param::ParentPoint>{ f, ppt };
             } );

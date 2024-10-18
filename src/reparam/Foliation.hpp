@@ -44,7 +44,6 @@ namespace reparam
 
         // For all leaves
         std::shared_ptr<const Eigen::MatrixX2d> tutte;
-        std::shared_ptr<param::TriangleParametricAtlas> atlas;
         std::shared_ptr<mapping::TriangleMeshCircleMapping> circle_mapping;
         std::shared_ptr<mapping::TriangleMeshMapping> space_mapping;
     };

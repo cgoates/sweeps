@@ -199,15 +199,15 @@ namespace reparam
                         return std::nullopt;
                 };
 
-                leaf.tutte = std::make_unique<const Eigen::MatrixX2d>(
+                leaf.tutte = std::make_shared<const Eigen::MatrixX2d>(
                     reparam::tutteEmbedding( cmap, positions, constraints_func, true ) );
 
-                leaf.atlas = std::make_unique<param::TriangleParametricAtlas>( cmap );
+                const auto atlas = std::make_shared<param::TriangleParametricAtlas>( cmap );
                 const auto vert_positions = [tutte = *( leaf.tutte ), base_vert_ids]( const topology::Vertex& v ) {
                     return tutte.row( base_vert_ids( v ) );
                 };
-                leaf.circle_mapping = std::make_unique<mapping::TriangleMeshCircleMapping>( *leaf.atlas, vert_positions );
-                leaf.space_mapping = std::make_unique<mapping::TriangleMeshMapping>( *leaf.atlas, positions, 3 );
+                leaf.circle_mapping = std::make_shared<mapping::TriangleMeshCircleMapping>( atlas, vert_positions );
+                leaf.space_mapping = std::make_shared<mapping::TriangleMeshMapping>( atlas, positions, 3 );
             };
 
         std::vector<FoliationLeaf> leaves;
@@ -231,7 +231,7 @@ namespace reparam
         { // Midway level set
             leaves.push_back( {} );
             leaves.back().level_set_cmap =
-                std::make_unique<topology::LevelSetCMap>( map, harmonic_func, level_set_values[level_ii] );
+                std::make_shared<topology::LevelSetCMap>( map, harmonic_func, level_set_values[level_ii] );
             const auto v_pos = vertex_positions( map );
             const auto& level_set = *leaves.back().level_set_cmap;
             const auto level_set_positions = topology::levelSetVertexPositions( level_set, v_pos );
@@ -242,7 +242,7 @@ namespace reparam
                 reparam::thetaValues( level_set, level_set_positions, face_ids_of_edge, intersections[level_ii] );
 
             leaves.back().level_set_tri =
-                std::make_unique<topology::DelaunayTriangulation>( level_set, level_set_positions );
+                std::make_shared<topology::DelaunayTriangulation>( level_set, level_set_positions );
             const auto tri_positions =
                 topology::delaunayTriangulationVertexPositions( *leaves.back().level_set_tri, level_set_positions );
 
@@ -254,7 +254,7 @@ namespace reparam
         { // target level set
             leaves.push_back( {} );
             const auto target_positions = vertex_positions( bdry );
-            leaves.back().reversed_cmap = std::make_unique<topology::ReversedCombinatorialMap>( target );
+            leaves.back().reversed_cmap = std::make_shared<topology::ReversedCombinatorialMap>( target );
             const auto& rev_map = *leaves.back().reversed_cmap;
             const auto rev_positions = reversedVertexPositions( rev_map, target_positions );
             const auto face_ids_of_edge = [&]( const topology::Edge& e ) {

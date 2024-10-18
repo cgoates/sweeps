@@ -9,11 +9,12 @@ namespace mapping
     class TriangleMeshCircleMapping : public GeometricMapping
     {
         public:
-        TriangleMeshCircleMapping( const param::TriangleParametricAtlas& atlas, const VertexPositionsFunc& vertex_positions );
+        TriangleMeshCircleMapping( const std::shared_ptr<const param::TriangleParametricAtlas>& atlas,
+                                   const VertexPositionsFunc& vertex_positions );
 
         virtual ~TriangleMeshCircleMapping() = default;
 
-        virtual const param::TriangleParametricAtlas& parametricAtlas() const override { return mAtlas; }
+        virtual const param::TriangleParametricAtlas& parametricAtlas() const override { return *mAtlas; }
 
         virtual Eigen::VectorXd evaluate( const topology::Cell& c, const param::ParentPoint& pt ) const override;
 
@@ -25,7 +26,7 @@ namespace mapping
         std::optional<std::pair<topology::Face, param::ParentPoint>> maybeInverse( const Eigen::Vector2d& pt ) const;
 
         private:
-        const param::TriangleParametricAtlas& mAtlas;
+        const std::shared_ptr<const param::TriangleParametricAtlas> mAtlas;
         const TriangleMeshMapping mTriMapping;
         std::map<size_t, double> mBoundaryAngles;
     };
