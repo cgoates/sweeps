@@ -19,14 +19,14 @@ namespace param
         topology::Dart curr_d = v.dart();
         for( size_t curr_num_phi1s = 1; curr_num_phi1s < 3; curr_num_phi1s++ )
         {
-            curr_d = phi( mMap, -1, curr_d ).value();
+            curr_d = phi( *mMap, -1, curr_d ).value();
             if( curr_d < lowest_id )
             {
                 lowest_id = curr_d;
                 num_phi1s = curr_num_phi1s;
             }
         }
-        if( phi( mMap, -1, curr_d ).value() != v.dart() )
+        if( phi( *mMap, -1, curr_d ).value() != v.dart() )
         {
             throw std::runtime_error( "TriangleParametricAtlas only takes triangle faces with no hanging nodes!" );
         }

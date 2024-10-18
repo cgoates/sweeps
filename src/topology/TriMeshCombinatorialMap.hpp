@@ -32,6 +32,8 @@ namespace topology
         public:
         TriMeshCombinatorialMap( const SimplicialComplex& complex );
 
+        virtual ~TriMeshCombinatorialMap() = default;
+
         virtual std::optional<Dart> phi( const int i, const Dart& d ) const override;
         virtual Dart::IndexType maxDartId() const override;
         virtual uint dim() const override { return 2; }

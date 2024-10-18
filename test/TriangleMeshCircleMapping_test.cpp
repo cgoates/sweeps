@@ -20,8 +20,8 @@ TEST_CASE( "Simple circle evaluations" )
         { { 0, 1, 4 }, { 0, 4, 2 }, { 4, 1, 3 }, { 4, 3, 2 } },
         { { -1.0, 0.0, 0.0 }, { 0.0, -1.0, 0.0 }, { 0.0, 1.0, 0.0 }, { 1.0, 0.0, 0.2 }, { 0.0, 0.0, 0.0 } } };
 
-    const topology::TriMeshCombinatorialMap cmap( mesh );
-    const auto vert_id = indexingOrError( cmap, 0 );
+    const auto cmap = std::make_shared<const topology::TriMeshCombinatorialMap>( mesh );
+    const auto vert_id = indexingOrError( *cmap, 0 );
     const auto param = std::make_shared<const param::TriangleParametricAtlas>( cmap );
     const auto vert_positions = [&]( const topology::Vertex& v ) {
         return mesh.points.at( vert_id( v ) ).head<2>();
@@ -29,18 +29,18 @@ TEST_CASE( "Simple circle evaluations" )
     const mapping::TriangleMeshCircleMapping geom_mapping( param, vert_positions );
 
     const param::ParentDomain pd = param::simplexDomain( 2 );
-    iterateCellsWhile( cmap, 2, [&]( const topology::Face& f ) {
-        iterateAdjacentCells( cmap, f, 1, [&]( const topology::Edge& e ) {
+    iterateCellsWhile( *cmap, 2, [&]( const topology::Face& f ) {
+        iterateAdjacentCells( *cmap, f, 1, [&]( const topology::Edge& e ) {
             const param::ParentPoint ppt = pointOnBoundary( pd, parentDomainBoundary( *param, e ) );
             const Eigen::Vector2d pos = geom_mapping.evaluate( f, ppt );
-            if( boundaryAdjacent( cmap, e ) )
+            if( boundaryAdjacent( *cmap, e ) )
                 CHECK( util::equals( pos.norm(), 1.0, 1e-12 ) );
             else
                 CHECK( util::equals( pos.norm(), 0.5, 1e-12 ) );
             return true;
         } );
 
-        iterateAdjacentCells( cmap, f, 0, [&]( const topology::Vertex& v ) {
+        iterateAdjacentCells( *cmap, f, 0, [&]( const topology::Vertex& v ) {
             const param::ParentPoint ppt = param->parentPoint( v );
             const Eigen::Vector2d pos = geom_mapping.evaluate( f, ppt );
             const Eigen::Vector2d expected = vert_positions( v );
@@ -69,8 +69,8 @@ TEST_CASE( "Circle evaluation with non-boundary-adjacent cells" )
         points
     };
 
-        const topology::TriMeshCombinatorialMap cmap( mesh );
-    const auto vert_id = indexingOrError( cmap, 0 );
+        const auto cmap = std::make_shared<const topology::TriMeshCombinatorialMap>( mesh );
+    const auto vert_id = indexingOrError( *cmap, 0 );
     const auto param = std::make_shared<const param::TriangleParametricAtlas>( cmap );
     const auto vert_positions = [&]( const topology::Vertex& v ) {
         return mesh.points.at( vert_id( v ) ).head<2>();
@@ -78,16 +78,16 @@ TEST_CASE( "Circle evaluation with non-boundary-adjacent cells" )
     const mapping::TriangleMeshCircleMapping geom_mapping( param, vert_positions );
 
     const param::ParentDomain pd = param::simplexDomain( 2 );
-    iterateCellsWhile( cmap, 2, [&]( const topology::Face& f ) {
-        iterateAdjacentCells( cmap, f, 1, [&]( const topology::Edge& e ) {
+    iterateCellsWhile( *cmap, 2, [&]( const topology::Face& f ) {
+        iterateAdjacentCells( *cmap, f, 1, [&]( const topology::Edge& e ) {
             const param::ParentPoint ppt = pointOnBoundary( pd, parentDomainBoundary( *param, e ) );
             const Eigen::Vector2d pos = geom_mapping.evaluate( f, ppt );
-            if( boundaryAdjacent( cmap, e ) )
+            if( boundaryAdjacent( *cmap, e ) )
                 CHECK( util::equals( pos.norm(), 1.0, 1e-12 ) );
             return true;
         } );
 
-        iterateAdjacentCells( cmap, f, 0, [&]( const topology::Vertex& v ) {
+        iterateAdjacentCells( *cmap, f, 0, [&]( const topology::Vertex& v ) {
             const param::ParentPoint ppt = param->parentPoint( v );
             const Eigen::Vector2d pos = geom_mapping.evaluate( f, ppt );
             const Eigen::Vector2d expected = vert_positions( v );
@@ -116,8 +116,8 @@ TEST_CASE( "Circle mapping and inverse round trip test" )
         points
     };
 
-    const topology::TriMeshCombinatorialMap cmap( mesh );
-    const auto vert_id = indexingOrError( cmap, 0 );
+    const auto cmap = std::make_shared<const topology::TriMeshCombinatorialMap>( mesh );
+    const auto vert_id = indexingOrError( *cmap, 0 );
     const auto param = std::make_shared<const param::TriangleParametricAtlas>( cmap );
     const auto vert_positions = [&]( const topology::Vertex& v ) {
         return mesh.points.at( vert_id( v ) ).head<2>();
@@ -125,8 +125,8 @@ TEST_CASE( "Circle mapping and inverse round trip test" )
     const mapping::TriangleMeshCircleMapping geom_mapping( param, vert_positions );
 
     const param::ParentDomain pd = param::simplexDomain( 2 );
-    iterateCellsWhile( cmap, 2, [&]( const topology::Face& f ) {
-        iterateAdjacentCells( cmap, f, 1, [&]( const topology::Edge& e ) {
+    iterateCellsWhile( *cmap, 2, [&]( const topology::Face& f ) {
+        iterateAdjacentCells( *cmap, f, 1, [&]( const topology::Edge& e ) {
             const param::ParentPoint ppt = pointOnBoundary( pd, parentDomainBoundary( *param, e ) );
             const Eigen::Vector2d pos = geom_mapping.evaluate( f, ppt );
             const auto ppt_rt = geom_mapping.maybeInverse( f, pos );
@@ -139,7 +139,7 @@ TEST_CASE( "Circle mapping and inverse round trip test" )
             return true;
         } );
 
-        iterateAdjacentCells( cmap, f, 0, [&]( const topology::Vertex& v ) {
+        iterateAdjacentCells( *cmap, f, 0, [&]( const topology::Vertex& v ) {
             const param::ParentPoint ppt = param->parentPoint( v );
             const Eigen::Vector2d pos = geom_mapping.evaluate( f, ppt );
             const auto ppt_rt = geom_mapping.maybeInverse( f, pos );
@@ -178,15 +178,15 @@ TEST_CASE( "Mesh wide circle map inverse test" )
         { { 0, 1, 4 }, { 0, 4, 2 }, { 4, 1, 3 }, { 4, 3, 2 } },
         { { -1.0, 0.0, 0.0 }, { 0.0, -1.0, 0.0 }, { 0.0, 1.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 } } };
 
-    const topology::TriMeshCombinatorialMap cmap( mesh );
-    const auto vert_id = indexingOrError( cmap, 0 );
+    const auto cmap = std::make_shared<const topology::TriMeshCombinatorialMap>( mesh );
+    const auto vert_id = indexingOrError( *cmap, 0 );
     const auto param = std::make_shared<const param::TriangleParametricAtlas>( cmap );
     const auto vert_positions = [&]( const topology::Vertex& v ) {
         return mesh.points.at( vert_id( v ) ).head<2>();
     };
     const mapping::TriangleMeshCircleMapping geom_mapping( param, vert_positions );
 
-    const auto face_ids = indexingOrError( cmap, 2 );
+    const auto face_ids = indexingOrError( *cmap, 2 );
 
     const auto test_inverse = [&]( const Eigen::Vector2d& spatial_pt,
                                    const topology::Face& expected_f,
@@ -224,8 +224,8 @@ TEST_CASE( "Simple circle evaluations two boundary edges" )
         { { 0, 1, 3 }, { 0, 3, 2 } },
         { { -1.0, 0.0, 0.0 }, { 0.0, -1.0, 0.0 }, { 0.0, 1.0, 0.0 }, { 1.0, 0.0, 0.0 } } };
 
-    const topology::TriMeshCombinatorialMap cmap( mesh );
-    const auto vert_id = indexingOrError( cmap, 0 );
+    const auto cmap = std::make_shared<const topology::TriMeshCombinatorialMap>( mesh );
+    const auto vert_id = indexingOrError( *cmap, 0 );
     const auto param = std::make_shared<const param::TriangleParametricAtlas>( cmap );
     const auto vert_positions = [&]( const topology::Vertex& v ) {
         return mesh.points.at( vert_id( v ) ).head<2>();
@@ -233,18 +233,18 @@ TEST_CASE( "Simple circle evaluations two boundary edges" )
     const mapping::TriangleMeshCircleMapping geom_mapping( param, vert_positions );
 
     const param::ParentDomain pd = param::simplexDomain( 2 );
-    iterateCellsWhile( cmap, 2, [&]( const topology::Face& f ) {
-        iterateAdjacentCells( cmap, f, 1, [&]( const topology::Edge& e ) {
+    iterateCellsWhile( *cmap, 2, [&]( const topology::Face& f ) {
+        iterateAdjacentCells( *cmap, f, 1, [&]( const topology::Edge& e ) {
             const param::ParentPoint ppt = pointOnBoundary( pd, parentDomainBoundary( *param, e ) );
             const Eigen::Vector2d pos = geom_mapping.evaluate( f, ppt );
-            if( boundaryAdjacent( cmap, e ) )
+            if( boundaryAdjacent( *cmap, e ) )
                 CHECK( util::equals( pos.norm(), 1.0, 1e-12 ) );
             else
                 CHECK( util::equals( pos.norm(), 0.0, 1e-12 ) );
             return true;
         } );
 
-        iterateAdjacentCells( cmap, f, 0, [&]( const topology::Vertex& v ) {
+        iterateAdjacentCells( *cmap, f, 0, [&]( const topology::Vertex& v ) {
             const param::ParentPoint ppt = param->parentPoint( v );
             const Eigen::Vector2d pos = geom_mapping.evaluate( f, ppt );
             const Eigen::Vector2d expected = vert_positions( v );
@@ -271,8 +271,8 @@ TEST_CASE( "Circle mapping and inverse round trip test with two boundary edge tr
         { { 0, 1, 3 }, { 0, 3, 2 } },
         { { -1.0, 0.0, 0.0 }, { 0.0, -1.0, 0.0 }, { 0.0, 1.0, 0.0 }, { 1.0, 0.0, 0.0 } } };
 
-    const topology::TriMeshCombinatorialMap cmap( mesh );
-    const auto vert_id = indexingOrError( cmap, 0 );
+    const auto cmap = std::make_shared<const topology::TriMeshCombinatorialMap>( mesh );
+    const auto vert_id = indexingOrError( *cmap, 0 );
     const auto param = std::make_shared<const param::TriangleParametricAtlas>( cmap );
     const auto vert_positions = [&]( const topology::Vertex& v ) {
         return mesh.points.at( vert_id( v ) ).head<2>();
@@ -280,8 +280,8 @@ TEST_CASE( "Circle mapping and inverse round trip test with two boundary edge tr
     const mapping::TriangleMeshCircleMapping geom_mapping( param, vert_positions );
 
     const param::ParentDomain pd = param::simplexDomain( 2 );
-    iterateCellsWhile( cmap, 2, [&]( const topology::Face& f ) {
-        iterateAdjacentCells( cmap, f, 1, [&]( const topology::Edge& e ) {
+    iterateCellsWhile( *cmap, 2, [&]( const topology::Face& f ) {
+        iterateAdjacentCells( *cmap, f, 1, [&]( const topology::Edge& e ) {
             const param::ParentPoint ppt = pointOnBoundary( pd, parentDomainBoundary( *param, e ) );
             const Eigen::Vector2d pos = geom_mapping.evaluate( f, ppt );
             const auto ppt_rt = geom_mapping.maybeInverse( f, pos );
@@ -294,7 +294,7 @@ TEST_CASE( "Circle mapping and inverse round trip test with two boundary edge tr
             return true;
         } );
 
-        iterateAdjacentCells( cmap, f, 0, [&]( const topology::Vertex& v ) {
+        iterateAdjacentCells( *cmap, f, 0, [&]( const topology::Vertex& v ) {
             const param::ParentPoint ppt = param->parentPoint( v );
             const Eigen::Vector2d pos = geom_mapping.evaluate( f, ppt );
             const auto ppt_rt = geom_mapping.maybeInverse( f, pos );

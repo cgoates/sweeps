@@ -147,8 +147,11 @@ void testLevelSetBasedTracing( const SweepInput& sweep_input,
         {
             for( const auto& leaf : leaves )
             {
-                iterateCellsWhile( leaf.atlas->cmap(), 2, [&]( const topology::Face& f ) {
-                    addTriangleNoDuplicateChecking( level_sets, triangleOfFace<3>( leaf.atlas->cmap(), leaf.space_mapping->vertPositions(), f ) );
+                iterateCellsWhile( leaf.space_mapping->parametricAtlas().cmap(), 2, [&]( const topology::Face& f ) {
+                    addTriangleNoDuplicateChecking( level_sets,
+                                                    triangleOfFace<3>( leaf.space_mapping->parametricAtlas().cmap(),
+                                                                       leaf.space_mapping->vertPositions(),
+                                                                       f ) );
                     return true;
                 } );
             }

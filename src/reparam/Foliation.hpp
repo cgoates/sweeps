@@ -16,11 +16,6 @@ namespace topology
     class LevelSetCMap;
 }
 
-namespace param
-{
-    class TriangleParametricAtlas;
-}
-
 namespace mapping
 {
     class TriangleMeshMapping;

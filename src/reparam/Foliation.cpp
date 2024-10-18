@@ -139,7 +139,8 @@ namespace reparam
         };
 
         const topology::CombinatorialMapRestriction sides( bdry, keep_face_sides );
-        const topology::CombinatorialMapRestriction base( bdry, keep_face_base, true );
+        const auto base_ptr = std::make_shared<const topology::CombinatorialMapRestriction>( bdry, keep_face_base, true );
+        const auto& base = *base_ptr;
         const topology::CombinatorialMapRestriction target( bdry, keep_face_target, true );
 
         const auto vertex_positions = [&sweep_input]( const topology::CombinatorialMap& map ) {
@@ -178,8 +179,11 @@ namespace reparam
         const auto harmonic_func = [&]( const topology::Vertex& v ) { return sol( vertex_ids( v ) ); };
 
         const auto process_param =
-            [&]( const topology::CombinatorialMap& cmap, const auto& positions, const auto& thetas, FoliationLeaf& leaf ) {
-                const auto base_vert_ids = indexingOrError( cmap, 0 );
+            [&]( const std::shared_ptr<const topology::CombinatorialMap>& cmap,
+                 const auto& positions,
+                 const auto& thetas,
+                 FoliationLeaf& leaf ) {
+                const auto base_vert_ids = indexingOrError( *cmap, 0 );
                 const std::map<size_t, double> thetas_by_id = [&]() {
                     std::map<size_t, double> out;
                     for( const auto& pr : thetas )
@@ -190,7 +194,7 @@ namespace reparam
                 }();
 
                 const auto constraints_func = [&]( const topology::Vertex& v ) -> std::optional<Eigen::Vector2d> {
-                    if( boundaryAdjacent( cmap, v ) )
+                    if( boundaryAdjacent( *cmap, v ) )
                     {
                         const double theta = thetas_by_id.at( base_vert_ids( v ) );
                         return Eigen::Vector2d( cos( theta ), sin( theta ) );
@@ -200,7 +204,7 @@ namespace reparam
                 };
 
                 leaf.tutte = std::make_shared<const Eigen::MatrixX2d>(
-                    reparam::tutteEmbedding( cmap, positions, constraints_func, true ) );
+                    reparam::tutteEmbedding( *cmap, positions, constraints_func, true ) );
 
                 const auto atlas = std::make_shared<param::TriangleParametricAtlas>( cmap );
                 const auto vert_positions = [tutte = *( leaf.tutte ), base_vert_ids]( const topology::Vertex& v ) {
@@ -222,7 +226,7 @@ namespace reparam
                 reparam::thetaValues( base, base_positions, face_ids_of_edge, intersections[0] );
 
             leaves.push_back( {} );
-            process_param( base, base_positions, thetas, leaves.back() );
+            process_param( base_ptr, base_positions, thetas, leaves.back() );
         }
 
         LOG( log_level_set_based_tracing ) << "FINISHED BASE\n\n";
@@ -246,7 +250,7 @@ namespace reparam
             const auto tri_positions =
                 topology::delaunayTriangulationVertexPositions( *leaves.back().level_set_tri, level_set_positions );
 
-            process_param( *leaves.back().level_set_tri, tri_positions, thetas, leaves.back() );
+            process_param( leaves.back().level_set_tri, tri_positions, thetas, leaves.back() );
 
             LOG( log_level_set_based_tracing ) << "FINISHED LEVEL " << ( level_ii + 1 ) << std::endl << std::endl;
         }
@@ -264,7 +268,7 @@ namespace reparam
             const std::map<topology::Vertex, double> thetas =
                 reparam::thetaValues( rev_map, rev_positions, face_ids_of_edge, intersections.back() );
 
-            process_param( rev_map, rev_positions, thetas, leaves.back() );
+            process_param( leaves.back().reversed_cmap, rev_positions, thetas, leaves.back() );
         }
         LOG( log_level_set_based_tracing ) << "FINISHED TARGET\n\n";
 

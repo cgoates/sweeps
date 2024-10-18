@@ -16,6 +16,8 @@ namespace topology
                                      const std::function<bool( const Cell& )>& restriction_func,
                                      const bool reindex_verts = false );
 
+        virtual ~CombinatorialMapRestriction() = default;
+
         virtual std::optional<Dart> phi( const int i, const Dart& d ) const override;
         virtual Dart::IndexType maxDartId() const override { return mUnrestrictedMap.maxDartId(); }
         virtual uint dim() const override { return mUnrestrictedMap.dim(); }
