@@ -53,6 +53,11 @@ template <unsigned int DIM> struct Segment
     const Eigen::Matrix<double, DIM, 1> end_pos;
 };
 
+void addEdgeNoDuplicateChecking( SimplicialComplex& complex,
+                                 const topology::CombinatorialMap& map,
+                                 const VertexPositionsFunc& pos,
+                                 const topology::Edge& e );
+
 void addTriangleNoDuplicateChecking( SimplicialComplex& complex, const Triangle<3>& tri );
 
 void addTetNoDuplicateChecking( SimplicialComplex& complex,

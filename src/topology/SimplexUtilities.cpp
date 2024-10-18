@@ -186,6 +186,17 @@ Eigen::Vector3d gradient( const Triangle<3>& tri3d, const Eigen::Ref<const Eigen
     return grad_3d;
 }
 
+void addEdgeNoDuplicateChecking( SimplicialComplex& complex,
+                                 const topology::CombinatorialMap& map,
+                                 const VertexPositionsFunc& pos,
+                                 const topology::Edge& e )
+{
+    const size_t offset = complex.points.size();
+    complex.points.push_back( pos( e.dart() ) );
+    complex.points.push_back( pos( phi( map, 1, e.dart() ).value() ) );
+    complex.simplices.push_back( Simplex( offset, offset + 1 ) );
+}
+
 void addTriangleNoDuplicateChecking( SimplicialComplex& complex, const Triangle<3>& tri )
 {
     const size_t offset = complex.points.size();
