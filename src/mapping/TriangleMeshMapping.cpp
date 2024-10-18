@@ -62,12 +62,12 @@ namespace mapping
         return out;
     }
 
-    std::optional<std::pair<topology::Face, param::ParentPoint>> TriangleMeshMapping::maybeInverse( const Eigen::Vector2d& pt ) const
+    std::optional<std::pair<topology::Cell, param::ParentPoint>> TriangleMeshMapping::maybeInverse( const Eigen::Vector2d& pt ) const
     {
-        std::optional<std::pair<topology::Face, param::ParentPoint>> out;
+        std::optional<std::pair<topology::Cell, param::ParentPoint>> out;
         iterateCellsWhile( mAtlas->cmap(), 2, [&]( const topology::Face& f ) {
             out = maybeInverse( f, pt ).transform( [&f]( const param::ParentPoint& ppt ) {
-                return std::pair<topology::Face, param::ParentPoint>{ f, ppt };
+                return std::pair<topology::Cell, param::ParentPoint>{ f, ppt };
             } );
             return not out.has_value();
         } );

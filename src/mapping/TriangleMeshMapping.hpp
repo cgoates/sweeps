@@ -24,7 +24,7 @@ namespace mapping
         std::optional<param::ParentPoint> maybeInverse( const topology::Face& f, const Eigen::Vector2d& pt ) const;
 
         //FIXME: PROBABLY VERY SLOW
-        std::optional<std::pair<topology::Face, param::ParentPoint>> maybeInverse( const Eigen::Vector2d& pt ) const;
+        virtual std::optional<std::pair<topology::Cell, param::ParentPoint>> maybeInverse( const Eigen::Vector2d& pt ) const override;
 
         const VertexPositionsFunc& vertPositions() const { return mPositions; }
 
