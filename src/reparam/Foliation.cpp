@@ -97,6 +97,73 @@ namespace reparam
         return out;
     }
 
+    std::vector<Eigen::Vector2d> regularNGonVertices( const size_t n_sides )
+    {
+        std::vector<Eigen::Vector2d> out;
+        out.reserve( n_sides + 1 ); // Add endpoint twice to avoid having to worry about wraparound.
+        for( size_t i = 0; i <= n_sides; i++ )
+        {
+            const double theta = 2 * i * std::numbers::pi / n_sides;
+            out.push_back( { cos( theta ), sin( theta ) } );
+        }
+        return out;
+    }
+
+    std::map<topology::Vertex, Eigen::Vector2d>
+        boundaryConstraints( const topology::CombinatorialMap& cut_cmap,
+                             const VertexPositionsFunc& cut_cmap_positions,
+                             const size_t n_cuts,
+                             const std::function<bool( const topology::Vertex& )>& is_cut_extremity,
+                             const size_t start_vert_id )
+    {
+        if( cut_cmap.dim() != 2 ) throw std::invalid_argument( "boundaryConstraints only supports 2d cmaps" );
+        const topology::CombinatorialMapBoundary bdry( cut_cmap );
+        const auto bdry_positions = boundaryVertexPositions( bdry, cut_cmap_positions );
+        const auto bdry_vert_ids = indexingOrError( bdry, 0 );
+
+        const topology::Dart start_d = [&]() {
+            topology::Dart d;
+            iterateDartsWhile( bdry, [&]( const topology::Dart& a ) {
+                if( bdry_vert_ids( topology::Vertex( a ) ) == start_vert_id )
+                {
+                    d = a;
+                    return false;
+                }
+                return true;// FIXME: What if you don't find that vertex id?
+            } );
+            return d;
+        }();
+
+        std::map<topology::Vertex, Eigen::Vector2d> out;
+
+        topology::Dart d = start_d;
+
+        const size_t n_sides = 1 + n_cuts * 3;
+
+        const std::vector<Eigen::Vector2d> ngon_verts = regularNGonVertices( n_sides );
+
+        for( size_t side_ii = 0; side_ii < n_sides; side_ii++ )
+        {
+            std::map<topology::Vertex, double> side_positions;
+            double cumulative_length = 0.0;
+            do
+            {
+                side_positions.insert( { bdry.toUnderlyingCell( topology::Vertex( d ) ), cumulative_length } );
+                cumulative_length += edgeLength( bdry, bdry_positions, d );
+                d = phi( bdry, 1, d ).value();
+            } while( not is_cut_extremity( bdry.toUnderlyingCell( topology::Vertex( d ) ) ) );
+
+            const double factor = 1 / cumulative_length;
+            for( auto& pr : side_positions )
+            {
+                const double s = pr.second * factor;
+                out.emplace( pr.first, ( 1.0 - s ) * ngon_verts.at( side_ii ) + s * ngon_verts.at( side_ii + 1 ) );
+            }
+        }
+
+        return out;
+    }
+
     constexpr bool log_level_set_based_tracing = false;
     void levelSetBasedTracing( const SweepInput& sweep_input,
                                const std::vector<double> level_set_values,

@@ -57,6 +57,19 @@ namespace reparam
                      const std::function<size_t( const topology::Edge& )>& underlying_face_id_of_edge,
                      const TraceLevelSetIntersection& intersection );
 
+    /// @brief Find the boundary constraints for a Tutte embedding on the fundamental domain of a cut cmap.
+    /// @param cut_cmap           The cut cmap to find the boundary constraints for.
+    /// @param cut_cmap_positions The physical domain positions of the vertices of the cut cmap.
+    /// @param n_cuts             The number of cuts made to the original cmap to cut it to a disk.
+    /// @param is_cut_extremity   An indicator function for vertices which are the ends of cuts.
+    /// @return The boundary vertex constraints to tutte embed cut_cmap to its fundamental domain.
+    std::map<topology::Vertex, Eigen::Vector2d>
+        boundaryConstraints( const topology::CombinatorialMap& cut_cmap,
+                             const VertexPositionsFunc& cut_cmap_positions,
+                             const size_t n_cuts,
+                             const std::function<bool( const topology::Vertex& )>& is_cut_extremity,
+                             const size_t start_vert_id );
+
     void levelSetBasedTracing( const SweepInput& sweep_input,
                                const std::vector<double> level_set_values,
                                const std::function<void( const std::vector<FoliationLeaf>& )>& callback );
