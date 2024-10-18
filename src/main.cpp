@@ -102,6 +102,8 @@ int main( int argc, char* argv[] )
                 return SweepInputTestCases::flange();
             else if( std::find( input_args.begin(), input_args.end(), "cube" ) != input_args.end() )
                 return SweepInputTestCases::twelveTetCube();
+            else if( std::find( input_args.begin(), input_args.end(), "macaroni_coarse" ) != input_args.end() )
+                return io::loadINPFile( SRC_HOME "/test/data/macaroni_coarse.inp", "Surface3", "Surface4" );
             else
                 return SweepInputTestCases::macaroni();
         }();
