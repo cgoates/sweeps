@@ -63,6 +63,12 @@ topology::Cell ReversedCombinatorialMap::toUnderlyingCell( const topology::Cell&
     else return Vertex( topology::phi( mUnderlyingMap, 1, c.dart() ).value() );
 }
 
+topology::Cell ReversedCombinatorialMap::fromUnderlyingCell( const topology::Cell& c ) const
+{
+    if( c.dim() > 0 ) return c;
+    else return Vertex( topology::phi( mUnderlyingMap, -1, c.dart() ).value() );
+}
+
 std::optional<IndexingFunc> ReversedCombinatorialMap::indexing( const uint cell_dim ) const
 {
     return mUnderlyingMap.indexing( cell_dim ).transform( [&]( const IndexingFunc underlying_func ) -> IndexingFunc {

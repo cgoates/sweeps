@@ -21,6 +21,7 @@ namespace topology
         virtual std::optional<IndexingFunc> indexing( const uint cell_dim ) const override;
 
         topology::Cell toUnderlyingCell( const topology::Cell& c ) const;
+        topology::Cell fromUnderlyingCell( const topology::Cell& c ) const;
 
         private:
         const CombinatorialMap& mUnderlyingMap;
