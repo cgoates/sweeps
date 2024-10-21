@@ -143,15 +143,6 @@ namespace basis
         {
             const TPSplineSpace& constituent = *constituents.at( patch_ii );
             auto& constituent_fids = mFuncIds.at( patch_ii );
-            // Fill every fid that hasn't been set already with the next available ids
-            for( size_t func_ii = 0; func_ii < constituent.numFunctions(); func_ii++ )
-            {
-                if( constituent_fids.at( func_ii ) == -1 )
-                {
-                    constituent_fids.at( func_ii ) = mNumFunctions;
-                    mNumFunctions = mNumFunctions + 1;
-                }
-            }
 
             // Iterate the corner cells to connect to neighboring patches
             for( size_t cell_dim = 0; cell_dim < param_dim; cell_dim++ )
@@ -165,7 +156,6 @@ namespace basis
                     // Iterate adjacent patches
                     iterateAdjacentCells( multi_cmap, glob_corner_cell, param_dim, [&]( const topology::Cell& glob_neighbor_elem ) {
                         const auto [other_patch_ii, other_corner_cell_dart] = multi_cmap.toLocalDart( glob_neighbor_elem.dart() );
-                        if( other_patch_ii == patch_ii ) return true; // No need to connect to itself
 
                         const bool reverse =
                             not onSameVertex( multi_cmap, glob_corner_cell.dart(), glob_neighbor_elem.dart() );
@@ -190,9 +180,14 @@ namespace basis
                                 const FunctionId this_fid = util::flatten( this_iv, this_lengths );
                                 const FunctionId other_fid = util::flatten( other_iv, other_lengths );
 
-                                if( constituent_fids.at( this_fid ) == -1 or
-                                    ( other_constituent_fids.at( other_fid ) != -1 and
-                                      other_constituent_fids.at( other_fid ) != constituent_fids.at( this_fid ) ) )
+                                if( constituent_fids.at( this_fid ) == -1 )
+                                {
+                                    constituent_fids.at( this_fid ) = mNumFunctions;
+                                    mNumFunctions = mNumFunctions + 1;
+                                }
+
+                                if( other_constituent_fids.at( other_fid ) != -1 and
+                                    other_constituent_fids.at( other_fid ) != constituent_fids.at( this_fid ) )
                                 {
                                     std::cerr << constituent_fids.at( this_fid ) << " vs " << other_constituent_fids.at( other_fid ) << std::endl;
                                     throw std::runtime_error( "Problem connecting neighboring functions!" );
@@ -205,6 +200,16 @@ namespace basis
 
                         return true;
                     } );
+                }
+            }
+
+            // Fill every fid that hasn't been set already with the next available ids
+            for( size_t func_ii = 0; func_ii < constituent.numFunctions(); func_ii++ )
+            {
+                if( constituent_fids.at( func_ii ) == -1 )
+                {
+                    constituent_fids.at( func_ii ) = mNumFunctions;
+                    mNumFunctions = mNumFunctions + 1;
                 }
             }
         }

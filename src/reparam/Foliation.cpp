@@ -122,16 +122,16 @@ namespace reparam
         const auto bdry_vert_ids = indexingOrError( bdry, 0 );
 
         const topology::Dart start_d = [&]() {
-            topology::Dart d;
+            std::optional<topology::Dart> d;
             iterateDartsWhile( bdry, [&]( const topology::Dart& a ) {
                 if( bdry_vert_ids( topology::Vertex( a ) ) == start_vert_id )
                 {
-                    d = a;
+                    d.emplace( a );
                     return false;
                 }
                 return true;// FIXME: What if you don't find that vertex id?
             } );
-            return d;
+            return d.value();
         }();
 
         std::map<topology::Vertex, Eigen::Vector2d> out;
