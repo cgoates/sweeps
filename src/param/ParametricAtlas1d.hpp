@@ -26,4 +26,7 @@ namespace param
         const ParentDomain mParentDomain = simplexDomain( 1 );
         Eigen::VectorXd mLengths;
     };
+
+    std::vector<std::pair<topology::Cell, param::ParentPoint>> parentPointsOfParamPoints(
+        const std::vector<double>& values, const param::ParametricAtlas1d& pa, const double param_tol );
 }
