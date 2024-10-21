@@ -56,4 +56,7 @@ namespace topology
         std::map<ConstituentSide, std::pair<TPPermutation, ConstituentSide>> mInterMapConnections;
         const DartRanges mRanges;
     };
+
+    std::ostream& operator<<( std::ostream& o, const MultiPatchCombinatorialMap::ConstituentSide& cs );
+    std::ostream& operator<<( std::ostream& o, const MultiPatchCombinatorialMap::TPPermutation& cs );
 } // namespace topology

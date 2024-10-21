@@ -370,4 +370,32 @@ namespace topology
         else
             return constituent_id < o.constituent_id;
     }
+
+    std::ostream& operator<<( std::ostream& o, const MultiPatchCombinatorialMap::ConstituentSide& cs )
+    {
+        o << "{" << cs.constituent_id << ", " << cs.side_id << "}";
+        return o;
+    }
+    std::ostream& operator<<( std::ostream& o, const MultiPatchCombinatorialMap::TPPermutation& tpp )
+    {
+        switch( tpp )
+        {
+            case MultiPatchCombinatorialMap::TPPermutation::Flip1d:
+                o << "Flip1d";
+                break;
+            case MultiPatchCombinatorialMap::TPPermutation::ZeroToOne:
+                o << "ZeroToOne";
+                break;
+            case MultiPatchCombinatorialMap::TPPermutation::ZeroToTwo:
+                o << "ZeroToTwo";
+                break;
+            case MultiPatchCombinatorialMap::TPPermutation::ZeroToThree:
+                o << "ZeroToThree";
+                break;
+            case MultiPatchCombinatorialMap::TPPermutation::ZeroToZero:
+                o << "ZeroToZero";
+                break;
+        }
+        return o;
+    }
 } // namespace topology
