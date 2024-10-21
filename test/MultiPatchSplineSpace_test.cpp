@@ -244,3 +244,15 @@ TEST_CASE( "More complex 3d multipatch spline space" )
         test_c0( ss, 65, ( degree + 1 ) * ( degree + 1 ) );
     }
 }
+
+TEST_CASE( "Single patch periodic with multipatch" )
+{
+    const size_t n_elems_s = 2;
+    const size_t p = 2;
+    const KnotVector kv = integerKnotsWithNElems( 1, p );
+    const KnotVector kv2 = integerKnotsWithNElems( n_elems_s, p );
+    const auto ss_3d = std::make_shared<const TPSplineSpace>( buildBSpline( {kv2, kv, kv}, {p, p, p} ) );
+
+    const MultiPatchSplineSpace ss = buildMultiPatchSplineSpace( { ss_3d }, { { { 0, Dart( 3 * 6 + 1 ) }, { 0, Dart( ( 4 * ( n_elems_s - 1 ) + 1 ) * 6 + 1 ) } } } );
+    CHECK( ss.numFunctions() == 27 );
+}
