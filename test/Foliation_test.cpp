@@ -528,27 +528,13 @@ TEST_CASE( "Level set parameterization of the macaroni" )
 
         const size_t n_cuts = 1;
 
-        const size_t start_vert_id = cut_vert_ids( v0 );
-        // const size_t start_vert_id2 = [&]() {
-        //     const CombinatorialMapBoundary bdry( *cut_cmap );
-        //     const auto bdry_vert_ids = indexingOrError( bdry, 0 );
-        //     const size_t vert_id = bdry_vert_ids( v0 );
-        //     std::optional<topology::Dart> start_d;
-        //     iterateDartsWhile( bdry, [&]( const topology::Dart& a ) {
-        //         if( bdry_vert_ids( topology::Vertex( a ) ) == vert_id and onBoundary( cmap, a ) )
-        //         {
-        //             start_d.emplace( a );
-        //             return false;
-        //         }
-        //         return true;// FIXME: Better error if you don't find that vertex id?
-        //     } );
-        //     return cut_vert_ids( Vertex( start_d.value() ) );
-        // }();
-        // std::cout << "level_ii: " << level_ii << " Start id : " << start_vert_id << " vs " << start_vert_id2 << std::endl;
+        const auto is_start_vert = [&]( const topology::Vertex& v ) {
+            const size_t vert_id = cmap_vert_ids( v0 );
+            return cmap_vert_ids( v ) == vert_id and onBoundary( cmap, phi( cmap, -1, v.dart() ).value() );
+        };
 
         const std::map<topology::Vertex, Eigen::Vector2d> bdry_constraints =
-            reparam::boundaryConstraints( *cut_cmap, positions, n_cuts, is_cut_extremity, start_vert_id );
-        //std::cout << bdry_constraints << std::endl;
+            reparam::boundaryConstraints( *cut_cmap, positions, n_cuts, is_cut_extremity, is_start_vert );
 
         const std::map<size_t, Eigen::Vector2d> thetas_by_id = [&]() {
             std::map<size_t, Eigen::Vector2d> out;

@@ -32,8 +32,8 @@ namespace reparam
     struct FoliationLeaf
     {
         std::shared_ptr<const Eigen::MatrixX2d> tutte;
-        std::shared_ptr<mapping::GeometricMapping> tutte_mapping;
-        std::shared_ptr<mapping::TriangleMeshMapping> space_mapping;
+        std::shared_ptr<const mapping::GeometricMapping> tutte_mapping;
+        std::shared_ptr<const mapping::TriangleMeshMapping> space_mapping;
     };
 
     /// @brief Find locations where a trace intersects level sets.
@@ -68,7 +68,7 @@ namespace reparam
                              const VertexPositionsFunc& cut_cmap_positions,
                              const size_t n_cuts,
                              const std::function<bool( const topology::Vertex& )>& is_cut_extremity,
-                             const size_t start_vert_id );
+                             const std::function<bool( const topology::Vertex& )>& is_start_vert );
 
     void levelSetBasedTracing( const SweepInput& sweep_input,
                                const std::vector<double> level_set_values,

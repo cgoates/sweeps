@@ -114,7 +114,7 @@ namespace reparam
                              const VertexPositionsFunc& cut_cmap_positions,
                              const size_t n_cuts,
                              const std::function<bool( const topology::Vertex& )>& is_cut_extremity,
-                             const size_t start_vert_id )
+                             const std::function<bool( const topology::Vertex& )>& is_start_v )
     {
         if( cut_cmap.dim() != 2 ) throw std::invalid_argument( "boundaryConstraints only supports 2d cmaps" );
         const topology::CombinatorialMapBoundary bdry( cut_cmap );
@@ -124,7 +124,7 @@ namespace reparam
         const topology::Dart start_d = [&]() {
             std::optional<topology::Dart> d;
             iterateDartsWhile( bdry, [&]( const topology::Dart& a ) {
-                if( bdry_vert_ids( topology::Vertex( a ) ) == start_vert_id )
+                if( is_start_v( bdry.toUnderlyingCell( topology::Vertex( a ) ) ) )
                 {
                     d.emplace( a );
                     return false;
