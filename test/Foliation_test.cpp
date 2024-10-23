@@ -415,9 +415,6 @@ TEST_CASE( "Level set parameterization of the macaroni" )
     const auto path1 = topology::shortestPath( bdry, vertex_positions( bdry ), vs.at( 1 ), test_equal_vertices( bdry_vertex_ids, vs.at( 2 ) ) );
     const auto path2 = topology::shortestPath( sides, vertex_positions( sides ), vs.at( 2 ), test_equal_vertices( side_vertex_ids, vs.at( 3 ) ) );
     const auto path3 = topology::shortestPath( bdry, vertex_positions( bdry ), vs.at( 3 ), test_equal_vertices( bdry_vertex_ids, vs.at( 0 ) ) );
-    std::cout << path0.size() << " - " << path1.size() << " - " << path2.size() << " - " << path3.size() <<  std::endl;
-    std::cout << keep_face_target( vs.at( 0 ).dart() ) << keep_face_target( vs.at( 1 ).dart() ) << keep_face_target( vs.at( 2 ).dart() ) << keep_face_target( vs.at( 3 ).dart() ) << std::endl;
-
     const auto tunnel_loop = util::concatenate( util::concatenate( path0, path1 ), util::concatenate( path2, path3 ) );
 
     [&]( const std::vector<topology::Edge>& edges, const std::string& filename ) {
@@ -440,8 +437,6 @@ TEST_CASE( "Level set parameterization of the macaroni" )
     const auto vol_vertex_ids = indexingOrError( map, 0 );
 
     const auto harmonic_func = [&]( const topology::Vertex& v ) { return sol( vol_vertex_ids( v ) ); };
-
-    std::cout << harmonic_func( vs.at( 0 ) ) << " " << harmonic_func( vs.at( 1 ) ) << " " << harmonic_func( vs.at( 2 ) ) << " " << harmonic_func( vs.at( 3 ) ) << " " << std::endl;
 
     const std::vector<std::pair<topology::Edge, topology::Edge>> tunnel_loop_intersections = [&](){
         std::vector<SmallVector<topology::Edge, 2>> intersections( level_set_values.size(), SmallVector<topology::Edge, 2>() );
@@ -467,6 +462,7 @@ TEST_CASE( "Level set parameterization of the macaroni" )
         return out;
     }();
 
+    SimplicialComplex cuts;
     SimplicialComplex level_sets;
     const std::vector<Eigen::Vector2d> square_points{
        { 0.00000000e+00, -9.00000000e-01},
@@ -498,9 +494,6 @@ TEST_CASE( "Level set parameterization of the macaroni" )
 
     std::vector<std::vector<Eigen::Vector3d>> mapped_points( square_points.size() );
 
-    SimplicialComplex cuts;
-    SimplicialComplex tutte_level_sets;
-
     using namespace topology;
     size_t level_ii = 0;
     const auto process_param = [&]( const std::shared_ptr<const topology::CombinatorialMap>& cmap_ptr,
@@ -510,13 +503,6 @@ TEST_CASE( "Level set parameterization of the macaroni" )
         const auto& cmap = *cmap_ptr;
         const auto cmap_vert_ids = indexingOrError( cmap, 0 );
         const auto cut = topology::shortestPath( cmap, positions, v0, test_equal_vertices( cmap_vert_ids, v1 ) );
-        cuts.points.push_back( positions( topology::Vertex( cut.front().dart() ) ) );
-        for( const auto& edge : cut )
-        {
-            const size_t temp = cuts.points.size();
-            cuts.points.push_back( positions( topology::Vertex( phi( cmap, 1, edge.dart() ).value() ) ) );
-            cuts.simplices.emplace_back( temp - 1, temp );
-        }
 
         const auto cut_cmap = std::make_shared<const topology::CutCombinatorialMap>(
             cmap, std::set<topology::Cell>( cut.begin(), cut.end() ) );
@@ -562,27 +548,36 @@ TEST_CASE( "Level set parameterization of the macaroni" )
 
         const auto cut_atlas = std::make_shared<const param::TriangleParametricAtlas>( cut_cmap );
         const auto atlas = std::make_shared<const param::TriangleParametricAtlas>( cmap_ptr );
-        const mapping::TriangleMeshMapping square_mapping( cut_atlas, tutte_positions, 2 );
-        const mapping::TriangleMeshMapping space_mapping( atlas, positions, 3 );
+        const auto square_mapping = std::make_shared<const mapping::TriangleMeshMapping>( cut_atlas, tutte_positions, 2 );
+        const auto space_mapping = std::make_shared<const mapping::TriangleMeshMapping>( atlas, positions, 3 );
 
-        for( size_t point_ii = 0; point_ii < square_points.size(); point_ii++ )
-        {
-            const auto param_pt = square_mapping.maybeInverse( square_points.at( point_ii ) );
-            CHECK( param_pt.has_value() );
-            if( not param_pt.has_value() )
+        { //OUTPUT
+            for( size_t point_ii = 0; point_ii < square_points.size(); point_ii++ )
             {
-                std::cerr << "NO VALUE level: " << level_ii << " pt: " << square_points.at( point_ii ) << std::endl;
-                break;
+                const auto param_pt = square_mapping->maybeInverse( square_points.at( point_ii ) );
+                CHECK( param_pt.has_value() );
+                if( not param_pt.has_value() )
+                {
+                    std::cerr << "NO VALUE level: " << level_ii << " pt: " << square_points.at( point_ii ) << std::endl;
+                    break;
+                }
+                const auto space_pt = space_mapping->evaluate( param_pt.value().first, param_pt.value().second );
+                mapped_points.at( point_ii ).push_back( space_pt );
             }
-            const auto space_pt = space_mapping.evaluate( param_pt.value().first, param_pt.value().second );
-            mapped_points.at( point_ii ).push_back( space_pt );
-        }
 
-        iterateCellsWhile( cmap, 2, [&]( const topology::Face& f ) {
-            // if( level_sets.simplices.size() < 10 )
-            addTriangleNoDuplicateChecking( level_sets, triangleOfFace<3>( cmap, positions, f ) );
-            return true;
-        } );
+            iterateCellsWhile( cmap, 2, [&]( const topology::Face& f ) {
+                addTriangleNoDuplicateChecking( level_sets, triangleOfFace<3>( cmap, positions, f ) );
+                return true;
+            } );
+
+            cuts.points.push_back( positions( topology::Vertex( cut.front().dart() ) ) );
+            for( const auto& edge : cut )
+            {
+                const size_t temp = cuts.points.size();
+                cuts.points.push_back( positions( topology::Vertex( phi( cmap, 1, edge.dart() ).value() ) ) );
+                cuts.simplices.emplace_back( temp - 1, temp );
+            }
+        }
         level_ii++;
     };
 
@@ -646,9 +641,6 @@ TEST_CASE( "Level set parameterization of the macaroni" )
 
     io::VTKOutputObject output2( cuts );
     io::outputSimplicialFieldToVTK( output2, "macaroni_level_set_cuts.vtu" );
-
-    io::VTKOutputObject output3( tutte_level_sets );
-    io::outputSimplicialFieldToVTK( output3, "macaroni_tutte_level_sets.vtu" );
 
     SimplicialComplex traces;
     for( const auto& line : mapped_points )
