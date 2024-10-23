@@ -225,6 +225,29 @@ class SweepInputTestCases
 
         return sweep_input;
     }
+
+    static SweepInput bunny()
+    {
+        SweepInput sweep_input = io::loadINPFile( SRC_HOME "/test/data/stanford_bunny.inp", "SS1_S3", "SS2_S3" );
+        for( size_t i = 0; i < sweep_input.mesh.points.size(); i++ )
+        {
+            sweep_input.zero_bcs.at( i ) = false;
+            sweep_input.one_bcs.at( i ) = false;
+        }
+
+        const topology::TetMeshCombinatorialMap cmap( sweep_input.mesh );
+        const topology::CombinatorialMapBoundary bdry( cmap );
+
+        const auto vert_ids = indexingOrError( bdry, 0 );
+        iterateCellsWhile( bdry, 0, [&]( const topology::Vertex& v ) {
+            const size_t i = vert_ids( v );
+            sweep_input.zero_bcs.at( i ) = sweep_input.mesh.points.at( i )( 0 ) > 0.053;
+            sweep_input.one_bcs.at( i ) = sweep_input.mesh.points.at( i )( 2 ) < -0.055;
+            return true;
+        } );
+
+        return sweep_input;
+    }
 };
 
 class TriMeshTestCases
