@@ -26,4 +26,18 @@ namespace util
 
         return out;
     }
+
+    template<typename T>
+    std::vector<T> concatenate( const std::initializer_list<const std::vector<T>>& vecs )
+    {
+        std::vector<T> out;
+        const size_t n = std::transform_reduce(
+            vecs.begin(), vecs.end(), 0, std::plus<>(), []( const auto& v ) { return v.size(); } );
+        out.reserve( n );
+
+        for( const std::vector<T>& v : vecs )
+            out.insert( out.end(), v.begin(), v.end() );
+
+        return out;
+    }
 } // namespace util
