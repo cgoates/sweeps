@@ -235,6 +235,23 @@ TEST_CASE( "Level set parameterization of left ventricle" )
     testLevelSetBasedTracing( sweep_input, level_set_values, output_prefix );
 }
 
+TEST_CASE( "Level set parameterization of stanford bunny" )
+{
+    const SweepInput sweep_input = SweepInputTestCases::bunny();
+
+    using util::linspace;
+    using util::concatenate;
+
+    const std::vector<double> level_set_values = concatenate( { linspace( 0, 0.177, 35 ),
+                                                                linspace( 0.177, 0.17904, 40 ),
+                                                                linspace( 0.17904, 0.17908, 40 ),
+                                                                linspace( 0.17908, 0.1796, 10 ),
+                                                                linspace( 0.1796, 1.0, 20 ) } );
+
+    const std::optional<std::string> output_prefix = std::nullopt;//{ "bunny" };
+    testLevelSetBasedTracing( sweep_input, level_set_values, output_prefix );
+}
+
 TEST_CASE( "Level set parameterization of hook" )
 {
     const SweepInput sweep_input = io::loadINPFile( SRC_HOME "/test/data/hook.inp", "Surface12", "Surface10" );
