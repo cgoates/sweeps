@@ -250,6 +250,14 @@ TEST_CASE( "Level set parameterization of cube" )
     testLevelSetBasedTracing( sweep_input, 3 );
 }
 
+TEST_CASE( "Level set parameterization of bullet" )
+{
+    const SweepInput sweep_input = SweepInputTestCases::bullet();
+
+    const std::optional<std::string> output_prefix = std::nullopt;//{ "bullet" };
+    testLevelSetBasedTracing( sweep_input, 5, "bullet" );
+}
+
 TEST_CASE( "Level set parameterization of flange" )
 {
     const size_t n_levels = 25;

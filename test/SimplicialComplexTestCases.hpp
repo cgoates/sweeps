@@ -10,6 +10,7 @@
 #include <TetMeshCombinatorialMap.hpp>
 #include <CombinatorialMapBoundary.hpp>
 #include <CombinatorialMapMethods.hpp>
+#include <SimplexUtilities.hpp>
 
 class SweepInputTestCases
 {
@@ -248,6 +249,46 @@ class SweepInputTestCases
 
         return sweep_input;
     }
+
+    static SweepInput spring()
+    {
+        return io::loadINPFile( SRC_HOME "/test/data/spring.inp", "Surface2", "Surface3" );
+    }
+
+    static SweepInput bullet()
+    {
+        SweepInput sweep_input = io::loadINPFile( SRC_HOME "/test/data/bullet_halfsphere.inp", "lala", "lala" );
+        for( size_t i = 0; i < sweep_input.mesh.points.size(); i++ )
+        {
+            sweep_input.zero_bcs.at( i ) = false;
+            sweep_input.one_bcs.at( i ) = false;
+        }
+
+        const topology::TetMeshCombinatorialMap cmap( sweep_input.mesh );
+        const topology::CombinatorialMapBoundary bdry( cmap );
+
+        const auto vert_ids = indexingOrError( bdry, 0 );
+        iterateCellsWhile( bdry, 0, [&]( const topology::Vertex& v ) {
+            const size_t i = vert_ids( v );
+            sweep_input.one_bcs.at( i ) = sweep_input.mesh.points.at( i ).norm() > 19.99;
+            // sweep_input.one_bcs.at( i ) = sweep_input.mesh.points.at( i ).norm() < 19.99 and sweep_input.mesh.points.at( i )( 2 ) < -0.0000001;
+            return true;
+        } );
+
+        iterateCellsWhile( bdry, 2, [&]( const topology::Face& f ) {
+            const auto centr = centroid( cmap, f );
+            if( centr.norm() < 13 and centr( 2 ) < -0.0000001 )
+                topology::iterateAdjacentCells( bdry, f, 0, [&]( const topology::Vertex& v ) {
+                    const size_t i = vert_ids( v );
+                    sweep_input.zero_bcs.at( i ) = true;
+                    return true;
+                } );
+            return true;
+        } );
+
+        return sweep_input;
+    }
+
 };
 
 class TriMeshTestCases
