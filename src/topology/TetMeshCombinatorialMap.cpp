@@ -237,4 +237,9 @@ std::optional<size_t> TetMeshCombinatorialMap::cellCount( const uint cell_dim ) 
     }
 }
 
+Volume TetMeshCombinatorialMap::tetOfId( const size_t tet_id ) const
+{
+    return Volume( tet_id * darts_per_tet );
+}
+
 }

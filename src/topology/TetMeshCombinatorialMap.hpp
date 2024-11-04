@@ -57,6 +57,8 @@ namespace topology
             return Vertex( mVertexDarts.at( vid.id() ) );
         }
 
+        Volume tetOfId( const size_t tet_id ) const;
+
         const SimplicialComplex& simplicialComplex() const { return mSimplicialComplex; }
 
         virtual std::optional<size_t> cellCount( const uint cell_dim ) const override;
