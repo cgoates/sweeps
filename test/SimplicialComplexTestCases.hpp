@@ -11,6 +11,8 @@
 #include <CombinatorialMapBoundary.hpp>
 #include <CombinatorialMapMethods.hpp>
 #include <SimplexUtilities.hpp>
+#include <GlobalCellMarker.hpp>
+#include <queue>
 
 class SweepInputTestCases
 {
@@ -285,6 +287,91 @@ class SweepInputTestCases
                 } );
             return true;
         } );
+
+        return sweep_input;
+    }
+
+    static SweepInput pot_counter()
+    {
+        SweepInput sweep_input = io::loadINPFile( SRC_HOME "/test/data/Potential_Counterexample.inp", "lala", "lala" );
+        for( size_t i = 0; i < sweep_input.mesh.points.size(); i++ )
+        {
+            sweep_input.zero_bcs.at( i ) = false;
+            sweep_input.one_bcs.at( i ) = false;
+        }
+
+        const topology::TetMeshCombinatorialMap cmap( sweep_input.mesh );
+        const topology::CombinatorialMapBoundary bdry( cmap );
+
+        const auto vert_ids = indexingOrError( bdry, 0 );
+
+        ///////////////////////////////////////////////////////
+        /// 1. One bcs can be created by simple point compares
+
+        iterateCellsWhile( bdry, 2, [&]( const topology::Face& f ) {
+            const auto centr = centroid( cmap, f );
+            if( centr( 0 ) < 6 and centr( 0 ) > -6 and centr( 2 ) < 9 )
+                topology::iterateAdjacentCells( bdry, f, 0, [&]( const topology::Vertex& v ) {
+                    const size_t i = vert_ids( v );
+                    sweep_input.one_bcs.at( i ) = true;
+                    return true;
+                } );
+            return true;
+        } );
+
+        /////////////////////////////////////////////////////////////////
+        /// 2. Zero bcs require a flood to all faces not around a corner.
+
+        const topology::Vertex start_v = [&](){
+            const auto start = cmap.vertexOfId( 3447 );
+            auto d = start.dart();
+            iterateDartsOfCell( cmap, start, [&]( const topology::Dart& a ) {
+                d = a;
+                return not onBoundary( cmap, a );
+            } );
+            return topology::Vertex( d );
+        }();
+
+        topology::GlobalCellMarker m( bdry, 2 );
+        std::queue<topology::Face> q;
+        q.push( topology::Face( start_v.dart() ) );
+        m.mark( bdry, q.front() );
+        while( not q.empty() )
+        {
+            const auto f = q.front();
+            q.pop();
+
+            // Add vertices of face to set
+            iterateAdjacentCells( bdry, f, 0, [&]( const topology::Vertex& v ) {
+                sweep_input.zero_bcs.at( vert_ids( v ) ) = true;
+                return true;
+            } );
+
+            // Flood to neighboring faces
+            iterateAdjacentCells( bdry, f, 1, [&]( const topology::Edge& e ) {
+                const auto maybe_phi2 = phi( bdry, 2, e.dart() );
+                if( maybe_phi2 )
+                {
+                    const topology::Face next_f( maybe_phi2.value() );
+                    if( not m.isMarked( next_f ) )
+                    {
+                        const auto next_centr = centroid( cmap, next_f );
+                        m.mark( bdry, next_f );
+                        if( next_centr( 2 ) > -16 )
+                        {
+                            const auto next_norm = triangleNormal( cmap, next_f );
+                            const auto norm = triangleNormal( cmap, f );
+
+                            if( std::acos( norm.dot( next_norm ) ) < std::numbers::pi / 2 )
+                            {
+                                q.push( next_f );
+                            }
+                        }
+                    }
+                }
+                return true;
+            } );
+        }
 
         return sweep_input;
     }
