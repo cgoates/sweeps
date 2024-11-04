@@ -420,23 +420,19 @@ int main( int argc, char* argv[] )
         {
             SimplicialComplex all_level_sets;
 
-            const size_t n_level_sets = 600;
-            Eigen::VectorXd values = Eigen::VectorXd::LinSpaced( n_level_sets, 1.0/n_level_sets, 1.0 - 1.0/n_level_sets );
-            values(0) = 0.179066;
+            const size_t n_level_sets = 30;
+            Eigen::VectorXd values = Eigen::VectorXd::LinSpaced( n_level_sets, 0.0, 1.0 );
 
             const auto func = [&]( const topology::Vertex& v ) {
                 return ans( vertex_ids( v ) );
             };
 
+            const bool output_individual_level_sets = std::find( input_args.begin(), input_args.end(), "individual" ) != input_args.end();
+
+            for( Eigen::Index i = 1; i < values.size() - 1; i++ )
             {
-                iterateCellsWhile( base, 2, [&]( const topology::Face& f ) {
-                    const auto tri = triangleOfFace<3>( base, vertex_positions( base ), f );
-                    addTriangleNoDuplicateChecking( all_level_sets, tri );
-                    return true;
-                } );
-            }
-            for( const double val : values )
-            {
+                SimplicialComplex one_level_set;
+                const double val = values( i );
                 const auto level = std::make_shared<const topology::LevelSetCMap>( map, func, val );
                 const auto level_positions = levelSetVertexPositions( *level, vertex_positions( map ) );
                 const topology::DelaunayTriangulation level_tri( level, level_positions );
@@ -445,8 +441,15 @@ int main( int argc, char* argv[] )
                 iterateCellsWhile( level_tri, 2, [&]( const topology::Face& f ) {
                     const auto tri = triangleOfFace<3>( level_tri, level_tri_positions, f );
                     addTriangleNoDuplicateChecking( all_level_sets, tri );
+                    if( output_individual_level_sets ) addTriangleNoDuplicateChecking( one_level_set, tri );
                     return true;
                 } );
+
+                if( output_individual_level_sets )
+                {
+                    io::VTKOutputObject output( one_level_set );
+                    io::outputSimplicialFieldToVTK( output, "level_set_" + std::to_string( i ) + ".vtu" );
+                }
             }
             iterateCellsWhile( target, 2, [&]( const topology::Face& f ) {
                 const auto tri = triangleOfFace<3>( target, vertex_positions( target ), f );
