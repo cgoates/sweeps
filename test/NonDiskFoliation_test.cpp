@@ -24,33 +24,211 @@
 #include <SplineSpaceEvaluator.hpp>
 #include <LeastSquaresFitting.hpp>
 #include <MultiPatchSplineSpace.hpp>
+#include <random>
 
-void macaroniFoliation( const std::vector<double>& level_set_values,
+#include <fstream>
+#include <sstream>
+
+std::function<bool( const topology::Vertex& )> testEqualVertices( const topology::IndexingFunc& vert_ids,
+                                                                  const topology::Vertex& end_v )
+{
+    return [&]( const topology::Vertex& test_v ) { return vert_ids( test_v ) == vert_ids( end_v ); };
+}
+
+std::function<bool( const topology::Vertex& )> testFoundOtherBoundary( const topology::CombinatorialMap& cmap,
+                                                                       const topology::Vertex& v_on_bdry )
+{
+    auto d = v_on_bdry.dart();
+    if( not onBoundary( cmap, d ) )
+    {
+        bool temp = iterateDartsOfCell( cmap, v_on_bdry, [&]( const auto& a ) {
+            d = a;
+            return not onBoundary( cmap, a );
+        } );
+        std::cout << "Did I find the other edge? " << not temp << std::endl;
+    }
+
+    const topology::CombinatorialMapBoundary bdry( cmap, { d } );
+    const auto bdry_ids = indexingOrError( bdry, 0 );
+
+    std::set<size_t> stop_ids;
+
+    auto curr_d = d;
+    do
+    {
+        stop_ids.insert( bdry_ids( topology::Vertex( curr_d ) ) );
+        curr_d = phi( bdry, 1, curr_d ).value();
+    } while( curr_d != d );
+
+    const auto v_ids = indexingOrError( cmap, 0 );
+    return [stop_ids, v_ids]( const topology::Vertex& v ) { return stop_ids.count( v_ids( v ) ) > 0; };
+}
+
+constexpr bool interior_only = true;
+
+reparam::FoliationLeaf
+    leafFromLevelSetWithCuts( const std::shared_ptr<const topology::CombinatorialMap>& cmap_ptr,
+                              const auto& positions,
+                              const std::vector<std::pair<topology::Vertex, topology::Vertex>>& cut_vertices )
+{
+    if( cut_vertices.size() == 0 ) throw std::invalid_argument( "Must be at least one cut" );
+    const auto& cmap = *cmap_ptr;
+    const auto cmap_vert_ids = indexingOrError( cmap, 0 );
+    std::set<topology::Cell> cuts;
+    std::vector<std::pair<topology::Vertex, topology::Vertex>> updated_cut_vertices;
+    size_t i = 0;
+    for( const auto& pr : cut_vertices )
+    {
+        const auto cut = topology::shortestPath( cmap, positions, pr.first, testFoundOtherBoundary( cmap, pr.second ), interior_only );
+        std::cout << "Cut size: " << cut.size() << std::endl;
+        io::outputEdges( cmap, positions, cut, "level_set_cut_" + std::to_string( i++ ) + ".vtu" );
+        cuts.insert( cut.begin(), cut.end() );
+        updated_cut_vertices.push_back( { pr.first, topology::Vertex( phi( cmap, 1, cut.back().dart() ).value() ) } );
+    }
+
+    const auto cut_cmap = std::make_shared<const topology::CutCombinatorialMap>( cmap, cuts );
+    const auto cut_vert_ids = indexingOrError( *cut_cmap, 0 );
+
+    const auto is_cut_extremity = [&]( const topology::Vertex& v ) -> bool {
+        return std::any_of( updated_cut_vertices.begin(), updated_cut_vertices.end(), [&]( const auto& pr ) {
+            return testEqualVertices( cmap_vert_ids, pr.first )( v ) or
+                   testEqualVertices( cmap_vert_ids, pr.second )( v );
+        } );
+    };
+
+    const size_t n_cuts = cut_vertices.size();
+
+    const auto is_start_vert = [&]( const topology::Vertex& v ) {
+        const size_t vert_id = cmap_vert_ids( cut_vertices.front().first );
+        return cmap_vert_ids( v ) == vert_id and onBoundary( cmap, phi( cmap, -1, v.dart() ).value() );
+    };
+
+    const std::map<topology::Vertex, Eigen::Vector2d> bdry_constraints =
+        reparam::boundaryConstraints( *cut_cmap, positions, n_cuts, is_cut_extremity, is_start_vert );
+
+    // FIXME: This should be what we return from boundaryConstraints, maybe
+    const std::map<size_t, Eigen::Vector2d> constraints_by_id = [&]() {
+        std::map<size_t, Eigen::Vector2d> out;
+        for( const auto& pr : bdry_constraints )
+        {
+            out.insert( { cut_vert_ids( pr.first ), pr.second } );
+        }
+        return out;
+    }();
+
+    const auto constraints_func = [&]( const topology::Vertex& v ) -> std::optional<Eigen::Vector2d> {
+        if( boundaryAdjacent( *cut_cmap, v ) )
+        {
+            return constraints_by_id.at( cut_vert_ids( v ) );
+        }
+        else
+            return std::nullopt;
+    };
+
+    const Eigen::MatrixX2d tutte = reparam::tutteEmbedding( *cut_cmap, positions, constraints_func, true );
+
+    reparam::FoliationLeaf leaf{};
+    leaf.tutte =
+        std::make_shared<Eigen::MatrixX2d>( reparam::tutteEmbedding( *cut_cmap, positions, constraints_func, true ) );
+
+    const auto tutte_positions = [cut_vert_ids, tutte = *leaf.tutte]( const topology::Vertex& v ) -> Eigen::Vector2d {
+        return ( Eigen::Vector2d() << tutte( cut_vert_ids( v ), 0 ), tutte( cut_vert_ids( v ), 1 ) ).finished();
+    };
+    const auto cut_atlas = std::make_shared<const param::TriangleParametricAtlas>( cut_cmap );
+    const auto atlas = std::make_shared<const param::TriangleParametricAtlas>( cmap_ptr );
+    leaf.tutte_mapping = std::make_shared<const mapping::TriangleMeshMapping>( cut_atlas, tutte_positions, 2 );
+    leaf.space_mapping = std::make_shared<const mapping::TriangleMeshMapping>( atlas, positions, 3 );
+    return leaf;
+}
+
+// outer vector is by level set, inner vector is by tunnel loop
+std::vector<std::vector<std::pair<topology::Edge, topology::Edge>>>
+    tunnelLoopIntersections( const topology::CombinatorialMapBoundary& bdry,
+                             const topology::CombinatorialMapRestriction& sides,
+                             const std::vector<std::array<topology::Vertex, 4>>& tunnel_loop_vs,
+                             const auto& level_set_values,
+                             const auto& bdry_positions,
+                             const auto& harmonic_func,
+                             const std::optional<std::string>& filename = std::nullopt )
+{
+    const auto side_vertex_ids = indexingOrError( sides, 0 );
+    std::vector<std::vector<std::pair<topology::Edge, topology::Edge>>> out(
+        level_set_values.size(), std::vector<std::pair<topology::Edge, topology::Edge>>( tunnel_loop_vs.size() ) );
+
+    for( size_t loop_ii = 0; loop_ii < tunnel_loop_vs.size(); loop_ii++ )
+    {
+        const std::array<topology::Vertex, 4>& vs = tunnel_loop_vs.at( loop_ii );
+        const auto path0 = topology::shortestPath(
+            sides, bdry_positions, vs.at( 0 ), testEqualVertices( side_vertex_ids, vs.at( 1 ) ) );
+        const auto path2 = topology::shortestPath(
+            sides, bdry_positions, vs.at( 2 ), testEqualVertices( side_vertex_ids, vs.at( 3 ) ) );
+
+        if( true or filename )
+        {
+            const auto bdry_vertex_ids = indexingOrError( bdry, 0 );
+            const auto path1 = topology::shortestPath(
+                bdry, bdry_positions, vs.at( 1 ), testEqualVertices( bdry_vertex_ids, vs.at( 2 ) ) );
+            const auto path3 = topology::shortestPath(
+                bdry, bdry_positions, vs.at( 3 ), testEqualVertices( bdry_vertex_ids, vs.at( 0 ) ) );
+            const auto tunnel_loop =
+                util::concatenate( util::concatenate( path0, path1 ), util::concatenate( path2, path3 ) );
+            io::outputEdges( bdry, bdry_positions, tunnel_loop, "handle_loop_" + std::to_string( loop_ii ) + ".vtu" );
+        }
+
+        std::vector<SmallVector<topology::Edge, 2>> intersections( level_set_values.size(),
+                                                                   SmallVector<topology::Edge, 2>() );
+
+        const auto add_any_intersections = [&]( const topology::Edge& e ) {
+            const std::pair<double, double> bounds = {
+                harmonic_func( bdry.toUnderlyingCell( topology::Vertex( e.dart() ) ) ),
+                harmonic_func( bdry.toUnderlyingCell( topology::Vertex( phi( bdry, 1, e.dart() ).value() ) ) ) };
+            for( size_t level_ii = 1; level_ii < level_set_values.size() - 1; level_ii++ )
+            {
+                if( ( bounds.first < level_set_values.at( level_ii ) and
+                      bounds.second >= level_set_values.at( level_ii ) ) or
+                    ( bounds.first >= level_set_values.at( level_ii ) and
+                      bounds.second < level_set_values.at( level_ii ) ) )
+                {
+                    intersections.at( level_ii ).push_back( e );
+                }
+            }
+        };
+
+        for( const topology::Edge& e : path0 ) add_any_intersections( e );
+        for( const topology::Edge& e : path2 ) add_any_intersections( e );
+
+        for( size_t level_ii = 1; level_ii < intersections.size() - 1; level_ii++ )
+            out.at( level_ii - 1 ).at( loop_ii ) = { intersections.at( level_ii ).at( 0 ),
+                                                     intersections.at( level_ii ).at( 1 ) };
+    }
+
+    return out;
+}
+
+void nonDiskFoliations( const SweepInput& sweep,
+                        const std::vector<double>& level_set_values,
+                        const std::vector<std::array<size_t, 4>>& cut_v_ids,
                         const std::function<void( const std::vector<reparam::FoliationLeaf>& )>& callback )
 {
-    const SweepInput sweep = io::loadINPFile( SRC_HOME "/test/data/macaroni_coarse.inp", "Surface3", "Surface4" );
-    const auto& zero_bcs = sweep.zero_bcs;
-    const auto& one_bcs = sweep.one_bcs;
-
     const topology::TetMeshCombinatorialMap map( sweep.mesh );
     const topology::CombinatorialMapBoundary bdry( map );
 
     const std::vector<Normal> normals = faceNormals( map );
-    const Eigen::VectorXd sol = reparam::sweepEmbedding( map, zero_bcs, one_bcs, normals );
+    const Eigen::VectorXd sol = reparam::sweepEmbedding( map, sweep.zero_bcs, sweep.one_bcs, normals );
 
     const auto bdry_vertex_ids = indexingOrError( bdry, 0 );
     const auto map_face_ids = indexingOrError( map, 2 );
 
     const auto keep_face_base = [&]( const topology::Face& f ) {
-        return zero_bcs.at( bdry_vertex_ids( topology::Vertex( f.dart() ) ) ) and
-            zero_bcs.at( bdry_vertex_ids( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ) ) and
-            zero_bcs.at( bdry_vertex_ids( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ) );
+        return sweep.zero_bcs.at( bdry_vertex_ids( topology::Vertex( f.dart() ) ) ) and
+               sweep.zero_bcs.at( bdry_vertex_ids( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ) ) and
+               sweep.zero_bcs.at( bdry_vertex_ids( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ) );
     };
 
     const auto keep_face_target = [&]( const topology::Face& f ) {
-        return one_bcs.at( bdry_vertex_ids( topology::Vertex( f.dart() ) ) ) and
-            one_bcs.at( bdry_vertex_ids( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ) ) and
-            one_bcs.at( bdry_vertex_ids( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ) );
+        return sweep.one_bcs.at( bdry_vertex_ids( topology::Vertex( f.dart() ) ) ) and
+               sweep.one_bcs.at( bdry_vertex_ids( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ) ) and
+               sweep.one_bcs.at( bdry_vertex_ids( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ) );
     };
 
     const auto keep_face_sides = [&]( const topology::Face& f ) {
@@ -68,157 +246,35 @@ void macaroniFoliation( const std::vector<double>& level_set_values,
         };
     };
 
-    const auto test_equal_vertices = []( const topology::IndexingFunc& vert_ids, const topology::Vertex& end_v ) {
-        return [&]( const topology::Vertex& test_v ){
-            return vert_ids( test_v ) == vert_ids( end_v );
-        };
-    };
-
     const auto side_vertex_ids = indexingOrError( sides, 0 );
 
-    const std::array<topology::Vertex, 4> vs = [&]() {
-        topology::Vertex v0;
-        topology::Vertex v1;
-        topology::Vertex v2;
-        topology::Vertex v3;
+    const std::vector<std::array<topology::Vertex, 4>> vs = [&]() {
+        std::vector<std::array<topology::Vertex, 4>> out( cut_v_ids.size() );
         iterateCellsWhile( sides, 0, [&]( const topology::Vertex& v ) {
             const size_t id = side_vertex_ids( v );
-            switch( id )
+            for( size_t loop_ii = 0; loop_ii < cut_v_ids.size(); loop_ii++ )
             {
-                case 97:
-                    v0 = v;
-                    return true;
-                case 185:
-                    v1 = v;
-                    return true;
-                case 69:
-                    v2 = v;
-                    return true;
-                case 13:
-                    v3 = v;
-                    return true;
-                default:
-                    return true;
-            }
-        } );
-        
-        return std::array<topology::Vertex, 4>{ v0, v1, v2, v3 };
-    }();
-    const auto path0 = topology::shortestPath( bdry, vertex_positions( bdry ), vs.at( 0 ), test_equal_vertices( bdry_vertex_ids, vs.at( 1 ) ) );
-    const auto path1 = topology::shortestPath( bdry, vertex_positions( bdry ), vs.at( 1 ), test_equal_vertices( bdry_vertex_ids, vs.at( 2 ) ) );
-    const auto path2 = topology::shortestPath( sides, vertex_positions( sides ), vs.at( 2 ), test_equal_vertices( side_vertex_ids, vs.at( 3 ) ) );
-    const auto path3 = topology::shortestPath( bdry, vertex_positions( bdry ), vs.at( 3 ), test_equal_vertices( bdry_vertex_ids, vs.at( 0 ) ) );
-    const auto tunnel_loop = util::concatenate( util::concatenate( path0, path1 ), util::concatenate( path2, path3 ) );
-
-    [&]( const std::vector<topology::Edge>& edges, const std::string& filename ) {
-        SimplicialComplex path;
-
-        const auto bdry_positions = vertex_positions( bdry );
-
-        path.points.push_back( bdry_positions( topology::Vertex( edges.front().dart() ) ) );
-        for( const auto& edge : edges )
-        {
-            const size_t temp = path.points.size();
-            path.points.push_back( bdry_positions( topology::Vertex( phi( bdry, 1, edge.dart() ).value() ) ) );
-            path.simplices.emplace_back( temp - 1, temp );
-        }
-
-        io::VTKOutputObject output( path );
-        io::outputSimplicialFieldToVTK( output, filename );
-    }( tunnel_loop, "macaroni_tunnel_loop.vtu" );
-
-    const auto vol_vertex_ids = indexingOrError( map, 0 );
-
-    const auto harmonic_func = [&]( const topology::Vertex& v ) { return sol( vol_vertex_ids( v ) ); };
-
-    const std::vector<std::pair<topology::Edge, topology::Edge>> tunnel_loop_intersections = [&](){
-        std::vector<SmallVector<topology::Edge, 2>> intersections( level_set_values.size(), SmallVector<topology::Edge, 2>() );
-        for( const topology::Edge& e : tunnel_loop )
-        {
-            const std::pair<double, double> bounds = {
-                sol( bdry_vertex_ids( topology::Vertex( e.dart() ) ) ),
-                sol( bdry_vertex_ids( topology::Vertex( phi( bdry, 1, e.dart() ).value() ) ) ) };
-            for( size_t i = 1; i < level_set_values.size() - 1; i++ )
-            {
-                if( ( bounds.first < level_set_values.at( i ) and bounds.second >= level_set_values.at( i ) ) or
-                    ( bounds.first >= level_set_values.at( i ) and bounds.second < level_set_values.at( i ) ) )
+                const auto it = std::find( cut_v_ids.at( loop_ii ).begin(), cut_v_ids.at( loop_ii ).end(), id );
+                if( it != cut_v_ids.at( loop_ii ).end() )
                 {
-                    intersections.at( i ).push_back( e );
+                    out.at( loop_ii ).at( std::distance( cut_v_ids.at( loop_ii ).begin(), it ) ) = v;
                 }
             }
-        }
-        std::vector<std::pair<topology::Edge, topology::Edge>> out;
-        out.reserve( intersections.size() - 2 );
-        for( size_t i = 1; i < intersections.size() - 1; i++ )
-            out.emplace_back( intersections.at( i ).at( 0 ), intersections.at( i ).at( 1 ) );
+            return true;
+        } );
 
         return out;
     }();
 
-    std::vector<reparam::FoliationLeaf> leaves;
+    const auto harmonic_func = [vol_vertex_ids = indexingOrError( map, 0 ), &sol]( const topology::Vertex& v ) {
+        return sol( vol_vertex_ids( v ) );
+    };
+
+    const std::vector<std::vector<std::pair<topology::Edge, topology::Edge>>> tunnel_loop_intersections =
+        tunnelLoopIntersections( bdry, sides, vs, level_set_values, vertex_positions( bdry ), harmonic_func );
 
     using namespace topology;
-    size_t level_ii = 0;
-    const auto process_param = [&]( const std::shared_ptr<const topology::CombinatorialMap>& cmap_ptr,
-                                    const auto& positions,
-                                    const Vertex& v0,
-                                    const Vertex& v1 ) {
-        const auto& cmap = *cmap_ptr;
-        const auto cmap_vert_ids = indexingOrError( cmap, 0 );
-        const auto cut = topology::shortestPath( cmap, positions, v0, test_equal_vertices( cmap_vert_ids, v1 ) );
-
-        const auto cut_cmap = std::make_shared<const topology::CutCombinatorialMap>(
-            cmap, std::set<topology::Cell>( cut.begin(), cut.end() ) );
-        const auto cut_vert_ids = indexingOrError( *cut_cmap, 0 );
-
-        const auto is_cut_extremity = [&]( const topology::Vertex& v ) -> bool {
-            return test_equal_vertices( cmap_vert_ids, v0 )( v ) or test_equal_vertices( cmap_vert_ids, v1 )( v );
-        };
-
-        const size_t n_cuts = 1;
-
-        const auto is_start_vert = [&]( const topology::Vertex& v ) {
-            const size_t vert_id = cmap_vert_ids( v0 );
-            return cmap_vert_ids( v ) == vert_id and onBoundary( cmap, phi( cmap, -1, v.dart() ).value() );
-        };
-
-        const std::map<topology::Vertex, Eigen::Vector2d> bdry_constraints =
-            reparam::boundaryConstraints( *cut_cmap, positions, n_cuts, is_cut_extremity, is_start_vert );
-
-        const std::map<size_t, Eigen::Vector2d> thetas_by_id = [&]() {
-            std::map<size_t, Eigen::Vector2d> out;
-            for( const auto& pr : bdry_constraints )
-            {
-                out.insert( { cut_vert_ids( pr.first ), pr.second } );
-            }
-            return out;
-        }();
-
-        const auto constraints_func = [&]( const topology::Vertex& v ) -> std::optional<Eigen::Vector2d> {
-            if( boundaryAdjacent( *cut_cmap, v ) )
-            {
-                return thetas_by_id.at( cut_vert_ids( v ) );
-            }
-            else
-                return std::nullopt;
-        };
-
-        const Eigen::MatrixX2d tutte = reparam::tutteEmbedding( *cut_cmap, positions, constraints_func, true );
-
-
-
-        leaves.push_back({});
-        leaves.back().tutte = std::make_shared<Eigen::MatrixX2d>( reparam::tutteEmbedding( *cut_cmap, positions, constraints_func, true ) );
-
-        const auto tutte_positions = [cut_vert_ids,tutte=*leaves.back().tutte]( const topology::Vertex& v ) -> Eigen::Vector2d {
-            return ( Eigen::Vector2d() << tutte( cut_vert_ids( v ), 0 ), tutte( cut_vert_ids( v ), 1 ) ).finished();
-        };
-        const auto cut_atlas = std::make_shared<const param::TriangleParametricAtlas>( cut_cmap );
-        const auto atlas = std::make_shared<const param::TriangleParametricAtlas>( cmap_ptr );
-        leaves.back().tutte_mapping = std::make_shared<const mapping::TriangleMeshMapping>( cut_atlas, tutte_positions, 2 );
-        leaves.back().space_mapping = std::make_shared<const mapping::TriangleMeshMapping>( atlas, positions, 3 );
-        level_ii++;
-    };
+    std::vector<reparam::FoliationLeaf> leaves;
 
     { // Base level set
         const auto find_on_base = [&]( const Vertex& v ) {
@@ -233,10 +289,14 @@ void macaroniFoliation( const std::vector<double>& level_set_values,
             } );
             return out.value();
         };
-        const Vertex v0 = find_on_base( vs.at( 0 ) );
-        const Vertex v1 = find_on_base( vs.at( 3 ) );
+        std::vector<std::pair<topology::Vertex, topology::Vertex>> cut_ends;
+        cut_ends.reserve( vs.size() );
+        for( const auto& loop_vs : vs )
+        {
+            cut_ends.push_back( { find_on_base( loop_vs.at( 0 ) ), find_on_base( loop_vs.at( 3 ) ) } );
+        }
         const auto base_positions = vertex_positions( bdry );
-        process_param( base, base_positions, v0, v1 );
+        leaves.push_back( leafFromLevelSetWithCuts( base, base_positions, cut_ends ) );
     }
 
     for( size_t level_ii = 1; level_ii < level_set_values.size() - 1; level_ii++ )
@@ -248,9 +308,15 @@ void macaroniFoliation( const std::vector<double>& level_set_values,
         const auto tri_positions =
             topology::delaunayTriangulationVertexPositions( *level_set_tri, level_set_positions );
 
-        const topology::Vertex v0( tunnel_loop_intersections.at( level_ii - 1 ).first.dart() );
-        const topology::Vertex v1( tunnel_loop_intersections.at( level_ii - 1 ).second.dart() );
-        process_param( level_set_tri, tri_positions, v0, v1 );
+        std::vector<std::pair<topology::Vertex, topology::Vertex>> cut_ends;
+        cut_ends.reserve( vs.size() );
+        for( const auto& loop_ends : tunnel_loop_intersections.at( level_ii - 1 ) )
+        {
+            cut_ends.push_back(
+                { topology::Vertex( loop_ends.first.dart() ), topology::Vertex( loop_ends.second.dart() ) } );
+        }
+
+        leaves.push_back( leafFromLevelSetWithCuts( level_set_tri, tri_positions, cut_ends ) );
     }
 
     { // target level set
@@ -270,12 +336,27 @@ void macaroniFoliation( const std::vector<double>& level_set_values,
         const auto target_positions = vertex_positions( bdry );
         const auto rev_map = std::make_shared<const topology::ReversedCombinatorialMap>( target );
         const auto rev_positions = reversedVertexPositions( *rev_map, target_positions );
-        const Vertex v0 = rev_map->fromUnderlyingCell( find_on_target( vs.at( 1 ) ) );
-        const Vertex v1 = rev_map->fromUnderlyingCell( find_on_target( vs.at( 2 ) ) );
-        process_param( rev_map, rev_positions, v0, v1 );
+        std::vector<std::pair<topology::Vertex, topology::Vertex>> cut_ends;
+        cut_ends.reserve( vs.size() );
+        for( const auto& loop_vs : vs )
+        {
+            cut_ends.push_back( { rev_map->fromUnderlyingCell( find_on_target( loop_vs.at( 1 ) ) ),
+                                  rev_map->fromUnderlyingCell( find_on_target( loop_vs.at( 2 ) ) ) } );
+        }
+        leaves.push_back( leafFromLevelSetWithCuts( rev_map, rev_positions, cut_ends ) );
     }
 
     callback( leaves );
+}
+
+void macaroniFoliation( const std::vector<double>& level_set_values,
+                        const std::function<void( const std::vector<reparam::FoliationLeaf>& )>& callback )
+{
+    const SweepInput sweep = io::loadINPFile( SRC_HOME "/test/data/macaroni_coarse.inp", "Surface3", "Surface4" );
+
+    const std::array<size_t, 4> cut_v_ids{ 97, 185, 69, 13 }; // base, target, target, base
+
+    nonDiskFoliations( sweep, level_set_values, { cut_v_ids }, callback );
 }
 
 TEST_CASE( "Level set parameterization of the macaroni" )
