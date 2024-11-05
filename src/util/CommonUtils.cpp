@@ -1,5 +1,6 @@
 #include <CommonUtils.hpp>
 #include <numbers>
+#include <random>
 
 namespace util
 {
@@ -55,5 +56,66 @@ namespace util
             out.push_back( { cos( theta ), sin( theta ) } );
         }
         return out;
+    }
+
+    std::vector<Eigen::Vector2d> generatePointsInPolygon( const size_t n_points, const size_t n_sides )
+    {
+
+        const auto is_inside_polygon = []( const Eigen::Vector2d& point, const std::vector<Eigen::Vector2d>& vertices ) {
+            for( size_t i = 0; i < vertices.size() - 1; ++i )
+            {
+                Eigen::Vector2d edge = vertices.at( i + 1 ) - vertices.at( i );
+                Eigen::Vector2d to_point = point - vertices.at( i );
+                if( edge( 0 ) * to_point( 1 ) - edge( 1 ) * to_point( 0 ) < 0 )
+                {
+                    return false;
+                }
+            }
+            return true;
+        };
+        std::vector<Eigen::Vector2d> points;
+        points.reserve( n_points );
+
+        const auto vertices = util::regularNGonVertices( n_sides );
+
+        // Use a seed to get the same points every time
+        const size_t seed = 0;
+        std::mt19937 gen( seed );
+        std::uniform_real_distribution<> dis( -1.0, 1.0 );
+
+        while( points.size() < n_points )
+        {
+            Eigen::Vector2d point( dis( gen ), dis( gen ) );
+            if( is_inside_polygon( point, vertices ) )
+            {
+                points.push_back( point );
+            }
+        }
+
+        return points;
+    }
+
+    std::vector<Eigen::Vector2d> generatePointsInCircle( const size_t n_points )
+    {
+
+        const auto is_inside_polygon = []( const Eigen::Vector2d& point ) { return point.norm() < 1; };
+        std::vector<Eigen::Vector2d> points;
+        points.reserve( n_points );
+
+        // Use a seed to get the same points every time
+        const size_t seed = 0;
+        std::mt19937 gen( seed );
+        std::uniform_real_distribution<> dis( -1.0, 1.0 );
+
+        while( points.size() < n_points )
+        {
+            Eigen::Vector2d point( dis( gen ), dis( gen ) );
+            if( is_inside_polygon( point ) )
+            {
+                points.push_back( point );
+            }
+        }
+
+        return points;
     }
 } // namespace util

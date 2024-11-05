@@ -42,4 +42,12 @@ namespace util
     }
 
     std::vector<Eigen::Vector2d> regularNGonVertices( const size_t n_sides );
+
+    /// \brief Generates n_points points in a regular n_sides-gon.
+    /// These points are randomly distributed, but are consistent between calls.
+    std::vector<Eigen::Vector2d> generatePointsInPolygon( const size_t n_points, const size_t n_sides );
+
+    /// \brief Generates n_points randomly distributed in a circle of radius 1 centered at the origin.
+    ///
+    std::vector<Eigen::Vector2d> generatePointsInCircle( const size_t n_points );
 } // namespace util
