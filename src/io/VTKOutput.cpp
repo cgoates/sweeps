@@ -10,6 +10,7 @@
 #include <CombinatorialMapMethods.hpp>
 #include <ParentBasis.hpp>
 #include <IndexOperations.hpp>
+#include <SimplexUtilities.hpp>
 
 namespace io
 {
@@ -269,5 +270,38 @@ namespace io
 )STRING" << pieceFooter();
 
         file.close();
+    }
+
+    void outputEdges( const topology::CombinatorialMap& cmap,
+                      const VertexPositionsFunc& positions,
+                      const std::vector<topology::Edge>& edges,
+                      const std::string& filename )
+    {
+        SimplicialComplex path;
+
+        path.points.push_back( positions( topology::Vertex( edges.front().dart() ) ) );
+        for( const auto& edge : edges )
+        {
+            const size_t temp = path.points.size();
+            path.points.push_back( positions( topology::Vertex( phi( cmap, 1, edge.dart() ).value() ) ) );
+            path.simplices.emplace_back( temp - 1, temp );
+        }
+
+        io::VTKOutputObject output( path );
+        io::outputSimplicialFieldToVTK( output, filename );
+    }
+
+    void outputCMap( const topology::CombinatorialMap& cmap,
+                     const VertexPositionsFunc& positions,
+                     const std::string& filename )
+    {
+        SimplicialComplex out;
+        iterateCellsWhile( cmap, 2, [&]( const auto& f ) {
+            addTriangleNoDuplicateChecking( out, triangleOfFace<3>( cmap, positions, f ) );
+            return true;
+        } );
+
+        io::VTKOutputObject output( out );
+        io::outputSimplicialFieldToVTK( output, filename );
     }
 } // namespace io

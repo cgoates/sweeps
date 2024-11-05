@@ -1,8 +1,15 @@
 #pragma once
 #include <string>
 #include <CustomEigen.hpp>
-#include <SweepInput.hpp>
+#include <SimplicialComplex.hpp>
+#include <VertexPositionsFunc.hpp>
 #include <map>
+
+namespace topology
+{
+    class CombinatorialMap;
+    class Edge;
+}
 
 namespace basis
 {
@@ -38,4 +45,13 @@ namespace io
     void outputBezierMeshToVTK( const basis::SplineSpace& ss,
                                 const MatrixX3dMax& geom,
                                 const std::string& filename );
+
+    void outputEdges( const topology::CombinatorialMap& cmap,
+                      const VertexPositionsFunc& positions,
+                      const std::vector<topology::Edge>& edges,
+                      const std::string& filename );
+
+    void outputCMap( const topology::CombinatorialMap& cmap,
+                     const VertexPositionsFunc& positions,
+                     const std::string& filename );
 } // namespace io
