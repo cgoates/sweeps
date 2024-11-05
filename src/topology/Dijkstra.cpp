@@ -41,14 +41,22 @@ namespace topology
     std::vector<Edge> shortestPath( const CombinatorialMap& map,
                                     const VertexPositionsFunc& vert_positions,
                                     const Vertex& start_vertex,
-                                    const std::function<bool( const Vertex& )>& stop_condition )
+                                    const std::function<bool( const Vertex& )>& stop_condition,
+                                    const bool interior_only )
     {
-        // TODO: Supports only cmaps with contiguous vertex indexing.  How can we enforce this?
-        const size_t num_verts = cellCount( map, 0 );
+        const auto vert_ids = indexingOrError( map, 0 );
+        // NOTE: Lots of extra storage here for topologies with non-contiguous indexing. maybe FIXME?
+        const size_t num_verts = [&]() {
+            size_t out = 0;
+            iterateCellsWhile( map, 0, [&]( const auto& v ) {
+                out = std::max( out, vert_ids( v ) );
+                return true;
+            } );
+            return out + 1;
+        }();
         std::vector<double> distances( num_verts, std::numeric_limits<double>::max() );
         std::vector<size_t> path_lengths( num_verts, 0 );
         std::vector<std::optional<Vertex>> prev( num_verts, std::nullopt );
-        const auto vert_ids = indexingOrError( map, 0 );
 
         const auto comp = [&]( const std::pair<double, Vertex>& v1, const std::pair<double, Vertex>& v2 ) {
             if( v1.first == v2.first ) return vert_ids( v1.second ) < vert_ids( v2.second );
@@ -72,6 +80,7 @@ namespace topology
                 break;
             }
             iterateDartsOfCell( map, v, [&]( const Dart& d ) {
+                if( interior_only and onBoundary( map, d ) ) return true;
                 const Vertex v_next( phi( map, 1, d ).value() );
                 const double new_dist = distances.at( vert_ids( v ) ) + edgeLength( map, vert_positions, d );
                 if( new_dist < distances.at( vert_ids( v_next ) ) )
