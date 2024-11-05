@@ -21,6 +21,8 @@ namespace topology
 
         topology::Cell toUnderlyingCell( const topology::Cell& c ) const;
 
+        const CombinatorialMap& underlyingCMap() const { return mInteriorMap; }
+
         private:
         const CombinatorialMap& mInteriorMap;
         std::set<Dart> mStartDarts;
