@@ -20,6 +20,8 @@ namespace basis
 
         virtual size_t numFunctions() const override;
 
+        const std::vector<std::vector<FunctionId>>& functionIdMap() const { return mFuncIds; }
+
         private:
         const std::shared_ptr<const MultiPatchBasisComplex> mBasisComplex;
         const std::vector<std::shared_ptr<const TPSplineSpace>> mSubSpaces;
@@ -30,4 +32,7 @@ namespace basis
     MultiPatchSplineSpace buildMultiPatchSplineSpace(
         const std::vector<std::shared_ptr<const TPSplineSpace>>& patches,
         const std::map<std::pair<size_t, topology::Dart>, std::pair<size_t, topology::Dart>>& connections );
+
+    Eigen::MatrixX3d multiPatchCoefficients( const MultiPatchSplineSpace& ss,
+                                             const std::vector<Eigen::MatrixX3d>& patch_coeffs );
 } // namespace basis

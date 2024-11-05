@@ -276,4 +276,38 @@ namespace basis
 
         return MultiPatchSplineSpace( bc, patches );
     }
+
+    Eigen::MatrixX3d multiPatchCoefficients( const MultiPatchSplineSpace& ss,
+                                             const std::vector<Eigen::MatrixX3d>& patch_coeffs )
+    {
+        Eigen::MatrixX3d out = Eigen::MatrixX3d::Zero( ss.numFunctions(), 3 );
+        std::vector<size_t> num_funcs( ss.numFunctions(), 0 );
+
+        const auto& func_ids = ss.functionIdMap();
+        if( patch_coeffs.size() != func_ids.size() )
+            throw std::invalid_argument( "Wrong number of patch coefficients in multiPatchCoefficients" );
+
+        for( size_t patch_ii = 0; patch_ii < patch_coeffs.size(); patch_ii++ )
+        {
+            const auto& patch_coeff = patch_coeffs.at( patch_ii );
+            const auto& patch_func_ids = func_ids.at( patch_ii );
+            if( patch_coeff.rows() != (Eigen::Index)patch_func_ids.size() )
+                throw std::invalid_argument( "Wrong number of control points for patch " + std::to_string( patch_ii ) + " in multiPatchCoefficients" );
+
+            for( size_t func_ii = 0; func_ii < patch_func_ids.size(); func_ii++ )
+            {
+                const FunctionId global_fid = patch_func_ids.at( func_ii );
+                out.row( global_fid ) += patch_coeff.row( func_ii );
+                num_funcs.at( global_fid )++;
+            }
+        }
+
+        for( size_t global_fid = 0; global_fid < num_funcs.size(); global_fid++ )
+        {
+            if( num_funcs.at( global_fid ) > 1 )
+                out.row( global_fid ) /= num_funcs.at( global_fid );
+        }
+
+        return out;
+    }
 }
