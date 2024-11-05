@@ -128,7 +128,7 @@ namespace reparam
 
         topology::Dart d = start_d;
 
-        const size_t n_sides = 1 + n_cuts * 3;
+        const size_t n_sides = n_cuts * 4;
 
         const std::vector<Eigen::Vector2d> ngon_verts = util::regularNGonVertices( n_sides );
 
