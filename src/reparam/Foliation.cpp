@@ -14,6 +14,7 @@
 #include <TriangleMeshCircleMapping.hpp>
 #include <TriangleMeshMapping.hpp>
 #include <Laplace.hpp>
+#include <CommonUtils.hpp>
 
 namespace reparam
 {
@@ -97,17 +98,6 @@ namespace reparam
         return out;
     }
 
-    std::vector<Eigen::Vector2d> regularNGonVertices( const size_t n_sides )
-    {
-        std::vector<Eigen::Vector2d> out;
-        out.reserve( n_sides + 1 ); // Add endpoint twice to avoid having to worry about wraparound.
-        for( size_t i = 0; i <= n_sides; i++ )
-        {
-            const double theta = 2 * i * std::numbers::pi / n_sides;
-            out.push_back( { cos( theta ), sin( theta ) } );
-        }
-        return out;
-    }
 
     std::map<topology::Vertex, Eigen::Vector2d>
         boundaryConstraints( const topology::CombinatorialMap& cut_cmap,
@@ -140,7 +130,7 @@ namespace reparam
 
         const size_t n_sides = 1 + n_cuts * 3;
 
-        const std::vector<Eigen::Vector2d> ngon_verts = regularNGonVertices( n_sides );
+        const std::vector<Eigen::Vector2d> ngon_verts = util::regularNGonVertices( n_sides );
 
         for( size_t side_ii = 0; side_ii < n_sides; side_ii++ )
         {

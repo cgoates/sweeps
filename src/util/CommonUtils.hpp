@@ -40,4 +40,6 @@ namespace util
 
         return out;
     }
+
+    std::vector<Eigen::Vector2d> regularNGonVertices( const size_t n_sides );
 } // namespace util

@@ -44,4 +44,16 @@ namespace util
         }
         return out;
     }
+
+    std::vector<Eigen::Vector2d> regularNGonVertices( const size_t n_sides )
+    {
+        std::vector<Eigen::Vector2d> out;
+        out.reserve( n_sides + 1 ); // Add endpoint twice to avoid having to worry about wraparound.
+        for( size_t i = 0; i <= n_sides; i++ )
+        {
+            const double theta = 2 * i * std::numbers::pi / n_sides;
+            out.push_back( { cos( theta ), sin( theta ) } );
+        }
+        return out;
+    }
 } // namespace util
