@@ -210,10 +210,10 @@ namespace io
         std::ofstream file;
         file.open( filename );
 
-        file << pieceHeader( n_points, n_cells ) << "\n<CellData HigherOrderDegrees=\"degrees\">";
+        file << pieceHeader( n_points, n_cells ) << "\n<CellData HigherOrderDegrees=\"HigherOrderDegrees\">";
 
         file << R"STRING(
-        <DataArray type="UInt8" Name="degrees" NumberOfComponents="3" format="ascii">)STRING" << std::endl;
+        <DataArray type="UInt8" Name="HigherOrderDegrees" NumberOfComponents="3" format="ascii">)STRING" << std::endl;
 
         file << degrees_string.str();
 
