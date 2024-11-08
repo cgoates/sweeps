@@ -200,6 +200,9 @@ namespace reparam
         const auto& base = *base_ptr;
         const topology::CombinatorialMapRestriction target( bdry, keep_face_target, true );
 
+        if( eulerCharacteristic( base ) != 1 or eulerCharacteristic( target ) != 1 )
+            throw std::runtime_error( "Input mesh is not the sweep of a disk-like topology." );
+
         const auto vertex_positions = [&sweep_input]( const topology::CombinatorialMap& map ) {
             const auto vertex_ids = indexingOrError( map, 0 );
             return [&sweep_input, vertex_ids]( const topology::Vertex& v ) -> Eigen::Vector3d {
