@@ -13,6 +13,6 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable( pybind11 )
 
-pybind11_add_module( splines PythonAPI.cpp NavierStokesDiscretization.cpp )
+pybind11_add_module( splines SplinesAPI.cpp NavierStokesDiscretization.cpp )
 target_link_libraries( splines PUBLIC basis eval )
 target_include_directories( splines PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} )
