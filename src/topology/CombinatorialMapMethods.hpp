@@ -72,4 +72,6 @@ namespace topology
                   const std::function<void( const topology::Face& )>& callback );
 
     IndexingFunc indexingOrError( const CombinatorialMap& map, const uint cell_dim );
+
+    int eulerCharacteristic( const CombinatorialMap& map );
 } // namespace topology

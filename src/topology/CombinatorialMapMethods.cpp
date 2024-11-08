@@ -333,4 +333,15 @@ namespace topology
             throw std::runtime_error( "Indexing for dim " + std::to_string( cell_dim ) + " doesn't exist" );
         } ).value();
     }
+
+    int eulerCharacteristic( const CombinatorialMap& map )
+    {
+        int out = 0;
+        for( size_t i = 0; i <= map.dim(); i++ )
+        {
+            const int sign = i % 2 ? -1 : 1;
+            out += sign * cellCount( map, i );
+        }
+        return out;
+    }
 } // namespace topology
