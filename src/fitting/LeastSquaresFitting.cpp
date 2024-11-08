@@ -1,7 +1,7 @@
 #include <LeastSquaresFitting.hpp>
 #include <vector>
 #include <Eigen/Sparse>
-#include <Eigen/SparseQR>
+#include <Eigen/IterativeLinearSolvers>
 
 namespace fitting
 {
@@ -34,7 +34,7 @@ namespace fitting
         Eigen::SparseMatrix<double> A( n_points, evaler.splineSpace().numFunctions() );
         A.setFromTriplets( triplets.begin(), triplets.end() );
 
-        Eigen::SparseQR<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int>> solver;
+        Eigen::LeastSquaresConjugateGradient<Eigen::SparseMatrix<double>> solver;
         solver.compute( A );
         return solver.solve( rhs );
     }
