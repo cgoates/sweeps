@@ -77,6 +77,9 @@ namespace api
 
             io::VTKOutputObject output2( param_out );
             io::outputSimplicialFieldToVTK( output2, output_prefix + "_traces.vtu" );
+
+            io::VTKOutputObject output3( sweep.mesh );
+            io::outputSimplicialFieldToVTK( output3, output_prefix + "_tet_mesh.vtu" );
         } );
     }
 }
