@@ -4,7 +4,6 @@ import sys
 from pathlib import Path
 
 path_to_api = Path(__file__).parent.parent.parent / "build" / "src" / "api"
-print( path_to_api )
 sys.path.insert(0, "/Users/caleb/sweeps/build/src/api")
 import sweeps
 
@@ -41,9 +40,10 @@ def parameterizeHook():
         "/Users/caleb/sweeps/attempt-sweep/test/data/hook.inp", "Surface12", "Surface10")
 
     # This is a set of values at which you want to create level sets for the tracing.
+    # Try changing this to get an idea for what it does.  The values should all be between 0 and 1.
     level_set_values = np.linspace(0.0, 1.0, 30)
 
-    # this is a set of points in the unit circle that we will trace.
+    # this is a set of points in the unit circle that we will trace. Feel free to mess with these to see what it does.
     trace_points = []
     for radius in [0.1, 0.3, 0.5, 0.7, 0.9, 1.0]:
         for theta in [0, 45, 90, 135, 180, 225, 270, 315]:
@@ -70,16 +70,16 @@ def parameterizeBunny():
 
     # The bunny doesn't have source and target sets defined in the inp file, so we create our own here.
     # The source is a set of vertices on the surface we are tracing from, and the target is a set of vertices on the surface we are tracing to.
+    # Here I just found a part on the bunny's ear that has a lower z position than the rest of the model to be the target,
+    # and the bunny's tail that has a higher x position than the rest of the model to be the source.
     
     new_source = set()
     new_target = set()
 
     for [idx, pt] in enumerate(bunny.mesh.points):
         if pt[0] > 0.053:
-            print( "Found source" )
             new_source.add(idx)
         elif pt[2] < -0.055:
-            print( "Found Target" )
             new_target.add(idx)
             
     # bunny.source and bunny.target cannot be added to, they must be completely reassigned to be changed.
@@ -87,9 +87,6 @@ def parameterizeBunny():
     bunny.source = new_source
     bunny.target = new_target
             
-    print( "Source: ", bunny.source )
-    print( "Target: ", bunny.target )
-
     sweeps.writeParameterizationToFile(
         bunny, level_set_values, trace_points, "bunny")
 
