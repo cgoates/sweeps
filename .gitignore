@@ -2,3 +2,4 @@
 build
 deps
 .DS_Store
+scripts/*.vtu
