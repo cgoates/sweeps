@@ -50,7 +50,7 @@ def parameterizeHook():
             trace_points.append(
                 np.array([radius * cos(pi * theta / 180), radius * sin(pi * theta / 180)]))
 
-    # perform the tracing and write out to files hook_level_sets.vtu and hook_traces.vtu which can be opened with paraview.
+    # perform the tracing and write out to files hook_level_sets.vtu, hook_tet_mesh.vtu, and hook_traces.vtu which can be opened with paraview.
     sweeps.writeParameterizationToFile(
         hook, level_set_values, trace_points, "hook")
 
@@ -86,7 +86,8 @@ def parameterizeBunny():
     # this is just a result of connecting python code to C++ code.
     bunny.source = new_source
     bunny.target = new_target
-            
+
+    # perform the tracing and write out to files bunny_level_sets.vtu, bunny_tet_mesh.vtu, and bunny_traces.vtu which can be opened with paraview.
     sweeps.writeParameterizationToFile(
         bunny, level_set_values, trace_points, "bunny")
 
