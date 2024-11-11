@@ -76,7 +76,7 @@ namespace api
             io::outputSimplicialFieldToVTK( output, output_prefix + "_level_sets.vtu" );
 
             io::VTKOutputObject output2( param_out );
-            io::outputSimplicialFieldToVTK( output2, output_prefix + "_foliation_param.vtu" );
+            io::outputSimplicialFieldToVTK( output2, output_prefix + "_traces.vtu" );
         } );
     }
 }
