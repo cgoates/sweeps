@@ -13,6 +13,13 @@ namespace api
                                    const std::vector<Eigen::Vector2d>& trace_points,
                                    const std::string& output_prefix )
     {
+        if( sweep.source.size() == 0 or sweep.target.size() == 0 )
+            throw std::invalid_argument( "No source or target surface specified" );
+        if( sweep.mesh.points.size() == 0 or sweep.mesh.simplices.size() == 0 )
+            throw std::invalid_argument( "No tet mesh supplied" );
+        if( level_set_values.size() < 2 )
+            throw std::invalid_argument( "Insufficient level sets specified; please include at least two values." );
+
         const SweepInput sweep_input = [&sweep]() {
             const auto& m = sweep.mesh;
             std::vector<bool> zero_bcs( m.points.size(), false );
