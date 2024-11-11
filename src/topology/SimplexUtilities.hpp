@@ -59,6 +59,7 @@ void addEdgeNoDuplicateChecking( SimplicialComplex& complex,
                                  const topology::Edge& e );
 
 void addTriangleNoDuplicateChecking( SimplicialComplex& complex, const Triangle<3>& tri );
+void addAllTriangles( SimplicialComplex& complex, const topology::CombinatorialMap& cmap, const VertexPositionsFunc& pos );
 
 void addTetNoDuplicateChecking( SimplicialComplex& complex,
                                 const topology::CombinatorialMap& map,

@@ -219,6 +219,34 @@ void addTetNoDuplicateChecking( SimplicialComplex& complex,
     complex.simplices.push_back( Simplex( offset, offset + 1, offset + 2, offset + 3 ) );
 }
 
+void addAllTriangles( SimplicialComplex& complex, const topology::CombinatorialMap& cmap, const VertexPositionsFunc& pos )
+{
+    const auto lowest_dart_id = [&cmap]( const topology::Vertex& v ) {
+        topology::Dart::IndexType min_d = v.dart().id();
+        iterateDartsOfCell( cmap, v, [&]( const topology::Dart& d ) {
+            min_d = std::min( d.id(), min_d );
+            return true;
+        } );
+        return min_d;
+    };
+
+    std::map<topology::Dart::IndexType, size_t> vert_ids;
+    iterateCellsWhile( cmap, 0, [&]( const auto& vert ) {
+        vert_ids.emplace( lowest_dart_id( vert ), complex.points.size() );
+        complex.points.push_back( pos( vert ) );
+        return true;
+    } );
+
+    iterateCellsWhile( cmap, 2, [&]( const auto& f ) {
+        const topology::Dart& d = f.dart();
+        const VertexId v1 = vert_ids.at( lowest_dart_id( d ) );
+        const VertexId v2 = vert_ids.at( lowest_dart_id( phi( cmap, 1, d ).value() ) );
+        const VertexId v3 = vert_ids.at( lowest_dart_id( phi( cmap, -1, d ).value() ) );
+        complex.simplices.emplace_back( v1, v2, v3 );
+        return true;
+    } );
+}
+
 Eigen::Vector3d expandBarycentric( const topology::CombinatorialMap& map,
                                    const VertexPositionsFunc& positions,
                                    const topology::Cell& start_face,
