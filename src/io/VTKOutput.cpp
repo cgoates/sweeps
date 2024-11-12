@@ -94,7 +94,7 @@ namespace io
         file << R"STRING(
       </PointData>
       <Points>
-        <DataArray type="Float32" Name="Points" NumberOfComponents="3" format="ascii">
+        <DataArray type="Float64" Name="Points" NumberOfComponents="3" format="ascii">
 )STRING";
 
         for( const Eigen::Vector3d& point : to_output.complex().points )
@@ -223,7 +223,7 @@ namespace io
       <PointData>
       </PointData>
       <Points>
-        <DataArray type="Float32" Name="Points" NumberOfComponents="3" format="ascii">
+        <DataArray type="Float64" Name="Points" NumberOfComponents="3" format="ascii">
 )STRING";
 
         file << points_string.str();
