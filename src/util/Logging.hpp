@@ -7,6 +7,7 @@
 #include <chrono>
 #include <optional>
 #include <SmallVector.hpp>
+#include <variant>
 
 // clang-format off
 #define LOG( COND ) if( COND ) std::cout

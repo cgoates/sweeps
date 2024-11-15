@@ -2,6 +2,7 @@
 #include <Eigen/Dense>
 #include <map>
 #include <VertexPositionsFunc.hpp>
+#include <memory>
 
 struct SweepInput;
 

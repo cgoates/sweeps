@@ -2,6 +2,7 @@
 #include <CombinatorialMap.hpp>
 #include <map>
 #include <VertexPositionsFunc.hpp>
+#include <memory>
 
 namespace topology
 {

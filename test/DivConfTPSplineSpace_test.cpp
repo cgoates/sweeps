@@ -15,13 +15,20 @@
 #include <DivConfHierarchicalTPSplineSpace.hpp>
 #include <SplineSpaceEvaluator.hpp>
 #include <VTKOutput.hpp>
-#include <format>
+#include <iomanip>
 
 using namespace basis;
 using namespace param;
 using namespace topology;
 
 static constexpr bool OUTPUT_TO_VTK = false;
+
+std::string zeroPadNum( const size_t width, const size_t num )
+{
+    std::stringstream ss;
+    ss << std::setw( width ) << std::setfill( '0' ) << num;
+    return ss.str();
+}
 
 TEST_CASE( "Simple Div Conf TP Spline space" )
 {
@@ -94,7 +101,7 @@ TEST_CASE( "Simple Div Conf TP Spline space" )
             io::VTKOutputObject out( output_points );
             out.addVertexField( "vecs", vecs.at( func_ii ) );
             out.addVertexField( "derivatives", vec_dvec.at( func_ii ) );
-            io::outputSimplicialFieldToVTK( out, "vec_points" + std::format( "{:0>3}", func_ii ) + ".vtu" );
+            io::outputSimplicialFieldToVTK( out, "vec_points" + zeroPadNum( 3, func_ii ) + ".vtu" );
         }
     }
 
@@ -202,7 +209,7 @@ TEST_CASE( "Simple Hierarchical Div Conf TP Spline space" )
             io::VTKOutputObject out( output_points );
             out.addVertexField( "vecs", vecs.at( func_ii ) );
             out.addVertexField( "derivatives", vec_dvec.at( func_ii ) );
-            io::outputSimplicialFieldToVTK( out, "vec_points" + std::format( "{:0>3}", func_ii ) + ".vtu" );
+            io::outputSimplicialFieldToVTK( out, "vec_points" + zeroPadNum( 3, func_ii ) + ".vtu" );
         }
     }
 

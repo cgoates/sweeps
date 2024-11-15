@@ -29,7 +29,8 @@ namespace basis
                     else
                         throw std::runtime_error( "Bad boundary for a vertex" );
                 } );
-                return { lengths, std::ranges::to<util::IndexVec>( std::ranges::iota_view( size_t{0}, param_dim ) ), direction };
+                const auto range = std::ranges::iota_view( size_t{0}, param_dim );
+                return { lengths, util::IndexVec( range.begin(), range.end() ), direction };
             }
             case 1:
             {

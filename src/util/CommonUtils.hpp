@@ -1,5 +1,6 @@
 #pragma once
 #include <Eigen/Dense>
+#include <numeric>
 
 namespace util
 {
