@@ -1,0 +1,19 @@
+name: build-and-run-tests-macos
+run-name: Build and run tests
+on: [push]
+jobs:
+  do-it:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Use cmake
+        run: |
+          mkdir build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+          make -j10
+      - name: Run tests
+        run: |
+          cd build
+          ctest -j10

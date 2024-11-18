@@ -1,16 +1,26 @@
-name: build-and-run-tests
+name: build-and-run-tests-ubuntu
 run-name: Build and run tests
 on: [push]
 jobs:
   do-it:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
+    container: gcc:13
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.28.x'
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.8
       - name: Use cmake
         run: |
           mkdir build
           cd build
+          echo "CXX=g++-10" >> $GITHUB_ENV
           cmake .. -DCMAKE_BUILD_TYPE=Release
           make -j10
       - name: Run tests
