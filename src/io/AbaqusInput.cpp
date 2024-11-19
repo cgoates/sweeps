@@ -22,6 +22,8 @@ namespace io
             Vertices,
             ZeroBCs,
             OneBCs,
+            ZeroBCsNSet,
+            OneBCsNSet,
             Tets
         };
 
@@ -53,6 +55,19 @@ namespace io
                             state = ReadState::OneBCs;
                         else
                             state = ReadState::Initial;
+                    }
+                    else
+                        state = ReadState::Initial;
+                }
+                else if( line.rfind( "*NSET", 0 ) == 0 )
+                {
+                    if( line.rfind( "NSET=" + zero_bc_label ) == line.size() - zero_bc_label.size() - 6 )
+                    {
+                        state = ReadState::ZeroBCsNSet;
+                    }
+                    else if( line.rfind( "NSET=" + one_bc_label ) == line.size() - one_bc_label.size() - 6 )
+                    {
+                        state = ReadState::OneBCsNSet;
                     }
                     else
                         state = ReadState::Initial;
@@ -93,7 +108,7 @@ namespace io
                                    points_reindexing.at( v3 ) );
                 LOG( LOG_INP_LOADING ) << tets.back() << std::endl;
             }
-            else if( state != ReadState::Initial )
+            else if( state == ReadState::ZeroBCs or state == ReadState::OneBCs )
             {
                 std::replace_if(
                     std::begin( line ), std::end( line ), []( char x ) { return x == ','; }, ' ' );
@@ -104,6 +119,18 @@ namespace io
                 bc_set.emplace( points_reindexing.at( v0 ) );
                 bc_set.emplace( points_reindexing.at( v1 ) );
                 bc_set.emplace( points_reindexing.at( v2 ) );
+            }
+            else if( state == ReadState::ZeroBCsNSet or state == ReadState::OneBCsNSet )
+            {
+                std::replace_if(
+                    std::begin( line ), std::end( line ), []( char x ) { return x == ','; }, ' ' );
+                size_t v;
+                std::stringstream ss( line );
+                auto& bc_set = state == ReadState::ZeroBCsNSet ? zero_bcs : one_bcs;
+                while( ss >> v )
+                {
+                    bc_set.emplace( points_reindexing.at( v ) );
+                }
             }
         }
 
