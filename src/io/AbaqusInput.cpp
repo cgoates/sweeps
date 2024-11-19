@@ -61,11 +61,11 @@ namespace io
                 }
                 else if( line.rfind( "*NSET", 0 ) == 0 )
                 {
-                    if( line.rfind( "NSET=" + zero_bc_label ) == line.size() - zero_bc_label.size() - 6 )
+                    if( line.rfind( "NSET=" + zero_bc_label ) != line.npos )
                     {
                         state = ReadState::ZeroBCsNSet;
                     }
-                    else if( line.rfind( "NSET=" + one_bc_label ) == line.size() - one_bc_label.size() - 6 )
+                    else if( line.rfind( "NSET=" + one_bc_label ) != line.npos )
                     {
                         state = ReadState::OneBCsNSet;
                     }
