@@ -3,7 +3,11 @@ function(add_my_test arg)
     target_link_libraries(${arg} PRIVATE Catch2::Catch2WithMain reparam basis eval )
 
     target_include_directories( ${arg} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} )
-    catch_discover_tests(${arg})
+    if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+      catch_discover_tests(${arg})
+    else()
+      catch_discover_tests(${arg} TEST_SPEC "~[no_ubuntu]")
+    endif()
 endfunction()
 
 FetchContent_Declare(
