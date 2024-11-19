@@ -16,6 +16,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: 3.8
+      - name: Setup Mold
+        uses: rui314/setup-mold@v1
+        with:
+          version: 2.34.1
+          make_default: true
       - name: Use cmake
         run: |
           mkdir build
