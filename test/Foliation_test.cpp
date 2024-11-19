@@ -272,7 +272,16 @@ TEST_CASE( "Level set parameterization of bullet" )
     const SweepInput sweep_input = SweepInputTestCases::bullet();
 
     const std::optional<std::string> output_prefix = std::nullopt;//{ "bullet" };
-    testLevelSetBasedTracing( sweep_input, 5, "bullet" );
+    testLevelSetBasedTracing( sweep_input, 5, output_prefix );
+}
+
+TEST_CASE( "Level set parameterization of bat" )
+{
+    /// This test tests whether a file from Cubit with nodesets will work.
+    const SweepInput sweep_input = io::loadINPFile( SRC_HOME "/test/data/Bat_nodesets.inp", "start", "end" );
+
+    const std::optional<std::string> output_prefix = std::nullopt;//{ "bat" };
+    testLevelSetBasedTracing( sweep_input, 30, output_prefix );
 }
 
 TEST_CASE( "Level set parameterization of flange" )
