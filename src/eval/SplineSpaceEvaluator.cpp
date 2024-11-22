@@ -182,7 +182,7 @@ namespace eval
         return ( first_term + second_term + third_term ).transpose();
     }
 
-    Eigen::VectorXd piolaTransformedBivectorBasis( const SplineSpaceEvaluator& bivec_evals,
+    Eigen::MatrixXd piolaTransformedBivectorBasis( const SplineSpaceEvaluator& bivec_evals,
                                                    const SplineSpaceEvaluator& geom_evals,
                                                    const Eigen::MatrixXd& cpts )
     {

@@ -44,6 +44,6 @@ namespace eval
 
     Eigen::MatrixXd piolaTransformedVectorBasis( const SplineSpaceEvaluator& vec_evals, const SplineSpaceEvaluator& geom_evals, const Eigen::MatrixXd& cpts );
     Eigen::MatrixXd piolaTransformedVectorFirstDerivatives( const SplineSpaceEvaluator& vec_evals, const SplineSpaceEvaluator& geom_evals, const Eigen::MatrixXd& cpts );
-    Eigen::VectorXd piolaTransformedBivectorBasis( const SplineSpaceEvaluator& bivec_evals, const SplineSpaceEvaluator& geom_evals, const Eigen::MatrixXd& cpts );
+    Eigen::MatrixXd piolaTransformedBivectorBasis( const SplineSpaceEvaluator& bivec_evals, const SplineSpaceEvaluator& geom_evals, const Eigen::MatrixXd& cpts );
     Eigen::MatrixXd piolaTransformedBivectorFirstDerivatives( const SplineSpaceEvaluator& bivec_evals, const SplineSpaceEvaluator& geom_evals, const Eigen::MatrixXd& cpts );
 }
