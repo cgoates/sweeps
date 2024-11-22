@@ -15,6 +15,10 @@ namespace io
                             const std::string& one_bc_label )
     {
         std::ifstream read( filename );
+        if( read.fail() )
+        {
+            throw std::runtime_error( "Could not read file" );
+        }
 
         enum class ReadState
         {
