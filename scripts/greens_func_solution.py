@@ -1,6 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import colors
 from numpy import pi
+import sys
+from pathlib import Path
+path_to_api = Path(__file__).parent.parent.parent / "build" / "src" / "api"
+sys.path.insert(0, "/Users/caleb/sweeps/build/src/api")
+import eigenfunction
 
 np.set_printoptions(linewidth=270)
 
@@ -88,44 +94,6 @@ def G( xi, eta ):
     
     return func
 
-
-def evaluate_for_constant_lines():
-    # Domain size
-    Lx = 9
-    Ly = 3
-
-    # Discretize the domain (grid)
-    Nx = 271  # number of grid points in x
-    Ny = 91  # number of grid points in y
-    x = np.linspace(0, Lx, Nx)
-    y = np.linspace(0, Ly, Ny)
-    X, Y = np.meshgrid(x, y)
-
-    # Number of terms to consider in the series
-    terms = 400
-
-    # Evaluate the solution u(x, y, t)
-    u = eigenfunction_series(X, Y, terms, constant_along_interior_bdry, Lx**3*Ly**3/np.pi**2/200)
-
-    # Plot the solution
-    fig = plt.figure(figsize=(8, 6))
-    # ax = fig.add_subplot(111,projection='3d')
-    # cp = ax.plot_surface(X, Y, u, cmap='viridis')
-    # ax.axis("equal")
-    cp = plt.contourf(X, Y, u, 100, cmap='viridis')
-    plt.colorbar(cp)
-    plt.title('Eigenfunction Series Solution $u(x, y)$')
-    plt.xlabel('x')
-    plt.ylabel('y')
-    plt.show()
-    
-def evaluate_along_constant_lines():
-    Lx = 9
-    Ly = 3
-    terms = 400
-    X2, Y2 = np.meshgrid(np.array([1, 2, 3, 4, 5, 6, 7, 8]), np.array([1, 1.5, 2]))
-    u2 = eigenfunction_series(X2, Y2, terms, constant_along_interior_bdry, Lx**3*Ly**3/np.pi**2/200)
-    print(u2)
     
 def evaluate_fit_solution( c, Lx, Ly, terms ):
     def fit_solution( x, y, m, n ):
@@ -145,16 +113,59 @@ def evaluate_fit_solution( c, Lx, Ly, terms ):
             c[13] * G( 7.5, 1.5 )( x, y, m, n )
             
     evaluate_fit_solution_along_constant_lines( fit_solution, Lx, Ly, terms )
-
+    
+def evaluate_fit_solution_along_constant_lines( fit_solution, Lx, Ly, terms ):
+    X2, Y2 = np.meshgrid(np.array([1, 2, 3, 4, 4.5, 5, 6, 7, 8]), np.array([1, 1.25, 1.5, 1.75, 2]))
+    u2 = eigenfunction_series(X2, Y2, terms, fit_solution, Lx**3*Ly**3/4/pi**2)
+    print("Solution along line: ", u2)
+    
+def fit_to_constant_along_lines():
+    Lx = 9
+    Ly = 3
+    n_terms = 1000
+    # mult = Lx**3*Ly**3/4/pi**2
+    X = np.array( [1, 2.5, 4.5, 6.5, 8, 1, 8, 1, 2.5, 4.5, 6.5, 8, 1.5, 7.5] )
+    Y = np.array( [1, 1, 1, 1, 1, 1.5, 1.5, 2, 2, 2, 2, 2, 1.5, 1.5] )
+    
+    # A = np.transpose( np.vstack((
+    #     eigenfunction_series(X, Y, n_terms, u11, mult),
+    #     eigenfunction_series(X, Y, n_terms, u12, mult),
+    #     eigenfunction_series(X, Y, n_terms, u13, mult),
+    #     eigenfunction_series(X, Y, n_terms, u21, mult),
+    #     eigenfunction_series(X, Y, n_terms, u22, mult),
+    #     eigenfunction_series(X, Y, n_terms, u23, mult),
+    #     eigenfunction_series(X, Y, n_terms, u31, mult),
+    #     eigenfunction_series(X, Y, n_terms, u32, mult),
+    #     eigenfunction_series(X, Y, n_terms, u33, mult),
+    #     eigenfunction_series(X, Y, n_terms, u41, mult),
+    #     eigenfunction_series(X, Y, n_terms, u42, mult),
+    #     eigenfunction_series(X, Y, n_terms, u43, mult),
+    #     eigenfunction_series(X, Y, n_terms, G( 1.5, 1.5 ), mult),
+    #     eigenfunction_series(X, Y, n_terms, G( 7.5, 1.5 ), mult)
+    # )) )
+    
+    # print(A)
+    b = np.array([1.03]*12 + [4]*2)
+    # c = np.linalg.lstsq(A, b )[0]
+    # print( "Coefficients: ", c)
+    
+    c2 = eigenfunction.leastSquaresFit( n_terms, X, Y, b )
+    print( "C++ Coefficients: ", c2 )
+    
+    X2, Y2 = np.meshgrid(np.array([1, 2, 3, 4, 4.5, 5, 6, 7, 8]), np.array([1, 1.25, 1.5, 1.75, 2]))
+    u2 = eigenfunction.evaluateFit( n_terms, X2, Y2, c2 )
+    print( u2 )
+    
+    
     # Discretize the domain (grid)
-    Nx = 181  # number of grid points in x
-    Ny = 61  # number of grid points in y
+    Nx = 61  # number of grid points in x
+    Ny = 21  # number of grid points in y
     x = np.linspace(0, Lx, Nx)
     y = np.linspace(0, Ly, Ny)
     X, Y = np.meshgrid(x, y)
 
     # Evaluate the solution u(x, y, t)
-    u = eigenfunction_series(X, Y, terms, fit_solution, Lx**3*Ly**3/4/pi**2)
+    u = eigenfunction.evaluateFit( n_terms, X, Y, c2 )
 
     # Plot the solution
     fig = plt.figure(figsize=(8, 6))
@@ -162,50 +173,16 @@ def evaluate_fit_solution( c, Lx, Ly, terms ):
     ax = fig.add_subplot(111)
     # cp = ax.plot_surface(X, Y, u, cmap='viridis')
     ax.axis("equal")
-    cp = plt.contourf(X, Y, u, 100, cmap='RdBu_r')
+    divnorm = colors.TwoSlopeNorm( vmin=0, vcenter=1, vmax=4)
+    cp = plt.contourf(X, Y, u, 100, cmap='RdBu_r', norm=divnorm)
+    plt.contour(X, Y, u, [1.0])
     plt.colorbar(cp)
     plt.title('Eigenfunction Series Solution $u(x, y)$')
     plt.xlabel('x')
     plt.ylabel('y')
     plt.show()
-    
-def evaluate_fit_solution_along_constant_lines( fit_solution, Lx, Ly, terms ):
-    X2, Y2 = np.meshgrid(np.array([1, 2, 3, 4, 5, 6, 7, 8]), np.array([1, 1.25, 1.5, 1.75, 2]))
-    u2 = eigenfunction_series(X2, Y2, terms, fit_solution, Lx**3*Ly**3/4/pi**2)
-    print("Solution along line: ", u2)
-    
-def fit_to_constant_along_lines():
-    Lx = 9
-    Ly = 3
-    n_terms = 300
-    mult = Lx**3*Ly**3/4/pi**2
-    X = np.array( [1, 2.5, 4.5, 6.5, 8, 1, 8, 1, 2.5, 4.5, 6.5, 8, 1.5, 7.5] )
-    Y = np.array( [1, 1, 1, 1, 1, 1.5, 1.5, 2, 2, 2, 2, 2, 1.5, 1.5] )
-    
-    A = np.transpose( np.vstack((
-        eigenfunction_series(X, Y, n_terms, u11, mult),
-        eigenfunction_series(X, Y, n_terms, u12, mult),
-        eigenfunction_series(X, Y, n_terms, u13, mult),
-        eigenfunction_series(X, Y, n_terms, u21, mult),
-        eigenfunction_series(X, Y, n_terms, u22, mult),
-        eigenfunction_series(X, Y, n_terms, u23, mult),
-        eigenfunction_series(X, Y, n_terms, u31, mult),
-        eigenfunction_series(X, Y, n_terms, u32, mult),
-        eigenfunction_series(X, Y, n_terms, u33, mult),
-        eigenfunction_series(X, Y, n_terms, u41, mult),
-        eigenfunction_series(X, Y, n_terms, u42, mult),
-        eigenfunction_series(X, Y, n_terms, u43, mult),
-        eigenfunction_series(X, Y, n_terms, G( 1.5, 1.5 ), mult),
-        eigenfunction_series(X, Y, n_terms, G( 7.5, 1.5 ), mult)
-    )) )
-    
-    print(A)
-    
-    c = np.linalg.solve(A, np.array([1]*12 + [2]*2) )
-    
-    evaluate_fit_solution( c, Lx, Ly, n_terms )
-    
-    return c
 
-c = fit_to_constant_along_lines()  
-print( "Coefficients: ", c)  
+
+    # evaluate_fit_solution( c, Lx, Ly, n_terms )
+
+fit_to_constant_along_lines()
