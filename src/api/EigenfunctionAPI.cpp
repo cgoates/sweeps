@@ -27,6 +27,24 @@ Eigen::MatrixXd eigenfunction_series(
     return u;
 }
 
+Eigen::MatrixXd eigenfunction_series(
+    const Eigen::MatrixXd& x,
+    const Eigen::MatrixXd& y,
+    const Eigen::MatrixXd& z,
+    const size_t n_terms,
+    const std::function<Eigen::MatrixXd( const Eigen::MatrixXd&,
+    const Eigen::MatrixXd&,
+    const Eigen::MatrixXd&, const size_t, const size_t )>& func )
+{
+    Eigen::MatrixXd u( x.rows(), x.cols() );
+    
+    for( size_t n = 1; n <= n_terms; n++ )
+        for( size_t m = 1; m <= n_terms; m++ )
+            u += func( x, y, z, m, n );
+
+    return u;
+}
+
 double u11( const size_t m, const size_t n )
 {
     return ( 1.0 / ( 49 * pow( m, 3 ) * ( pow( m, 2 ) + 9 * pow( n, 2 ) ) * pow( pi, 3 ) ) ) *
@@ -131,6 +149,82 @@ std::function<double( const size_t, const size_t )>
         };
 }
 
+Eigen::MatrixXd gamma( const Eigen::MatrixXd& vals, const bool at_one, const bool is_x, const size_t m, const size_t n )
+{
+    const double xval = at_one ? 1.0 : 0.0;
+    const int factor = is_x ? 1.0 : -1.0;
+    const size_t factor2 = not is_x and m == 0 ? 2 : 1;
+    const double beta = sqrt( pow( m, 2 ) + pow( is_x ? ( 2 * n - 1 ) : n, 2 ) );
+    return 4 * ( Eigen::exp( beta * pi * ( vals.array() + xval ) ) + factor * Eigen::exp( -beta * pi * ( vals.array() - 2.0 + xval ) ) ).matrix() /
+            ( ( exp( 2 * beta * pi ) - 1 ) * beta * beta * pi * pi * factor2 );
+}
+
+Eigen::MatrixXd z( const Eigen::MatrixXd& X, const Eigen::MatrixXd& Y, const Eigen::MatrixXd& Z, const size_t m, const size_t n, const double zz )
+{
+    return gamma( Z, true, false, m, n ).array() * Eigen::cos( m * pi * X.array() ) * Eigen::sin( n * pi * Y.array() ) * zz;
+}
+
+double z1( const size_t m, const size_t n )
+{
+    return 2 * ( m * pi - sin( m * pi ) ) * ( sin( n * pi / 3 ) + sin( 2 * n * pi / 3 ) ) / pow( m * pi, 3 );
+}
+
+double z2( const size_t m, const size_t n )
+{
+    return -2 * ( m * pi + m * pi * cos( m * pi ) - 2 * sin( m * pi ) ) * ( sin( n * pi / 3 ) + sin( 2 * n * pi / 3 ) ) / pow( m * pi, 3 );
+}
+
+double z3( const size_t m, const size_t n )
+{
+    return ( 2 * m * pi * cos( m * pi ) + ( m * m * pi * pi - 2 ) * sin( m * pi ) ) * ( sin( n * pi / 3 ) + sin( 2 * n * pi / 3 ) ) / pow( m * pi, 3 );
+}
+
+Eigen::MatrixXd x0( const Eigen::MatrixXd& X, const Eigen::MatrixXd& Y, const Eigen::MatrixXd& Z, const size_t n, const size_t k, const double xx )
+{
+    return gamma( X, false, true, n, k ).array() * Eigen::sin( n * pi * Y.array() ) * Eigen::sin( ( 2 * k - 1 ) * pi * Z.array() ) * xx;
+}
+
+Eigen::MatrixXd x1( const Eigen::MatrixXd& X, const Eigen::MatrixXd& Y, const Eigen::MatrixXd& Z, const size_t n, const size_t k, const double xx )
+{
+    return gamma( X, true, true, n, k ).array() * Eigen::sin( n * pi * Y.array() ) * Eigen::sin( ( 2 * k - 1 ) * pi * Z.array() ) * xx;
+}
+
+double xx1( size_t n, size_t k )
+{
+    const size_t kk = 2 * k - 1;
+    return ( -9 * cos( 2 * k * pi ) + ( 2 * pow( pi * kk, 2 ) - 9 ) * sin( ( 5 - 4 * k ) * pi / 6 ) + 6 * kk * pi * sin( kk * pi / 3 ) ) *
+        ( sin( n * pi / 3 ) + sin( 2 * n * pi / 3 ) ) / pow( pi * kk, 3 ) / 2;
+}
+
+double xx2( size_t n, size_t k )
+{
+    const size_t kk = 2 * k - 1;
+    return 6 * ( -kk * pi * sin( ( 5 - 4 * k ) * pi / 6 ) + 3 * sin( kk * pi / 3 ) ) * sin( 2 * kk * pi / 3 ) *
+        ( sin( n * pi / 3 ) + sin( 2 * n * pi / 3 ) ) / pow( pi * kk, 3 );
+}
+
+double xx3( size_t n, size_t k )
+{
+    const size_t kk = 2 * k - 1;
+    return -1 * ( ( 9 - 2 * pow( kk * pi, 2 ) ) * cos( 2 * k * pi ) + 9 * sin( ( 5 - 4 * k ) * pi / 6 ) + 6 * kk * pi * sin( 2 * k * pi ) ) *
+        ( sin( n * pi / 3 ) + sin( 2 * n * pi / 3 ) ) / pow( pi * kk, 3 ) / 2;
+}
+
+double xy1( size_t n, size_t k )
+{
+    return 2 * sin( ( 2 * k - 1 ) * pi / 3 ) * sin( n * pi / 2 ) * ( 6 * n * pi * cos( n * pi / 6 ) + ( n * n * pi * pi - 36 ) * sin( n * pi / 6 ) ) / pow( n * pi, 3 );
+}
+
+double xy2( size_t n, size_t k )
+{
+    return -12 * sin( ( 2 * k - 1 ) * pi / 3 ) * sin( n * pi / 2 ) * ( n * pi * cos( n * pi / 6 ) - 6 * sin( n * pi / 6 ) ) / pow( n * pi, 3 );
+}
+
+double xmid( size_t n, size_t k )
+{
+    return sin( ( 2 * k - 1 ) * pi / 2 ) * sin( n * pi / 2 );
+}
+
 constexpr double Lx = 9;
 constexpr double Ly = 3;
 const double mult = pow( Lx, 3 ) * pow( Ly, 3 ) / 4 / pow( pi, 2 );
@@ -173,6 +267,49 @@ PYBIND11_MODULE( eigenfunction, m )
            "X"_a,
            "Y"_a,
            "values"_a );
+
+    m.def( 
+        "leastSquaresFitVolume",
+        []( const size_t n_terms, const Eigen::VectorXd& X, const Eigen::VectorXd& Y, const Eigen::VectorXd& Z, const Eigen::VectorXd& values ){
+            Eigen::MatrixXd A( X.rows(), 7 );
+
+            A.col( 0 ) = eigenfunction_series( X, Y, Z, n_terms, [&]( const auto& X, const auto& Y, const auto& Z, const size_t m, const size_t n ) {
+                return z( X, Y, Z, m, n, z1( m, n ) + z3( m, n ) ) + x0( X, Y, Z, m, n, xx3( m, n ) ) + x1( X, Y, Z, m, n, xx3( m, n ) );
+            } );
+
+            A.col( 1 ) = eigenfunction_series( X, Y, Z, n_terms, [&]( const auto& X, const auto& Y, const auto& Z, const size_t m, const size_t n ) {
+                return z( X, Y, Z, m, n, z2( m, n ) );
+            } );
+
+            A.col( 2 ) = eigenfunction_series( X, Y, Z, n_terms, [&]( const auto& X, const auto& Y, const auto& Z, const size_t m, const size_t n ) {
+                return x0( X, Y, Z, m, n, xx2( m, n ) ) + x1( X, Y, Z, m, n, xx2( m, n ) );
+            } );
+
+            A.col( 3 ) = eigenfunction_series( X, Y, Z, n_terms, [&]( const auto& X, const auto& Y, const auto& Z, const size_t m, const size_t n ) {
+                return x0( X, Y, Z, m, n, xx1( m, n ) ) + x1( X, Y, Z, m, n, xx1( m, n ) );
+            } );
+
+            A.col( 4 ) = eigenfunction_series( X, Y, Z, n_terms, [&]( const auto& X, const auto& Y, const auto& Z, const size_t m, const size_t n ) {
+                return x0( X, Y, Z, m, n, xy1( m, n ) ) + x1( X, Y, Z, m, n, xy1( m, n ) );
+            } );
+
+            A.col( 5 ) = eigenfunction_series( X, Y, Z, n_terms, [&]( const auto& X, const auto& Y, const auto& Z, const size_t m, const size_t n ) {
+                return x0( X, Y, Z, m, n, xy2( m, n ) ) + x1( X, Y, Z, m, n, xy2( m, n ) );
+            } );
+
+            A.col( 6 ) = eigenfunction_series( X, Y, Z, n_terms, [&]( const auto& X, const auto& Y, const auto& Z, const size_t m, const size_t n ) {
+                return x0( X, Y, Z, m, n, xmid( m, n ) ) + x1( X, Y, Z, m, n, xmid( m, n ) );
+            } );
+
+            std::cout << "Running solve:\n";
+            std::cout << A << std::endl << std::endl;
+            std::cout << values.transpose() << std::endl;
+
+            Eigen::PartialPivLU<Eigen::MatrixXd> sol( A );
+
+            const Eigen::VectorXd c = sol.solve( values );
+            return c;
+        } );
 
     m.def(
         "evaluateFit",

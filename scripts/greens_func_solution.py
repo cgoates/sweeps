@@ -184,5 +184,18 @@ def fit_to_constant_along_lines():
 
 
     # evaluate_fit_solution( c, Lx, Ly, n_terms )
+    
+def fit_to_constant_along_lines_volume():
+    n_terms = 100
+    X = np.array( [0]*6 + [0.5] )
+    Y = np.array( [0.5]*2 + [2.0/3.0]*5 )
+    Z = np.array( [ 0.5, 1.0/3, 1.0/3, 0.5, 5.0/6, 1.0, 1.0] )
 
-fit_to_constant_along_lines()
+    b = np.array([4.0] + [1.0]*6)
+    
+    c2 = eigenfunction.leastSquaresFitVolume( n_terms, X, Y, Z, b )
+    print( "C++ Coefficients: ", c2 )
+
+    # evaluate_fit_solution( c, Lx, Ly, n_terms )
+
+fit_to_constant_along_lines_volume()
