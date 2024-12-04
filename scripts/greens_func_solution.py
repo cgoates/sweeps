@@ -186,15 +186,72 @@ def fit_to_constant_along_lines():
     # evaluate_fit_solution( c, Lx, Ly, n_terms )
     
 def fit_to_constant_along_lines_volume():
-    n_terms = 100
-    X = np.array( [0]*6 + [0.5] )
-    Y = np.array( [0.5]*2 + [2.0/3.0]*5 )
-    Z = np.array( [ 0.5, 1.0/3, 1.0/3, 0.5, 5.0/6, 1.0, 1.0] )
+    one_3rd = 1.0/3.0
+    n_terms = 400
+    X = np.array( [0]*5 + [0.0] + [0.3] )
+    Y = np.array( [0.5]*2 + [one_3rd] + [2.0/3.0]*4 )
+    Z = np.array( [ 0.5, 1.0/3, 1.0/3, 0.5, 4.0/6, 1.0, 1.0] )
 
-    b = np.array([4.0] + [1.0]*6)
+    b = np.array([20.0] + [1.0]*6)
     
     c2 = eigenfunction.leastSquaresFitVolume( n_terms, X, Y, Z, b )
     print( "C++ Coefficients: ", c2 )
+    
+    X2 = np.array( [ 0, 0, 0, 0, 0, 0, 0, 0, 0.25, 0.5 ] )
+    Y2 = np.array( [ 0.5, 0.58, one_3rd, one_3rd, one_3rd, one_3rd, one_3rd, one_3rd, one_3rd, one_3rd ] )
+    Z2 = np.array( [ one_3rd, one_3rd, one_3rd, 0.4, 0.5, 0.7, 0.9, 1.0, 1.0, 1.0 ] )
+    
+    C = eigenfunction.evaluateFitVolume( n_terms, X2, Y2, Z2, c2 )
+    
+    print( "Values:\n", C )
+    
+    # See if there is a maximum along the center line
+    def find_saddle():
+        z1 = np.linspace(0,1,50)
+        x1 = 0.5 * np.ones_like( z1 )
+        y1 = x1
+        C1 = eigenfunction.evaluateFitVolume( n_terms, x1, y1, z1, c2 )
+        C2 = eigenfunction.evaluateFitVolume( n_terms, z1, x1, y1, c2 )
+        fig = plt.figure()
+        plt.plot(z1, C1)
+        plt.plot(z1, C2)
+        plt.show()
+        
+    find_saddle()
+    
+    X3, Y3 = np.meshgrid( np.linspace(0, 1, 61), np.linspace(0, 1, 61))
+    Z3 = np.ones_like(X3)
+    C3 = eigenfunction.evaluateFitVolume( n_terms, X3, Y3, Z3, c2 )  
+    Y4, Z4 = np.meshgrid( np.linspace(0, 1, 61), np.linspace(0, 1, 61))
+    X4 = np.ones_like(Y4)
+    C4 = eigenfunction.evaluateFitVolume( n_terms, X4, Y4, Z4, c2 )
+    Y5, Z5 = np.meshgrid( np.linspace(0, 1, 61), np.linspace(0, 1, 61))
+    X5 = np.zeros_like(Y4)
+    C5 = eigenfunction.evaluateFitVolume( n_terms, X5, Y5, Z5, c2 )
+    # plot
+    fig = plt.figure()
+    ax = fig.add_subplot(111,projection='3d')
+    ax.axis("equal")
+    norm = colors.TwoSlopeNorm( vmin=0, vcenter=1, vmax=b[0])
+    m = plt.cm.ScalarMappable(norm=norm, cmap='RdBu_r')
+    m.set_array([])
+
+    minn, maxx = C3.min(), C3.max()
+    fcolors = m.to_rgba(C3)
+    cp = ax.plot_surface(X3,Y3,Z3, rstride=1, cstride=1, facecolors=fcolors, vmin=minn, vmax=maxx, shade=False,cmap='RdBu_r', norm=norm)
+
+    minn, maxx = C4.min(), C4.max()
+    fcolors = m.to_rgba(C4)
+    cp = ax.plot_surface(X4,Y4,Z4, rstride=1, cstride=1, facecolors=fcolors, vmin=minn, vmax=maxx, shade=False,cmap='RdBu_r', norm=norm)
+    
+    minn, maxx = C5.min(), C5.max()
+    fcolors = m.to_rgba(C5)
+    cp = ax.plot_surface(X5,Y5,Z5, rstride=1, cstride=1, facecolors=fcolors, vmin=minn, vmax=maxx, shade=False,cmap='RdBu_r', norm=norm)
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('z')
+    plt.colorbar(cp)
+    plt.show()
 
     # evaluate_fit_solution( c, Lx, Ly, n_terms )
 
