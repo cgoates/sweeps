@@ -26,12 +26,17 @@ namespace basis
 
         virtual size_t numFunctions() const override;
 
+        Eigen::MatrixXd endVertexExtractionOperator() const;
+        std::vector<FunctionId> endVertexConnectivity() const;
+
         const KnotVector& knotVector() const { return mKnotVector; }
 
         private:
         const std::shared_ptr<const BasisComplex1d> mBasisComplex;
         const KnotVector mKnotVector;
         std::map<size_t, Eigen::MatrixXd> mExtractionOps;
+        std::map<size_t, Eigen::MatrixXd> mVertExtractionOps;
         std::map<size_t, std::vector<FunctionId>> mConnectivity;
+        std::map<size_t, std::vector<FunctionId>> mVertConnectivity;
     };
 }

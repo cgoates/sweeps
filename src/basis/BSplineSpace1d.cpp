@@ -55,6 +55,34 @@ namespace basis
             mExtractionOps.emplace( elem_ii, get_elem_operator( elem_ii, conn_elem ) );
             return true;
         } );
+
+        /// Add vertex connectivity and operators
+        const auto get_vertex_connectivity = [&degree, &C]( const size_t vertex_ii ) {
+            std::vector<FunctionId> rows;
+            for( SparseMatrixXd::InnerIterator it( C, vertex_ii * degree ); it; ++it )
+                rows.push_back( FunctionId( it.row() ) );
+            return rows;
+        };
+
+        const auto get_vertex_operator = [&degree, &C]( const size_t vertex_ii, const std::vector<FunctionId>& conn_elem ) {
+            Eigen::MatrixXd C_elem = Eigen::MatrixXd::Zero( conn_elem.size(), 1 );
+            Eigen::Index row = 0;
+            for( SparseMatrixXd::InnerIterator it( C, vertex_ii * degree ); it; ++it )
+                C_elem( row++, 0 ) = it.value();
+            return C_elem;
+        };
+
+        const auto vertex_ids = indexingOrError( cmap, 0 );
+        iterateCellsWhile( cmap, 0, [&]( const topology::Vertex& v ) {
+            const size_t vertex_ii = vertex_ids( v );
+            const std::vector<FunctionId>& conn_vert = mVertConnectivity.emplace( vertex_ii, get_vertex_connectivity( vertex_ii ) ).first->second;
+            mVertExtractionOps.emplace( vertex_ii, get_vertex_operator( vertex_ii, conn_vert ) );
+            return true;
+        } );
+
+        const size_t end_vert = cellCount( cmap, 0 );
+        const std::vector<FunctionId>& conn_vert = mVertConnectivity.emplace( end_vert, get_vertex_connectivity( end_vert ) ).first->second;
+        mVertExtractionOps.emplace( end_vert, get_vertex_operator( end_vert, conn_vert ) );
     }
 
     const BasisComplex1d& BSplineSpace1d::basisComplex() const
@@ -64,18 +92,44 @@ namespace basis
 
     Eigen::MatrixXd BSplineSpace1d::extractionOperator( const topology::Cell& c ) const
     {
-        if( c.dim() != mBasisComplex->parametricAtlas().cmap().dim() )
-            throw std::runtime_error( "Extraction operators only supported for elements" );
-        const auto indexing = indexingOrError( mBasisComplex->parametricAtlas().cmap(), c.dim() );
-        return mExtractionOps.at( indexing( c ) );
+        if( c.dim() == 1 )
+        {
+            const auto indexing = indexingOrError( mBasisComplex->parametricAtlas().cmap(), c.dim() );
+            return mExtractionOps.at( indexing( c ) );
+        }
+        else if( c.dim() == 0 )
+        {
+            const auto indexing = indexingOrError( mBasisComplex->parametricAtlas().cmap(), c.dim() );
+            return mVertExtractionOps.at( indexing( c ) );
+        }
+        else
+            throw std::runtime_error( "Too large cell dimension for BSplineSpace1d" );
     }
 
     std::vector<FunctionId> BSplineSpace1d::connectivity( const topology::Cell& c ) const
     {
-        if( c.dim() != mBasisComplex->parametricAtlas().cmap().dim() )
+        if( c.dim() == 1 )
+        {
+            const auto indexing = indexingOrError( mBasisComplex->parametricAtlas().cmap(), c.dim() );
+            return mConnectivity.at( indexing( c ) );
+        }
+        else if( c.dim() == 0 )
+        {
+            const auto indexing = indexingOrError( mBasisComplex->parametricAtlas().cmap(), c.dim() );
+            return mVertConnectivity.at( indexing( c ) );
+        }
+        else
             throw std::runtime_error( "Extraction operators only supported for elements" );
-        const auto indexing = indexingOrError( mBasisComplex->parametricAtlas().cmap(), c.dim() );
-        return mConnectivity.at( indexing( c ) );
+    }
+
+    Eigen::MatrixXd BSplineSpace1d::endVertexExtractionOperator() const
+    {
+        return mVertExtractionOps.at( cellCount( mBasisComplex->parametricAtlas().cmap(), 0 ) );
+    }
+
+    std::vector<FunctionId> BSplineSpace1d::endVertexConnectivity() const
+    {
+        return mVertConnectivity.at( cellCount( mBasisComplex->parametricAtlas().cmap(), 0 ) );
     }
 
     size_t BSplineSpace1d::numFunctions() const
