@@ -333,4 +333,110 @@ namespace topology
             return cmap.flatten( unflat_darts.unflat_darts.at( 0 ), unflat_darts.unflat_darts.at( 1 ), unflat_darts.dart_pos.at( 0 ) );
         }
     }
+
+    std::pair<CellOrEndVertex, CellOrEndVertex> unflattenCell( const TPCombinatorialMap& cmap, const Cell& c )
+    {
+        const size_t cmap_dim = cmap.dim();
+        if( c.dim() > cmap_dim )
+            throw std::invalid_argument( "Cannot unflatten cell with dimension greater than the cmap" );
+
+        const auto darts = cmap.unflatten( c.dart() );
+        const auto& tp_pos = std::get<2>( darts );
+        const auto tp_pos_int = std::to_underlying( tp_pos );
+        const auto& line_d = std::get<1>( darts );
+        const auto& source_d = std::get<0>( darts );
+
+        if( c.dim() == cmap_dim )
+        {
+            return { Cell( source_d, cmap_dim - 1 ), Edge( line_d ) };
+        }
+        
+        const auto opp_vert = []( const CombinatorialMap& cmap, const Dart& d ) -> CellOrEndVertex {
+            return phi( cmap, 1, d ).and_then( []( const Dart& a ) -> std::optional<Vertex> {
+                return Vertex( a );
+            } );
+        };
+        // If it's the line and you know it should be a vert, just call this.
+        const auto line_vert = [&]() -> CellOrEndVertex {
+            if( tp_pos_int >= cmap_dim )
+                return opp_vert( cmap.lineCMap(), line_d );
+            else
+                return Vertex( line_d );
+        };
+
+        // If it's the source and you know it should be a vert, just call this.
+        const auto source_vert = [&]() -> CellOrEndVertex {
+            if( cmap_dim == 3 )
+            {
+                switch( tp_pos )
+                {
+                    case topology::TPCombinatorialMap::TPDartPos::DartPos0:
+                    case topology::TPCombinatorialMap::TPDartPos::DartPos2:
+                    case topology::TPCombinatorialMap::TPDartPos::DartPos3:
+                        return Vertex( source_d );
+                    default: return opp_vert( cmap.sourceCMap(), source_d );
+                }
+            }
+            else
+            {
+                switch( tp_pos )
+                {
+                    case topology::TPCombinatorialMap::TPDartPos::DartPos0:
+                    case topology::TPCombinatorialMap::TPDartPos::DartPos3:
+                        return Vertex( source_d );
+                    default:
+                        return opp_vert( cmap.sourceCMap(), source_d );
+                }
+            }
+        };
+
+        const auto line_edge = [&line_d](){
+            return Edge( line_d );
+        };
+
+        const auto source_edge = [&source_d](){
+            return Edge( source_d );
+        };
+
+        const auto source_face = [&source_d](){
+            return Face( source_d );
+        };
+
+        if( c.dim() == 0 )
+        {
+            return { source_vert(), line_vert() };
+        }
+        else if( cmap_dim == 2 )
+        {
+            if( tp_pos_int % 2 == 0 )
+                return { source_edge(), line_vert() };
+            else
+                return { source_vert(), line_edge() };
+        }
+        else//cmap.dim() == 3
+        {
+            if( c.dim() == 1 )
+            {
+                switch( tp_pos )
+                {
+                    case topology::TPCombinatorialMap::TPDartPos::DartPos2:
+                    case topology::TPCombinatorialMap::TPDartPos::DartPos4:
+                        return { source_vert(), line_edge() };
+                    default:
+                        return { source_edge(), line_vert() };
+                }
+            }
+            else
+            {
+                switch( tp_pos )
+                {
+                    case topology::TPCombinatorialMap::TPDartPos::DartPos0:
+                    case topology::TPCombinatorialMap::TPDartPos::DartPos5:
+                        return { source_face(), line_vert() };
+                    default:
+                        return { source_edge(), line_edge() };
+                }
+            }
+        }
+    }
 }

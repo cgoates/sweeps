@@ -103,4 +103,12 @@ namespace topology
 
     FullyUnflattenedDart unflattenFull( const TPCombinatorialMap& cmap, const Dart& d );
     Dart flattenFull( const TPCombinatorialMap& cmap, const FullyUnflattenedDart& unflat_d );
+
+    using CellOrEndVertex = std::optional<Cell>;
+    /// @brief Returns the two cells that the given TP cell is a tensor product of.
+    /// Careful in using this, doesn't care about dart orientation or which element the darts end up in.
+    /// @param cmap The TP CMap.
+    /// @param c    The TP Cell to unflatten.
+    /// @return     A pair { source_cell, line_cell }. source_cell.dim() + line_cell.dim() = c.dim()
+    std::pair<CellOrEndVertex, CellOrEndVertex> unflattenCell( const TPCombinatorialMap& cmap, const Cell& c );
 }; // namespace topology
