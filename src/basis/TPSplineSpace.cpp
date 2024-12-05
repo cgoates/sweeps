@@ -21,13 +21,31 @@ namespace basis
 
     Eigen::MatrixXd TPSplineSpace::extractionOperator( const topology::Cell& c ) const
     {
-        if( c.dim() != mBasisComplex->parametricAtlas().cmap().dim() )
+        if( c.dim() > mBasisComplex->parametricAtlas().cmap().dim() )
             throw std::runtime_error( "Bad cell dimension for spline space" );
 
-        const auto dart_pr = mBasisComplex->parametricAtlas().cmap().unflatten( c.dart() );
-        const topology::Cell source_c( std::get<0>( dart_pr ), mSource->basisComplex().parametricAtlas().cmap().dim() );
-        const topology::Cell line_c( std::get<1>( dart_pr ), mLine->basisComplex().parametricAtlas().cmap().dim() );
-        return Eigen::kroneckerProduct( mLine->extractionOperator( line_c ), mSource->extractionOperator( source_c ) );
+        const auto cell_pr = unflattenCell( mBasisComplex->parametricAtlas().cmap(), c );
+
+        const auto source_exop = [&]() {
+            if( cell_pr.first.has_value() )
+                return mSource->extractionOperator( cell_pr.first.value() );
+            else
+            {
+                const auto source_1d = std::dynamic_pointer_cast<const BSplineSpace1d>( mSource );
+                if( source_1d )
+                    return source_1d->endVertexExtractionOperator();
+                else
+                    throw std::runtime_error( "Bad unflattened cell" );
+            }
+        };
+
+        const auto line_exop = [&]() {
+            if( cell_pr.second.has_value() )
+                return mLine->extractionOperator( cell_pr.second.value() );
+            else
+                return mLine->endVertexExtractionOperator();
+        };
+        return Eigen::kroneckerProduct( line_exop(), source_exop() );
     }
 
     FunctionId TPSplineSpace::flatten( const FunctionId& source_fid, const FunctionId& line_fid ) const
@@ -38,14 +56,30 @@ namespace basis
 
     std::vector<FunctionId> TPSplineSpace::connectivity( const topology::Cell& c ) const
     {
-        if( c.dim() != mBasisComplex->parametricAtlas().cmap().dim() )
+        if( c.dim() > mBasisComplex->parametricAtlas().cmap().dim() )
             throw std::runtime_error( "Bad cell dimension for spline space" );
 
-        const auto dart_pr = mBasisComplex->parametricAtlas().cmap().unflatten( c.dart() );
-        const std::vector<FunctionId> source_conn = mSource->connectivity(
-            topology::Cell( std::get<0>( dart_pr ), mSource->basisComplex().parametricAtlas().cmap().dim() ) );
-        const std::vector<FunctionId> line_conn = mLine->connectivity(
-            topology::Cell( std::get<1>( dart_pr ), mLine->basisComplex().parametricAtlas().cmap().dim() ) );
+        const auto cell_pr = unflattenCell( mBasisComplex->parametricAtlas().cmap(), c );
+
+        const std::vector<FunctionId> source_conn = [&]() {
+            if( cell_pr.first.has_value() )
+                return mSource->connectivity( cell_pr.first.value() );
+            else
+            {
+                const auto source_1d = std::dynamic_pointer_cast<const BSplineSpace1d>( mSource );
+                if( source_1d )
+                    return source_1d->endVertexConnectivity();
+                else
+                    throw std::runtime_error( "Bad unflattened cell" );
+            }
+        }();
+
+        const std::vector<FunctionId> line_conn = [&]() {
+            if( cell_pr.second.has_value() )
+                return mLine->connectivity( cell_pr.second.value() );
+            else
+                return mLine->endVertexConnectivity();
+        }();
 
         std::vector<FunctionId> out;
         out.reserve( line_conn.size() * source_conn.size() );
