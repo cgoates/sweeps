@@ -14,40 +14,159 @@ namespace reparam
 {
     Timer t;
 
-    double edgeWeightLaplace3d( const topology::CombinatorialMap& map,
-                                const VertexPositionsFunc& v_positions,
-                                const topology::Edge& e,
-                                const std::vector<Normal>& normals )
-    {
-        double weight = 0;
-        t.start( 8 );
-
-        t.stop( 8 );
-        iterateAdjacentCells( map, e, 3, [&]( const topology::Volume& v ) {
-            t.start( 6 );
-            const topology::Edge op_edge( phi( map, { 1, 2, -1 }, v.dart() ).value() );
-            const double factor = edgeLength( map, v_positions, op_edge ) / 12;
-            weight += factor * dihedralCotangent( map, op_edge, normals );
-            t.stop( 6 );
-            return true;
-        } );
-
-        return weight;
-    }
-
-    std::vector<double> edgeWeightsLaplace3d( const topology::CombinatorialMap& map,
-                                              const VertexPositionsFunc& vertex_position,
-                                              const std::vector<Normal>& normals )
+    std::vector<double> cotanEdgeWeights( const topology::CombinatorialMap& map,
+                                          const VertexPositionsFunc& vertex_position,
+                                          const std::vector<Normal>& normals )
     {
         const auto edge_ids = indexingOrError( map, 1 );
         const size_t n_edges = cellCount( map, 1 );
         std::vector<double> weights( n_edges, 0 );
 
         iterateCellsWhile( map, 1, [&]( const topology::Edge& e ) {
-            weights.at( edge_ids( e ) ) = edgeWeightLaplace3d( map, vertex_position, e, normals );
+            double& weight = weights.at( edge_ids( e ) );
+            iterateAdjacentCells( map, e, 3, [&]( const topology::Volume& v ) {
+                const topology::Edge op_edge( phi( map, { 1, 2, -1 }, v.dart() ).value() );
+                const double factor = edgeLength( map, vertex_position, op_edge ) / 12;
+                weight += factor * dihedralCotangent( map, op_edge, normals );
+                return true;
+            } );
             return true;
         } );
         return weights;
+    }
+
+    std::vector<double> barycentricDualEdgeWeights( const topology::CombinatorialMap& map,
+                                                    const VertexPositionsFunc& v_positions )
+    {
+        const auto edge_ids = indexingOrError( map, 1 );
+        const size_t n_edges = cellCount( map, 1 );
+        std::vector<double> weights( n_edges, 0 );
+
+        iterateCellsWhile( map, 1, [&]( const topology::Edge& e ) {
+            double& weight = weights.at( edge_ids( e ) );
+
+            const Eigen::Vector3d edge_mid = 0.5 * ( v_positions( topology::Vertex( e.dart() ) ) + v_positions( topology::Vertex( phi( map, 1, e.dart() ).value() ) ) );
+            const double edge_len = edgeLength( map, v_positions, e );
+            const double factor = 6 / ( edge_len * edge_len );
+            iterateAdjacentCells( map, e, 3, [&]( const topology::Volume& v ) {
+                const Eigen::Vector3d vert_position = v_positions( topology::Vertex( v.dart() ) );
+                const Tetrahedron tet = tetOfVolume( map, v_positions, v );
+                const Eigen::Vector3d tet_circum = centroid( tet );
+                const Eigen::Vector3d face_circum = centroid( triangleOfFace<3>( map, v_positions, topology::Face( v.dart() ) ) );
+                const Eigen::Vector3d opp_face_circum = centroid( triangleOfFace<3>( map, v_positions, topology::Face( phi( map, 2, v.dart() ).value() ) ) );
+                weight += tetVolume( Tetrahedron( { edge_mid, tet_circum, face_circum, vert_position } ) );
+                weight += tetVolume( Tetrahedron( { edge_mid, opp_face_circum, tet_circum, vert_position } ) );
+
+                return true;
+            } );
+
+            weight *= factor;
+
+            return true;
+        } );
+
+        return weights;
+    }
+
+    bool circumcenterOutside( const Tetrahedron& tet, const Eigen::Vector3d& circum )
+    {
+        const Eigen::Vector3d tet_edge_normal1 = ( tet.v2 - tet.v1 ).cross( tet.v3 - tet.v1 );
+        const Eigen::Vector3d tet_edge_normal2 = ( tet.v4 - tet.v1 ).cross( tet.v2 - tet.v1 );
+        const Eigen::Vector3d tet_edge_normal3 = ( tet.v3 - tet.v1 ).cross( tet.v4 - tet.v1 );
+        const Eigen::Vector3d tet_face_normal4 = ( tet.v4 - tet.v2 ).cross( tet.v3 - tet.v2 );
+        const Eigen::Vector4d signs( tet_edge_normal1.dot( circum - tet.v1 ),
+                                     tet_edge_normal2.dot( circum - tet.v1 ),
+                                     tet_edge_normal3.dot( circum - tet.v1 ),
+                                     tet_face_normal4.dot( circum - tet.v2 ) );
+
+        return signs( 0 ) * signs( 1 ) * signs( 2 ) * signs( 3 ) < 1e-12;
+    }
+
+    bool circumcenterOutside( const Triangle<3>& tri )
+    {
+        const auto v12 = tri.v2 - tri.v1;
+        const auto v23 = tri.v3 - tri.v2;
+        const auto v31 = tri.v1 - tri.v3;
+
+        // Calculate cosines of angles using dot product.
+        // cos(angle) = -v1·v2 / (|v1|·|v2|), but since we only need the sign we ignore the denominator.
+        // angle is acute iff cos(angle) > 0
+        const double cos1 = ( -v31 ).dot( v12 );
+        const double cos2 = ( -v12 ).dot( v23 );
+        const double cos3 = ( -v23 ).dot( v31 );
+
+        // All angles are acute if all cosines are positive.
+        // Circumcenter is outside if any angle is obtuse.
+        return cos1 < 0 or cos2 < 0 or cos3 < 0;
+    }
+
+    std::vector<double> voronoiDualEdgeWeights( const topology::CombinatorialMap& map, const VertexPositionsFunc& v_positions )
+    {
+        const auto edge_ids = indexingOrError( map, 1 );
+        const size_t n_edges = cellCount( map, 1 );
+        std::vector<double> weights( n_edges, 0 );
+
+        iterateCellsWhile( map, 1, [&]( const topology::Edge& e ) {
+            double& weight = weights.at( edge_ids( e ) );
+
+            const Eigen::Vector3d edge_mid = 0.5 * ( v_positions( topology::Vertex( e.dart() ) ) + v_positions( topology::Vertex( phi( map, 1, e.dart() ).value() ) ) );
+            const double edge_len = edgeLength( map, v_positions, e );
+            const double factor = 6 / ( edge_len * edge_len );
+            iterateAdjacentCells( map, e, 3, [&]( const topology::Volume& v ) {
+                const Eigen::Vector3d vert_position = v_positions( topology::Vertex( v.dart() ) );
+                const Tetrahedron tet = tetOfVolume( map, v_positions, v );
+                const Triangle<3> face1 = triangleOfFace<3>( map, v_positions, topology::Face( v.dart() ) );
+                const Triangle<3> face2 = triangleOfFace<3>( map, v_positions, topology::Face( phi( map, 2, v.dart() ).value() ) );
+                const Eigen::Vector3d tet_circum = circumcenter( tet );
+                const Eigen::Vector3d face_circum = circumcenter( face1 );
+                const Eigen::Vector3d opp_face_circum = circumcenter( face2 );
+                weight += tetVolume( Tetrahedron( { edge_mid, tet_circum, face_circum, vert_position } ) );
+                weight += tetVolume( Tetrahedron( { edge_mid, opp_face_circum, tet_circum, vert_position } ) );
+
+                // NOTE: if we check here for circumcenters outside the tetrahedron or the triangles and calculate the
+                // barycentric dual weight instead, we get the hybrid weights mentioned in the Alexa et al. paper.
+
+                return true;
+            } );
+
+            weight *= factor;
+            return true;
+        } );
+        return weights;
+    }
+
+    std::vector<double> inverseLengthEdgeWeights( const topology::CombinatorialMap& map,
+                                                  const VertexPositionsFunc& v_positions )
+    {
+        const auto edge_ids = indexingOrError( map, 1 );
+        const size_t n_edges = cellCount( map, 1 );
+        std::vector<double> weights( n_edges, 0 );
+
+        iterateCellsWhile( map, 1, [&]( const topology::Edge& e ) {
+            weights.at( edge_ids( e ) ) = 1.0 / edgeLength( map, v_positions, e );
+            return true;
+        } );
+        return weights;
+    }
+
+    std::vector<double> edgeWeightsLaplace3d( const topology::CombinatorialMap& map,
+                                             const VertexPositionsFunc& vertex_position,
+                                             const std::vector<Normal>& normals,
+                                             const LaplaceEdgeWeights& edge_weights )
+    {
+        switch( edge_weights )
+        {
+            case LaplaceEdgeWeights::Cotangent:
+                return cotanEdgeWeights( map, vertex_position, normals );
+            case LaplaceEdgeWeights::VoronoiDual:
+                return voronoiDualEdgeWeights( map, vertex_position );
+            case LaplaceEdgeWeights::BarycentricDual:
+                return barycentricDualEdgeWeights( map, vertex_position );
+            case LaplaceEdgeWeights::InverseLength:
+                return inverseLengthEdgeWeights( map, vertex_position );
+            case LaplaceEdgeWeights::Uniform:
+                return std::vector<double>( cellCount( map, 1 ), 1.0 );
+        }
     }
 
     Eigen::SparseVector<double>
@@ -86,7 +205,8 @@ namespace reparam
     Eigen::VectorXd sweepEmbedding( const topology::TetMeshCombinatorialMap& map,
                                     const std::vector<bool>& zero_bcs,
                                     const std::vector<bool>& one_bcs,
-                                    const std::vector<Normal>& normals )
+                                    const std::vector<Normal>& normals,
+                                    const LaplaceEdgeWeights& edge_weights_type )
     {
         const auto vertex_ids = indexingOrError( map, 0 );
         const auto vertex_position = [&]( const topology::Vertex& v ) {
@@ -94,17 +214,9 @@ namespace reparam
         };
 
         const auto edge_ids = indexingOrError( map, 1 );
-        const std::vector<double> edge_weights = edgeWeightsLaplace3d( map, vertex_position, normals );
+        const std::vector<double> edge_weights = edgeWeightsLaplace3d( map, vertex_position, normals, edge_weights_type );
         const auto edge_weights_func = [&]( const topology::Edge& e ) { return edge_weights.at( edge_ids( e ) ); };
-        return sweepEmbedding( map, edge_weights_func, zero_bcs, one_bcs );
-    }
 
-    Eigen::VectorXd sweepEmbedding( const topology::CombinatorialMap& map,
-                                    const std::function<double( const topology::Edge& )>& edge_weights,
-                                    const std::vector<bool>& zero_bcs,
-                                    const std::vector<bool>& one_bcs )
-    {
-        const auto vertex_ids = indexingOrError( map, 0 );
         const auto constraints = [&]( const topology::Vertex& v ) -> std::optional<Eigen::VectorXd> {
             if( zero_bcs.at( vertex_ids( v ) ) )
                 return Eigen::Matrix<double, 1, 1>( 0.0 );
@@ -117,7 +229,7 @@ namespace reparam
         const size_t n_constraints = std::accumulate( zero_bcs.begin(), zero_bcs.end(), 0 ) +
                                      std::accumulate( one_bcs.begin(), one_bcs.end(), 0 );
 
-        return solveLaplaceSparse( map, edge_weights, constraints, n_constraints, 1 );
+        return solveLaplaceSparse( map, edge_weights_func, constraints, n_constraints, 1 );
     }
 
     Eigen::MatrixX2d

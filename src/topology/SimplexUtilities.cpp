@@ -88,7 +88,7 @@ double edgeLength( const topology::CombinatorialMap& map, const VertexPositionsF
     return ( pos2 - pos1 ).norm();
 }
 
-double dihedralCotangent( const topology::CombinatorialMap& map, const topology::Edge& e, const std::vector<Normal>& normals )
+double dihedralCosine( const topology::CombinatorialMap& map, const topology::Edge& e, const std::vector<Normal>& normals )
 {
     const auto face_ids = indexingOrError( map, 2 );
     const topology::Dart& d1 = e.dart();
@@ -96,7 +96,12 @@ double dihedralCotangent( const topology::CombinatorialMap& map, const topology:
     const Eigen::Vector3d n1 = normals.at( face_ids( topology::Face( d1 ) ) ).get( d1 );
     const Eigen::Vector3d n2 = normals.at( face_ids( topology::Face( d2 ) ) ).reversed( d2 );
 
-    const double cos_theta = n1.dot( n2 );
+    return n1.dot( n2 );
+}
+
+double dihedralCotangent( const topology::CombinatorialMap& map, const topology::Edge& e, const std::vector<Normal>& normals )
+{
+    const double cos_theta = dihedralCosine( map, e, normals );
     return cos_theta / std::sqrt( 1 - cos_theta * cos_theta );
 }
 

@@ -16,16 +16,20 @@ namespace topology
 
 namespace reparam
 {
+    enum class LaplaceEdgeWeights
+    {
+        Cotangent,
+        InverseLength,
+        VoronoiDual,
+        BarycentricDual,
+        Uniform
+    };
 
     Eigen::VectorXd sweepEmbedding( const topology::TetMeshCombinatorialMap& map,
                                     const std::vector<bool>& zero_bcs,
                                     const std::vector<bool>& one_bcs,
-                                    const std::vector<Normal>& normals );
-
-    Eigen::VectorXd sweepEmbedding( const topology::CombinatorialMap& map,
-                                    const std::function<double( const topology::Edge& )>& edge_weights,
-                                    const std::vector<bool>& zero_bcs,
-                                    const std::vector<bool>& one_bcs );
+                                    const std::vector<Normal>& normals,
+                                    const LaplaceEdgeWeights& edge_weights = LaplaceEdgeWeights::Cotangent );
 
     Eigen::MatrixX2d
         tutteEmbedding( const topology::CombinatorialMap& map,
@@ -43,5 +47,10 @@ namespace reparam
                             const std::function<std::optional<Eigen::VectorXd>( const topology::Vertex& )>& constraints,
                             const size_t n_constrained_verts,
                             const size_t data_dim );
+
+    std::vector<double> edgeWeightsLaplace3d( const topology::CombinatorialMap& map,
+                                              const VertexPositionsFunc& vertex_position,
+                                              const std::vector<Normal>& normals,
+                                              const LaplaceEdgeWeights& edge_weights );
 
 } // namespace reparam
