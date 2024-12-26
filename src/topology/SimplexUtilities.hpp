@@ -39,6 +39,14 @@ class Normal
     Eigen::Vector3d mNormal;
 };
 
+struct Tetrahedron
+{
+    const Eigen::Vector3d v1;
+    const Eigen::Vector3d v2;
+    const Eigen::Vector3d v3;
+    const Eigen::Vector3d v4;
+};
+
 template<int DIM>
 struct Triangle
 {
@@ -73,19 +81,26 @@ Triangle<DIM> triangleOfFace( const topology::CombinatorialMap& map,
                               const VertexPositionsFunc& vertex_position,
                               const topology::Face& f );
 
+Tetrahedron tetOfVolume( const topology::CombinatorialMap& map, const VertexPositionsFunc& v_positions, const topology::Volume& v );
+
 Eigen::Vector3d triangleNormal( const Triangle<3>& tri );
 
 Eigen::Vector3d triangleNormal( const topology::TetMeshCombinatorialMap& map, const topology::Face& f );
 
 Eigen::Vector3d centroid( const Triangle<3>& tri );
+Eigen::Vector3d centroid( const Tetrahedron& tet );
 
 Eigen::Vector3d centroid( const topology::TetMeshCombinatorialMap& map, const topology::Face& f );
 
 std::vector<Normal> faceNormals( const topology::TetMeshCombinatorialMap& map );
 
 double edgeLength( const topology::CombinatorialMap& map, const VertexPositionsFunc& positions, const topology::Edge& e );
+double tetVolume( const Tetrahedron& tet );
 
 double dihedralCotangent( const topology::CombinatorialMap& map, const topology::Edge& e, const std::vector<Normal>& normals );
+
+Eigen::Vector3d circumcenter( const Tetrahedron& tet );
+template<int DIM> Eigen::Matrix<double, DIM, 1> circumcenter( const Triangle<DIM>& tri );
 
 Eigen::Vector3d gradient( const topology::TetMeshCombinatorialMap& map,
                           const topology::Volume& v,

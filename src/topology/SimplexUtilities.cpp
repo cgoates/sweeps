@@ -56,6 +56,11 @@ Eigen::Vector3d centroid( const Triangle<3>& tri )
     return ( tri.v1 + tri.v2 + tri.v3 ) / 3;
 }
 
+Eigen::Vector3d centroid( const Tetrahedron& tet )
+{
+    return ( tet.v1 + tet.v2 + tet.v3 + tet.v4 ) / 4;
+}
+
 Eigen::Vector3d centroid( const topology::TetMeshCombinatorialMap& map, const topology::Face& f )
 {
     return centroid( triangleOfFace( map, f ) );
@@ -94,6 +99,60 @@ double dihedralCotangent( const topology::CombinatorialMap& map, const topology:
     const double cos_theta = n1.dot( n2 );
     return cos_theta / std::sqrt( 1 - cos_theta * cos_theta );
 }
+
+Tetrahedron tetOfVolume( const topology::CombinatorialMap& map, const VertexPositionsFunc& v_positions, const topology::Volume& v )
+{
+    const auto vertex_ids = indexingOrError( map, 0 );
+    Eigen::Matrix3d m;
+    const Eigen::Vector3d v1 = v_positions( topology::Vertex( v.dart() ) );
+    const Eigen::Vector3d v2 = v_positions( topology::Vertex( phi( map, 1, v.dart() ).value() ) );
+    const Eigen::Vector3d v3 = v_positions( topology::Vertex( phi( map, {1, 1}, v.dart() ).value() ) );
+    const Eigen::Vector3d v4 = v_positions( topology::Vertex( phi( map, {2, 1, 1}, v.dart() ).value() ) );
+
+    return Tetrahedron{ v1, v2, v3, v4 };
+}
+
+double tetVolume( const Tetrahedron& tet )
+{
+    Eigen::Matrix3d m;
+    m << tet.v2 - tet.v1, tet.v3 - tet.v1, tet.v4 - tet.v1;
+    return m.determinant() / 6;
+}
+
+Eigen::Vector3d circumcenter( const Tetrahedron& tet )
+{
+    const auto u1 = tet.v2 - tet.v1;
+    const auto u2 = tet.v3 - tet.v1;
+    const auto u3 = tet.v4 - tet.v1;
+
+    const double l1sq = u1.squaredNorm();
+    const double l2sq = u2.squaredNorm();
+    const double l3sq = u3.squaredNorm();
+
+    const Eigen::Vector3d circumcenter =
+        tet.v1 +
+        ( l1sq * u2.cross( u3 ) + l2sq * u3.cross( u1 ) + l3sq * u1.cross( u2 ) ) / ( 2 * u1.dot( u2.cross( u3 ) ) );
+
+    return circumcenter;
+}
+
+template<int DIM>
+Eigen::Matrix<double, DIM, 1> circumcenter( const Triangle<DIM>& tri )
+{
+    const auto u1 = tri.v2 - tri.v1;
+    const auto u2 = tri.v3 - tri.v1;
+
+    const double l1sq = u1.squaredNorm();
+    const double l2sq = u2.squaredNorm();
+
+    const Eigen::Matrix<double, DIM, 1> circumcenter =
+        tri.v1 + 0.5 * ( l1sq * l2sq * ( u1 + u2 ) - u1.dot( u2 ) * ( l1sq * u2 + l2sq * u1 ) ) / ( l1sq * l2sq - pow( u1.dot( u2 ), 2 ) );
+
+    return circumcenter;
+}
+template Eigen::Matrix<double, 3, 1> circumcenter<3>( const Triangle<3>& tri );
+template Eigen::Matrix<double, 2, 1> circumcenter<2>( const Triangle<2>& tri );
+
 
 Eigen::Vector3d gradient( const topology::TetMeshCombinatorialMap& map,
                           const topology::Volume& v,
