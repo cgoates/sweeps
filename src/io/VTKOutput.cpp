@@ -279,12 +279,15 @@ namespace io
     {
         SimplicialComplex path;
 
-        path.points.push_back( positions( topology::Vertex( edges.front().dart() ) ) );
-        for( const auto& edge : edges )
+        if( not edges.empty() )
         {
-            const size_t temp = path.points.size();
-            path.points.push_back( positions( topology::Vertex( phi( cmap, 1, edge.dart() ).value() ) ) );
-            path.simplices.emplace_back( temp - 1, temp );
+            path.points.push_back( positions( topology::Vertex( edges.front().dart() ) ) );
+            for( const auto& edge : edges )
+            {
+                const size_t temp = path.points.size();
+                path.points.push_back( positions( topology::Vertex( phi( cmap, 1, edge.dart() ).value() ) ) );
+                path.simplices.emplace_back( temp - 1, temp );
+            }
         }
 
         io::VTKOutputObject output( path );
