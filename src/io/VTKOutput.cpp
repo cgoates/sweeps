@@ -326,4 +326,66 @@ namespace io
         io::VTKOutputObject output( out );
         io::outputSimplicialFieldToVTK( output, filename );
     }
+
+    void outputDualFace( const topology::CombinatorialMap& cmap,
+                         const VertexPositionsFunc& positions,
+                         const topology::Edge& e,
+                         const std::string& postfix )
+    {
+        SimplicialComplex dual;
+        SimplicialComplex tets;
+        SimplicialComplex edges;
+
+        const Eigen::Vector3d edge_mid = 0.5 * ( positions( topology::Vertex( e.dart() ) ) +
+                                                 positions( topology::Vertex( phi( cmap, 1, e.dart() ).value() ) ) );
+
+        topology::Dart curr_d = e.dart();
+        if( boundaryAdjacent( cmap, e ) )
+        {
+            // iterate phi {2,3} until there is no phi({2,3})
+            std::optional<topology::Dart> maybe_next = std::nullopt;
+            do
+            {
+                maybe_next = phi( cmap, {2,3}, curr_d );
+                if( maybe_next.has_value() )
+                    curr_d = maybe_next.value();
+            } while( maybe_next.has_value() );
+        }
+
+        const topology::Dart start_dart = curr_d;
+
+        Eigen::Vector3d last_circumcenter = circumcenter( tetOfVolume( cmap, positions, topology::Volume( curr_d ) ) );
+        do
+        {
+            const topology::Volume tet( curr_d );
+            addTetNoDuplicateChecking( tets, cmap, positions, tet );
+            addEdgeNoDuplicateChecking( edges, cmap, positions, topology::Edge( curr_d ) );
+
+            const std::optional<topology::Dart> maybe_next_d = phi( cmap, {3,2}, curr_d );
+            if( maybe_next_d.has_value() )
+            {
+                const topology::Dart next_d = maybe_next_d.value();
+                const Eigen::Vector3d this_circumcenter = circumcenter( tetOfVolume( cmap, positions, topology::Volume( next_d ) ) );
+                dual.points.push_back( edge_mid );
+                dual.points.push_back( last_circumcenter );
+                dual.points.push_back( this_circumcenter );
+                dual.simplices.emplace_back( dual.points.size() - 3, dual.points.size() - 2, dual.points.size() - 1 );
+                last_circumcenter = this_circumcenter;
+                curr_d = next_d;
+            }
+            else
+            {
+                break;
+            }
+        } while ( curr_d != start_dart );
+
+        io::VTKOutputObject output( dual );
+        io::outputSimplicialFieldToVTK( output, "dual" + postfix + ".vtu" );
+
+        io::VTKOutputObject output_tets( tets );
+        io::outputSimplicialFieldToVTK( output_tets, "tetsneardual" + postfix + ".vtu" );
+
+        io::VTKOutputObject output_edges( edges );
+        io::outputSimplicialFieldToVTK( output_edges, "edgesneardual" + postfix + ".vtu" );
+    }
 } // namespace io

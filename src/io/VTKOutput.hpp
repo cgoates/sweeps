@@ -54,4 +54,9 @@ namespace io
     void outputCMap( const topology::CombinatorialMap& cmap,
                      const VertexPositionsFunc& positions,
                      const std::string& filename );
+
+    void outputDualFace( const topology::CombinatorialMap& cmap,
+                         const VertexPositionsFunc& positions,
+                         const topology::Edge& e,
+                         const std::string& postfix );
 } // namespace io
