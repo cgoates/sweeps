@@ -24,7 +24,7 @@ Triangle<3> triangleOfFace( const topology::TetMeshCombinatorialMap& map, const 
     return triangleOfFace<3>( map, vertex_position, f );
 }
 
-template<unsigned int DIM>
+template<int DIM>
 Triangle<DIM> triangleOfFace( const topology::CombinatorialMap& map,
                               const VertexPositionsFunc& vertex_position,
                               const topology::Face& f )

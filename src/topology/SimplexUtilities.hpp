@@ -39,7 +39,7 @@ class Normal
     Eigen::Vector3d mNormal;
 };
 
-template<unsigned int DIM>
+template<int DIM>
 struct Triangle
 {
     const Eigen::Matrix<double, DIM, 1> v1;
@@ -47,7 +47,7 @@ struct Triangle
     const Eigen::Matrix<double, DIM, 1> v3;
 };
 
-template <unsigned int DIM> struct Segment
+template <int DIM> struct Segment
 {
     const Eigen::Matrix<double, DIM, 1> start_pos;
     const Eigen::Matrix<double, DIM, 1> end_pos;
@@ -68,7 +68,7 @@ void addTetNoDuplicateChecking( SimplicialComplex& complex,
 
 Triangle<3> triangleOfFace( const topology::TetMeshCombinatorialMap& map, const topology::Face& f );
 
-template <unsigned int DIM>
+template <int DIM>
 Triangle<DIM> triangleOfFace( const topology::CombinatorialMap& map,
                               const VertexPositionsFunc& vertex_position,
                               const topology::Face& f );

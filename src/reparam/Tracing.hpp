@@ -14,11 +14,11 @@ namespace topology
     class Cell;
 }
 
-template <unsigned int DIM> struct Triangle;
-template <unsigned int DIM> struct Segment;
+template <int DIM> struct Triangle;
+template <int DIM> struct Segment;
 class Normal;
 
-template <unsigned int DIM> struct Ray
+template <int DIM> struct Ray
 {
     const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> start_pos;
     const Eigen::Ref<const Eigen::Matrix<double, DIM, 1>> dir;
