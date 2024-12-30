@@ -136,13 +136,6 @@ int main( int argc, char* argv[] )
         std::cout << "tet mesh construct time: " << t.stop( 1 ) << std::endl;
 
         std::cout << "Built map\n";
-        t.start( 3 );
-        const std::vector<Normal> normals = faceNormals( map );
-        std::cout << "Normals time: " << t.stop( 3 ) << std::endl;
-        t.start( 4 );
-        const Eigen::VectorXd ans =
-            sweepEmbedding( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
-        std::cout << "Laplace time 2: " << t.stop( 4 ) << std::endl;
 
         const topology::CombinatorialMapBoundary bdry( map );
 
@@ -183,14 +176,42 @@ int main( int argc, char* argv[] )
         const auto sides_vertex_ids = indexingOrError( sides, 0 );
         const auto base_vertex_ids = indexingOrError( base, 0 );
 
-        const Eigen::Matrix3Xd grad = gradientsWithBoundaryCorrection( map, sides, ans, normals );
-
         const auto vertex_positions = [&sweep_input]( const topology::CombinatorialMap& map ){
             const auto vertex_ids = indexingOrError( map, 0 );
             return [&sweep_input, vertex_ids]( const topology::Vertex& v ) -> Eigen::Vector3d {
                 return sweep_input.mesh.points.at( vertex_ids( v ) );
             };
         };
+
+        if( input_args.at( 0 ) == "output-setup" )
+        {
+            {
+                SimplicialComplex one_level_set;
+                addAllTriangles( one_level_set, base, vertex_positions( base ) );
+                io::VTKOutputObject output( one_level_set );
+                io::outputSimplicialFieldToVTK( output, "base.vtu" );
+            }
+            {
+                SimplicialComplex one_level_set;
+                addAllTriangles( one_level_set, target, vertex_positions( target ) );
+                io::VTKOutputObject output( one_level_set );
+                io::outputSimplicialFieldToVTK( output, "target.vtu" );
+            }
+            io::VTKOutputObject output( sweep_input.mesh );
+            io::outputSimplicialFieldToVTK( output, "mesh.vtu" );
+
+            return 0;
+        }
+
+        t.start( 3 );
+        const std::vector<Normal> normals = faceNormals( map );
+        std::cout << "Normals time: " << t.stop( 3 ) << std::endl;
+        t.start( 4 );
+        const Eigen::VectorXd ans =
+            sweepEmbedding( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
+        std::cout << "Laplace time 2: " << t.stop( 4 ) << std::endl;
+
+        const Eigen::Matrix3Xd grad = gradientsWithBoundaryCorrection( map, sides, ans, normals );
 
         if( std::find( input_args.begin(), input_args.end(), "output-laplace" ) != input_args.end() )
         {
