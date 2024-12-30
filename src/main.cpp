@@ -112,6 +112,8 @@ int main( int argc, char* argv[] )
                 return io::loadINPFile( SRC_HOME "/test/data/macaroni_coarse.inp", "Surface3", "Surface4" );
             else if( std::find( input_args.begin(), input_args.end(), "pot_counter" ) != input_args.end() )
                 return SweepInputTestCases::pot_counter();
+            else if( std::find( input_args.begin(), input_args.end(), "pot_counter_remeshed" ) != input_args.end() )
+                return SweepInputTestCases::pot_counter( true );
             else
                 return SweepInputTestCases::macaroni();
         }();

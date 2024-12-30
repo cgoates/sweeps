@@ -291,9 +291,11 @@ class SweepInputTestCases
         return sweep_input;
     }
 
-    static SweepInput pot_counter()
+    static SweepInput pot_counter( const bool remeshed = false )
     {
-        SweepInput sweep_input = io::loadINPFile( SRC_HOME "/test/data/Potential_Counterexample.inp", "lala", "lala" );
+        SweepInput sweep_input =
+            remeshed ? io::loadINPFile( SRC_HOME "/test/data/pot_counter_remeshed.inp", "lala", "lala" )
+                     : io::loadINPFile( SRC_HOME "/test/data/Potential_Counterexample.inp", "lala", "lala" );
         for( size_t i = 0; i < sweep_input.mesh.points.size(); i++ )
         {
             sweep_input.zero_bcs.at( i ) = false;
@@ -323,7 +325,7 @@ class SweepInputTestCases
         /// 2. Zero bcs require a flood to all faces not around a corner.
 
         const topology::Vertex start_v = [&](){
-            const auto start = cmap.vertexOfId( 3447 );
+            const auto start = cmap.vertexOfId( remeshed ? 1681 : 3447 );
             auto d = start.dart();
             iterateDartsOfCell( cmap, start, [&]( const topology::Dart& a ) {
                 d = a;
