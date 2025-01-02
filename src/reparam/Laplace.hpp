@@ -29,7 +29,7 @@ namespace reparam
                                     const std::vector<bool>& zero_bcs,
                                     const std::vector<bool>& one_bcs,
                                     const std::vector<Normal>& normals,
-                                    const LaplaceEdgeWeights& edge_weights = LaplaceEdgeWeights::Cotangent );
+                                    const LaplaceEdgeWeights& edge_weights = LaplaceEdgeWeights::BarycentricDual );
 
     Eigen::MatrixX2d
         tutteEmbedding( const topology::CombinatorialMap& map,
