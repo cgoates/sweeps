@@ -68,38 +68,6 @@ namespace reparam
         return weights;
     }
 
-    bool circumcenterOutside( const Tetrahedron& tet, const Eigen::Vector3d& circum )
-    {
-        const Eigen::Vector3d tet_edge_normal1 = ( tet.v2 - tet.v1 ).cross( tet.v3 - tet.v1 );
-        const Eigen::Vector3d tet_edge_normal2 = ( tet.v4 - tet.v1 ).cross( tet.v2 - tet.v1 );
-        const Eigen::Vector3d tet_edge_normal3 = ( tet.v3 - tet.v1 ).cross( tet.v4 - tet.v1 );
-        const Eigen::Vector3d tet_face_normal4 = ( tet.v4 - tet.v2 ).cross( tet.v3 - tet.v2 );
-        const Eigen::Vector4d signs( tet_edge_normal1.dot( circum - tet.v1 ),
-                                     tet_edge_normal2.dot( circum - tet.v1 ),
-                                     tet_edge_normal3.dot( circum - tet.v1 ),
-                                     tet_face_normal4.dot( circum - tet.v2 ) );
-
-        return signs( 0 ) * signs( 1 ) * signs( 2 ) * signs( 3 ) < 1e-12;
-    }
-
-    bool circumcenterOutside( const Triangle<3>& tri )
-    {
-        const auto v12 = tri.v2 - tri.v1;
-        const auto v23 = tri.v3 - tri.v2;
-        const auto v31 = tri.v1 - tri.v3;
-
-        // Calculate cosines of angles using dot product.
-        // cos(angle) = -v1·v2 / (|v1|·|v2|), but since we only need the sign we ignore the denominator.
-        // angle is acute iff cos(angle) > 0
-        const double cos1 = ( -v31 ).dot( v12 );
-        const double cos2 = ( -v12 ).dot( v23 );
-        const double cos3 = ( -v23 ).dot( v31 );
-
-        // All angles are acute if all cosines are positive.
-        // Circumcenter is outside if any angle is obtuse.
-        return cos1 < 0 or cos2 < 0 or cos3 < 0;
-    }
-
     std::vector<double> voronoiDualEdgeWeights( const topology::CombinatorialMap& map, const VertexPositionsFunc& v_positions )
     {
         const auto edge_ids = indexingOrError( map, 1 );
