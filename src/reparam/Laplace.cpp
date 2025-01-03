@@ -227,44 +227,6 @@ namespace reparam
         return solveLaplaceSparse( map, edge_weights, constraints_wrapper, n_bdry_verts, map.dim() );
     }
 
-    Eigen::MatrixX2d tutteEmbedding( const topology::CombinatorialMap& map, const VertexPositionsFunc& vert_positions )
-    {
-        const topology::CombinatorialMapBoundary bdry( map );
-        const auto bdry_positions = [&]( const topology::Vertex& v ) {
-            return vert_positions( bdry.toUnderlyingCell( v ) );
-        };
-        const size_t n_bdry_verts = cellCount( bdry, 0 );
-
-        const auto level_tri_vert_ids = indexingOrError( map, 0 );
-        std::map<size_t, double> vert_accumulated_arc_length;
-        double bdry_arc_length = 0;
-
-        iterateCellsWhile( bdry, 0, [&]( const topology::Vertex& v ) {
-            topology::Dart d = v.dart();
-            do
-            {
-                bdry_arc_length += edgeLength( bdry, bdry_positions, topology::Edge( d ) );
-                vert_accumulated_arc_length.emplace(
-                    level_tri_vert_ids( bdry.toUnderlyingCell( topology::Vertex( d ) ) ), bdry_arc_length );
-                d = phi( bdry, 1, d ).value();
-            } while( d != v.dart() );
-            return false;
-        } );
-
-        if( vert_accumulated_arc_length.size() != n_bdry_verts or n_bdry_verts == 0 )
-            throw std::runtime_error( "tutteEmbedding requires one boundary component" );
-
-        const auto constraints = [&]( const topology::Vertex& v ) -> std::optional<Eigen::Vector2d> {
-            if( not boundaryAdjacent( map, v ) ) return std::nullopt;
-            const double theta =
-                ( 2.0 * std::numbers::pi * vert_accumulated_arc_length.at( level_tri_vert_ids( v ) ) ) /
-                bdry_arc_length;
-            return Eigen::Vector2d( std::cos( theta ), std::sin( theta ) );
-        };
-
-        return tutteEmbedding( map, vert_positions, constraints );
-    }
-
     Eigen::MatrixXd
         solveLaplaceSparse( const topology::CombinatorialMap& map,
                             const std::function<double( const topology::Edge& )>& edge_weights,
