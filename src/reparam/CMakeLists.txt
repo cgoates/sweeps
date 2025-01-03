@@ -2,6 +2,7 @@ add_library( reparam SHARED
   Laplace.cpp
   Tracing.cpp
   Foliation.cpp
+  CriticalPoints.cpp
 )
 
 target_link_libraries( reparam PUBLIC util topology mapping io )
