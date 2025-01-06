@@ -316,6 +316,7 @@ void nonDiskFoliations( const SweepInput& sweep,
                 { topology::Vertex( loop_ends.first.dart() ), topology::Vertex( loop_ends.second.dart() ) } );
         }
 
+        std::cout << "LEVEL " << level_ii << " at value " << level_set_values.at( level_ii ) << std::endl;
         leaves.push_back( leafFromLevelSetWithCuts( level_set_tri, tri_positions, cut_ends ) );
     }
 
@@ -365,20 +366,7 @@ TEST_CASE( "Level set parameterization of the macaroni" )
     const std::vector<double> level_set_values = util::linspace( 0, 1, n_levels );
 
     SimplicialComplex level_sets;
-    const std::vector<Eigen::Vector2d> square_points{
-        { 0.00000000e+00, -9.00000000e-01 },  { -2.25000000e-01, -6.75000000e-01 },
-        { -4.50000000e-01, -4.50000000e-01 }, { -6.75000000e-01, -2.25000000e-01 },
-        { -9.00000000e-01, 0.00000000e+00 },  { 2.25000000e-01, -6.75000000e-01 },
-        { 0.00000000e+00, -4.50000000e-01 },  { -2.25000000e-01, -2.25000000e-01 },
-        { -4.50000000e-01, 0.00000000e+00 },  { -6.75000000e-01, 2.25000000e-01 },
-        { 4.50000000e-01, -4.50000000e-01 },  { 2.25000000e-01, -2.25000000e-01 },
-        { 0.00000000e+00, 0.00000000e+00 },   { -2.25000000e-01, 2.25000000e-01 },
-        { -4.50000000e-01, 4.50000000e-01 },  { 6.75000000e-01, -2.25000000e-01 },
-        { 4.50000000e-01, 2.77555756e-17 },   { 2.25000000e-01, 2.25000000e-01 },
-        { 0.00000000e+00, 4.50000000e-01 },   { -2.25000000e-01, 6.75000000e-01 },
-        { 9.00000000e-01, 0.00000000e+00 },   { 6.75000000e-01, 2.25000000e-01 },
-        { 4.50000000e-01, 4.50000000e-01 },   { 2.25000000e-01, 6.75000000e-01 },
-        { 0.00000000e+00, 9.00000000e-01 } };
+    const std::vector<Eigen::Vector2d> square_points = util::generatePointsInPolygon( 150, 4 );
 
     std::vector<std::vector<Eigen::Vector3d>> mapped_points( square_points.size() );
 
@@ -571,4 +559,323 @@ TEST_CASE( "Spline fit to the macaroni" )
 
     const basis::KnotVector kv_u = basis::integerKnotsWithNElems( 10, 2 );
     fitToPringlesPeriodicPatch( level_set_values, "macaroni", 2, kv_u, 10, 2 );
+}
+
+TEST_CASE( "Flange" )
+{
+    const SweepInput sweep_input = SweepInputTestCases::flange();
+
+    const std::vector<double> level_set_values = util::linspace( 0, 1, 11 );
+
+    const auto tutte_points = util::generatePointsInPolygon( 500, 36 );
+
+    SimplicialComplex level_sets;
+    std::vector<std::vector<Eigen::Vector3d>> mapped_points( tutte_points.size() );
+
+    std::vector<std::array<size_t, 4>> tunnel_loop_points{
+        { 49, 51, 2, 5 },       //+y loop
+        { 18, 19, 47, 46 },     // center hole to +y
+        { 1943, 2462, 12, 11 }, // and then clockwise from above
+        { 1951, 2470, 36, 35 },
+        { 1959, 2478, 26, 25 },
+        { 48, 50, 38, 39 },
+        { 1649, 2231, 22, 21 },
+        { 1657, 2239, 8, 7 },
+        { 1665, 2247, 16, 15 } };
+
+    nonDiskFoliations(
+        sweep_input, level_set_values, tunnel_loop_points, [&]( const std::vector<reparam::FoliationLeaf>& leaves ) {
+            for( size_t level_ii = 0; level_ii < leaves.size(); level_ii++ )
+            {
+                const auto& leaf = leaves.at( level_ii );
+                const auto& square_mapping = leaf.tutte_mapping;
+                const auto& cmap = square_mapping->parametricAtlas().cmap();
+                const auto& positions = leaf.space_mapping->vertPositions();
+                for( size_t point_ii = 0; point_ii < tutte_points.size(); point_ii++ )
+                {
+                    const auto param_pt = square_mapping->maybeInverse( tutte_points.at( point_ii ) );
+                    CHECK( param_pt.has_value() );
+                    if( not param_pt.has_value() )
+                    {
+                        std::cerr << "NO VALUE level: " << level_ii << " pt: " << tutte_points.at( point_ii )
+                                  << std::endl;
+                        break;
+                    }
+                    const auto space_pt =
+                        leaf.space_mapping->evaluate( param_pt.value().first, param_pt.value().second );
+                    mapped_points.at( point_ii ).push_back( space_pt );
+                }
+
+                iterateCellsWhile( cmap, 2, [&]( const topology::Face& f ) {
+                    addTriangleNoDuplicateChecking( level_sets, triangleOfFace<3>( cmap, positions, f ) );
+                    return true;
+                } );
+            }
+        } );
+
+    io::VTKOutputObject output( level_sets );
+    io::outputSimplicialFieldToVTK( output, "flange_level_sets.vtu" );
+
+    SimplicialComplex traces;
+    for( const auto& line : mapped_points )
+    {
+        traces.points.push_back( line.front() );
+        for( size_t i = 1; i < line.size(); i++ )
+        {
+            traces.points.push_back( line.at( i ) );
+            traces.simplices.emplace_back( traces.points.size() - 1, traces.points.size() - 2 );
+        }
+    }
+    io::VTKOutputObject output4( traces );
+    io::outputSimplicialFieldToVTK( output4, "flange_traces.vtu" );
+}
+
+std::vector<Eigen::MatrixX3d> parseControlPoints( const std::string& filename )
+{
+    std::ifstream file( filename );
+    std::string line;
+    std::vector<Eigen::MatrixX3d> control_points;
+
+    std::getline( file, line );
+    const size_t num_surfaces = 112; // FIXME: Read this from first line of file
+
+    control_points.reserve( num_surfaces );
+
+    // Skip the empty line
+    std::getline( file, line );
+
+    // For each surface
+    for( size_t surface = 0; surface < num_surfaces; ++surface )
+    {
+        std::vector<Eigen::Vector3d> points;
+
+        // Skip the header lines (surface id, degrees, and knot vectors)
+        // FIXME: Read in the degrees and knot vectors
+        for( size_t i = 0; i < 7; ++i )
+        {
+            std::getline( file, line );
+        }
+
+        for( size_t line_ii = 0; line_ii < 49; line_ii++ )
+        {
+            std::getline( file, line );
+            std::replace_if( std::begin( line ), std::end( line ), []( char x ) { return x == ','; }, ' ' );
+            std::istringstream point_stream( line );
+
+            double x, y, z;
+            point_stream >> x >> y >> z;
+
+            points.emplace_back( x, y, z );
+        }
+
+        control_points.push_back( Eigen::MatrixX3d( points.size(), 3 ) );
+        for( size_t i = 0; i < points.size(); ++i )
+        {
+            control_points.back().row( i ) = points[i];
+        }
+    }
+
+    return control_points;
+}
+
+Eigen::MatrixX3d verticalConcatenate( const std::vector<Eigen::MatrixX3d>& matrices )
+{
+    int total_rows = 0;
+    for( const auto& matrix : matrices )
+    {
+        total_rows += matrix.rows();
+    }
+
+    Eigen::MatrixX3d result( total_rows, 3 );
+
+    int curr_row = 0;
+    for( const auto& matrix : matrices )
+    {
+        result.block( curr_row, 0, matrix.rows(), 3 ) = matrix;
+        curr_row += matrix.rows();
+    }
+
+    return result;
+}
+
+TEST_CASE( "Flange spline" )
+{
+    const basis::KnotVector kv_2d( { 0, 0, 0, 0, 1, 2, 3, 4, 4, 4, 4 }, 1e-9 );
+    const basis::KnotVector kv( { 0, 0, 1, 2, 3, 4, 4 }, 1e-9 );
+    const basis::KnotVector kv2( { 0, 0, 1, 1 }, 1e-9 );
+    const size_t degree = 1;
+
+    const auto tp3d =
+        std::make_shared<const basis::TPSplineSpace>( basis::buildBSpline( { kv, kv, kv2 }, { degree, degree, degree } ) );
+    const auto& vol_cmap = tp3d->basisComplex().parametricAtlas().cmap();
+    const auto tp2d =
+        std::make_shared<const basis::TPSplineSpace>( basis::buildBSpline( { kv_2d, kv_2d }, { 3, 3 } ) );
+
+    const std::vector<double> level_set_values = util::linspace( 0.0, 1.0, 5 );
+
+    const std::vector<std::pair<topology::Cell, param::ParentPoint>> ppt_u =
+        parentPointsOfParamPoints( level_set_values, tp3d->line().basisComplex().parametricAtlas(), 1e-9 );
+
+    const auto cpts_vec = parseControlPoints( SRC_HOME "/test/data/wide_angle_flange_srfs.txt" );
+
+    const basis::MultiPatchSplineSpace ss = [&]() {
+        std::vector<std::pair<std::pair<Eigen::Vector3d, Eigen::Vector3d>, std::pair<size_t, topology::Dart>>> conn;
+        std::map<std::pair<size_t, topology::Dart>, std::pair<size_t, topology::Dart>> mp_connections;
+
+        const auto find_or_emplace = [&]( std::pair<Eigen::Vector3d, Eigen::Vector3d> key,
+                                        std::pair<size_t, topology::Dart> side ) {
+            bool found = false;
+            for( const auto& pr : conn )
+            {
+                if( ( util::equals( key.first, pr.first.first, 1e-5 ) and
+                    util::equals( key.second, pr.first.second, 1e-5 ) ) or
+                    ( util::equals( key.second, pr.first.first, 1e-5 ) and
+                    util::equals( key.first, pr.first.second, 1e-5 ) ) )
+                {
+                    mp_connections.emplace( side, pr.second );
+                    found = true;
+                    break;
+                }
+            }
+            if( not found ) conn.emplace_back( key, side );
+        };
+
+        for( size_t patch_ii = 0; patch_ii < cpts_vec.size(); patch_ii++ )
+        {
+            const auto& pts = cpts_vec.at( patch_ii );
+            find_or_emplace( { pts.row( 0 ), pts.row( 6 ) }, { patch_ii, topology::Dart( 1 ) } );
+            find_or_emplace( { pts.row( 0 ), pts.row( 42 ) }, { patch_ii, topology::Dart( 19 ) } );
+            find_or_emplace( { pts.row( 6 ), pts.row( 48 ) }, { patch_ii, topology::Dart( 79 ) } );
+            find_or_emplace( { pts.row( 42 ), pts.row( 48 ) }, { patch_ii, topology::Dart( 301 ) } );
+        }
+
+        return basis::buildMultiPatchSplineSpace(
+            std::vector<std::shared_ptr<const basis::TPSplineSpace>>( 112, tp3d ), mp_connections );
+    }();
+
+    const basis::MultiPatchSplineSpace ss2d =
+        basis::buildMultiPatchSplineSpace( std::vector<std::shared_ptr<const basis::TPSplineSpace>>( 112, tp2d ), {} );
+
+    std::cout << "Num funcs: " << ss.numFunctions() << " vs " << 112 * 49 * 7 << std::endl;
+
+    const SmallVector<double, 3> source_points{ 0.1, 0.5, 0.9 };
+    const param::ParentDomain pd_3d = param::cubeDomain( 3 );
+
+    SimplicialComplex fitting_points;
+    eval::SplineSpaceEvaluator evaler( ss, 0 );
+
+    eval::SplineSpaceEvaluator evaler_2d( ss2d, 0 );
+
+    const param::ParentDomain pd_2d = param::cubeDomain( 2 );
+
+    const SweepInput sweep_input = SweepInputTestCases::flange();
+
+    std::vector<std::array<size_t, 4>> tunnel_loop_points{ { 49, 51, 2, 5 },       //+y loop
+                                                           { 18, 19, 47, 46 },     // center hole to +y
+                                                           { 1943, 2462, 12, 11 }, // and then clockwise from above
+                                                           { 1951, 2470, 36, 35 },
+                                                           { 1959, 2478, 26, 25 },
+                                                           { 48, 50, 38, 39 },
+                                                           { 1649, 2231, 22, 21 },
+                                                           { 1657, 2239, 8, 7 },
+                                                           { 1665, 2247, 16, 15 } };
+
+    const auto cpts = multiPatchCoefficients( ss2d, cpts_vec );
+
+    nonDiskFoliations(
+        sweep_input, level_set_values, tunnel_loop_points, [&]( const std::vector<reparam::FoliationLeaf>& leaves ) {
+            const size_t n_points = cellCount( ss2d.basisComplex().parametricAtlas().cmap(), 2 ) *
+                                    pow( source_points.size(), 2 ) * level_set_values.size();
+
+            const auto leaf_point_iterator =
+                [&]( const size_t leaf_ii, const auto& point_callback ) {
+                    iterateCellsWhile( ss2d.basisComplex().parametricAtlas().cmap(), 2, [&]( const topology::Cell& f_multipatch_2d ) {
+                        const auto [patch_ii, d_patch_2d] = ss2d.basisComplex().parametricAtlas().cmap().toLocalDart( f_multipatch_2d.dart() );
+                        std::cout << "\rPatch " << patch_ii;
+                        const topology::Volume patch_cell(
+                            vol_cmap.flatten( d_patch_2d,
+                                              ppt_u.at( leaf_ii ).first.dart(),
+                                              topology::TPCombinatorialMap::TPDartPos::DartPos0 ) );
+
+                        const topology::Volume cell(
+                            ss.basisComplex().parametricAtlas().cmap().toGlobalDart( patch_ii, patch_cell.dart() ) );
+
+                        evaler_2d.localizeElement( f_multipatch_2d );
+
+                        util::iterateTensorProduct(
+                            { source_points.size(), source_points.size() }, [&]( const util::IndexVec& indices ) {
+                                const Eigen::Vector3d pt( source_points.at( indices.at( 0 ) ),
+                                                          source_points.at( indices.at( 1 ) ),
+                                                          ppt_u.at( leaf_ii ).second.mPoint( 0 ) );
+                                const param::ParentPoint surf_ppt(
+                                    pd_2d, pt.head( 2 ), { false, false, false, false } );
+                                const param::ParentPoint vol_ppt(
+                                    pd_3d,
+                                    pt,
+                                    { false,
+                                        false,
+                                        false,
+                                        false,
+                                        ppt_u.at( leaf_ii ).second.mBaryCoordIsZero.at( 0 ),
+                                        ppt_u.at( leaf_ii ).second.mBaryCoordIsZero.at( 1 ) } );
+
+                                evaler_2d.localizePoint( surf_ppt );
+
+                                const auto inv = leaves.front().space_mapping->maybeInverse(
+                                    evaler_2d.evaluateManifold( cpts.transpose() ).head<2>() );
+                                if( not inv.has_value() ) return; //FIXME: Throw an error here!
+                                const Eigen::Vector2d tutte_pt =
+                                    leaves.front().tutte_mapping->evaluate( inv.value().first, inv.value().second );
+
+                                const auto field_pt = point_callback( cell, vol_ppt, tutte_pt );
+                                if( field_pt )
+                                {
+                                    fitting_points.simplices.emplace_back( fitting_points.points.size() );
+                                    fitting_points.points.push_back( field_pt.value() );
+                                }
+                            } );
+                        return true;
+                    } );
+                };
+
+            const Eigen::MatrixXd fit_cpts = fitting::leastSquaresFitting(
+                evaler,
+                n_points,
+                3,
+                [&]( const std::function<void(
+                         const topology::Cell&, const param::ParentPoint&, const Eigen::VectorXd& )>&
+                         add_least_squares_point ) {
+                    for( size_t leaf_ii = 0; leaf_ii < leaves.size(); leaf_ii++ )
+                    {
+                        std::cout << "\nLeaf " << leaf_ii << std::endl;
+                        leaf_point_iterator( leaf_ii,
+                                             [&]( const topology::Cell& cell,
+                                                  const param::ParentPoint& vol_ppt,
+                                                  const Eigen::Vector2d& circle_pt ) {
+                                                 const auto param_pt =
+                                                     leaves.at( leaf_ii ).tutte_mapping->maybeInverse( circle_pt );
+                                                 CHECK( param_pt.has_value() );
+                                                 if( not param_pt.has_value() )
+                                                 {
+                                                     std::cerr << "NO VALUE" << std::endl;
+                                                     return std::optional<Eigen::Vector3d>();
+                                                     // pauseDebugger();
+                                                 }
+                                                 const Eigen::Vector3d field_pt =
+                                                     leaves.at( leaf_ii ).space_mapping->evaluate(
+                                                         param_pt.value().first, param_pt.value().second );
+
+                                                 add_least_squares_point( cell, vol_ppt, field_pt );
+                                                 return std::optional<Eigen::Vector3d>( field_pt );
+                                             } );
+                    }
+                    std::cout << "Finished all leaves, fitting\n";
+                } );
+
+            std::cout << "Fit, outputting to vtk\n";
+            io::VTKOutputObject fitting_points_output( fitting_points );
+            io::outputSimplicialFieldToVTK( fitting_points_output, "flange_fitting_points.vtu" );
+
+            io::outputBezierMeshToVTK( ss, fit_cpts, "fit_to_flange_multi_patch.vtu" );
+        } );
 }
