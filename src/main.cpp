@@ -13,6 +13,7 @@
 #include <queue>
 #include <LevelSetCMap.hpp>
 #include <DelaunayTriangulation.hpp>
+#include <CriticalPoints.hpp>
 #include "../test/SimplicialComplexTestCases.hpp"
 
 using namespace reparam;
@@ -220,6 +221,31 @@ int main( int argc, char* argv[] )
             output.addVertexField( "laplace", ans );
             output.addCellField( "gradients", grad.transpose() );
             io::outputSimplicialFieldToVTK( output, "test.vtu" );
+        }
+
+        if( std::find( input_args.begin(), input_args.end(), "output-critical-points" ) != input_args.end() )
+        {
+            std::cout << "Outputting critical points...\n";
+            SimplicialComplex critical_points;
+            const auto func = [&]( const topology::Vertex& v ) {
+                return ans( vertex_ids( v ) );
+            };
+            std::vector<int> euler_characteristics;
+            iterateCellsWhile( map, 0, [&]( const topology::Vertex& v ) {
+                if( sweep_input.zero_bcs.at( vertex_ids( v ) ) ) return true;
+                const int euler = reparam::lowerLinkEulerCharacteristic( map, v, func );
+                if( euler != 1 )
+                {
+                    critical_points.points.push_back( vertex_positions( map )( v ) );
+                    critical_points.simplices.push_back( Simplex( critical_points.points.size() - 1 ) );
+                    euler_characteristics.push_back( euler );
+                }
+                return true;
+            } );
+            io::VTKOutputObject output( critical_points );
+            const auto euler_field = Eigen::Map<Eigen::VectorXi>( euler_characteristics.data(), euler_characteristics.size(), 1 );
+            output.addVertexField( "euler", euler_field.cast<double>() );
+            io::outputSimplicialFieldToVTK( output, "critical_points.vtu" );
         }
 
         if( input_args.front() == "inner-traces" )
