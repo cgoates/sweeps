@@ -86,6 +86,66 @@ void accumulateTrianglesFromParallelLines( SimplicialComplex& append_to,
     }
 }
 
+// Check Delaunay criterion for a single tetrahedron
+bool isDelaunayTetrahedron( const Eigen::MatrixXd& vertices, const Eigen::Vector4i& tet )
+{
+    // Extract tetrahedron vertices
+    const auto tet_vertices = vertices( tet, Eigen::all );
+
+    const Tetrahedron tetra{ tet_vertices.row( 0 ), tet_vertices.row( 1 ), tet_vertices.row( 2 ), tet_vertices.row( 3 ) };
+
+    // Compute circumcenter
+    const Eigen::Vector3d circumc = circumcenter( tetra );
+    const double circumradius = ( circumc - tet_vertices.row( 0 ).transpose() ).norm();
+
+    // Check if any other point is inside circumsphere
+    for( int i = 0; i < vertices.rows(); ++i )
+    {
+        // Skip vertices of the current tetrahedron
+        if( std::find( tet.data(), tet.data() + 4, i ) != tet.data() + 4 )
+        {
+            continue;
+        }
+
+        // Check if point is inside circumsphere
+        if( ( vertices.row( i ).transpose() - circumc ).norm() < circumradius )
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// Verify Delaunay criterion for all tetrahedra
+std::vector<int> verifyDelaunayTetrahedralization( const SimplicialComplex& mesh )
+{
+    // Convert output to Eigen matrices for easier manipulation
+    Eigen::MatrixXd vertices( mesh.points.size(), 3 );
+    for( int i = 0; i < vertices.rows(); ++i )
+    {
+        vertices.row( i ) = mesh.points.at( i ).transpose();
+    }
+
+    std::vector<int> failed_tetrahedra;
+
+    // Check each tetrahedron
+    for( size_t i = 0; i < mesh.simplices.size(); ++i )
+    {
+        Eigen::Vector4i tet( mesh.simplices.at( i ).vertex( 0 ).id(),
+                             mesh.simplices.at( i ).vertex( 1 ).id(),
+                             mesh.simplices.at( i ).vertex( 2 ).id(),
+                             mesh.simplices.at( i ).vertex( 3 ).id() );
+
+        if( !isDelaunayTetrahedron( vertices, tet ) )
+        {
+            failed_tetrahedra.push_back( i );
+        }
+    }
+
+    return failed_tetrahedra;
+}
+
 int main( int argc, char* argv[] )
 {
     const std::vector<std::string> input_args(argv + 1, argv + argc);
@@ -200,6 +260,50 @@ int main( int argc, char* argv[] )
             }
             io::VTKOutputObject output( sweep_input.mesh );
             io::outputSimplicialFieldToVTK( output, "mesh.vtu" );
+
+            if( std::find( input_args.begin(), input_args.end(), "edge-weights" ) != input_args.end() )
+            {
+                size_t n_interior = 0;
+                size_t n_boundary = 0;
+                const std::vector<double> edge_weights = edgeWeightsLaplace3d(
+                    map, vertex_positions( map ), faceNormals( map ), LaplaceEdgeWeights::BarycentricDual );
+                const auto edge_ids = indexingOrError( map, 1 );
+                std::vector<topology::Edge> negative_weight_edges;
+                iterateCellsWhile( map, 1, [&]( const topology::Edge& e ) {
+                    const size_t eid = edge_ids( e );
+                    if( edge_weights.at( eid ) < 0 )
+                    {
+                        negative_weight_edges.push_back( e );
+                        std::cout << ( boundaryAdjacent( map, e ) ? "Boundary edge with negative weight "
+                                                                  : "Interior edge with negative weight " )
+                                  << e << std::endl;
+                        if( boundaryAdjacent( map, e ) )
+                            n_boundary++;
+                        else
+                            n_interior++;
+
+                        io::outputDualFace(
+                            map, vertex_positions( map ), e, std::format( "{:04d}", negative_weight_edges.size() ) );
+                    }
+                    return true;
+                } );
+                std::cout << n_boundary << " boundary edges with negative weight\n";
+                std::cout << n_interior << " interior edges with negative weight\n";
+                io::outputEdges( map, vertex_positions( map ), negative_weight_edges, "negative_weight_edges.vtu" );
+            }
+
+            if( std::find( input_args.begin(), input_args.end(), "delaunay" ) != input_args.end() )
+            {
+                std::vector<int> failed_tetrahedra = verifyDelaunayTetrahedralization( sweep_input.mesh );
+                if( failed_tetrahedra.empty() )
+                {
+                    std::cout << "Delaunay criterion satisfied for all tetrahedra\n";
+                }
+                else
+                {
+                    std::cout << "Delaunay criterion violated for " << failed_tetrahedra.size() << " tetrahedra\n";
+                }
+            }
 
             return 0;
         }
