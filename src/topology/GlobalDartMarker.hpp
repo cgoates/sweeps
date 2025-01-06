@@ -28,6 +28,9 @@ namespace topology
         bool isMarked( const Dart& d ) const { return std::find( mMarkedDarts.begin(), mMarkedDarts.end(), d ) != mMarkedDarts.end(); }
 
         private:
-        SmallVector<Dart, 600> mMarkedDarts;
+        // FIXME: I need a growable vector that uses a small stack allocation, but allocates on the heap if needed.
+        //  I keep having to up the number on this, but that removes some of the benefit for the majority of the cases
+        //  where it doesn't need as large of a vector.
+        SmallVector<Dart, 1200> mMarkedDarts;
     };
 } // namespace topology
