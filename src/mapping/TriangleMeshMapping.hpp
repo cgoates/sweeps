@@ -26,9 +26,12 @@ namespace mapping
         //FIXME: PROBABLY VERY SLOW
         virtual std::optional<std::pair<topology::Cell, param::ParentPoint>> maybeInverse( const Eigen::Vector2d& pt ) const override;
 
+        virtual std::pair<topology::Cell, param::ParentPoint> closestPoint( const Eigen::Vector3d& pt ) const override;
+
         const VertexPositionsFunc& vertPositions() const { return mPositions; }
 
         private:
+        size_t vertexIndex( const topology::Vertex& v ) const;
         const std::shared_ptr<const param::TriangleParametricAtlas> mAtlas;
         VertexPositionsFunc mPositions;
         size_t mDim;
