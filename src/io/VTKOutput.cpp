@@ -169,17 +169,35 @@ namespace io
                                 const MatrixX3dMax& geom,
                                 const std::string& filename )
     {
+        outputPartialBezierMeshToVTK(
+            ss, geom, filename, [&]( const std::function<void( const topology::Cell& )>& callback ) {
+                iterateCellsWhile( ss.basisComplex().parametricAtlas().cmap(),
+                                   ss.basisComplex().parametricAtlas().cmap().dim(),
+                                   [&]( const topology::Cell& c ) {
+                                       callback( c );
+                                       return true;
+                                   } );
+            } );
+    }
+
+    void outputPartialBezierMeshToVTK( const basis::SplineSpace& ss,
+                                       const MatrixX3dMax& geom,
+                                       const std::string& filename,
+                                       const std::function<void( const std::function<void( const topology::Cell& )>& )>& cell_iterator )
+    {
         const topology::CombinatorialMap& cmap = ss.basisComplex().parametricAtlas().cmap();
         const size_t param_dim = cmap.dim();
         const size_t spatial_dim = geom.cols();
-        const size_t n_cells = cellCount( cmap, param_dim );
 
         std::ostringstream degrees_string;
         std::ostringstream points_string;
         std::ostringstream connectivity_string;
         std::ostringstream offsets_string;
+        std::ostringstream types_string;
         size_t n_points = 0;
-        iterateCellsWhile( cmap, param_dim, [&]( const topology::Cell& c ) {
+        size_t n_cells = 0;
+        cell_iterator( [&]( const topology::Cell& c ) {
+            n_cells++;
             SmallVector<size_t, 3> degrees = degreesOfParentBasis( ss.basisComplex().parentBasis( c ) );
             SmallVector<size_t, 3> tp_lengths;
             for( const size_t&  p : degrees ) tp_lengths.push_back( p + 1 );
@@ -204,7 +222,17 @@ namespace io
             n_points += bez_points.rows();
             offsets_string << n_points << " ";
 
-            return true;
+            switch( param_dim )
+            {
+                // See documentation at
+                // https://www.kitware.com/main/wp-content/uploads/2020/03/Implementation-of-rational-Be%CC%81zier-cells-into-VTK-Report.pdf
+                // page 3
+                case 0: types_string << 1 << " "; break;
+                case 1: types_string << 75 << " "; break;
+                case 2: types_string << 77 << " "; break;
+                case 3: types_string << 79 << " "; break;
+                default: break;
+            }
         } );
 
         std::ofstream file;
@@ -249,20 +277,7 @@ namespace io
         <DataArray type="UInt8" Name="types" format="ascii">
 )STRING";
 
-        iterateCellsWhile( cmap, param_dim, [&]( const auto& ) {
-            switch( param_dim )
-            {
-                // See documentation at
-                // https://www.kitware.com/main/wp-content/uploads/2020/03/Implementation-of-rational-Be%CC%81zier-cells-into-VTK-Report.pdf
-                // page 3
-                case 0: file << 1 << " "; break;
-                case 1: file << 75 << " "; break;
-                case 2: file << 77 << " "; break;
-                case 3: file << 79 << " "; break;
-                default: break;
-            }
-            return true;
-        } );
+        file << types_string.str();
 
         file << R"STRING(
         </DataArray>

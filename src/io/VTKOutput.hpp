@@ -9,6 +9,7 @@ namespace topology
 {
     class CombinatorialMap;
     class Edge;
+    class Cell;
 }
 
 namespace basis
@@ -45,6 +46,11 @@ namespace io
     void outputBezierMeshToVTK( const basis::SplineSpace& ss,
                                 const MatrixX3dMax& geom,
                                 const std::string& filename );
+
+    void outputPartialBezierMeshToVTK( const basis::SplineSpace& ss,
+                                       const MatrixX3dMax& geom,
+                                       const std::string& filename,
+                                       const std::function<void( const std::function<void( const topology::Cell& )>& )>& cell_iterator );
 
     void outputEdges( const topology::CombinatorialMap& cmap,
                       const VertexPositionsFunc& positions,
