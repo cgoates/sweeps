@@ -99,3 +99,46 @@ TEST_CASE( "2d triangle inverse with canonical triangle" )
         CHECK( not invertTriangleMap( tri, {2.2, 1.25} ).has_value() );
     }
 }
+
+TEST_CASE( "3d triangle inverse" )
+{
+    const auto has_specific_value = []( const std::optional<Eigen::Vector3d>& inverse,
+                                        const Eigen::Vector3d& expected ) {
+        CHECK( inverse.has_value() );
+        if( inverse.has_value() ) CHECK( util::equals( inverse.value(), expected, 1e-12 ) );
+    };
+    SECTION( "Canonical triangle" )
+    {
+        const Triangle<3> tri{ { 0, 0, 1 }, { 1, 0, 0 }, { 0, 1, 0 } };
+        has_specific_value( invertTriangleMap( tri, { 0.5, 0.5, 0.0 } ), { 0.0, 0.5, 0.5 } );
+        has_specific_value( invertTriangleMap( tri, { 0.0, 0.0, 1.0 } ), { 1.0, 0.0, 0.0 } );
+        has_specific_value( invertTriangleMap( tri, { 0.3, 0.4, 0.3 } ), { 0.3, 0.3, 0.4 } );
+    }
+    SECTION( "Random triangle" )
+    {
+        const Triangle<3> tri{ { 0.23, 2, 0.7 }, { 1.9, 0.7, 6.2 }, { 2.3, 1.8, -10.0 } };
+        has_specific_value( invertTriangleMap( tri, { 1.065, 1.35, 3.45 } ), { 0.5, 0.5, 0.0 } );
+        has_specific_value( invertTriangleMap( tri, { 0.23, 2.0, 0.7 } ), { 1.0, 0.0, 0.0 } );
+        has_specific_value( invertTriangleMap( tri, { 1.766, 1.51, -3.0 } ), { 0.2, 0.3, 0.5 } );
+    }
+}
+
+TEST_CASE( "Triangle closest point" )
+{
+    const auto in_triangle_with_value = []( const std::pair<Eigen::Vector3d, std::optional<double>>& closest, const Eigen::Vector3d& expected ){
+        CHECK( not closest.second.has_value() );
+        CHECK( util::equals( closest.first, expected, 1e-12 ) );
+    };
+    const auto out_of_triangle_with_value = []( const std::pair<Eigen::Vector3d, std::optional<double>>& closest, const Eigen::Vector3d& expected ){
+        CHECK( closest.second.has_value() );
+        CHECK( util::equals( closest.first, expected, 1e-12 ) );
+    };
+    SECTION( "Canonical triangle" )
+    {
+        const Triangle<3> tri{ { 0, 0, 1 }, { 1, 0, 0 }, { 0, 1, 0 } };
+        in_triangle_with_value( invertTriangleMapOrClosestPoint( tri, { 0.3, 0.4, 0.3 } ), { 0.3, 0.3, 0.4 } );
+        out_of_triangle_with_value( invertTriangleMapOrClosestPoint( tri, { 0, 0, 1.1 } ), { 1, 0, 0 } );
+        out_of_triangle_with_value( invertTriangleMapOrClosestPoint( tri, { 0.5, 0.5, 0.5 } ), { 1.0/3.0, 1.0/3.0, 1.0/3.0 } );
+        out_of_triangle_with_value( invertTriangleMapOrClosestPoint( tri, { 0.5, 0.5, -0.1 } ), { 0.0, 0.5, 0.5 } );
+    }
+}
