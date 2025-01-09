@@ -669,9 +669,22 @@ std::vector<Eigen::MatrixX3d> parseControlPoints( const std::string& filename )
         }
 
         control_points.push_back( Eigen::MatrixX3d( points.size(), 3 ) );
-        for( size_t i = 0; i < points.size(); ++i )
+        // Check for normal upward
+        const Eigen::Vector3d normal = ( points.at( 1 ) - points.at( 0 ) ).cross( points.at( 7 ) - points.at( 0 ) );
+        if( normal( 2 ) < 0 )
         {
-            control_points.back().row( i ) = points[i];
+            size_t i = 0;
+            util::iterateTensorProduct( { 7, 7 }, { 1, 0 }, [&]( const util::IndexVec& indices ) {
+                const size_t idx = util::flatten( indices, { 7, 7 } );
+                control_points.back().row( i++ ) = points.at( idx );
+            } );
+        }
+        else
+        {
+            for( size_t i = 0; i < points.size(); ++i )
+            {
+                control_points.back().row( i ) = points[i];
+            }
         }
     }
 
