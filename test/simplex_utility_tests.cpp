@@ -139,6 +139,8 @@ TEST_CASE( "Triangle closest point" )
         in_triangle_with_value( invertTriangleMapOrClosestPoint( tri, { 0.3, 0.4, 0.3 } ), { 0.3, 0.3, 0.4 } );
         out_of_triangle_with_value( invertTriangleMapOrClosestPoint( tri, { 0, 0, 1.1 } ), { 1, 0, 0 } );
         out_of_triangle_with_value( invertTriangleMapOrClosestPoint( tri, { 0.5, 0.5, 0.5 } ), { 1.0/3.0, 1.0/3.0, 1.0/3.0 } );
-        out_of_triangle_with_value( invertTriangleMapOrClosestPoint( tri, { 0.5, 0.5, -0.1 } ), { 0.0, 0.5, 0.5 } );
+        out_of_triangle_with_value( invertTriangleMapOrClosestPoint( tri, { 0.6, 0.4, -0.1 } ), { 0.0, 0.6, 0.4 } );
+        out_of_triangle_with_value( invertTriangleMapOrClosestPoint( tri, { -0.1, 0.6, 0.4 } ), { 0.4, 0.0, 0.6 } );
+        out_of_triangle_with_value( invertTriangleMapOrClosestPoint( tri, { 0.6, -0.1, 0.4 } ), { 0.4, 0.6, 0.0 } );
     }
 }
