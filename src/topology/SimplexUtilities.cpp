@@ -448,7 +448,7 @@ std::pair<Eigen::Vector3d, std::optional<double>> invertTriangleMapOrClosestPoin
     double min_dist = std::numeric_limits<double>::infinity();
     Eigen::Vector3d closest_bary;
 
-    // Edge v1-v2 (reusing d_00 and d_20 from above)
+    // Edge v1-v2
     {
         const double t = clamp( d_20 / d_00 );
         const double dist = distance_squared( tri.v1 + t * diff_0, point );
@@ -472,14 +472,14 @@ std::pair<Eigen::Vector3d, std::optional<double>> invertTriangleMapOrClosestPoin
         }
     }
 
-    // Edge v3-v1 (reuse diff_1 instead of computing new edge)
+    // Edge v1-v3
     {
-        const double t = clamp( -d_21 / d_11 ); // Reuse d_21, negative because edge direction is reversed
-        const double dist = distance_squared( tri.v3 - t * diff_1, point );
+        const double t = clamp( d_21 / d_11 );
+        const double dist = distance_squared( tri.v1 + t * diff_1, point );
         if( dist < min_dist )
         {
             min_dist = dist;
-            closest_bary = Eigen::Vector3d( t, 0.0, 1.0 - t );
+            closest_bary = Eigen::Vector3d( 1.0 - t, 0.0, t );
         }
     }
 
