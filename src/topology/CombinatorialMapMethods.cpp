@@ -299,6 +299,16 @@ namespace topology
         return out;
     }
 
+    Dart::IndexType lowestDartId( const CombinatorialMap& map, const Cell& c )
+    {
+        Dart out = c.dart();
+        iterateDartsOfCell( map, c, [&]( const Dart& d ) {
+            out = std::min( d, out );
+            return true;
+        } );
+        return out.id();
+    }
+
     void flood2d( const topology::CombinatorialMap& map,
                   const topology::Face& f,
                   const std::function<bool( const topology::Face& )>& stop_condition,

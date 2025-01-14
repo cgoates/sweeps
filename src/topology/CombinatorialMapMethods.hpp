@@ -65,6 +65,10 @@ namespace topology
     /// in the returned set, while a 2-sphere would have zero.
     std::set<Dart> boundaryComponentDarts( const CombinatorialMap& map );
 
+    /// Returns the lowest dart id of a cell.
+    ///
+    Dart::IndexType lowestDartId( const CombinatorialMap& map, const Cell& c );
+
     void flood2d( const topology::CombinatorialMap& map,
                   const topology::Face& f,
                   const std::function<bool( const topology::Face& )>& stop_condition,

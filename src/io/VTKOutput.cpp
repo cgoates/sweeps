@@ -313,27 +313,19 @@ namespace io
                      const VertexPositionsFunc& positions,
                      const std::string& filename )
     {
-        const auto lowest_dart_id = [&cmap]( const topology::Vertex& v ) {
-            topology::Dart::IndexType min_d = v.dart().id();
-            iterateDartsOfCell( cmap, v, [&]( const topology::Dart& d ) {
-                min_d = std::min( d.id(), min_d );
-                return true;
-            } );
-            return min_d;
-        };
         SimplicialComplex out;
         std::map<topology::Dart::IndexType, size_t> vert_ids;
         iterateCellsWhile( cmap, 0, [&]( const auto& vert ) {
-            vert_ids.emplace( lowest_dart_id( vert ), out.points.size() );
+            vert_ids.emplace( lowestDartId( cmap, vert ), out.points.size() );
             out.points.push_back( positions( vert ) );
             return true;
         } );
 
         iterateCellsWhile( cmap, 2, [&]( const auto& f ) {
             const topology::Dart& d = f.dart();
-            const VertexId v1 = vert_ids.at( lowest_dart_id( d ) );
-            const VertexId v2 = vert_ids.at( lowest_dart_id( phi( cmap, 1, d ).value() ) );
-            const VertexId v3 = vert_ids.at( lowest_dart_id( phi( cmap, -1, d ).value() ) );
+            const VertexId v1 = vert_ids.at( lowestDartId( cmap, topology::Vertex( d ) ) );
+            const VertexId v2 = vert_ids.at( lowestDartId( cmap, topology::Vertex( phi( cmap, 1, d ).value() ) ) );
+            const VertexId v3 = vert_ids.at( lowestDartId( cmap, topology::Vertex( phi( cmap, -1, d ).value() ) ) );
             out.simplices.emplace_back( v1, v2, v3 );
             return true;
         } );
