@@ -288,8 +288,10 @@ namespace mapping
         }
     }
 
-    std::optional<std::pair<topology::Cell, param::ParentPoint>> TriangleMeshCircleMapping::maybeInverse( const Eigen::Vector2d& pt ) const
+    std::optional<std::pair<topology::Cell, param::ParentPoint>> TriangleMeshCircleMapping::maybeInverse( const Vector3dMax& pt ) const
     {
+        if( pt.size() != 2 ) throw std::invalid_argument( "TriangleMeshCircleMapping::maybeInverse requires a 2D point" );
+
         if( pt.norm() > 1.0 + 1e-15 ) return std::nullopt;
         std::optional<std::pair<topology::Cell, param::ParentPoint>> out;
         iterateCellsWhile( mAtlas->cmap(), 2, [&]( const topology::Face& f ) {

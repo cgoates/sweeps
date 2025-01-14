@@ -21,12 +21,12 @@ namespace mapping
 
         virtual size_t spatialDim() const override { return mDim; }
 
-        std::optional<param::ParentPoint> maybeInverse( const topology::Face& f, const Eigen::Vector2d& pt ) const;
+        std::optional<param::ParentPoint> maybeInverse( const topology::Face& f, const Vector3dMax& pt ) const;
 
         //FIXME: PROBABLY VERY SLOW
-        virtual std::optional<std::pair<topology::Cell, param::ParentPoint>> maybeInverse( const Eigen::Vector2d& pt ) const override;
+        virtual std::optional<std::pair<topology::Cell, param::ParentPoint>> maybeInverse( const Vector3dMax& pt ) const override;
 
-        virtual std::pair<topology::Cell, param::ParentPoint> closestPoint( const Eigen::Vector3d& pt ) const override;
+        virtual std::pair<topology::Cell, param::ParentPoint> closestPoint( const Vector3dMax& pt ) const override;
 
         const VertexPositionsFunc& vertPositions() const { return mPositions; }
 

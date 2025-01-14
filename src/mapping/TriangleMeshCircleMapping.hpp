@@ -23,7 +23,7 @@ namespace mapping
         std::optional<param::ParentPoint> maybeInverse( const topology::Face& f, const Eigen::Vector2d& pt ) const;
 
         //FIXME: PROBABLY VERY SLOW
-        virtual std::optional<std::pair<topology::Cell, param::ParentPoint>> maybeInverse( const Eigen::Vector2d& pt ) const override;
+        virtual std::optional<std::pair<topology::Cell, param::ParentPoint>> maybeInverse( const Vector3dMax& pt ) const override;
 
         private:
         const std::shared_ptr<const param::TriangleParametricAtlas> mAtlas;

@@ -30,16 +30,28 @@ namespace mapping
         return out;
     }
 
-    std::optional<param::ParentPoint> TriangleMeshMapping::maybeInverse( const topology::Face& f, const Eigen::Vector2d& pt ) const
+    std::optional<param::ParentPoint> TriangleMeshMapping::maybeInverse( const topology::Face& f, const Vector3dMax& pt ) const
     {
+        if( pt.size() != (Eigen::Index)mDim ) throw std::invalid_argument( "Point dimension does not match mapping dimension" );
+
         std::optional<param::ParentPoint> out = std::nullopt;
 
         iterateAdjacentCellsOfRestrictedCell( mAtlas->cmap(), f, 2, 0, [&]( const topology::Vertex& v ) {
             if( vertexIndex( v ) == 0 )
             {
-                const Triangle<2> tri = triangleOfFace<2>( mAtlas->cmap(), mPositions, topology::Face( v.dart() ) );
                 const param::ParentDomain pd = mAtlas->parentDomain( f );
-                const std::optional<Eigen::Vector3d> maybe_bary = invertTriangleMap( tri, pt );
+                const std::optional<Eigen::Vector3d> maybe_bary = [&]() {
+                    if( mDim == 2 )
+                    {
+                        const Triangle<2> tri = triangleOfFace<2>( mAtlas->cmap(), mPositions, topology::Face( v.dart() ) );
+                        return invertTriangleMap( tri, pt );
+                    }
+                    else
+                    {
+                        const Triangle<3> tri = triangleOfFace<3>( mAtlas->cmap(), mPositions, topology::Face( v.dart() ) );
+                        return invertTriangleMap( tri, pt );
+                    }
+                }();
                 out = maybe_bary.transform( [&]( const Eigen::Vector3d& bary_coords ) {
                     return compressCoordinates( pd, bary_coords, 1e-5 );
                 } );
@@ -51,7 +63,7 @@ namespace mapping
         return out;
     }
 
-    std::optional<std::pair<topology::Cell, param::ParentPoint>> TriangleMeshMapping::maybeInverse( const Eigen::Vector2d& pt ) const
+    std::optional<std::pair<topology::Cell, param::ParentPoint>> TriangleMeshMapping::maybeInverse( const Vector3dMax& pt ) const
     {
         std::optional<std::pair<topology::Cell, param::ParentPoint>> out;
         iterateCellsWhile( mAtlas->cmap(), 2, [&]( const topology::Face& f ) {
@@ -63,7 +75,7 @@ namespace mapping
         return out;
     }
 
-    std::pair<topology::Cell, param::ParentPoint> TriangleMeshMapping::closestPoint( const Eigen::Vector3d& pt ) const
+    std::pair<topology::Cell, param::ParentPoint> TriangleMeshMapping::closestPoint( const Vector3dMax& pt ) const
     {
         std::optional<std::pair<topology::Cell, param::ParentPoint>> out;
         double min_dist = std::numeric_limits<double>::max();
@@ -72,8 +84,19 @@ namespace mapping
             iterateAdjacentCellsOfRestrictedCell( mAtlas->cmap(), f, 2, 0, [&]( const topology::Vertex& v ) {
                 if( vertexIndex( v ) == 0 )
                 {
-                    const Triangle<3> tri = triangleOfFace<3>( mAtlas->cmap(), mPositions, topology::Face( v.dart() ) );
-                    const std::pair<Eigen::Vector3d, std::optional<double>> maybe_closest = invertTriangleMapOrClosestPoint( tri, pt );
+                    const std::pair<Eigen::Vector3d, std::optional<double>> maybe_closest = [&]() {
+                        if( mDim == 2 )
+                        {
+                            const Triangle<2> tri = triangleOfFace<2>( mAtlas->cmap(), mPositions, topology::Face( v.dart() ) );
+                            return invertTriangleMapOrClosestPoint( tri, pt );
+                        }
+                        else
+                        {
+                            const Triangle<3> tri = triangleOfFace<3>( mAtlas->cmap(), mPositions, topology::Face( v.dart() ) );
+                            return invertTriangleMapOrClosestPoint( tri, pt );
+                        }
+                    }();
+
                     const param::ParentDomain pd = mAtlas->parentDomain( f );
                     if( not maybe_closest.second.has_value() )
                     {
