@@ -137,6 +137,7 @@ std::optional<Eigen::Vector3d> invertTriangleMap( const Triangle<3>& tri, const 
 /// @param point The point
 /// @return The barycentric coordinates of the closest point in the triangle to point, as well as the distance if nonzero.
 std::pair<Eigen::Vector3d, std::optional<double>> invertTriangleMapOrClosestPoint( const Triangle<3>& tri, const Eigen::Vector3d& point );
+std::pair<Eigen::Vector3d, std::optional<double>> invertTriangleMapOrClosestPoint( const Triangle<2>& tri, const Eigen::Vector2d& point );
 
 // Find { 1 - t, t } for pt = ( 1 - t ) * pt0 + t * pt1
 std::pair<double, double> inverseLinear( const double pt0, const double pt1, const double pt );

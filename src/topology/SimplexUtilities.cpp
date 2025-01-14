@@ -394,6 +394,61 @@ std::optional<Eigen::Vector3d> invertTriangleMap( const Triangle<3>& tri, const 
     return out;
 }
 
+template<int DIM>
+std::pair<Eigen::Vector3d, std::optional<double>> minDistanceToTriangleEdges( const Triangle<DIM>& tri, const Vector3dMax& point )
+{
+    // Helper functions
+    const auto clamp = []( const double v ) { return std::max( 0.0, std::min( 1.0, v ) ); };
+    const auto distance_squared = []( const auto& a, const auto& b ) {
+        return ( a - b ).squaredNorm();
+    };
+
+    // For points outside, find closest point on edges
+    double min_dist = std::numeric_limits<double>::infinity();
+    Eigen::Vector3d closest_bary;
+
+    // Edge v1-v2
+    {
+        const auto edge = tri.v2 - tri.v1;
+        const double len_squared = edge.squaredNorm();
+        const double t = clamp( ( point - tri.v1 ).dot( edge ) / len_squared );
+        const double dist = distance_squared( tri.v1 + t * edge, point );
+        if( dist < min_dist )
+        {
+            min_dist = dist;
+            closest_bary = Eigen::Vector3d( 1.0 - t, t, 0.0 );
+        }
+    }
+
+    // Edge v2-v3
+    {
+        const auto edge = tri.v3 - tri.v2;
+        const double len_squared = edge.squaredNorm();
+        const double t = clamp( ( point - tri.v2 ).dot( edge ) / len_squared );
+        const double dist = distance_squared( tri.v2 + t * edge, point );
+        if( dist < min_dist )
+        {
+            min_dist = dist;
+            closest_bary = Eigen::Vector3d( 0.0, 1.0 - t, t );
+        }
+    }
+
+    // Edge v1-v3
+    {
+        const auto edge = tri.v3 - tri.v1;
+        const double len_squared = edge.squaredNorm();
+        const double t = clamp( ( point - tri.v1 ).dot( edge ) / len_squared );
+        const double dist = distance_squared( tri.v1 + t * edge, point );
+        if( dist < min_dist )
+        {
+            min_dist = dist;
+            closest_bary = Eigen::Vector3d( 1.0 - t, 0.0, t );
+        }
+    }
+
+    return { closest_bary, min_dist };
+}
+
 std::pair<Eigen::Vector3d, std::optional<double>> invertTriangleMapOrClosestPoint( const Triangle<3>& tri, const Eigen::Vector3d& point )
 {
     // Precompute edge vectors and their properties once
@@ -438,52 +493,47 @@ std::pair<Eigen::Vector3d, std::optional<double>> invertTriangleMapOrClosestPoin
         else return { Eigen::Vector3d( b_0, b_1, b_2 ), dist };
     }
 
-    // Helper functions
-    const auto clamp = []( const double v ) { return std::max( 0.0, std::min( 1.0, v ) ); };
-    const auto distance_squared = []( const Eigen::Vector3d& a, const Eigen::Vector3d& b ) {
-        return ( a - b ).squaredNorm();
+    return minDistanceToTriangleEdges( tri, point );
+}
+
+std::pair<Eigen::Vector3d, std::optional<double>> invertTriangleMapOrClosestPoint( const Triangle<2>& tri, const Eigen::Vector2d& point )
+{
+    const Eigen::Vector2d diff0 = tri.v2 - tri.v1;
+    const Eigen::Vector2d diff1 = tri.v3 - tri.v1;
+    const Eigen::Vector2d diff_point = point - tri.v1;
+    const auto perpendicular_dot_product = []( const Eigen::Vector2d& a, const Eigen::Vector2d& b ){
+        return a( 0 ) * b( 1 ) - a( 1 ) * b( 0 );
     };
 
-    // For points outside, find closest point on edges
-    double min_dist = std::numeric_limits<double>::infinity();
-    Eigen::Vector3d closest_bary;
+    constexpr double epsilon = 1e-15;
 
-    // Edge v1-v2
+    // Early exit if denominator would be zero (degenerate triangle)
+    const double denom_unchecked = perpendicular_dot_product( diff0, diff1 );
+    if( std::abs( denom_unchecked ) < epsilon )
     {
-        const double t = clamp( d_20 / d_00 );
-        const double dist = distance_squared( tri.v1 + t * diff_0, point );
-        if( dist < min_dist )
-        {
-            min_dist = dist;
-            closest_bary = Eigen::Vector3d( 1.0 - t, t, 0.0 );
-        }
+        // Return closest vertex for degenerate case
+        const double dist1 = ( point - tri.v1 ).squaredNorm();
+        const double dist2 = ( point - tri.v2 ).squaredNorm();
+        const double dist3 = ( point - tri.v3 ).squaredNorm();
+        if( dist1 <= dist2 && dist1 <= dist3 ) return { Eigen::Vector3d( 1.0, 0.0, 0.0 ), dist1 };
+        if( dist2 <= dist3 ) return { Eigen::Vector3d( 0.0, 1.0, 0.0 ), dist2 };
+        return { Eigen::Vector3d( 0.0, 0.0, 1.0 ), dist3 };
     }
 
-    // Edge v2-v3
+    const double denominator = 1.0 / denom_unchecked;
+    const double b1 = denominator * perpendicular_dot_product( diff_point, diff1 );
+    const double b2 = denominator * perpendicular_dot_product( diff0, diff_point );
+    const double b0 = 1 - ( b1 + b2 );
+
+    // Inside triangle
+    if( b0 >= -epsilon && b1 >= -epsilon && b2 >= -epsilon && b0 <= 1.0 && b1 <= 1.0 && b2 <= 1.0 )
     {
-        const Eigen::Vector3d edge = tri.v3 - tri.v2;
-        const double len_squared = edge.squaredNorm();
-        const double t = clamp( ( point - tri.v2 ).dot( edge ) / len_squared );
-        const double dist = distance_squared( tri.v2 + t * edge, point );
-        if( dist < min_dist )
-        {
-            min_dist = dist;
-            closest_bary = Eigen::Vector3d( 0.0, 1.0 - t, t );
-        }
+        const double dist = ( tri.v1 + b1 * diff0 + b2 * diff1 - point ).squaredNorm();
+        if( dist < epsilon ) return { Eigen::Vector3d( b0, b1, b2 ), std::nullopt };
+        else return { Eigen::Vector3d( b0, b1, b2 ), dist };
     }
 
-    // Edge v1-v3
-    {
-        const double t = clamp( d_21 / d_11 );
-        const double dist = distance_squared( tri.v1 + t * diff_1, point );
-        if( dist < min_dist )
-        {
-            min_dist = dist;
-            closest_bary = Eigen::Vector3d( 1.0 - t, 0.0, t );
-        }
-    }
-
-    return { closest_bary, min_dist };
+    return minDistanceToTriangleEdges( tri, point );
 }
 
 std::pair<double, double> inverseLinear( const double pt0, const double pt1, const double pt )
