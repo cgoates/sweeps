@@ -798,6 +798,7 @@ TEST_CASE( "Flange spline" )
 
     const auto get_tutte_points = [&]( const reparam::FoliationLeaf& first_leaf ) {
         std::map<topology::Dart::IndexType, Eigen::Vector2d> tutte_points;
+        std::map<topology::Dart::IndexType, Eigen::Vector3d> first_level_points;
         iterateCellsWhile( ss2d.basisComplex().parametricAtlas().cmap(), 0, [&]( const topology::Vertex& v ) {
             evaler_2d.localizeElement( topology::Face( v.dart() ) );
             evaler_2d.localizePoint( ss2d.basisComplex().parametricAtlas().parentPoint( v ) );
@@ -815,11 +816,12 @@ TEST_CASE( "Flange spline" )
                 }
             }();
 
+            first_level_points.emplace( lowestDartId( ss2d.basisComplex().parametricAtlas().cmap(), v ), pt );
             tutte_points.emplace( lowestDartId( ss2d.basisComplex().parametricAtlas().cmap(), v ), tutte_pt );
             return true;
         } );
 
-        return tutte_points;
+        return std::pair<std::map<topology::Dart::IndexType, Eigen::Vector2d>, std::map<topology::Dart::IndexType, Eigen::Vector3d>>{ tutte_points, first_level_points };
     };
 
     const size_t n_points = cellCount( ss2d.basisComplex().parametricAtlas().cmap(), 0 ) * level_set_values.size();
@@ -829,11 +831,13 @@ TEST_CASE( "Flange spline" )
         level_set_values,
         tunnel_loop_points,
         [&ss, &n_points, &get_tutte_points, &sweep_to_source_vertex]( const std::vector<reparam::FoliationLeaf>& leaves ) {
-            const std::map<topology::Dart::IndexType, Eigen::Vector2d> tutte_points = get_tutte_points( leaves.front() );
+            const auto [tutte_points, first_level_points] = get_tutte_points( leaves.front() );
 
             const auto sample_at = [&]( const topology::Vertex& v ) -> Eigen::Vector3d {
                 // Get the 2d vertex and the level set that correspond to this vertex.
                 const auto [v2d, leaf_ii] = sweep_to_source_vertex( v );
+
+                if( leaf_ii == 0 ) return first_level_points.at( v2d.dart().id() );
 
                 const Eigen::Vector2d& tutte_pt = tutte_points.at( v2d.dart().id() );
 
