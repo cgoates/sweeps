@@ -15,6 +15,9 @@
 #include <TriangleMeshMapping.hpp>
 #include <Laplace.hpp>
 #include <CommonUtils.hpp>
+#include <SplineSpace.hpp>
+#include <BasisComplex.hpp>
+#include <ParametricAtlas.hpp>
 
 namespace reparam
 {
@@ -333,5 +336,50 @@ namespace reparam
         LOG( log_level_set_based_tracing ) << "FINISHED TARGET\n\n";
 
         callback( leaves );
+    }
+
+    Eigen::MatrixXd fitLinearMeshToLeaves(
+        const basis::SplineSpace& ss,
+        const std::vector<reparam::FoliationLeaf>& leaves,
+        const std::function<std::pair<Eigen::Vector2d, size_t>( const topology::Vertex& )>& tutte_points,
+        const std::optional<std::function<Eigen::Vector3d( const topology::Vertex& )>>& first_level_points )
+    {
+        const auto sample_at = [&]( const topology::Vertex& v ) -> Eigen::Vector3d {
+            // Get the 2d vertex and the level set that correspond to this vertex.
+            const auto [tutte_pt, leaf_ii] = tutte_points( v );
+            if( leaf_ii == 0 and first_level_points ) return first_level_points.value()( v );
+
+            const Eigen::Vector3d field_pt = [&]() -> Eigen::Vector3d {
+                const auto param_pt = leaves.at( leaf_ii ).tutte_mapping->maybeInverse( tutte_pt );
+
+                if( param_pt.has_value() )
+                    return leaves.at( leaf_ii ).space_mapping->evaluate( param_pt.value().first,
+                                                                         param_pt.value().second );
+                else
+                {
+                    // FIXME: I shouldn't need this, because the tutte domains should all overlap exactly
+                    std::cerr << "NO VALUE ON TUTTE INVERSE" << std::endl;
+                    const auto closest = leaves.at( leaf_ii ).tutte_mapping->closestPoint( tutte_pt );
+                    return leaves.at( leaf_ii ).space_mapping->evaluate( closest.first, closest.second );
+                }
+            }();
+
+            return field_pt;
+        };
+
+        Eigen::MatrixXd fit_cpts( cellCount( ss.basisComplex().parametricAtlas().cmap(), 0 ), 3 );
+
+        iterateCellsWhile( ss.basisComplex().parametricAtlas().cmap(), 0, [&]( const topology::Vertex& v ) {
+            const auto conn = ss.connectivity( v );
+            if( conn.size() != 1 )
+            {
+                throw std::runtime_error( "Multiple or no functions on a vertex!" );
+            }
+
+            fit_cpts.row( conn.front() ) = sample_at( v );
+            return true;
+        } );
+
+        return fit_cpts;
     }
 } // namespace reparam

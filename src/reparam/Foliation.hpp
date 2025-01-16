@@ -24,6 +24,11 @@ namespace mapping
     class GeometricMapping;
 }
 
+namespace basis
+{
+    class SplineSpace;
+}
+
 namespace reparam
 {
     class Trace;
@@ -74,4 +79,10 @@ namespace reparam
     void levelSetBasedTracing( const SweepInput& sweep_input,
                                const std::vector<double> level_set_values,
                                const std::function<void( const std::vector<FoliationLeaf>& )>& callback );
+
+    Eigen::MatrixXd fitLinearMeshToLeaves(
+        const basis::SplineSpace& ss,
+        const std::vector<reparam::FoliationLeaf>& leaves,
+        const std::function<std::pair<Eigen::Vector2d, size_t>( const topology::Vertex& )>& tutte_points,
+        const std::optional<std::function<Eigen::Vector3d( const topology::Vertex& )>>& first_level_points );
 } // namespace reparam

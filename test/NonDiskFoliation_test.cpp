@@ -824,52 +824,18 @@ TEST_CASE( "Flange spline" )
         return std::pair<std::map<topology::Dart::IndexType, Eigen::Vector2d>, std::map<topology::Dart::IndexType, Eigen::Vector3d>>{ tutte_points, first_level_points };
     };
 
-    const size_t n_points = cellCount( ss2d.basisComplex().parametricAtlas().cmap(), 0 ) * level_set_values.size();
-
     nonDiskFoliations(
         sweep_input,
         level_set_values,
         tunnel_loop_points,
-        [&ss, &n_points, &get_tutte_points, &sweep_to_source_vertex]( const std::vector<reparam::FoliationLeaf>& leaves ) {
+        [&ss, &get_tutte_points, &sweep_to_source_vertex]( const std::vector<reparam::FoliationLeaf>& leaves ) {
             const auto [tutte_points, first_level_points] = get_tutte_points( leaves.front() );
 
-            const auto sample_at = [&]( const topology::Vertex& v ) -> Eigen::Vector3d {
-                // Get the 2d vertex and the level set that correspond to this vertex.
+            const Eigen::MatrixXd fit_cpts = reparam::fitLinearMeshToLeaves( ss, leaves, [&]( const topology::Vertex& v ){
                 const auto [v2d, leaf_ii] = sweep_to_source_vertex( v );
-
-                if( leaf_ii == 0 ) return first_level_points.at( v2d.dart().id() );
-
-                const Eigen::Vector2d& tutte_pt = tutte_points.at( v2d.dart().id() );
-
-                const Eigen::Vector3d field_pt = [&]() -> Eigen::Vector3d {
-                    const auto param_pt =
-                        leaves.at( leaf_ii ).tutte_mapping->maybeInverse( tutte_pt );
-
-                    if( param_pt.has_value())
-                        return leaves.at( leaf_ii ).space_mapping->evaluate( param_pt.value().first, param_pt.value().second );
-                    else
-                    {
-                        // FIXME: I shouldn't need this, because the tutte domains should all overlap exactly
-                        std::cerr << "NO VALUE ON TUTTE INVERSE" << std::endl;
-                        const auto closest = leaves.at( leaf_ii ).tutte_mapping->closestPoint( tutte_pt );
-                        return leaves.at( leaf_ii ).space_mapping->evaluate( closest.first, closest.second );
-                    }
-                }();
-
-                return field_pt;
-            };
-
-            Eigen::MatrixXd fit_cpts( n_points, 3 );
-
-            iterateCellsWhile( ss.basisComplex().parametricAtlas().cmap(), 0, [&]( const topology::Vertex& v ) {
-                const auto conn = ss.connectivity( v );
-                if( conn.size() != 1 )
-                {
-                    throw std::runtime_error( "Multiple or no functions on a vertex!" );
-                }
-
-                fit_cpts.row( conn.front() ) = sample_at( v );
-                return true;
+                return std::pair<Eigen::Vector2d, size_t>( tutte_points.at( v2d.dart().id() ), leaf_ii );
+            }, [&]( const topology::Vertex& v ) {
+                return first_level_points.at( sweep_to_source_vertex( v ).first.dart().id() );
             } );
 
             std::cout << "Fit, outputting to vtk\n";
