@@ -201,6 +201,35 @@ void fitToPringlesSinglePatch( const SweepInput& sweep_input,
                                 "fit_to_" + output_prefix + ".vtu" );
 }
 
+basis::MultiPatchSplineSpace fivePatchSplineSpace( const size_t degree, const basis::KnotVector& kv_u, const size_t n_elems_st )
+{
+    using namespace topology;
+    const basis::KnotVector kv_st = basis::integerKnotsWithNElems( n_elems_st, degree );
+
+    const std::shared_ptr<const basis::TPSplineSpace> TP_ss = std::make_shared<const basis::TPSplineSpace>(
+        basis::buildBSpline( { kv_st, kv_st, kv_u }, { degree, degree, degree } ) );
+
+    const std::array<Dart, 6> connection_darts{ 1,
+                                                19,
+                                                ( 4 * n_elems_st - 3 ) * 6 + 1,
+                                                ( 4 * ( n_elems_st - 1 ) * n_elems_st + 2 ) * 6 + 1,
+                                                ( 4 * ( n_elems_st - 1 ) * n_elems_st + 3 ) * 6 + 1,
+                                                ( n_elems_st * n_elems_st * 4 - 2 ) * 6 + 1 };
+
+    return basis::buildMultiPatchSplineSpace(
+        std::vector<std::shared_ptr<const basis::TPSplineSpace>>( 5, TP_ss ),
+        {
+            { { 0, connection_darts.at( 2 ) }, { 1, connection_darts.at( 1 ) } },
+            { { 0, connection_darts.at( 5 ) }, { 2, connection_darts.at( 1 ) } },
+            { { 0, connection_darts.at( 4 ) }, { 3, connection_darts.at( 1 ) } },
+            { { 0, connection_darts.at( 0 ) }, { 4, connection_darts.at( 1 ) } },
+            { { 1, connection_darts.at( 3 ) }, { 2, connection_darts.at( 0 ) } },
+            { { 2, connection_darts.at( 3 ) }, { 3, connection_darts.at( 0 ) } },
+            { { 3, connection_darts.at( 3 ) }, { 4, connection_darts.at( 0 ) } },
+            { { 4, connection_darts.at( 3 ) }, { 1, connection_darts.at( 0 ) } },
+        } );
+}
+
 void fitToPringles5Patch( const SweepInput& sweep_input,
                           const std::vector<double>& level_set_values,
                           const std::string& output_prefix,
@@ -212,27 +241,15 @@ void fitToPringles5Patch( const SweepInput& sweep_input,
 
     const basis::KnotVector kv_st = basis::integerKnotsWithNElems( n_elems_st, degree );
 
-    const std::shared_ptr<const basis::TPSplineSpace> TP_ss = std::make_shared<const basis::TPSplineSpace>(
-        basis::buildBSpline( { kv_st, kv_st, kv_u }, { degree, degree, degree } ) );
-    const auto& vol_cmap = TP_ss->basisComplex().parametricAtlas().cmap();
+    const basis::MultiPatchSplineSpace mp_ss = fivePatchSplineSpace( degree, kv_u, n_elems_st );
+
+    const std::shared_ptr<const basis::TPSplineSpace> TP_ss = mp_ss.subSpaces().at( 0 );
     const basis::TPSplineSpace& source_ss = static_cast<const basis::TPSplineSpace&>( TP_ss->source() );
+    const topology::TPCombinatorialMap& vol_cmap = TP_ss->basisComplex().parametricAtlas().cmap();
+
     const std::vector<std::pair<topology::Cell, param::ParentPoint>> ppt_u =
         parentPointsOfParamPoints( level_set_values, TP_ss->line().basisComplex().parametricAtlas(), 1e-9 );
 
-    const basis::MultiPatchSplineSpace mp_ss = basis::buildMultiPatchSplineSpace(
-        std::vector<std::shared_ptr<const basis::TPSplineSpace>>( 5, TP_ss ),
-        { // FIXME: only valid for n_elems_st = 2
-            { { 0, Dart( 31 ) }, { 1, Dart( 19 ) } },
-            { { 0, Dart( 85 ) }, { 2, Dart( 19 ) } },
-            { { 0, Dart( 67 ) }, { 3, Dart( 19 ) } },
-            { { 0, Dart( 1 ) }, { 4, Dart( 19 ) } },
-            { { 1, Dart( 61 ) }, { 2, Dart( 1 ) } },
-            { { 2, Dart( 61 ) }, { 3, Dart( 1 ) } },
-            { { 3, Dart( 61 ) }, { 4, Dart( 1 ) } },
-            { { 4, Dart( 61 ) }, { 1, Dart( 1 ) } },
-        } );
-
-    
     const SmallVector<double, 2> source_points{ 0.1, 0.9 };
     const param::ParentDomain pd_3d = param::cubeDomain( 3 );
 
@@ -345,24 +362,11 @@ void linearMeshPringles5Patch( const SweepInput& sweep_input,
 
     const size_t degree = 1;
     const basis::KnotVector kv_u( concatenate( {0}, concatenate( level_set_values, {1} ) ), 1e-9 );
-    const basis::KnotVector kv_st = basis::integerKnotsWithNElems( n_elems_st, degree );
 
-    const std::shared_ptr<const basis::TPSplineSpace> TP_ss = std::make_shared<const basis::TPSplineSpace>(
-        basis::buildBSpline( { kv_st, kv_st, kv_u }, { degree, degree, degree } ) );
+    const basis::MultiPatchSplineSpace mp_ss = fivePatchSplineSpace( degree, kv_u, n_elems_st );
+
+    const std::shared_ptr<const basis::TPSplineSpace> TP_ss = mp_ss.subSpaces().at( 0 );
     const basis::TPSplineSpace& source_ss = static_cast<const basis::TPSplineSpace&>( TP_ss->source() );
-
-    const basis::MultiPatchSplineSpace mp_ss = basis::buildMultiPatchSplineSpace(
-        std::vector<std::shared_ptr<const basis::TPSplineSpace>>( 5, TP_ss ),
-        { // FIXME: only valid for n_elems_st = 2
-            { { 0, Dart( 31 ) }, { 1, Dart( 19 ) } },
-            { { 0, Dart( 85 ) }, { 2, Dart( 19 ) } },
-            { { 0, Dart( 67 ) }, { 3, Dart( 19 ) } },
-            { { 0, Dart( 1 ) }, { 4, Dart( 19 ) } },
-            { { 1, Dart( 61 ) }, { 2, Dart( 1 ) } },
-            { { 2, Dart( 61 ) }, { 3, Dart( 1 ) } },
-            { { 3, Dart( 61 ) }, { 4, Dart( 1 ) } },
-            { { 4, Dart( 61 ) }, { 1, Dart( 1 ) } },
-        } );
 
     const param::ParentDomain pd_3d = param::cubeDomain( 3 );
 
