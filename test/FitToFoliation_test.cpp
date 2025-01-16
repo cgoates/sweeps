@@ -336,6 +336,106 @@ void fitToPringles5Patch( const SweepInput& sweep_input,
     return fitToPringles5Patch( sweep_input, level_set_values, output_prefix, degree, kv_u, n_elems_st );
 }
 
+void linearMeshPringles5Patch( const SweepInput& sweep_input,
+                               const std::string& output_prefix,
+                               const std::vector<double>& level_set_values,
+                               const size_t n_elems_st )
+{
+    using namespace topology;
+
+    const size_t degree = 1;
+    const basis::KnotVector kv_u( concatenate( {0}, concatenate( level_set_values, {1} ) ), 1e-9 );
+    const basis::KnotVector kv_st = basis::integerKnotsWithNElems( n_elems_st, degree );
+
+    const std::shared_ptr<const basis::TPSplineSpace> TP_ss = std::make_shared<const basis::TPSplineSpace>(
+        basis::buildBSpline( { kv_st, kv_st, kv_u }, { degree, degree, degree } ) );
+    const basis::TPSplineSpace& source_ss = static_cast<const basis::TPSplineSpace&>( TP_ss->source() );
+
+    const basis::MultiPatchSplineSpace mp_ss = basis::buildMultiPatchSplineSpace(
+        std::vector<std::shared_ptr<const basis::TPSplineSpace>>( 5, TP_ss ),
+        { // FIXME: only valid for n_elems_st = 2
+            { { 0, Dart( 31 ) }, { 1, Dart( 19 ) } },
+            { { 0, Dart( 85 ) }, { 2, Dart( 19 ) } },
+            { { 0, Dart( 67 ) }, { 3, Dart( 19 ) } },
+            { { 0, Dart( 1 ) }, { 4, Dart( 19 ) } },
+            { { 1, Dart( 61 ) }, { 2, Dart( 1 ) } },
+            { { 2, Dart( 61 ) }, { 3, Dart( 1 ) } },
+            { { 3, Dart( 61 ) }, { 4, Dart( 1 ) } },
+            { { 4, Dart( 61 ) }, { 1, Dart( 1 ) } },
+        } );
+
+    const param::ParentDomain pd_3d = param::cubeDomain( 3 );
+
+    std::map<std::pair<size_t, topology::Vertex>, Eigen::Vector2d> tutte_points;
+    iterateCellsWhile( source_ss.basisComplex().parametricAtlas().cmap(), 0, [&]( const topology::Vertex& v ) {
+        const Eigen::Vector2d pt = source_ss.basisComplex().parametricAtlas().parentPoint( v ).mPoint;
+
+        const Eigen::Vector2d sq_pt = toUnitSquare( source_ss.basisComplex().parametricAtlas().cmap(), topology::Face( v.dart() ), pt );
+
+        for( size_t patch_ii = 0; patch_ii < 5; patch_ii++ )
+        {
+            const Eigen::Vector2d circle_pt = multiPatchToUnitDisk( patch_ii, sq_pt );
+            tutte_points.emplace( std::pair( patch_ii, lowestDartId( source_ss.basisComplex().parametricAtlas().cmap(), v ) ), circle_pt );
+        }
+
+        return true;
+    } );
+
+    Eigen::MatrixXd fit_cpts;
+
+    reparam::levelSetBasedTracing( sweep_input, level_set_values, [&]( const std::vector<FoliationLeaf>& leaves ) {
+        fit_cpts = reparam::fitLinearMeshToLeaves( mp_ss, leaves, [&]( const topology::Vertex& v ){
+            const auto [patch_id, d_patch] = mp_ss.basisComplex().parametricAtlas().cmap().toLocalDart( v.dart() );
+            const auto unflattened_cell = unflattenCell( TP_ss->basisComplex().parametricAtlas().cmap(), topology::Vertex( d_patch ) );
+            const topology::Vertex v2d(
+                lowestDartId( source_ss.basisComplex().parametricAtlas().cmap(),
+                              unflattened_cell.first.value() ) );
+            const size_t leaf_ii = unflattened_cell.second.has_value() ? unflattened_cell.second.value().dart().id() : level_set_values.size() - 1;
+
+            return std::pair<Eigen::Vector2d, size_t>( tutte_points.at( { patch_id, v2d } ), leaf_ii );
+        }, std::nullopt );
+    } );
+
+    double min_val = std::numeric_limits<double>::infinity();
+    double max_val = -std::numeric_limits<double>::infinity();
+
+    eval::SplineSpaceEvaluator evaler( mp_ss, 1 );
+
+    iterateCellsWhile( mp_ss.basisComplex().parametricAtlas().cmap(), 3, [&]( const topology::Volume& vol ) {
+        evaler.localizeElement( vol );
+        iterateAdjacentCellsOfRestrictedCell( mp_ss.basisComplex().parametricAtlas().cmap(), vol, 2, 0, [&]( const topology::Vertex& v ) {
+            evaler.localizePoint( mp_ss.basisComplex().parametricAtlas().parentPoint( v ) );
+            const double val = evaler.evaluateJacobian( fit_cpts.transpose() ).determinant();
+            min_val = std::min( min_val, val );
+            max_val = std::max( max_val, val );
+            return true;
+        } );
+        return true;
+    } );
+
+    std::cout << "Min jacobian: " << min_val << std::endl;
+    std::cout << "Max jacobian: " << max_val << std::endl;
+
+    io::outputBezierMeshToVTK( mp_ss, fit_cpts, "fit_to_" + output_prefix + "_multi_patch.vtu" );
+    io::outputPartialBezierMeshToVTK( mp_ss, fit_cpts, "bad_fit_cells_" + output_prefix + ".vtu", [&]( const auto& callback ) {
+        iterateCellsWhile( mp_ss.basisComplex().parametricAtlas().cmap(), 3, [&]( const topology::Volume& vol ) {
+            evaler.localizeElement( vol );
+            double min_jac = std::numeric_limits<double>::infinity();
+            iterateAdjacentCellsOfRestrictedCell( mp_ss.basisComplex().parametricAtlas().cmap(), vol, 2, 0, [&]( const topology::Vertex& v ) {
+                evaler.localizePoint( mp_ss.basisComplex().parametricAtlas().parentPoint( v ) );
+                const double val = evaler.evaluateJacobian( fit_cpts.transpose() ).determinant();
+                min_jac = std::min( min_jac, val );
+                return true;
+            } );
+            if( min_jac < 0 )
+            {
+                callback( vol );
+            }
+            return true;
+        } );
+    } );
+}
+
 
 TEST_CASE( "Level set parameterization of left ventricle" )
 {
@@ -355,6 +455,26 @@ TEST_CASE( "Level set parameterization of left ventricle" )
 
     // fitToPringlesSinglePatch( sweep_input, level_set_values, output_prefix, 2, 20, 4 );
     fitToPringles5Patch( sweep_input, level_set_values, output_prefix, 2, 20, 2 );
+}
+
+TEST_CASE( "Linear mesh on left ventricle" )
+{
+    const SweepInput sweep_input = io::loadINPFile( SRC_HOME "/test/data/left_ventricle.inp", "Surface3", "Surface2" );
+
+    // level set every 0.02 until 0.75, then ~30 levels between 0.75 and 0.85, then every 0.2 until 1.0.
+    // const std::vector<double> level_set_values =
+    //     concatenate(
+    //         concatenate( linspace( 0, 0.78, 40 ), linspace( 0.8, 0.819, 20 ) ),
+    //         concatenate( concatenate( linspace( 0.81925, 0.81975, 3 ), linspace( 0.82, 0.85, 31 ) ), linspace( 0.86, 1.0, 13 ) ) );
+    const std::vector<double> level_set_values =
+        concatenate(
+            concatenate( linspace( 0, 0.78, 20 ), linspace( 0.8, 0.819, 10 ) ),
+            concatenate( concatenate( linspace( 0.81925, 0.81975, 3 ), linspace( 0.82, 0.85, 15 ) ), linspace( 0.86, 1.0, 7 ) ) );
+    // const std::vector<double> level_set_values = linspace( 0, 1.0, 80 );
+    const std::string output_prefix = "ventricle";
+
+    // fitToPringlesSinglePatch( sweep_input, level_set_values, output_prefix, 2, 20, 4 );
+    linearMeshPringles5Patch( sweep_input, output_prefix, level_set_values, 2 );
 }
 
 TEST_CASE( "Level set parameterization of part of left ventricle" )
