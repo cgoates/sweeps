@@ -110,7 +110,7 @@ namespace eval
         const Eigen::VectorXd t_deriv = bernsteinFirstDeriv( q, t );
         const Eigen::VectorXd u_deriv = bernsteinFirstDeriv( r, u );
 
-        return ( Eigen::MatrixX3d( s_evals.size() * t_evals.size(), 3 )
+        return ( Eigen::MatrixX3d( s_evals.size() * t_evals.size() * u_evals.size(), 3 )
                      << Eigen::kroneckerProduct( u_evals, Eigen::kroneckerProduct( t_evals, s_deriv ) ),
                  Eigen::kroneckerProduct( u_evals, Eigen::kroneckerProduct( t_deriv, s_evals ) ),
                  Eigen::kroneckerProduct( u_deriv, Eigen::kroneckerProduct( t_evals, s_evals ) ) )
@@ -130,7 +130,7 @@ namespace eval
         const Eigen::VectorXd t_dderiv = bernsteinSecondDeriv( q, t );
         const Eigen::VectorXd u_dderiv = bernsteinSecondDeriv( r, u );
 
-        return ( Eigen::MatrixXd( s_evals.size() * t_evals.size(), 6 )
+        return ( Eigen::MatrixXd( s_evals.size() * t_evals.size() * u_evals.size(), 6 )
                      << Eigen::kroneckerProduct( u_evals, Eigen::kroneckerProduct( t_evals, s_dderiv ) ),
                  Eigen::kroneckerProduct( u_evals, Eigen::kroneckerProduct( t_deriv, s_deriv ) ),
                  Eigen::kroneckerProduct( u_deriv, Eigen::kroneckerProduct( t_evals, s_deriv ) ),
