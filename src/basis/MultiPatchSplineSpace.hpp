@@ -22,6 +22,8 @@ namespace basis
 
         const std::vector<std::vector<FunctionId>>& functionIdMap() const { return mFuncIds; }
 
+        const std::vector<std::shared_ptr<const TPSplineSpace>>& subSpaces() const { return mSubSpaces; }
+
         private:
         const std::shared_ptr<const MultiPatchBasisComplex> mBasisComplex;
         const std::vector<std::shared_ptr<const TPSplineSpace>> mSubSpaces;
