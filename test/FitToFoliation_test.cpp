@@ -472,13 +472,13 @@ TEST_CASE( "Linear mesh on left ventricle" )
     //         concatenate( concatenate( linspace( 0.81925, 0.81975, 3 ), linspace( 0.82, 0.85, 31 ) ), linspace( 0.86, 1.0, 13 ) ) );
     const std::vector<double> level_set_values =
         concatenate(
-            concatenate( linspace( 0, 0.78, 20 ), linspace( 0.8, 0.819, 10 ) ),
-            concatenate( concatenate( linspace( 0.81925, 0.81975, 3 ), linspace( 0.82, 0.85, 15 ) ), linspace( 0.86, 1.0, 7 ) ) );
+            concatenate( linspace( 0, 0.78, 20 ), linspace( 0.8, 0.815, 4 ) ),
+            concatenate( concatenate( linspace( 0.817, 0.83, 3 ), { 0.85 } ), linspace( 0.86, 1.0, 7 ) ) );
     // const std::vector<double> level_set_values = linspace( 0, 1.0, 80 );
     const std::string output_prefix = "ventricle";
 
     // fitToPringlesSinglePatch( sweep_input, level_set_values, output_prefix, 2, 20, 4 );
-    linearMeshPringles5Patch( sweep_input, output_prefix, level_set_values, 2 );
+    linearMeshPringles5Patch( sweep_input, output_prefix, level_set_values, 3 );
 }
 
 TEST_CASE( "Level set parameterization of part of left ventricle" )
