@@ -128,8 +128,8 @@ bool isInverted( const topology::CombinatorialMap& map,
                  const topology::Volume& v,
                  const VertexPositionsFunc& positions );
 
-std::optional<Eigen::Vector3d> invertTriangleMap( const Triangle<2>& tri, const Eigen::Vector2d& point );
-std::optional<Eigen::Vector3d> invertTriangleMap( const Triangle<3>& tri, const Eigen::Vector3d& point );
+std::optional<Eigen::Vector3d> invertTriangleMap( const Triangle<2>& tri, const Eigen::Vector2d& point, const double epsilon = 1e-12 );
+std::optional<Eigen::Vector3d> invertTriangleMap( const Triangle<3>& tri, const Eigen::Vector3d& point, const double epsilon = 1e-12 );
 
 /// @brief Returns the closest barycentric coordinates in a triangle to the input point, as well as the distance from
 /// the triangle to the point if the point is not in the triangle.

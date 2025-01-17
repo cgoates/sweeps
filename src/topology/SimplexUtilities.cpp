@@ -341,7 +341,7 @@ bool isInverted( const topology::CombinatorialMap& map,
     return false;
 }
 
-std::optional<Eigen::Vector3d> invertTriangleMap( const Triangle<2>& tri, const Eigen::Vector2d& point )
+std::optional<Eigen::Vector3d> invertTriangleMap( const Triangle<2>& tri, const Eigen::Vector2d& point, const double epsilon )
 {
     // See https://gamedev.stackexchange.com/a/63203
     const Eigen::Vector2d diff0 = tri.v2 - tri.v1;
@@ -353,16 +353,22 @@ std::optional<Eigen::Vector3d> invertTriangleMap( const Triangle<2>& tri, const 
     const double denominator = 1.0 / perpendicular_dot_product( diff0, diff1 );
     Eigen::Vector3d out = Eigen::Vector3d::Zero();
     out( 1 ) = denominator * perpendicular_dot_product( diff_point, diff1 );
-    if( out( 1 ) > 1.0 or out( 1 ) < -1e-15 ) return std::nullopt;
+    if( out( 1 ) > 1.0 + epsilon or out( 1 ) < -epsilon ) return std::nullopt;
     out( 2 ) = denominator * perpendicular_dot_product( diff0, diff_point );
-    if( out( 2 ) > 1.0 or out( 2 ) < -1e-15 ) return std::nullopt;
+    if( out( 2 ) > 1.0 + epsilon or out( 2 ) < -epsilon ) return std::nullopt;
     out( 0 ) = 1 - ( out( 1 ) + out( 2 ) );
-    if( out( 0 ) > 1.0 or out( 0 ) < -1e-15 ) return std::nullopt;
+    if( out( 0 ) > 1.0 + epsilon or out( 0 ) < -epsilon ) return std::nullopt;
+
+    // Normalize so that all points are within [0, 1]
+    out = out.cwiseMax( Eigen::Vector3d::Zero() );
+
+    const double sum = out.sum();
+    if( sum > 1.0 ) out /= sum;
 
     return out;
 }
 
-std::optional<Eigen::Vector3d> invertTriangleMap( const Triangle<3>& tri, const Eigen::Vector3d& point )
+std::optional<Eigen::Vector3d> invertTriangleMap( const Triangle<3>& tri, const Eigen::Vector3d& point, const double epsilon )
 {
     // See https://gamedev.stackexchange.com/a/23745
     const Eigen::Vector3d diff0 = tri.v2 - tri.v1;
@@ -376,11 +382,17 @@ std::optional<Eigen::Vector3d> invertTriangleMap( const Triangle<3>& tri, const 
     const double denominator = 1.0 / ( d00 * d11 - d01 * d01 );
     Eigen::Vector3d out = Eigen::Vector3d::Zero();
     out( 1 ) = denominator * ( d11 * d20 - d01 * d21 );
-    if( out( 1 ) > 1.0 or out( 1 ) < -1e-15 ) return std::nullopt;
+    if( out( 1 ) > 1.0 + epsilon or out( 1 ) < -epsilon ) return std::nullopt;
     out( 2 ) = denominator * ( d00 * d21 - d01 * d20 );
-    if( out( 2 ) > 1.0 or out( 2 ) < -1e-15 ) return std::nullopt;
+    if( out( 2 ) > 1.0 + epsilon or out( 2 ) < -epsilon ) return std::nullopt;
     out( 0 ) = 1 - ( out( 1 ) + out( 2 ) );
-    if( out( 0 ) > 1.0 or out( 0 ) < -1e-15 ) return std::nullopt;
+    if( out( 0 ) > 1.0 + epsilon or out( 0 ) < -epsilon ) return std::nullopt;
+
+    // Normalize so that all points are within [0, 1]
+    out = out.cwiseMax( Eigen::Vector3d::Zero() );
+
+    const double sum = out.sum();
+    if( sum > 1.0 ) out /= sum;
 
     return out;
 }
@@ -496,7 +508,7 @@ std::pair<Eigen::Vector3d, std::optional<double>> invertTriangleMapOrClosestPoin
         return a( 0 ) * b( 1 ) - a( 1 ) * b( 0 );
     };
 
-    constexpr double epsilon = 1e-15;
+    constexpr double epsilon = 1e-12;
 
     // Early exit if denominator would be zero (degenerate triangle)
     const double denom_unchecked = perpendicular_dot_product( diff0, diff1 );
