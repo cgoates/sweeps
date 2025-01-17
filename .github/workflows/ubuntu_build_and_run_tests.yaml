@@ -3,7 +3,7 @@ run-name: Build and run tests
 on: [push]
 jobs:
   do-it:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     container: gcc:13
     steps:
       - name: Checkout code
