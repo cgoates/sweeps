@@ -6,6 +6,113 @@
 
 using namespace topology;
 
+bool checkForNoAncestor( const FullyUnflattenedDart& unflat, const size_t n_darts_per_ancestor )
+{
+    using TPDartPos = TPCombinatorialMap::TPDartPos;
+
+    const auto check_dart = [&]( const size_t idx, const bool add_one = false ) {
+        return ( unflat.unflat_darts.at( idx ).id() + ( add_one ? 1 : 0 ) ) % n_darts_per_ancestor != 0;
+    };
+    constexpr bool add_one = true;
+    if( unflat.unflat_darts.size() == 2 ) // 2D case
+    {
+        switch( unflat.dart_pos.at( 0 ) )
+        {
+            case TPCombinatorialMap::TPDartPos::DartPos0:
+                return check_dart( 1 );
+            case TPCombinatorialMap::TPDartPos::DartPos1:
+                return check_dart( 0, add_one );
+            case TPCombinatorialMap::TPDartPos::DartPos2:
+                return check_dart( 1, add_one );
+            case TPCombinatorialMap::TPDartPos::DartPos3:
+                return check_dart( 0 );
+            default:
+                throw std::runtime_error( "Invalid TPDartPos for 2d" );
+        }
+    }
+    else if( unflat.unflat_darts.size() == 3 ) // 3D case
+    {
+        switch( unflat.dart_pos.at( 0 ) )
+        {
+            case TPDartPos::DartPos0:
+                switch( unflat.dart_pos.at( 1 ) )
+                {
+                    case TPDartPos::DartPos0:
+                    case TPDartPos::DartPos1:
+                        return check_dart( 1 ) or check_dart( 2 );
+                    case TPDartPos::DartPos2:
+                        return check_dart( 0 ) or check_dart( 1 );
+                    case TPDartPos::DartPos4:
+                        return check_dart( 0, add_one ) or check_dart( 1 );
+                    case TPDartPos::DartPos3:
+                    case TPDartPos::DartPos5:
+                        return check_dart( 1 ) or check_dart( 2, add_one );
+                    default:
+                        throw std::runtime_error( "Invalid TPDartPos for 3d" );
+                }
+            case TPDartPos::DartPos1:
+                switch( unflat.dart_pos.at( 1 ) )
+                {
+                    case TPDartPos::DartPos0:
+                    case TPDartPos::DartPos1:
+                        return check_dart( 0, add_one ) or check_dart( 2 );
+                    case TPDartPos::DartPos2:
+                        return check_dart( 0, add_one ) or check_dart( 1 );
+                    case TPDartPos::DartPos4:
+                        return check_dart( 0, add_one ) or check_dart( 1, add_one );
+                    case TPDartPos::DartPos3:
+                    case TPDartPos::DartPos5:
+                        return check_dart( 0, add_one ) or check_dart( 2, add_one );
+                    default:
+                        throw std::runtime_error( "Invalid TPDartPos for 3d" );
+                }
+            case TPDartPos::DartPos2:
+                switch( unflat.dart_pos.at( 1 ) )
+                {
+                    case TPDartPos::DartPos0:
+                    case TPDartPos::DartPos1:
+                        return check_dart( 1, add_one ) or check_dart( 2 );
+                    case TPDartPos::DartPos2:
+                        return check_dart( 0, add_one ) or check_dart( 1, add_one );
+                    case TPDartPos::DartPos4:
+                        return check_dart( 0 ) or check_dart( 1, add_one );
+                    case TPDartPos::DartPos3:
+                    case TPDartPos::DartPos5:
+                        return check_dart( 1, add_one ) or check_dart( 2, add_one );
+                    default:
+                        throw std::runtime_error( "Invalid TPDartPos for 3d" );
+                }
+            case TPDartPos::DartPos3:
+                switch( unflat.dart_pos.at( 1 ) )
+                {
+                    case TPDartPos::DartPos0:
+                    case TPDartPos::DartPos1:
+                        return check_dart( 0 ) or check_dart( 2 );
+                    case TPDartPos::DartPos2:
+                        return check_dart( 0 ) or check_dart( 1, add_one );
+                    case TPDartPos::DartPos4:
+                        return check_dart( 0 ) or check_dart( 1 );
+                    case TPDartPos::DartPos3:
+                    case TPDartPos::DartPos5:
+                        return check_dart( 0 ) or check_dart( 2, add_one );
+                    default:
+                        throw std::runtime_error( "Invalid TPDartPos for 3d" );
+                }
+
+            default:
+                throw std::runtime_error( "Invalid TPDartPos for 2d" );
+        }
+    }
+    throw std::invalid_argument( "Bad unflattened dart passed to checkForNoAncestor" );
+}
+
+bool checkForNoAncestor( const TPCombinatorialMap& tp_map, const Dart& d, const size_t n_darts_per_ancestor )
+{
+    if( n_darts_per_ancestor == 0 )
+        return true;
+    return checkForNoAncestor( unflattenFull( tp_map, d ), n_darts_per_ancestor );
+}
+
 HierarchicalTPCombinatorialMap::HierarchicalTPCombinatorialMap(
     const std::vector<std::shared_ptr<const TPCombinatorialMap>>& refinement_levels,
     const std::vector<std::vector<Cell>>& leaf_elements )
@@ -39,6 +146,17 @@ HierarchicalTPCombinatorialMap::HierarchicalTPCombinatorialMap(
         lower_sizes = higher_sizes;
     }
 
+    const auto mark_as_leaf = [&]( const size_t level, const Dart& level_d ) {
+        const Dart global_d = mRanges.toGlobalDart( level, level_d );
+        mLeafDarts.at( global_d.id() ) = true;
+
+        // Unmark ancestors that are marked as leaf.
+        iterateAncestors( global_d, [&]( const Dart& ancestor_global_d ) {
+            mLeafDarts.at( ancestor_global_d.id() ) = false;
+            return true;
+        } );
+    };
+
     // Mark unrefined and leaf darts
     for( size_t level = 0; level < refinement_levels.size(); level++ )
     {
@@ -46,20 +164,20 @@ HierarchicalTPCombinatorialMap::HierarchicalTPCombinatorialMap(
         {
             iterateDartsOfCell( *refinement_levels.at( level ), leaf_elem, [&]( const Dart& level_d ) {
                 mUnrefinedDarts.at( mRanges.toGlobalDart( level, level_d ).id() ) = true;
-                for( size_t cell_dim = 1; cell_dim < dim(); cell_dim++ )
+                const auto maybe_phi = topology::phi( *refinement_levels.at( level ), dim(), level_d );
+ 
+                if( dim() == 3 and not checkForNoAncestor( *refinement_levels.at( level ), level_d, level == 0 ? 0 : mRefinementRatios.at( level - 1 ) ) )
                 {
-                    const Cell c( level_d, cell_dim );
-                    iterateDartsOfCell( *refinement_levels.at( level ), c, [&]( const Dart& adj_level_d ) {
-                        const Dart adj_global_d = mRanges.toGlobalDart( level, adj_level_d );
-                        mLeafDarts.at( adj_global_d.id() ) = true;
-
-                        // Unmark ancestors that are marked as leaf.
-                        iterateAncestors( adj_global_d, [&]( const Dart& ancestor_global_d ) {
-                            mLeafDarts.at( ancestor_global_d.id() ) = false;
-                            return true;
-                        } );
+                    iterateDartsOfCell( *refinement_levels.at( level ), Edge( level_d ), [&]( const Dart& level_adj_d ) {
+                        mark_as_leaf( level, level_adj_d );
                         return true;
                     } );
+                }
+                else
+                {
+                    mark_as_leaf( level, level_d );
+                    if( maybe_phi.has_value() )
+                        mark_as_leaf( level, maybe_phi.value() );
                 }
                 return true;
             } );
@@ -72,38 +190,47 @@ HierarchicalTPCombinatorialMap::HierarchicalTPCombinatorialMap(
         const TPCombinatorialMap& level_cmap = *refinement_levels.at( level );
         for( const auto& leaf_elem : leaf_elements.at( level ) )
         {
-            const bool all_darts_are_leaves = iterateDartsOfCell( level_cmap, leaf_elem, [&]( const Dart& d ) {
-                const Dart global_d = mRanges.toGlobalDart( level, d );
-                return mLeafDarts.at( global_d.id() );
-            } );
+            // In 3d we need to do this for the faces of the leaf elements, in 2d, the elements themselves.
+            iterateAdjacentCells( level_cmap, leaf_elem, 2, [&]( const topology::Face& leaf_face ) {
+                const bool all_darts_are_leaves = iterateDartsOfRestrictedCell( level_cmap, leaf_face, 2, [&]( const Dart& d ) {
+                    const Dart global_d = mRanges.toGlobalDart( level, d );
+                    return mLeafDarts.at( global_d.id() );
+                } );
 
-            if( not all_darts_are_leaves )
-            {
-                std::optional<Dart> first_leaf;
-                std::optional<Dart> previous_leaf;
-                const Dart global_leaf_elem_dart = mRanges.toGlobalDart( level, leaf_elem.dart() );
-                Dart d = mRanges.toGlobalDart( level, leaf_elem.dart() );
-                do
+                const bool all_darts_are_not_leaves = iterateDartsOfRestrictedCell( level_cmap, leaf_face, 2, [&]( const Dart& d ) {
+                    const Dart global_d = mRanges.toGlobalDart( level, d );
+                    return not mLeafDarts.at( global_d.id() );
+                } );
+
+                if( not all_darts_are_leaves and not ( dim() == 3 and all_darts_are_not_leaves ) )
                 {
-                    iterateLeafDescendants( d, [&]( const Dart& descendant ) {
-                        if( previous_leaf )
-                        {
-                            mPhiOnes.insert( { previous_leaf.value(), descendant } );
-                            mPhiMinusOnes.insert( { descendant, previous_leaf.value() } );
-                        }
-                        previous_leaf.emplace( descendant );
-                        if( not first_leaf ) first_leaf.emplace( descendant );
-                        return true;
-                    } );
-                    d = mRanges.toGlobalDart( level, topology::phi( level_cmap, 1, mRanges.toLocalDart( d ).second ).value() );
-                } while ( d != global_leaf_elem_dart );
-                
-                if( first_leaf )
-                {
-                    mPhiOnes.insert( { previous_leaf.value(), first_leaf.value() } );
-                    mPhiMinusOnes.insert( { first_leaf.value(), previous_leaf.value() } );
+                    std::optional<Dart> first_leaf;
+                    std::optional<Dart> previous_leaf;
+                    const Dart global_leaf_face_dart = mRanges.toGlobalDart( level, leaf_face.dart() );
+                    Dart d = global_leaf_face_dart;
+                    do
+                    {
+                        iterateLeafDescendants( d, [&]( const Dart& descendant ) {
+                            if( previous_leaf )
+                            {
+                                mPhiOnes.insert( { previous_leaf.value(), descendant } );
+                                mPhiMinusOnes.insert( { descendant, previous_leaf.value() } );
+                            }
+                            previous_leaf.emplace( descendant );
+                            if( not first_leaf ) first_leaf.emplace( descendant );
+                            return true;
+                        } );
+                        d = mRanges.toGlobalDart( level, topology::phi( level_cmap, 1, mRanges.toLocalDart( d ).second ).value() );
+                    } while ( d != global_leaf_face_dart );
+ 
+                    if( first_leaf )
+                    {
+                        mPhiOnes.insert( { previous_leaf.value(), first_leaf.value() } );
+                        mPhiMinusOnes.insert( { first_leaf.value(), previous_leaf.value() } );
+                    }
                 }
-            }
+                return true;
+            } );
         }
     }
 }
@@ -114,12 +241,23 @@ std::optional<Dart> HierarchicalTPCombinatorialMap::phi( const int i, const Dart
     return topology::phi( *mRefinementLevels.at( level ), i, level_d ).and_then( [&]( const Dart& level_phi ) -> std::optional<Dart> {
         const Dart level_global_phi = mRanges.toGlobalDart( level, level_phi );
 
-        if( i > 1 or mLeafDarts.at( level_global_phi.id() ) ) return level_global_phi;
+        if( mLeafDarts.at( level_global_phi.id() ) ) return level_global_phi;
 
-        const std::map<Dart, Dart>& phi_map = i == 1 ? mPhiOnes : mPhiMinusOnes;
-        const auto it = phi_map.find( d );
-        if( it != phi_map.end() ) return it->second;
-        else throw std::runtime_error( "Phi 1 or -1 operation unfound!" );
+        if( i == 2 and dim() == 3 )
+        {
+            // Sometimes a phi2 in 3d needs to be a phi(2,3,2)
+            return topology::phi( *mRefinementLevels.at( level ), { 2, 3, 2 }, level_d ).and_then( [&]( const Dart& phi_323 ) -> std::optional<Dart> {
+                return mRanges.toGlobalDart( level, phi_323 );
+            } );
+        }
+        else
+        {
+            if( i > 1 ) throw std::runtime_error( "Missing phi(dim) operation!" );
+            const std::map<Dart, Dart>& phi_map = i == 1 ? mPhiOnes : mPhiMinusOnes;
+            const auto it = phi_map.find( d );
+            if( it != phi_map.end() ) return it->second;
+            else throw std::runtime_error( "Phi 1 or -1 operation unfound!" );
+        }
     } );
 }
 
@@ -197,7 +335,6 @@ std::pair<size_t, Dart> HierarchicalTPCombinatorialMap::unrefinedAncestorDart( c
 SmallVector<std::variant<bool, size_t>, 3> tpDirectionAlongTPDartPos( const SmallVector<TPCombinatorialMap::TPDartPos, 2>& dart_pos, const util::IndexVec& lengths )
 {
     using TPDartPos = TPCombinatorialMap::TPDartPos;
-    SmallVector<std::variant<bool, size_t>, 3> out;
     if( dart_pos.size() == 1 )
     {
         switch( dart_pos.at( 0 ) )
@@ -214,28 +351,66 @@ SmallVector<std::variant<bool, size_t>, 3> tpDirectionAlongTPDartPos( const Smal
                 throw std::runtime_error( "Invalid TPDartPos for 2d" );
         }
     }
-    throw std::runtime_error( "Hierarchical not implemented yet for 3d" );
-}
-
-bool checkForNoAncestor( const FullyUnflattenedDart& unflat, const size_t n_darts_per_ancestor )
-{
-    if( unflat.unflat_darts.size() == 3 ) throw std::runtime_error( "Hierarchical not implemented yet for 3d" );
-
-    // 2D case
-
-    switch( unflat.dart_pos.at( 0 ) )
+    else if( dart_pos.size() == 2 )
     {
-        case TPCombinatorialMap::TPDartPos::DartPos0:
-            return unflat.unflat_darts.at( 1 ).id() % n_darts_per_ancestor != 0;
-        case TPCombinatorialMap::TPDartPos::DartPos1:
-            return ( unflat.unflat_darts.at( 0 ).id() + 1 ) % n_darts_per_ancestor != 0;
-        case TPCombinatorialMap::TPDartPos::DartPos2:
-            return ( unflat.unflat_darts.at( 1 ).id() + 1 ) % n_darts_per_ancestor != 0;
-        case TPCombinatorialMap::TPDartPos::DartPos3:
-            return unflat.unflat_darts.at( 0 ).id() % n_darts_per_ancestor != 0;
-        default:
-            throw std::runtime_error( "Invalid TPDartPos for 2d" );
+        const auto dir2d = tpDirectionAlongTPDartPos( { dart_pos.at( 0 ) }, { lengths.at( 0 ), lengths.at( 1 ) } );
+        SmallVector<std::variant<bool, size_t>, 3> out;
+        switch( dart_pos.at( 1 ) )
+        {
+            case TPDartPos::DartPos0:
+                out = dir2d;
+                out.push_back( size_t{0} );
+                return out;
+            case TPDartPos::DartPos1:
+                std::transform( dir2d.begin(), dir2d.end(), std::back_inserter( out ), []( const auto& v ) -> std::variant<bool, size_t> {
+                    if( std::holds_alternative<bool>( v ) ) return not std::get<bool>( v );
+                    else return std::get<size_t>( v );
+                } );
+                out.push_back( size_t{0} );
+                return out;
+            case TPDartPos::DartPos2:
+                std::transform( dir2d.begin(),
+                                dir2d.end(),
+                                lengths.begin(),
+                                std::back_inserter( out ),
+                                []( const auto& v, const size_t len ) -> std::variant<bool, size_t> {
+                                    if( std::holds_alternative<bool>( v ) )
+                                        return std::get<bool>( v ) ? size_t{ 0 } : len - 1;
+                                    else
+                                        return std::get<size_t>( v );
+                                } );
+                out.push_back( true );
+                return out;
+            case TPDartPos::DartPos3:
+                out = dir2d;
+                out.push_back( lengths.at( 2 ) - 1 );
+                return out;
+            case TPDartPos::DartPos4:
+                std::transform( dir2d.begin(),
+                                dir2d.end(),
+                                lengths.begin(),
+                                std::back_inserter( out ),
+                                []( const auto& v, const size_t len ) -> std::variant<bool, size_t> {
+                                    if( std::holds_alternative<bool>( v ) )
+                                        return std::get<bool>( v ) ? len - 1 : size_t{ 0 };
+                                    else
+                                        return std::get<size_t>( v );
+                                } );
+                out.push_back( false );
+                return out;
+            case TPDartPos::DartPos5:
+                std::transform( dir2d.begin(), dir2d.end(), std::back_inserter( out ), []( const auto& v ) -> std::variant<bool, size_t> {
+                    if( std::holds_alternative<bool>( v ) ) return not std::get<bool>( v );
+                    else return std::get<size_t>( v );
+                } );
+                out.push_back( lengths.at( 2 ) - 1 );
+                return out;
+            default:
+                throw std::runtime_error( "Invalid TPDartPos for 3d" );
+        }
     }
+ 
+    throw std::invalid_argument( "No TPDartPos passed to tpDirectionAlongTPDartPos" );
 }
 
 bool HierarchicalTPCombinatorialMap::iterateDartLineage( const Dart& global_d,
