@@ -86,3 +86,40 @@ TEST_CASE( "Simple hierarchical cmap 2" )
     CHECK( cmap.unrefinedAncestorDart( Dart( 112 ) ).second.id() == 4 );
     CHECK( cmap.unrefinedAncestorDart( Dart( 66 ) ).second.id() == 6 );
 }
+
+TEST_CASE( "Simplest 3d hierarchical cmap" )
+{
+    const auto topo1d_1 = std::make_shared<const CombinatorialMap1d>( 1 );
+    const auto topo1d_2 = std::make_shared<const CombinatorialMap1d>( 2 );
+    const auto topo1d_4 = std::make_shared<const CombinatorialMap1d>( 4 );
+    const auto tp2d_topo_1 = std::make_shared<const TPCombinatorialMap>( topo1d_1, topo1d_1 );
+    const auto tp2d_topo_2 = std::make_shared<const TPCombinatorialMap>( topo1d_2, topo1d_2 );
+    const auto tp3d_topo_1 = std::make_shared<const TPCombinatorialMap>( tp2d_topo_1, topo1d_2 );
+    const auto tp3d_topo_2 = std::make_shared<const TPCombinatorialMap>( tp2d_topo_2, topo1d_4 );
+
+    const HierarchicalTPCombinatorialMap cmap( { tp3d_topo_1, tp3d_topo_2 }, {
+        { Volume( 24 ) },
+        { Volume( 0 ), Volume( 24 ), Volume( 48 ), Volume( 72 ), Volume( 96 ), Volume( 120 ), Volume( 144 ), Volume( 168 ) }
+    } );
+
+    CHECK( cellCount( cmap, 3 ) == 9 );
+    CHECK( cellCount( cmap, 2 ) == 41 );
+    CHECK( cellCount( cmap, 1 ) == 62 );
+    CHECK( cellCount( cmap, 0 ) == 31 );
+
+    size_t n_darts = 0;
+    iterateDartsWhile( cmap, [&]( const Dart& d ){
+        const auto maybe_phi = phi( cmap, {1,-1}, d );
+        CHECK( maybe_phi.has_value() );
+        if( maybe_phi )
+        {
+            CHECK( maybe_phi.value() == d );
+        }
+        std::cout << ( d.id() >= 48 ? d.id() - 48 : d.id() ) << ", ";
+        n_darts++;
+        return true;
+    } );
+    std::cout << std::endl;
+
+    CHECK( n_darts == 8 * 24 + 40 );
+}
