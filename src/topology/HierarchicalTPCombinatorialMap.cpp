@@ -318,13 +318,15 @@ std::pair<size_t, Dart> HierarchicalTPCombinatorialMap::unrefinedAncestorDart( c
 
     std::optional<Dart> global_ancestor_d;
 
-    iterateAncestors( leaf_d, [&]( const Dart& ancestor_global_d ) {
-        if( mUnrefinedDarts.at( ancestor_global_d.id() ) )
-        {
-            global_ancestor_d.emplace( ancestor_global_d );
-            return false;
-        }
-        return true;
+    iterateDartsOfRestrictedCell( *this, topology::Cell( leaf_d, dim() - 1 ), dim(), [&]( const Dart& leaf_face ) {
+        return iterateAncestors( leaf_face, [&]( const Dart& ancestor_global_d ) {
+            if( mUnrefinedDarts.at( ancestor_global_d.id() ) )
+            {
+                global_ancestor_d.emplace( ancestor_global_d );
+                return false;
+            }
+            return true;
+        } );
     } );
 
     if( not global_ancestor_d ) throw std::runtime_error( "Unable to find an unrefined ancestor dart" );
