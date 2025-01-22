@@ -186,7 +186,7 @@ namespace util
             case 2:
             {
                 if( lengths.at( 0 ) < 2 or lengths.at( 1 ) < 2 )
-                    throw std::runtime_error( "Cannot iterate with lengths < 2" ); //FIXME
+                    throw std::runtime_error( "Cannot iterate with lengths < 2" );
 
                 // Corners in CCW order
                 callback( flatten( { 0, 0 }, lengths ) );
@@ -213,7 +213,7 @@ namespace util
             case 3:
             {
                 if( lengths.at( 0 ) < 2 or lengths.at( 1 ) < 2 or lengths.at( 2 ) < 2 )
-                    throw std::runtime_error( "Cannot iterate with lengths < 2" ); //FIXME
+                    throw std::runtime_error( "Cannot iterate with lengths < 2" );
 
                 // Corners in CCW order
                 callback( flatten( { 0, 0, 0 }, lengths ) );

@@ -6,7 +6,6 @@
 
 namespace eval
 {
-    //FIXME: This file is a mess and should be reformulated in terms of parent bases instead of p, q, r, etc.
     double binomial( const int n, const int k )
     {
         double out = 1.0;

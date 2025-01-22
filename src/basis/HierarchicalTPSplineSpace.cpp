@@ -1,7 +1,6 @@
 #include <HierarchicalTPSplineSpace.hpp>
 #include <set>
 #include <algorithm>
-#include <Logging.hpp>//FIXME
 #include <SparseMatrixUtilities.hpp>
 #include <Eigen/SparseLU>
 

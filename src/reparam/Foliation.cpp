@@ -122,8 +122,9 @@ namespace reparam
                     d.emplace( a );
                     return false;
                 }
-                return true;// FIXME: What if you don't find that vertex id?
+                return true;
             } );
+            if( not d.has_value() ) throw std::invalid_argument( "No vertex found for which is_start_v is true" );
             return d.value();
         }();
 
@@ -356,12 +357,7 @@ namespace reparam
                     return leaves.at( leaf_ii ).space_mapping->evaluate( param_pt.value().first,
                                                                          param_pt.value().second );
                 else
-                {
-                    // FIXME: I shouldn't need this, because the tutte domains should all overlap exactly
-                    std::cerr << "NO VALUE ON TUTTE INVERSE" << std::endl;
-                    const auto closest = leaves.at( leaf_ii ).tutte_mapping->closestPoint( tutte_pt );
-                    return leaves.at( leaf_ii ).space_mapping->evaluate( closest.first, closest.second );
-                }
+                    throw std::runtime_error( "Failed to find a tutte point inverse!" );
             }();
 
             return field_pt;
