@@ -52,8 +52,19 @@ void append( SimplicialComplex& append_to, const SimplicialComplex& to_append )
     const size_t offset = append_to.points.size();
     append_to.points.insert( append_to.points.end(), to_append.points.begin(), to_append.points.end() );
     std::transform( to_append.simplices.cbegin(), to_append.simplices.cend(), std::back_inserter( append_to.simplices ), [&]( const Simplex& s ) {
-        // FIXME: NOT GENERAL!!!
-        return Simplex( s.vertex( 0 ).id() + offset, s.vertex( 1 ).id() + offset );
+        switch( s.dim() )
+        {
+            case 0: return Simplex( s.vertex( 0 ).id() + offset );
+            case 1: return Simplex( s.vertex( 0 ).id() + offset, s.vertex( 1 ).id() + offset );
+            case 2:
+                return Simplex( s.vertex( 0 ).id() + offset, s.vertex( 1 ).id() + offset, s.vertex( 2 ).id() + offset );
+            case 3:
+                return Simplex( s.vertex( 0 ).id() + offset,
+                                s.vertex( 1 ).id() + offset,
+                                s.vertex( 2 ).id() + offset,
+                                s.vertex( 3 ).id() + offset );
+            default: throw std::runtime_error( "Unsupported dimension" );
+        }
     } );
 }
 
