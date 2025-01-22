@@ -123,6 +123,9 @@ Eigen::SparseMatrix<double> nonzeroRowsOfColumns( const Eigen::SparseMatrix<doub
 
 Eigen::MatrixXd HierarchicalTPSplineSpace::extractionOperator( const topology::Cell& c ) const
 {
+    if( c.dim() != mBasisComplex->parametricAtlas().cmap().dim() )
+        throw std::invalid_argument( "HierarchicalTPSplineSpace::extractionOperator only works for elements." );
+
     const auto [ level, level_d ] = mBasisComplex->parametricAtlas().cmap().unrefinedAncestorDart( c.dart() );
     const topology::Cell level_c( level_d, c.dim() );
     const std::vector<FunctionId> level_conn = mRefinementLevels.at( level )->connectivity( level_c );
@@ -132,6 +135,9 @@ Eigen::MatrixXd HierarchicalTPSplineSpace::extractionOperator( const topology::C
 
 std::vector<FunctionId> HierarchicalTPSplineSpace::connectivity( const topology::Cell& c ) const
 {
+    if( c.dim() != mBasisComplex->parametricAtlas().cmap().dim() )
+        throw std::invalid_argument( "HierarchicalTPSplineSpace::connectivity only works for elements." );
+
     const auto [ level, level_d ] = mBasisComplex->parametricAtlas().cmap().unrefinedAncestorDart( c.dart() );
     const std::vector<FunctionId> level_conn = mRefinementLevels.at( level )->connectivity( topology::Cell( level_d, c.dim() ) );
     
