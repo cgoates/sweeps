@@ -43,6 +43,8 @@ namespace topology
 
         bool iterateLeafDescendants( const Dart& global_d, const std::function<bool( const Dart& )>& callback ) const;
 
+        const std::vector<size_t>& refinementRatios() const { return mRefinementRatios; }
+
         private:
         bool iterateDartLineage( const Dart& global_d,
                                  const size_t ancestor_or_descendant_level,
