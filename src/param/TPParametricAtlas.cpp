@@ -157,4 +157,27 @@ namespace param
         }
         return out;
     }
+
+    SmallVector<std::shared_ptr<const ParametricAtlas1d>, 3> tensorProductComponentAtlases( const TPParametricAtlas& pa )
+    {
+        const size_t dim = pa.cmap().dim();
+        SmallVector<std::shared_ptr<const ParametricAtlas1d>, 3> out;
+
+        if( dim == 3 )
+        {
+            const std::shared_ptr<const TPParametricAtlas> source_atlas =
+                std::dynamic_pointer_cast<const TPParametricAtlas>( pa.sourcePtr() );
+            if( source_atlas.get() == nullptr ) return {};
+            out.push_back( std::dynamic_pointer_cast<const ParametricAtlas1d>( source_atlas->sourcePtr() ) );
+            if( out.back().get() == nullptr ) return {};
+            out.push_back( source_atlas->linePtr() );
+        }
+        else
+        {
+            out.push_back( std::dynamic_pointer_cast<const ParametricAtlas1d>( pa.sourcePtr() ) );
+            if( out.back().get() == nullptr ) return {};
+        }
+        out.push_back( pa.linePtr() );
+        return out;
+    }
 }

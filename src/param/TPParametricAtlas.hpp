@@ -23,6 +23,9 @@ namespace param
         const ParametricAtlas& source() const { return *mSourceParam; }
         const ParametricAtlas1d& line() const { return *mLineParam; }
 
+        const std::shared_ptr<const ParametricAtlas> sourcePtr() const { return mSourceParam; }
+        const std::shared_ptr<const ParametricAtlas1d> linePtr() const { return mLineParam; }
+
         private:
         const std::shared_ptr<const topology::TPCombinatorialMap> mMap;
         const std::shared_ptr<const ParametricAtlas> mSourceParam;
@@ -35,4 +38,6 @@ namespace param
     /// With a 3d cmap and cell_dim=1, returns twelve edges on the 12 corner curves of the TP region.
     /// With a 3d cmap and cell_dim=2, returns a face from each of the six boundary surfaces of the TP region.
     SmallVector<topology::Cell, 12> cornerCells( const TPParametricAtlas& atlas, const uint cell_dim );
+
+    SmallVector<std::shared_ptr<const ParametricAtlas1d>, 3> tensorProductComponentAtlases( const TPParametricAtlas& pa );
 }
