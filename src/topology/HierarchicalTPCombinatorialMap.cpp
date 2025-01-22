@@ -192,12 +192,12 @@ HierarchicalTPCombinatorialMap::HierarchicalTPCombinatorialMap(
         {
             // In 3d we need to do this for the faces of the leaf elements, in 2d, the elements themselves.
             iterateAdjacentCells( level_cmap, leaf_elem, 2, [&]( const topology::Face& leaf_face ) {
-                const bool all_darts_are_leaves = iterateDartsOfRestrictedCell( level_cmap, leaf_face, 2, [&]( const Dart& d ) {
+                const bool all_darts_are_leaves = iterateDartsOfRestrictedCell( level_cmap, leaf_face, 3, [&]( const Dart& d ) {
                     const Dart global_d = mRanges.toGlobalDart( level, d );
                     return mLeafDarts.at( global_d.id() );
                 } );
 
-                const bool all_darts_are_not_leaves = iterateDartsOfRestrictedCell( level_cmap, leaf_face, 2, [&]( const Dart& d ) {
+                const bool all_darts_are_not_leaves = iterateDartsOfRestrictedCell( level_cmap, leaf_face, 3, [&]( const Dart& d ) {
                     const Dart global_d = mRanges.toGlobalDart( level, d );
                     return not mLeafDarts.at( global_d.id() );
                 } );
