@@ -171,7 +171,6 @@ namespace basis
 
     SparseMatrixXd refinementOp( const KnotVector& kv_coarse, const KnotVector& kv_fine, const size_t degree, const double param_tol )
     {
-        // FIXME: Check for nestedness of kvs?
         const size_t num_funcs = kv_coarse.size() - degree - 1;
         SparseMatrixXd C( num_funcs, num_funcs );
         C.setIdentity();
@@ -203,6 +202,8 @@ namespace basis
                     knot_accumulator++;
                 } while ( knots.uniqueKnotMultiplicities().at( i ).second < fine_knots.at( i ).second );
             }
+            else
+                throw std::invalid_argument( "Fine knot vector is not nested within the coarse knot vector" );
         }
 
         C.makeCompressed();
