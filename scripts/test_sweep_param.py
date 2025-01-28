@@ -53,6 +53,27 @@ def parameterizeHook():
     # perform the tracing and write out to files hook_level_sets.vtu, hook_tet_mesh.vtu, and hook_traces.vtu which can be opened with paraview.
     sweeps.writeParameterizationToFile(
         hook, level_set_values, trace_points, "hook")
+ 
+def meshHook(single_patch=True):
+    # Load a tet mesh and the source and target surfaces from file. Surface12 is the source, and Surface10 is the target.
+    hook = sweeps.loadFromFile(
+        "/Users/caleb/sweeps/attempt-sweep/test/data/hook.inp", "Surface12", "Surface10")
+
+    # This is a set of u values at which you want the mesh to have points.
+    # Try changing this to get an idea for what it does.  The values should all be between 0 and 1.
+    u_values = np.linspace(0.0, 1.0, 30)
+
+    # for single patch, the resulting mesh will have n_elems_st x n_elems_st x len( u_values ) elements.
+    # for the five patch case, it will be 5 times that amount.
+    n_elems_st = 5
+
+    # Setting the debug flag to True will check the mesh jacobians, and write out a vtk file to visualize the mesh and any elements with negative jacobians.
+    mesh = sweeps.fitSinglePatchHexMeshToSweep(hook, n_elems_st, u_values, debug=True) if single_patch else sweeps.fitFivePatchHexMeshToSweep(hook, n_elems_st, u_values, debug=True)
+
+    # The resulting hex mesh has a list of points and a list of hexes.
+    print( len( mesh.points ) )
+    print( len( mesh.hexes ) )
+    print( [ mesh.points[i] for i in mesh.hexes[0] ] )
 
 
 def parameterizeBunny():
@@ -96,5 +117,6 @@ def parameterizeBunny():
 # help( sweeps )
 
 # Comment/uncomment these to run the different examples.
-parameterizeHook()
+# parameterizeHook()
 # parameterizeBunny()
+meshHook(single_patch=False)
