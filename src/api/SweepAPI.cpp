@@ -28,6 +28,13 @@ PYBIND11_MODULE( sweeps, m )
             &SimplicialComplex::simplices )
         .doc() = "A simple tet mesh, with a list of points, and a list of tets.";
 
+    py::class_<api::HexMesh>( m, "HexMesh" )
+        .def_readwrite( "points", &api::HexMesh::points )
+        .def_readwrite( "hexes", &api::HexMesh::hexes )
+        .doc() = "A simple hex mesh, with a list of points, and a list of hexes.  The vertices of the hexes are "
+                 "ordered by their coordinates in the hex-local coordinates system as (0,0,0), (1,0,0), (0,1,0), "
+                 "(1,1,0), (0,0,1), (1,0,1), (0,1,1), (1,1,1).";
+
     py::class_<api::Sweep>( m, "Sweep" )
         .def_readwrite(
             "mesh",
@@ -65,4 +72,26 @@ PYBIND11_MODULE( sweeps, m )
         "filename"_a,
         "source_set_label"_a,
         "target_set_label"_a );
+
+    m.def(
+        "fitSinglePatchHexMeshToSweep",
+        &api::fitSinglePatchHexMeshToSweep,
+        "Fits a single patch hex mesh to a sweep.",
+        "sweep"_a,
+        "n_elems_st"_a,
+        "u_values"_a,
+        py::kw_only(),
+        "debug"_a = false
+    );
+
+    m.def(
+        "fitFivePatchHexMeshToSweep",
+        &api::fitFivePatchHexMeshToSweep,
+        "Fits a five patch hex mesh to a sweep.",
+        "sweep"_a,
+        "n_elems_st"_a,
+        "u_values"_a,
+        py::kw_only(),
+        "debug"_a = false
+    );
 }
