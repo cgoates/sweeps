@@ -287,7 +287,7 @@ namespace api
         const param::ParentDomain pd_3d = param::cubeDomain( 3 );
 
         const auto to_unit_disk =
-            [&cmap = TP_ss->basisComplex().parametricAtlas().cmap()](
+            [&cmap = source_ss.basisComplex().parametricAtlas().cmap()](
                 const size_t patch_ii, const topology::Face& f, const Eigen::Vector2d& pt ) -> Eigen::Vector2d {
             constexpr double a = std::numbers::sqrt2 / 4;
             using std::numbers::pi;
