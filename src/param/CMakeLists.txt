@@ -7,6 +7,7 @@ add_library( param SHARED
   TPParametricAtlas.cpp
   MultiPatchParametricAtlas.cpp
   HierarchicalTPParametricAtlas.cpp
+  HierarchicalMultiPatchParametricAtlas.cpp
 )
 
 target_link_libraries( param PUBLIC util topology )
