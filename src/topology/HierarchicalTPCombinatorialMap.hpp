@@ -45,7 +45,7 @@ namespace topology
 
         const std::vector<size_t>& refinementRatios() const { return mRefinementRatios; }
 
-        private:
+        protected:
         bool iterateDartLineage( const Dart& global_d,
                                  const size_t ancestor_or_descendant_level,
                                  const std::function<bool( const Dart& )>& callback ) const;
@@ -60,6 +60,53 @@ namespace topology
         std::map<Dart, Dart> mPhiOnes;
         std::map<Dart, Dart> mPhiMinusOnes;
         std::vector<size_t> mRefinementRatios;
+    };
+
+    /// @brief A mutable version of HierarchicalTPCombinatorialMap.
+    /// This is to be used only for initialization, then call asImmutable() to get an immutable version.
+    class MutableHierarchicalTPCombinatorialMap : public HierarchicalTPCombinatorialMap
+    {
+        public:
+        MutableHierarchicalTPCombinatorialMap(
+            const std::vector<std::shared_ptr<const TPCombinatorialMap>>& refinement_levels,
+            const std::vector<std::vector<Cell>>& leaf_elements )
+            : HierarchicalTPCombinatorialMap( refinement_levels, leaf_elements )
+        {}
+
+        void setPhi( const Dart& d, const Dart& phi_one )
+        {
+            mPhiOnes.insert_or_assign( d, phi_one );
+            mPhiMinusOnes.insert_or_assign( phi_one, d );
+        }
+        void setLeaf( const Dart& d, const bool is_leaf )
+        {
+            mLeafDarts.at( d.id() ) = is_leaf;
+        }
+
+        bool isLeaf( const Dart& d ) const
+        {
+            return mLeafDarts.at( d.id() );
+        }
+
+        /// Expose a protected method from the base class for initialization purposes.
+        bool iterateDartLineage( const Dart& global_d,
+                                 const size_t ancestor_or_descendant_level,
+                                 const std::function<bool( const Dart& )>& callback ) const
+        {
+            return HierarchicalTPCombinatorialMap::iterateDartLineage( global_d, ancestor_or_descendant_level, callback );
+        }
+
+        /// Expose a protected method from the base class for initialization purposes.
+        bool iterateAncestors( const Dart& global_d,
+                               const std::function<bool( const Dart& )>& callback ) const
+        {
+            return HierarchicalTPCombinatorialMap::iterateAncestors( global_d, callback );
+        }
+
+        HierarchicalTPCombinatorialMap asImmutable() const
+        {
+            return HierarchicalTPCombinatorialMap( *this );
+        }
     };
 
     std::vector<std::vector<Cell>> leafElements( const HierarchicalTPCombinatorialMap& cmap );
