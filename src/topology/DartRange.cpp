@@ -18,6 +18,7 @@ std::pair<size_t, Dart> DartRanges::toLocalDart( const Dart& global_dart ) const
 
 Dart DartRanges::toGlobalDart( const size_t i, const Dart& local_d ) const
 {
+    if( i > mRanges.size() ) throw std::runtime_error( "Requested dart range index is greater than highest range index" );
     return mRanges.at( i ).toGlobalDart( local_d );
 }
 
