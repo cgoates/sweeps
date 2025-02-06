@@ -9,8 +9,27 @@ namespace topology
     class MultiPatchCombinatorialMap : public CombinatorialMap
     {
         public:
+        struct ConstituentSide
+        {
+            size_t constituent_id;
+            size_t side_id;
+
+            bool operator<( const ConstituentSide& o ) const;
+        };
+
+        enum class TPPermutation : Dart::IndexType
+        {
+            ZeroToZero,
+            ZeroToOne,
+            ZeroToTwo,
+            ZeroToThree,
+            Flip1d
+        };
+
         MultiPatchCombinatorialMap( const std::vector<std::shared_ptr<const TPCombinatorialMap>>& constituents,
                                     const std::map<std::pair<size_t, Dart>, std::pair<size_t, Dart>>& connections );
+        MultiPatchCombinatorialMap( const std::vector<std::shared_ptr<const TPCombinatorialMap>>& constituents,
+                                    const std::map<ConstituentSide, std::pair<TPPermutation, ConstituentSide>>& connections );
 
         virtual ~MultiPatchCombinatorialMap() = default;
 
@@ -29,27 +48,11 @@ namespace topology
 
         virtual std::optional<size_t> cellCount( const uint ) const override;
 
-        struct ConstituentSide
-        {
-            size_t constituent_id;
-            size_t side_id;
-
-            bool operator<( const ConstituentSide& o ) const;
-        };
-
-        enum class TPPermutation : Dart::IndexType
-        {
-            ZeroToZero,
-            ZeroToOne,
-            ZeroToTwo,
-            ZeroToThree,
-            Flip1d
-        };
-
         std::pair<size_t, Dart> toLocalDart( const Dart& global_dart ) const;
         Dart toGlobalDart( const size_t patch_id, const Dart& local_dart ) const;
 
         const std::vector<std::shared_ptr<const TPCombinatorialMap>>& constituents() const { return mSubMaps; }
+        const std::map<ConstituentSide, std::pair<TPPermutation, ConstituentSide>>& connections() const { return mInterMapConnections; }
 
         private:
         std::vector<std::shared_ptr<const TPCombinatorialMap>> mSubMaps;

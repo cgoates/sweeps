@@ -193,17 +193,18 @@ namespace topology
         return Dart( flattenFull( cmap, unflat_darts ).id() + local_dart_id );
     }
 
-    MultiPatchCombinatorialMap::MultiPatchCombinatorialMap(
+    using ConstituentSide = MultiPatchCombinatorialMap::ConstituentSide;
+    std::map<ConstituentSide, std::pair<TPPermutation, ConstituentSide>> initializeInterMapConnections(
         const std::vector<std::shared_ptr<const TPCombinatorialMap>>& constituents,
         const std::map<std::pair<size_t, Dart>, std::pair<size_t, Dart>>& connections )
-        : mSubMaps( constituents ), mRanges( initializeRanges( constituents ) )
     {
         if( constituents.size() == 0 ) throw std::runtime_error( "Cannot create multipatch of zero patches" );
 
+        std::map<ConstituentSide, std::pair<TPPermutation, ConstituentSide>> out;
         for( const auto& connection : connections )
         {
-            const TPCombinatorialMap& left_cmap = *mSubMaps.at( connection.first.first );
-            const TPCombinatorialMap& right_cmap = *mSubMaps.at( connection.second.first );
+            const TPCombinatorialMap& left_cmap = *constituents.at( connection.first.first );
+            const TPCombinatorialMap& right_cmap = *constituents.at( connection.second.first );
             const size_t left_bdry = whichBoundary( left_cmap, connection.first.second );
             const size_t right_bdry = whichBoundary( right_cmap, connection.second.second );
 
@@ -211,7 +212,7 @@ namespace topology
             const ConstituentSide right_side{ connection.second.first, right_bdry };
 
             const TPPermutation perm = [&]() -> TPPermutation {
-                if( dim() == 2 ) return TPPermutation::Flip1d;
+                if( constituents.front()->dim() == 2 ) return TPPermutation::Flip1d;
 
                 const TPDartPos left_pos =
                     dropToBoundary(
@@ -225,10 +226,24 @@ namespace topology
                 return TPPermutation( ( std::to_underlying( left_pos ) + std::to_underlying( right_pos ) ) % 4 );
             }();
 
-            mInterMapConnections.emplace( left_side, std::pair<TPPermutation, ConstituentSide>{ perm, right_side } );
-            mInterMapConnections.emplace( right_side, std::pair<TPPermutation, ConstituentSide>{ perm, left_side } );
+            out.emplace( left_side, std::pair<TPPermutation, ConstituentSide>{ perm, right_side } );
+            out.emplace( right_side, std::pair<TPPermutation, ConstituentSide>{ perm, left_side } );
         }
+
+        return out;
     }
+
+    MultiPatchCombinatorialMap::MultiPatchCombinatorialMap(
+        const std::vector<std::shared_ptr<const TPCombinatorialMap>>& constituents,
+        const std::map<std::pair<size_t, Dart>, std::pair<size_t, Dart>>& connections )
+        : MultiPatchCombinatorialMap( constituents, initializeInterMapConnections( constituents, connections ) )
+    {}
+
+    MultiPatchCombinatorialMap::MultiPatchCombinatorialMap(
+        const std::vector<std::shared_ptr<const TPCombinatorialMap>>& constituents,
+        const std::map<ConstituentSide, std::pair<TPPermutation, ConstituentSide>>& connections )
+        : mSubMaps( constituents ), mInterMapConnections( connections ), mRanges( initializeRanges( constituents ) )
+    {}
 
     std::pair<size_t, Dart> MultiPatchCombinatorialMap::toLocalDart( const Dart& global_dart ) const
     {
