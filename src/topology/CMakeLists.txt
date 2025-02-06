@@ -15,6 +15,7 @@ add_library( topology SHARED
   TPCombinatorialMap.cpp
   MultiPatchCombinatorialMap.cpp
   HierarchicalTPCombinatorialMap.cpp
+  HierarchicalMultiPatchCombinatorialMap.cpp
   SimplexUtilities.cpp
   Dijkstra.cpp
 )
