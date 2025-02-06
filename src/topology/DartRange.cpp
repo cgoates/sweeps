@@ -1,5 +1,6 @@
 #include <DartRange.hpp>
 #include <TPCombinatorialMap.hpp>
+#include <HierarchicalTPCombinatorialMap.hpp>
 
 using namespace topology;
 
@@ -27,7 +28,8 @@ Dart::IndexType DartRanges::maxDartId() const
 
 namespace topology
 {
-    DartRanges initializeRanges( const std::vector<std::shared_ptr<const TPCombinatorialMap>>& constituents )
+    template <typename CMAP>
+    DartRanges initializeRanges( const std::vector<std::shared_ptr<const CMAP>>& constituents )
     {
         std::vector<DartRange> out;
         out.reserve( constituents.size() );
@@ -39,4 +41,6 @@ namespace topology
         }
         return out;
     }
+    template DartRanges initializeRanges<TPCombinatorialMap>( const std::vector<std::shared_ptr<const TPCombinatorialMap>>& );
+    template DartRanges initializeRanges<HierarchicalTPCombinatorialMap>( const std::vector<std::shared_ptr<const HierarchicalTPCombinatorialMap>>& );
 }

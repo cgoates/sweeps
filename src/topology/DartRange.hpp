@@ -45,5 +45,6 @@ namespace topology
         std::vector<DartRange> mRanges;
     };
 
-    DartRanges initializeRanges( const std::vector<std::shared_ptr<const TPCombinatorialMap>>& constituents );
+    template <typename CMAP>
+    DartRanges initializeRanges( const std::vector<std::shared_ptr<const CMAP>>& constituents );
 }
