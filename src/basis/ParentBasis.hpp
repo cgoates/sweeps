@@ -15,6 +15,7 @@ namespace basis
         BasisType type = BasisType::Bernstein;
         SmallVector<size_t, 3> degrees; // Will be of size 1 except for div conforming. Size indicates number of parametric groups in basis group.
         //std::optional< std::vector<double> > mKnotVector;
+        bool operator==( const BarycentricBasis& o ) const = default;
     };
 
     size_t numFunctions( const BarycentricBasis& bb );
@@ -28,6 +29,7 @@ namespace basis
         public:
         param::ParentDomain mParentDomain;
         SmallVector<BarycentricBasis, 3> mBasisGroups;
+        bool operator==( const ParentBasis& o ) const = default;
     };
 
     size_t numFunctions( const ParentBasis& pb );
