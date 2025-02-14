@@ -12,6 +12,7 @@ add_library( basis SHARED
   DivConfTPSplineSpace.cpp
   KnotVector.cpp
   HierarchicalTPBasisComplex.cpp
+  HierarchicalMultiPatchBasisComplex.cpp
   HierarchicalTPSplineSpace.cpp
   DivConfHierarchicalTPSplineSpace.cpp
 )

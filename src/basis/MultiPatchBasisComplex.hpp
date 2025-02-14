@@ -16,6 +16,8 @@ namespace basis
 
         virtual ParentBasis parentBasis( const topology::Cell& ) const override;
 
+        const std::vector<std::shared_ptr<const TPBasisComplex>>& constituents() const { return mSubComplexes; }
+
         private:
         const std::shared_ptr<const param::MultiPatchParametricAtlas> mAtlas;
         const std::vector<std::shared_ptr<const TPBasisComplex>> mSubComplexes;
