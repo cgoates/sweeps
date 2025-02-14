@@ -37,6 +37,40 @@ namespace io
         std::map<std::string, Eigen::MatrixXd> mCellFields;
     };
 
+
+    class BezierOutputObject
+    {
+        public:
+        BezierOutputObject( const basis::SplineSpace& ss, const MatrixX3dMax& geom ) : mSS( ss ), mGeom( geom ) {}
+
+        const basis::SplineSpace& ss() const { return mSS; }
+        const MatrixX3dMax& geom() const { return mGeom; }
+
+        void addBezierField( const std::string& label, const basis::SplineSpace& ss, const MatrixX3dMax& geom )
+        {
+            mBezierFields.emplace( label, BezierField{ std::cref( ss ), geom } );
+        }
+
+        void addBezierField( const std::string& label, const MatrixX3dMax& geom )
+        {
+            mBezierFields.emplace( label, BezierField{ std::nullopt, geom } );
+        }
+
+        struct BezierField
+        {
+            std::optional<std::reference_wrapper<const basis::SplineSpace>> ss;
+            MatrixX3dMax geom;
+        };
+
+        const std::map<std::string, BezierField>& bezierFields() const { return mBezierFields; }
+
+        private:
+
+        const basis::SplineSpace& mSS;
+        const MatrixX3dMax& mGeom;
+        std::map<std::string, BezierField> mBezierFields;
+    };
+
     void outputSimplicialFieldToVTK( const VTKOutputObject& output, const std::string& filename );
 
     /// @brief write out a spline as bezier cells to vtk
@@ -47,8 +81,14 @@ namespace io
                                 const MatrixX3dMax& geom,
                                 const std::string& filename );
 
+    void outputBezierMeshToVTK( const BezierOutputObject& output, const std::string& filename );
+
     void outputPartialBezierMeshToVTK( const basis::SplineSpace& ss,
                                        const MatrixX3dMax& geom,
+                                       const std::string& filename,
+                                       const std::function<void( const std::function<void( const topology::Cell& )>& )>& cell_iterator );
+
+    void outputPartialBezierMeshToVTK( const BezierOutputObject& output,
                                        const std::string& filename,
                                        const std::function<void( const std::function<void( const topology::Cell& )>& )>& cell_iterator );
 

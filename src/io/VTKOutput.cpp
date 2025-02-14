@@ -11,6 +11,7 @@
 #include <ParentBasis.hpp>
 #include <IndexOperations.hpp>
 #include <SimplexUtilities.hpp>
+#include <unsupported/Eigen/KroneckerProduct>
 
 namespace io
 {
@@ -169,10 +170,15 @@ namespace io
                                 const MatrixX3dMax& geom,
                                 const std::string& filename )
     {
+        outputBezierMeshToVTK( BezierOutputObject( ss, geom ), filename );
+    }
+
+    void outputBezierMeshToVTK( const BezierOutputObject& bo, const std::string& filename )
+    {
         outputPartialBezierMeshToVTK(
-            ss, geom, filename, [&]( const std::function<void( const topology::Cell& )>& callback ) {
-                iterateCellsWhile( ss.basisComplex().parametricAtlas().cmap(),
-                                   ss.basisComplex().parametricAtlas().cmap().dim(),
+            bo, filename, [&]( const std::function<void( const topology::Cell& )>& callback ) {
+                iterateCellsWhile( bo.ss().basisComplex().parametricAtlas().cmap(),
+                                   bo.ss().basisComplex().parametricAtlas().cmap().dim(),
                                    [&]( const topology::Cell& c ) {
                                        callback( c );
                                        return true;
@@ -185,6 +191,71 @@ namespace io
                                        const std::string& filename,
                                        const std::function<void( const std::function<void( const topology::Cell& )>& )>& cell_iterator )
     {
+        outputPartialBezierMeshToVTK( BezierOutputObject( ss, geom ), filename, cell_iterator );
+    }
+
+    Eigen::MatrixXd degreeElevationMatrix( const size_t source_degree, const size_t target_degree )
+    {
+        if( target_degree < source_degree ) throw std::invalid_argument( "Cannot degree elevate to a lower degree" );
+
+        Eigen::MatrixXd out = Eigen::MatrixXd::Identity( source_degree + 1, source_degree + 1 );
+        for( size_t p = source_degree + 1; p <= target_degree; p++ )
+        {
+            Eigen::MatrixXd elev_p = Eigen::MatrixXd::Zero( p, p + 1 );
+            for( size_t n = 0; n < p; n++ )
+            {
+                elev_p( n, n ) = double( p - n ) / double( p );
+                elev_p( n, n + 1 ) = double( n + 1 ) / double( p );
+            }
+            out = out * elev_p;
+        }
+
+        return out;
+    }
+
+    Eigen::MatrixXd degreeElevate( const Eigen::MatrixXd& in, const basis::ParentBasis& source_basis, const basis::ParentBasis& target_basis )
+    {
+        if( source_basis == target_basis ) return in;
+        if( numVectorComponents( target_basis ) != 1 ) throw std::invalid_argument( "Cannot output to vector basis" );
+
+        if( numVectorComponents( source_basis ) > 1 )
+        {
+            if( in.cols() > 1 ) throw std::invalid_argument( "Vector valued bases cannot be expanded with vector valued control points" );
+            const SmallVector<basis::ParentBasis, 3> component_pbs = componentBases( source_basis );
+
+            Eigen::MatrixXd out( in.rows(), component_pbs.size() );
+            for( size_t i = 0; i < component_pbs.size(); i++ )
+            {
+                out.col( i ) = degreeElevate( in, component_pbs.at( i ), target_basis );
+            }
+
+            return out;
+        }
+        else
+        {
+            if( not isCartesian( source_basis.mParentDomain ) or not isCartesian( target_basis.mParentDomain ) )
+                throw std::invalid_argument( "Only cartesian bases are supported for degree elevation" );
+
+            const SmallVector<size_t, 3> source_degrees = degreesOfParentBasis( source_basis );
+            const SmallVector<size_t, 3> target_degrees = degreesOfParentBasis( target_basis );
+
+            Eigen::MatrixXd elevation_matrix = Eigen::MatrixXd::Ones( 1, 1 );
+
+            for( size_t i = 0; i < source_degrees.size(); i++ )
+            {
+                elevation_matrix = Eigen::kroneckerProduct( degreeElevationMatrix( source_degrees.at( i ), target_degrees.at( i ) ), elevation_matrix ).eval();
+            }
+
+            return elevation_matrix.transpose() * in;
+        }
+    }
+
+    void outputPartialBezierMeshToVTK( const BezierOutputObject& bo,
+                                       const std::string& filename,
+                                       const std::function<void( const std::function<void( const topology::Cell& )>& )>& cell_iterator )
+    {
+        const auto& ss = bo.ss();
+        const auto& geom = bo.geom();
         const topology::CombinatorialMap& cmap = ss.basisComplex().parametricAtlas().cmap();
         const size_t param_dim = cmap.dim();
         const size_t spatial_dim = geom.cols();
@@ -194,11 +265,18 @@ namespace io
         std::ostringstream connectivity_string;
         std::ostringstream offsets_string;
         std::ostringstream types_string;
+        std::map<std::string, std::ostringstream> field_strings;
+        for( const auto& [label, field] : bo.bezierFields() )
+        {
+            field_strings.emplace( label, std::ostringstream() );
+        }
+
         size_t n_points = 0;
         size_t n_cells = 0;
         cell_iterator( [&]( const topology::Cell& c ) {
             n_cells++;
-            SmallVector<size_t, 3> degrees = degreesOfParentBasis( ss.basisComplex().parentBasis( c ) );
+            const basis::ParentBasis pb = ss.basisComplex().parentBasis( c );
+            SmallVector<size_t, 3> degrees = degreesOfParentBasis( pb );
             SmallVector<size_t, 3> tp_lengths;
             for( const size_t&  p : degrees ) tp_lengths.push_back( p + 1 );
             while( degrees.size() < 3 ) degrees.push_back( 0 );
@@ -233,6 +311,24 @@ namespace io
                 case 3: types_string << 79 << " "; break;
                 default: break;
             }
+
+            // Add the fields
+            for( const auto& [label, field] : bo.bezierFields() )
+            {
+                const basis::SplineSpace& field_ss = field.ss.has_value() ? field.ss.value().get() : ss;
+                const Eigen::MatrixXd field_ex_op = field.ss.has_value() ? field_ss.extractionOperator( c ) : ex_op;
+                const std::vector<basis::FunctionId> field_conn = field.ss.has_value() ? field_ss.connectivity( c ) : connect;
+                const Eigen::MatrixXd field_vals = field_ex_op.transpose() * field.geom( field_conn, Eigen::all );
+
+                const Eigen::MatrixXd field_bez_points = degreeElevate( field_vals, field_ss.basisComplex().parentBasis( c ), pb );
+
+                util::iterateVTKTPOrdering( tp_lengths, [&] ( const size_t row_ii ) {
+                    for( size_t i = 0; i < field_bez_points.cols() - 1; i++ )
+                        field_strings.at( label ) << field_bez_points( row_ii, i ) << " ";
+                    field_strings.at( label ) << field_bez_points( row_ii, field_bez_points.cols() - 1 ) << std::endl;
+                } );
+
+            }
         } );
 
         std::ofstream file;
@@ -249,6 +345,17 @@ namespace io
         </DataArray>
       </CellData>
       <PointData>
+)STRING";
+
+        for( const auto& [label, field] : field_strings )
+        {
+            file << R"STRING(<DataArray type="Float64" Name=")STRING" << label << R"STRING(" NumberOfComponents=")STRING"
+                 << bo.bezierFields().at( label ).geom.cols() << R"STRING(" format="ascii">)STRING" << std::endl;
+            file << field.str();
+            file << "</DataArray>";
+        }
+
+        file << R"STRING(
       </PointData>
       <Points>
         <DataArray type="Float64" Name="Points" NumberOfComponents="3" format="ascii">
