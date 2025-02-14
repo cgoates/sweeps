@@ -38,6 +38,8 @@ namespace topology
 
         size_t numLevels() const { return mRefinementLevels.size(); }
 
+        const DartRanges& dartRanges() const { return mRanges; }
+
         private:
         const std::vector<std::shared_ptr<const MultiPatchCombinatorialMap>> mRefinementLevels;
         std::vector<std::shared_ptr<const HierarchicalTPCombinatorialMap>> mConstituents;
