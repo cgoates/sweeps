@@ -113,4 +113,33 @@ namespace basis
         o << "ParentBasis( " << pb.mParentDomain << ", " << pb.mBasisGroups << " )";
         return o;
     }
+
+    SmallVector<ParentBasis, 3> componentBases( const ParentBasis& pb )
+    {
+        if( numVectorComponents( pb ) == 1 ) return { pb };
+
+        SmallVector<ParentBasis, 3> out;
+        for( const auto& group : pb.mBasisGroups )
+        {
+            if( group.type == BasisType::DivConformingBernstein )
+            {
+                SmallVector<BarycentricBasis, 3> primal_groups;
+                std::transform( group.degrees.begin(), group.degrees.end(), std::back_inserter( primal_groups ), []( const size_t degree ) {
+                    return BarycentricBasis{ BasisType::Bernstein, { degree - 1 } };
+                } );
+                for( size_t i = 0; i < group.degrees.size(); i++ )
+                {
+                    SmallVector<BarycentricBasis, 3> primal_groups_i = primal_groups;
+                    primal_groups_i.at( i ) = BarycentricBasis{ BasisType::Bernstein, { group.degrees.at( i ) } };
+                    out.push_back( ParentBasis{ pb.mParentDomain, primal_groups_i } );
+                }
+            }
+            else
+            {
+                throw std::runtime_error( "Cannot tensor product div conforming and scalar bases" );
+            }
+        }
+
+        return out;
+    }
 }

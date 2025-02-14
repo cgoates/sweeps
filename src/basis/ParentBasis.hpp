@@ -43,4 +43,6 @@ namespace basis
 
     std::ostream& operator<<( std::ostream& o, const ParentBasis& pb );
     std::ostream& operator<<( std::ostream& o, const BarycentricBasis& bb );
+
+    SmallVector<ParentBasis, 3> componentBases( const ParentBasis& pb );
 }
