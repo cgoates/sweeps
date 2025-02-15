@@ -85,6 +85,7 @@ namespace topology
             case TPPermutation::ZeroToTwo:
                 return { { from_darts.at( 0 ), flipDart( tp_lengths, from_darts, 1 ) }, permuted_pos };
             case TPPermutation::ZeroToThree: return { { from_darts.at( 1 ), from_darts.at( 0 ) }, permuted_pos };
+            default: return { {}, TPDartPos::DartPos0 };// Unreachable; to silence warning on ubuntu
         }
     }
 

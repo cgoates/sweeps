@@ -1,6 +1,7 @@
 #include <HierarchicalMultiPatchCombinatorialMap.hpp>
 #include <CombinatorialMapMethods.hpp>
 #include <GlobalCellMarker.hpp>
+#include <numeric>
 
 using namespace topology;
 
