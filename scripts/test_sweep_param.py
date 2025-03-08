@@ -33,4 +33,14 @@ def meshHook(single_patch=True):
     print( len( mesh.hexes ) )
     print( [ mesh.points[i] for i in mesh.hexes[0] ] )
 
+def meshSpring(single_patch=True):
+    spring = sweeps.loadFromFile(
+        str( path_to_src / "test" / "data" / "spring.inp" ), "Surface2", "Surface3" );
+
+    u_values = np.linspace( 0, 1.0, 200 );
+
+    n_elems_st = 2
+
+    mesh = sweeps.fitSinglePatchHexMeshToSweep(spring, n_elems_st, u_values, debug=True) if single_patch else sweeps.fitFivePatchHexMeshToSweep(spring, n_elems_st, u_values, debug=True)
+
 meshHook(single_patch=False)
