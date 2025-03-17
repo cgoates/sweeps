@@ -13,6 +13,7 @@ namespace basis
         virtual ~MultiPatchBasisComplex() = default;
 
         virtual const param::MultiPatchParametricAtlas& parametricAtlas() const override;
+        const std::shared_ptr<const param::MultiPatchParametricAtlas>& parametricAtlasPtr() const { return mAtlas; }
 
         virtual ParentBasis parentBasis( const topology::Cell& ) const override;
 

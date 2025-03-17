@@ -13,6 +13,7 @@ namespace basis
         virtual ~MultiPatchSplineSpace() = default;
 
         virtual const MultiPatchBasisComplex& basisComplex() const override;
+        const std::shared_ptr<const MultiPatchBasisComplex>& basisComplexPtr() const { return mBasisComplex; }
 
         virtual Eigen::MatrixXd extractionOperator( const topology::Cell& ) const override;
 
