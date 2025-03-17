@@ -14,6 +14,7 @@ add_library( basis SHARED
   HierarchicalTPBasisComplex.cpp
   HierarchicalMultiPatchBasisComplex.cpp
   HierarchicalTPSplineSpace.cpp
+  HierarchicalMultiPatchSplineSpace.cpp
   DivConfHierarchicalTPSplineSpace.cpp
 )
 
