@@ -7,7 +7,7 @@
 
 namespace io
 {
-    void outputTetMeshBoundaryToOBJ( const topology::TetMeshCombinatorialMap& to_output, const std::string& filename )
+    std::map<size_t, size_t> outputTetMeshBoundaryToOBJ( const topology::TetMeshCombinatorialMap& to_output, const std::string& filename )
     {
         const auto vertex_ids = indexingOrError( to_output, 0 );
         const auto vertex_positions = [&]( const topology::Vertex& v ) {
@@ -63,6 +63,7 @@ namespace io
         } );
 
         file.close();
+        return cmap_vids_to_obj_vids;
     }
 
 } // namespace io
