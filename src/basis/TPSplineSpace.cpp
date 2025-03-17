@@ -208,4 +208,18 @@ namespace basis
 
         return refinementOp( kvs_coarse, kvs_fine, degrees, param_tol );
     }
+
+    Eigen::MatrixXd grevillePoints( const TPSplineSpace& ss )
+    {
+        const auto component_comps = tensorProductComponentSplines( ss );
+        Eigen::MatrixXd out( ss.numFunctions(), ss.basisComplex().parametricAtlas().cmap().dim() );
+
+        SmallVector<Eigen::VectorXd, 3> greville_points;
+        for( const auto& component : component_comps )
+        {
+            greville_points.push_back( grevillePoints( component->knotVector(), degrees( component->basisComplex().defaultParentBasis() ).at( 0 ) ) );
+        }
+
+        return util::tensorProduct( greville_points );
+    }
 }

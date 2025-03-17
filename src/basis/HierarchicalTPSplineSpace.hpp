@@ -46,4 +46,6 @@ namespace basis
     ///                the spline space hier_ss.refinementLevels().at( 0 ).
     /// @return An operator to transform the coefficients.
     Eigen::SparseMatrix<double> prolongationOperator( const HierarchicalTPSplineSpace& hier_ss );
+
+    Eigen::MatrixXd grevillePoints( const HierarchicalTPSplineSpace& ss );
 }

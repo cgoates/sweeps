@@ -216,4 +216,29 @@ namespace basis
 
         return A_stack;
     }
+
+    Eigen::MatrixXd grevillePoints( const HierarchicalTPSplineSpace& ss )
+    {
+        const auto& refinement_levels = ss.refinementLevels();
+
+        Eigen::MatrixXd out( ss.numFunctions(), ss.basisComplex().parametricAtlas().cmap().dim() );
+
+        std::vector<Eigen::MatrixXd> level_greville_points( refinement_levels.size() );
+        for( size_t i = 0; i < refinement_levels.size(); i++ )
+        {
+            level_greville_points.at( i ) = grevillePoints( *refinement_levels.at( i ) );
+        }
+        size_t ii = 0;
+        size_t jj = 0;
+        for( const auto& active_funcs : ss.activeFunctions() )
+        {
+            for( const auto& f : active_funcs )
+            {
+                out.row( ii++ ) = level_greville_points.at( jj ).row( f );
+            }
+            jj++;
+        }
+
+        return out;
+    }
 }

@@ -44,4 +44,6 @@ namespace basis
     TPSplineSpace buildBSpline( const SmallVector<KnotVector, 3>& kvs, const SmallVector<size_t, 3>& degrees );
 
     Eigen::SparseMatrix<double> refinementOp( const TPSplineSpace& coarse, const TPSplineSpace& fine, const double param_tol );
+
+    Eigen::MatrixXd grevillePoints( const TPSplineSpace& ss );
 }
