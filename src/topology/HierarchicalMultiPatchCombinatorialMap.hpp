@@ -40,6 +40,10 @@ namespace topology
 
         const DartRanges& dartRanges() const { return mRanges; }
 
+        bool iterateChildren( const Cell& local_cell,
+                              const size_t cell_level,
+                              const std::function<bool( const Cell& )>& callback ) const;
+
         private:
         const std::vector<std::shared_ptr<const MultiPatchCombinatorialMap>> mRefinementLevels;
         std::vector<std::shared_ptr<const HierarchicalTPCombinatorialMap>> mConstituents;

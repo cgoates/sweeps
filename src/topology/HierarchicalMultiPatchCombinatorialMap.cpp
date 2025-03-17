@@ -273,6 +273,19 @@ std::pair<size_t, Dart> HierarchicalMultiPatchCombinatorialMap::unrefinedAncesto
     return { level, mRefinementLevels.at( level )->toGlobalDart( patch_ii, level_d ) }; // TODO: CHECK ME
 }
 
+bool HierarchicalMultiPatchCombinatorialMap::iterateChildren( const Cell& local_cell,
+                            const size_t cell_level,
+                            const std::function<bool( const Cell& )>& callback ) const
+{
+    if( local_cell.dim() != dim() )
+        throw std::runtime_error( "iterateChildren only supports elements." );
+
+    const auto [patch_ii, local_d] = mRefinementLevels.at( cell_level )->toLocalDart( local_cell.dart() );
+    return mConstituents.at( patch_ii )->iterateChildren( Cell( local_d, local_cell.dim() ), cell_level, [&]( const Cell& child_constituent_c ) {
+        return callback( Cell( mRefinementLevels.at( cell_level + 1 )->toGlobalDart( patch_ii, child_constituent_c.dart() ), child_constituent_c.dim() ) );
+    } );
+}
+
 namespace topology
 {
     std::vector<std::vector<Cell>> leafElements( const HierarchicalMultiPatchCombinatorialMap& cmap )
