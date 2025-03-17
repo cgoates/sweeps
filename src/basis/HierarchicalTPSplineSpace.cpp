@@ -47,9 +47,16 @@ std::vector<std::vector<FunctionId>>
 HierarchicalTPSplineSpace::HierarchicalTPSplineSpace(
     const std::shared_ptr<const HierarchicalTPBasisComplex>& bc,
     const std::vector<std::shared_ptr<const TPSplineSpace>>& refinement_levels )
+    : HierarchicalTPSplineSpace( bc, refinement_levels, activeFuncs( bc->parametricAtlas().cmap(), refinement_levels ) )
+{}
+
+HierarchicalTPSplineSpace::HierarchicalTPSplineSpace(
+    const std::shared_ptr<const HierarchicalTPBasisComplex>& bc,
+    const std::vector<std::shared_ptr<const TPSplineSpace>>& refinement_levels,
+    const std::vector<std::vector<FunctionId>>& active_funcs )
     : mBasisComplex( bc ),
       mRefinementLevels( refinement_levels ),
-      mActiveFunctions( activeFuncs( bc->parametricAtlas().cmap(), refinement_levels ) )
+      mActiveFunctions( active_funcs )
 {
     const auto active_mat = [this]( const size_t level_ii ) {
         Eigen::SparseMatrix<double> A( mActiveFunctions.at( level_ii ).size(), mRefinementLevels.at( level_ii )->numFunctions() );
