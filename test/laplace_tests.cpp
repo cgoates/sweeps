@@ -17,7 +17,7 @@ TEST_CASE( "Laplace patch test", "" )
     topology::TetMeshCombinatorialMap map( sweep_input.mesh );
     const std::vector<Normal> normals = faceNormals( map );
     const Eigen::VectorXd sol = reparam::sweepEmbedding(
-        map, sweep_input.zero_bcs, sweep_input.one_bcs, normals, reparam::LaplaceEdgeWeights::Cotangent );
+        map, sweep_input.zero_bcs, sweep_input.one_bcs, normals, reparam::Laplace3dEdgeWeights::Cotangent );
 
     REQUIRE( util::equals( sol( 8 ), sweep_input.mesh.points.back()( 2 ), sweep_input.mesh.points.back()( 2 ) * 1e-15 ) );
 }

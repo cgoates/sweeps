@@ -277,7 +277,7 @@ int main( int argc, char* argv[] )
                 size_t n_interior = 0;
                 size_t n_boundary = 0;
                 const std::vector<double> edge_weights = edgeWeightsLaplace3d(
-                    map, vertex_positions( map ), faceNormals( map ), LaplaceEdgeWeights::BarycentricDual );
+                    map, vertex_positions( map ), faceNormals( map ), Laplace3dEdgeWeights::BarycentricDual );
                 const auto edge_ids = indexingOrError( map, 1 );
                 std::vector<topology::Edge> negative_weight_edges;
                 iterateCellsWhile( map, 1, [&]( const topology::Edge& e ) {

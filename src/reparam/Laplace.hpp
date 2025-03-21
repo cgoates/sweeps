@@ -16,7 +16,7 @@ namespace topology
 
 namespace reparam
 {
-    enum class LaplaceEdgeWeights
+    enum class Laplace3dEdgeWeights
     {
         Cotangent,
         InverseLength,
@@ -29,7 +29,7 @@ namespace reparam
                                     const std::vector<bool>& zero_bcs,
                                     const std::vector<bool>& one_bcs,
                                     const std::vector<Normal>& normals,
-                                    const LaplaceEdgeWeights& edge_weights = LaplaceEdgeWeights::BarycentricDual );
+                                    const Laplace3dEdgeWeights& edge_weights = Laplace3dEdgeWeights::BarycentricDual );
 
     Eigen::MatrixX2d
         tutteEmbedding( const topology::CombinatorialMap& map,
@@ -47,6 +47,6 @@ namespace reparam
     std::vector<double> edgeWeightsLaplace3d( const topology::CombinatorialMap& map,
                                               const VertexPositionsFunc& vertex_position,
                                               const std::vector<Normal>& normals,
-                                              const LaplaceEdgeWeights& edge_weights );
+                                              const Laplace3dEdgeWeights& edge_weights );
 
 } // namespace reparam

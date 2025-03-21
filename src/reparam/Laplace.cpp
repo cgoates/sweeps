@@ -14,9 +14,9 @@ namespace reparam
 {
     Timer t;
 
-    std::vector<double> cotanEdgeWeights( const topology::CombinatorialMap& map,
-                                          const VertexPositionsFunc& vertex_position,
-                                          const std::vector<Normal>& normals )
+    std::vector<double> cotanEdgeWeights3d( const topology::CombinatorialMap& map,
+                                            const VertexPositionsFunc& vertex_position,
+                                            const std::vector<Normal>& normals )
     {
         const auto edge_ids = indexingOrError( map, 1 );
         const size_t n_edges = cellCount( map, 1 );
@@ -35,8 +35,8 @@ namespace reparam
         return weights;
     }
 
-    std::vector<double> barycentricDualEdgeWeights( const topology::CombinatorialMap& map,
-                                                    const VertexPositionsFunc& v_positions )
+    std::vector<double> barycentricDualEdgeWeights3d( const topology::CombinatorialMap& map,
+                                                      const VertexPositionsFunc& v_positions )
     {
         const auto edge_ids = indexingOrError( map, 1 );
         const size_t n_edges = cellCount( map, 1 );
@@ -68,7 +68,7 @@ namespace reparam
         return weights;
     }
 
-    std::vector<double> voronoiDualEdgeWeights( const topology::CombinatorialMap& map, const VertexPositionsFunc& v_positions )
+    std::vector<double> voronoiDualEdgeWeights3d( const topology::CombinatorialMap& map, const VertexPositionsFunc& v_positions )
     {
         const auto edge_ids = indexingOrError( map, 1 );
         const size_t n_edges = cellCount( map, 1 );
@@ -120,19 +120,19 @@ namespace reparam
     std::vector<double> edgeWeightsLaplace3d( const topology::CombinatorialMap& map,
                                              const VertexPositionsFunc& vertex_position,
                                              const std::vector<Normal>& normals,
-                                             const LaplaceEdgeWeights& edge_weights )
+                                             const Laplace3dEdgeWeights& edge_weights )
     {
         switch( edge_weights )
         {
-            case LaplaceEdgeWeights::Cotangent:
-                return cotanEdgeWeights( map, vertex_position, normals );
-            case LaplaceEdgeWeights::VoronoiDual:
-                return voronoiDualEdgeWeights( map, vertex_position );
-            case LaplaceEdgeWeights::BarycentricDual:
-                return barycentricDualEdgeWeights( map, vertex_position );
-            case LaplaceEdgeWeights::InverseLength:
+            case Laplace3dEdgeWeights::Cotangent:
+                return cotanEdgeWeights3d( map, vertex_position, normals );
+            case Laplace3dEdgeWeights::VoronoiDual:
+                return voronoiDualEdgeWeights3d( map, vertex_position );
+            case Laplace3dEdgeWeights::BarycentricDual:
+                return barycentricDualEdgeWeights3d( map, vertex_position );
+            case Laplace3dEdgeWeights::InverseLength:
                 return inverseLengthEdgeWeights( map, vertex_position );
-            case LaplaceEdgeWeights::Uniform:
+            case Laplace3dEdgeWeights::Uniform:
                 return std::vector<double>( cellCount( map, 1 ), 1.0 );
         }
     }
@@ -174,7 +174,7 @@ namespace reparam
                                     const std::vector<bool>& zero_bcs,
                                     const std::vector<bool>& one_bcs,
                                     const std::vector<Normal>& normals,
-                                    const LaplaceEdgeWeights& edge_weights_type )
+                                    const Laplace3dEdgeWeights& edge_weights_type )
     {
         const auto vertex_ids = indexingOrError( map, 0 );
         const auto vertex_position = [&]( const topology::Vertex& v ) {
