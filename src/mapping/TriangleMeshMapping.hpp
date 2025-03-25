@@ -28,7 +28,7 @@ namespace mapping
 
         virtual std::pair<topology::Cell, param::ParentPoint> closestPoint( const Vector3dMax& pt ) const override;
 
-        const VertexPositionsFunc& vertPositions() const { return mPositions; }
+        virtual const VertexPositionsFunc& vertPositions() const override { return mPositions; }
 
         private:
         size_t vertexIndex( const topology::Vertex& v ) const;

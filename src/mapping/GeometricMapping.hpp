@@ -3,6 +3,7 @@
 #include <optional>
 #include <Cell.hpp>
 #include <ParentPoint.hpp>
+#include <VertexPositionsFunc.hpp>
 
 namespace param
 {
@@ -22,5 +23,6 @@ namespace mapping
         {
             throw std::runtime_error( "closestPoint not implemented for this mapping" );
         }
+        virtual const VertexPositionsFunc& vertPositions() const = 0;
     };
 }
