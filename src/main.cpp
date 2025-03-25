@@ -178,8 +178,12 @@ int main( int argc, char* argv[] )
                 return SweepInputTestCases::bunny();
             else if( std::find( input_args.begin(), input_args.end(), "spring" ) != input_args.end() )
                 return SweepInputTestCases::spring();
-            else if( std::find( input_args.begin(), input_args.end(), "bullet" ) != input_args.end() )
+            else if( std::find( input_args.begin(), input_args.end(), "half_bullet" ) != input_args.end() )
                 return SweepInputTestCases::bullet();
+            else if( std::find( input_args.begin(), input_args.end(), "bullet" ) != input_args.end() )
+                return SweepInputTestCases::bullet_full();
+            else if( std::find( input_args.begin(), input_args.end(), "part_torus_in_sphere" ) != input_args.end() )
+                return SweepInputTestCases::part_torus_in_sphere();
             else if( std::find( input_args.begin(), input_args.end(), "macaroni_coarse" ) != input_args.end() )
                 return io::loadINPFile( SRC_HOME "/test/data/macaroni_coarse.inp", "Surface3", "Surface4" );
             else if( std::find( input_args.begin(), input_args.end(), "pot_counter" ) != input_args.end() )
