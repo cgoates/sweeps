@@ -88,6 +88,8 @@ namespace topology
             return mLeafDarts.at( d.id() );
         }
 
+        size_t refinementRatio( const size_t level ) const { return mRefinementRatios.at( level ); }
+
         /// Expose a protected method from the base class for initialization purposes.
         bool iterateDartLineage( const Dart& global_d,
                                  const size_t ancestor_or_descendant_level,
@@ -108,6 +110,8 @@ namespace topology
             return HierarchicalTPCombinatorialMap( *this );
         }
     };
+
+    bool checkForNoAncestor( const TPCombinatorialMap& tp_map, const Dart& d, const size_t n_darts_per_ancestor );
 
     std::vector<std::vector<Cell>> leafElements( const HierarchicalTPCombinatorialMap& cmap );
 }; // namespace topology

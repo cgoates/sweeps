@@ -100,7 +100,6 @@ HierarchicalMultiPatchSplineSpace::HierarchicalMultiPatchSplineSpace(
     : mBasisComplex( bc ), mRefinementLevels( refinement_levels )
 {
     const auto active_funcs_struct = activeFuncs( bc->parametricAtlas().cmap(), refinement_levels );
-    std::cout << active_funcs_struct.active_funcs << std::endl;
     mConstituents = initializeConstituents( *bc, refinement_levels, active_funcs_struct.active_funcs );
     mNumActiveFuncs = active_funcs_struct.num_active_funcs;
     mFuncIds = active_funcs_struct.patch_level_active_funcs_to_mp_funcs;

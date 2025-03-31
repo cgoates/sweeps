@@ -73,25 +73,24 @@ std::vector<std::shared_ptr<const HierarchicalTPCombinatorialMap>>
     {
         for( const auto& leaf_elem : leaf_elements.at( level ) )
         {
-            const auto [patch_ii, patch_level_dart] = refinement_levels.at( level )->toLocalDart( leaf_elem.dart() );
-            const Cell constituent_leaf_elem( patch_level_dart, leaf_elem.dim() );
             iterateDartsOfCell( *refinement_levels.at( level ), leaf_elem, [&]( const Dart& level_d ) {
                 // We only need to do something here if this is a boundary dart in the constituent, but not in the multipatch.
-                const auto [_, constituent_level_d] = refinement_levels.at( level )->toLocalDart( level_d );
+                const auto [patch_ii, constituent_level_d] = refinement_levels.at( level )->toLocalDart( level_d );
                 const auto maybe_constituent_level_phi = phi( *refinement_levels.at( level )->constituents().at( patch_ii ), dim, constituent_level_d );
-                if( maybe_constituent_level_phi.has_value() ) return true;
+                if( maybe_constituent_level_phi.has_value() ) return true; // This is not a boundary dart in the constituent.
                 const auto maybe_phi = phi( *refinement_levels.at( level ), dim, level_d );
-                if( not maybe_phi.has_value() ) return true;
+                if( not maybe_phi.has_value() ) return true; // This is a boundary dart in the multipatch.
 
                 // TODO: 3d
-                // if( dim() == 3 and not checkForNoAncestor( *refinement_levels.at( level ), level_d, level == 0 ? 0 : mRefinementRatios.at( level - 1 ) ) )
-                // {
-                //     iterateDartsOfCell( *refinement_levels.at( level ), Edge( level_d ), [&]( const Dart& level_adj_d ) {
-                //         mark_as_leaf( level, level_adj_d );
-                //         return true;
-                //     } );
-                // }
-                // else
+                if( dim == 3 and not checkForNoAncestor( *mutable_constituents.at( patch_ii )->refinementLevels().at( level ), level_d, level == 0 ? 0 : mutable_constituents.at( patch_ii )->refinementRatio( level - 1 ) ) )
+                {
+                    iterateDartsOfCell( *refinement_levels.at( level ), Edge( level_d ), [&]( const Dart& other_level_d ) {
+                        const auto [other_patch_ii, other_constituent_level_d] = refinement_levels.at( level )->toLocalDart( other_level_d );
+                        mark_as_leaf( other_patch_ii, level, other_constituent_level_d );
+                        return true;
+                    } );
+                }
+                else
                 {
                     const auto [other_patch_ii, other_constituent_level_d] = refinement_levels.at( level )->toLocalDart( maybe_phi.value() );
                     mark_as_leaf( patch_ii, level, constituent_level_d );
@@ -120,13 +119,12 @@ std::vector<std::shared_ptr<const HierarchicalTPCombinatorialMap>>
                     return mutable_constituent.isLeaf( global_d.id() );
                 } );
 
-                // const bool all_darts_are_not_leaves = iterateDartsOfRestrictedCell( level_cmap, leaf_face, 3, [&]( const Dart& d ) {
-                //     const Dart global_d = mRanges.toGlobalDart( level, d );
-                //     return not mLeafDarts.at( global_d.id() );
-                // } );
+                const bool all_darts_are_not_leaves = iterateDartsOfRestrictedCell( level_cmap, leaf_face, 3, [&]( const Dart& d ) {
+                    const Dart global_d = mutable_constituent.dartRanges().toGlobalDart( level, d );
+                    return not mutable_constituent.isLeaf( global_d.id() );
+                } );
 
-                // TODO: 3d
-                if( not all_darts_are_leaves )// and not ( dim() == 3 and all_darts_are_not_leaves ) )
+                if( not all_darts_are_leaves and not ( dim == 3 and all_darts_are_not_leaves ) )
                 {
                     std::optional<Dart> first_leaf;
                     std::optional<Dart> previous_leaf;

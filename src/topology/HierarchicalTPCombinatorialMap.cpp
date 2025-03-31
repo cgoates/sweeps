@@ -6,6 +6,8 @@
 
 using namespace topology;
 
+namespace topology
+{
 bool checkForNoAncestor( const FullyUnflattenedDart& unflat, const size_t n_darts_per_ancestor )
 {
     using TPDartPos = TPCombinatorialMap::TPDartPos;
@@ -111,6 +113,7 @@ bool checkForNoAncestor( const TPCombinatorialMap& tp_map, const Dart& d, const 
     if( n_darts_per_ancestor == 0 )
         return true;
     return checkForNoAncestor( unflattenFull( tp_map, d ), n_darts_per_ancestor );
+}
 }
 
 HierarchicalTPCombinatorialMap::HierarchicalTPCombinatorialMap(
