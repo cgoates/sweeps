@@ -61,3 +61,67 @@ TEST_CASE( "Simple hierarchical cmap 1" )
     CHECK( cmap.unrefinedAncestorDart( Dart( 104 ) ).second == cmap.refinementLevels().at( 0 )->toGlobalDart( 1, Dart( 4 ) ) );
     CHECK( cmap.unrefinedAncestorDart( Dart( 108 ) ).second == cmap.refinementLevels().at( 0 )->toGlobalDart( 1, Dart( 4 ) ) );
 }
+
+TEST_CASE( "3d multipatch hierarchical cmap bug" )
+{
+    const auto topo1d_1 = std::make_shared<const CombinatorialMap1d>( 1 );
+    const auto topo1d_2 = std::make_shared<const CombinatorialMap1d>( 2 );
+    const auto topo1d_4 = std::make_shared<const CombinatorialMap1d>( 4 );
+
+    const auto topo2d_1 = std::make_shared<const TPCombinatorialMap>( topo1d_1, topo1d_1 );
+    const auto topo2d_2 = std::make_shared<const TPCombinatorialMap>( topo1d_2, topo1d_2 );
+    const auto topo2d_4 = std::make_shared<const TPCombinatorialMap>( topo1d_4, topo1d_4 );
+
+    const auto tp_topo_1 = std::make_shared<const TPCombinatorialMap>( topo2d_1, topo1d_1 );
+    const auto tp_topo_2 = std::make_shared<const TPCombinatorialMap>( topo2d_2, topo1d_2 );
+    const auto tp_topo_4 = std::make_shared<const TPCombinatorialMap>( topo2d_4, topo1d_4 );
+
+    const auto mp_topo_1 = std::make_shared<const MultiPatchCombinatorialMap>(
+        MultiPatchCombinatorialMap( { tp_topo_1, tp_topo_1 }, { { { 0, Dart( 7 ) }, { 1, Dart( 19 ) } } } ) );
+    const auto mp_topo_2 = std::make_shared<const MultiPatchCombinatorialMap>(
+        MultiPatchCombinatorialMap( { tp_topo_2, tp_topo_2 }, mp_topo_1->connections() ) );
+    const auto mp_topo_4 = std::make_shared<const MultiPatchCombinatorialMap>(
+        MultiPatchCombinatorialMap( { tp_topo_4, tp_topo_4 }, mp_topo_1->connections() ) );
+
+    const std::vector<std::vector<topology::Cell>> leaf_elems = [&](){
+        const HierarchicalMultiPatchCombinatorialMap cmap( { mp_topo_1, mp_topo_2, mp_topo_4 }, { { Volume( 0 ), Volume( 24 ) }, {}, {} } );
+        std::vector<std::vector<topology::Cell>> out;
+        out.push_back( { Volume( 24 ) } );
+        out.push_back( {} );
+        out.push_back( {} );
+        cmap.iterateChildren( Volume( 0 ), 0, [&]( const Cell& c ) {
+            out.at( 1 ).push_back( c );
+            return true;
+        } );
+        const size_t offset = 1;
+        cmap.iterateChildren( out.at( 1 ).at( offset ), 1, [&]( const Cell& c ) {
+            out.at( 2 ).push_back( c );
+            return true;
+        } );
+
+        out.at( 1 ).erase( out.at( 1 ).begin() + offset );
+
+        return out;
+    }();
+
+    const HierarchicalMultiPatchCombinatorialMap cmap( { mp_topo_1, mp_topo_2, mp_topo_4 }, leaf_elems );
+
+    CHECK( cellCount( cmap, 3 ) == 16 );
+
+    size_t n_darts = 0;
+    iterateDartsWhile( cmap, [&]( const Dart& d ){
+        for( const auto& phis : std::vector<std::vector<int>>{ {1,-1}, {2, 2}, {3, 3} } )
+        {
+            const auto maybe_phi = phi( cmap, phis, d );
+            if( phis.at( 0 ) != 3 ) CHECK( maybe_phi.has_value() );
+            if( maybe_phi )
+                CHECK( maybe_phi.value() == d );
+        }
+        n_darts++;
+        return true;
+    } );
+
+    CHECK( n_darts == 9 * 24 + 56 + 3 * 40 + 3 * 26 );
+}
+
+
