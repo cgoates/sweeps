@@ -149,14 +149,23 @@ HierarchicalTPCombinatorialMap::HierarchicalTPCombinatorialMap(
         lower_sizes = higher_sizes;
     }
 
+    std::set<Dart> not_leaf;
+
     const auto mark_as_leaf = [&]( const size_t level, const Dart& level_d ) {
         const Dart global_d = mRanges.toGlobalDart( level, level_d );
         mLeafDarts.at( global_d.id() ) = true;
 
         // Unmark ancestors that are marked as leaf.
         iterateAncestors( global_d, [&]( const Dart& ancestor_global_d ) {
-            mLeafDarts.at( ancestor_global_d.id() ) = false;
+            not_leaf.emplace( ancestor_global_d );
             return true;
+        } );
+    };
+
+    const auto has_leaf_ancestor = [&]( const size_t level_ii, const Dart& level_d ) {
+        const Dart global_d = mRanges.toGlobalDart( level_ii, level_d );
+        return not iterateAncestors( global_d, [&]( const Dart& ancestor_global_d ) {
+            return not mLeafDarts.at( ancestor_global_d.id() );
         } );
     };
 
@@ -168,23 +177,33 @@ HierarchicalTPCombinatorialMap::HierarchicalTPCombinatorialMap(
             iterateDartsOfCell( *refinement_levels.at( level ), leaf_elem, [&]( const Dart& level_d ) {
                 mUnrefinedDarts.at( mRanges.toGlobalDart( level, level_d ).id() ) = true;
                 const auto maybe_phi = topology::phi( *refinement_levels.at( level ), dim(), level_d );
- 
-                if( dim() == 3 and not checkForNoAncestor( *refinement_levels.at( level ), level_d, level == 0 ? 0 : mRefinementRatios.at( level - 1 ) ) )
+
+                mark_as_leaf( level, level_d );
+                if( maybe_phi.has_value() )
+                    mark_as_leaf( level, maybe_phi.value() );
+                if( dim() == 3 )
                 {
-                    iterateDartsOfCell( *refinement_levels.at( level ), Edge( level_d ), [&]( const Dart& level_adj_d ) {
-                        mark_as_leaf( level, level_adj_d );
+                    iterateDartsOfCell( *refinement_levels.at( level ), Edge( level_d ), [&]( const Dart& other_level_d ) {
+                        if( has_leaf_ancestor( level, other_level_d ) )
+                        {
+                            mark_as_leaf( level, other_level_d );
+                            const auto maybe_other_phi = topology::phi( *refinement_levels.at( level ), dim(), other_level_d );
+                            if( maybe_other_phi.has_value() )
+                                mark_as_leaf( level, other_level_d );
+                        }
                         return true;
                     } );
                 }
-                else
-                {
-                    mark_as_leaf( level, level_d );
-                    if( maybe_phi.has_value() )
-                        mark_as_leaf( level, maybe_phi.value() );
-                }
+
                 return true;
             } );
         }
+    }
+
+    // Unmark ancestors that are marked as leaf.
+    for( const auto& d : not_leaf )
+    {
+        mLeafDarts.at( d.id() ) = false;
     }
 
     // Build phi1 and phi-1 ops
@@ -193,8 +212,7 @@ HierarchicalTPCombinatorialMap::HierarchicalTPCombinatorialMap(
         const TPCombinatorialMap& level_cmap = *refinement_levels.at( level );
         for( const auto& leaf_elem : leaf_elements.at( level ) )
         {
-            // In 3d we need to do this for the faces of the leaf elements, in 2d, the elements themselves.
-            iterateAdjacentCells( level_cmap, leaf_elem, 2, [&]( const topology::Face& leaf_face ) {
+            const auto phi_chain = [&level_cmap, &level, this]( const Face& leaf_face ) {
                 const bool all_darts_are_leaves = iterateDartsOfRestrictedCell( level_cmap, leaf_face, 3, [&]( const Dart& d ) {
                     const Dart global_d = mRanges.toGlobalDart( level, d );
                     return mLeafDarts.at( global_d.id() );
@@ -230,6 +248,19 @@ HierarchicalTPCombinatorialMap::HierarchicalTPCombinatorialMap(
                     {
                         mPhiOnes.insert( { previous_leaf.value(), first_leaf.value() } );
                         mPhiMinusOnes.insert( { first_leaf.value(), previous_leaf.value() } );
+                    }
+                }
+            };
+
+            // In 3d we need to do this for the faces of the leaf elements, in 2d, the elements themselves.
+            iterateAdjacentCells( level_cmap, leaf_elem, 2, [&]( const topology::Face& leaf_face ) {
+                phi_chain( leaf_face );
+                if( dim() == 3 )
+                {
+                    const auto maybe_phi3 = topology::phi( level_cmap, 3, leaf_face.dart() );
+                    if( maybe_phi3.has_value() )
+                    {
+                        phi_chain( maybe_phi3.value() );
                     }
                 }
                 return true;

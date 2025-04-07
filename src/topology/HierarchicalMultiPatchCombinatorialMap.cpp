@@ -56,6 +56,8 @@ std::vector<std::shared_ptr<const HierarchicalTPCombinatorialMap>>
     /////////////////////////////////////////////////////////////////////////////////
     /// Find the darts that need to be refined because of the multi-patch connections
 
+    std::set<std::pair<size_t, Dart>> not_leaf;
+
     const auto mark_as_leaf = [&]( const size_t patch_ii, const size_t level_ii, const Dart& constituent_level_d ) {
         auto& mutable_constituent = *mutable_constituents.at( patch_ii );
         const Dart constituent_dart = mutable_constituent.dartRanges().toGlobalDart( level_ii, constituent_level_d );
@@ -63,8 +65,16 @@ std::vector<std::shared_ptr<const HierarchicalTPCombinatorialMap>>
 
         // Unmark ancestors that are marked as leaf.
         mutable_constituent.iterateAncestors( constituent_dart, [&]( const Dart& ancestor_global_d ) {
-            mutable_constituent.setLeaf( ancestor_global_d, false );
+            not_leaf.emplace( patch_ii, ancestor_global_d );
             return true;
+        } );
+    };
+
+    const auto has_leaf_ancestor = [&]( const size_t patch_ii, const size_t level_ii, const Dart& constituent_level_d ) {
+        const auto& mutable_constituent = *mutable_constituents.at( patch_ii );
+        const Dart constituent_dart = mutable_constituent.dartRanges().toGlobalDart( level_ii, constituent_level_d );
+        return not mutable_constituent.iterateAncestors( constituent_dart, [&]( const Dart& ancestor_global_d ) {
+            return not mutable_constituent.isLeaf( ancestor_global_d.id() );
         } );
     };
 
@@ -81,24 +91,36 @@ std::vector<std::shared_ptr<const HierarchicalTPCombinatorialMap>>
                 const auto maybe_phi = phi( *refinement_levels.at( level ), dim, level_d );
                 if( not maybe_phi.has_value() ) return true; // This is a boundary dart in the multipatch.
 
-                // TODO: 3d
-                if( dim == 3 and not checkForNoAncestor( *mutable_constituents.at( patch_ii )->refinementLevels().at( level ), level_d, level == 0 ? 0 : mutable_constituents.at( patch_ii )->refinementRatio( level - 1 ) ) )
+                mark_as_leaf( patch_ii, level, constituent_level_d );
+                const auto [other_patch_ii, other_constituent_level_d] = refinement_levels.at( level )->toLocalDart( maybe_phi.value() );
+                mark_as_leaf( other_patch_ii, level, other_constituent_level_d );
+                if( dim == 3 )
                 {
                     iterateDartsOfCell( *refinement_levels.at( level ), Edge( level_d ), [&]( const Dart& other_level_d ) {
                         const auto [other_patch_ii, other_constituent_level_d] = refinement_levels.at( level )->toLocalDart( other_level_d );
-                        mark_as_leaf( other_patch_ii, level, other_constituent_level_d );
+                        if( has_leaf_ancestor( other_patch_ii, level, other_constituent_level_d ) )
+                        {
+                            mark_as_leaf( other_patch_ii, level, other_constituent_level_d );
+                            const auto maybe_other_phi = phi( *refinement_levels.at( level ), 3, other_level_d );
+                            if( maybe_other_phi.has_value() )
+                            {
+                                const auto [other_patch_ii, other_constituent_level_d] = refinement_levels.at( level )->toLocalDart( maybe_other_phi.value() );
+                                mark_as_leaf( other_patch_ii, level, other_constituent_level_d );
+                            }
+                        }
                         return true;
                     } );
                 }
-                else
-                {
-                    const auto [other_patch_ii, other_constituent_level_d] = refinement_levels.at( level )->toLocalDart( maybe_phi.value() );
-                    mark_as_leaf( patch_ii, level, constituent_level_d );
-                    mark_as_leaf( other_patch_ii, level, other_constituent_level_d );
-                }
+
                 return true;
             } );
         }
+    }
+
+    for( const std::pair<size_t, Dart>& d : not_leaf )
+    {
+        auto& mutable_constituent = *mutable_constituents.at( d.first );
+        mutable_constituent.setLeaf( d.second, false );
     }
 
     // Build phi1 and phi-1 ops
@@ -106,20 +128,21 @@ std::vector<std::shared_ptr<const HierarchicalTPCombinatorialMap>>
     {
         for( const auto& leaf_elem : leaf_elements.at( level ) )
         {
-            const auto [patch_ii, patch_level_dart] = refinement_levels.at( level )->toLocalDart( leaf_elem.dart() );
-            const TPCombinatorialMap& level_cmap = *refinement_levels.at( level )->constituents().at( patch_ii );
-            auto& mutable_constituent = *mutable_constituents.at( patch_ii );
+            const MultiPatchCombinatorialMap& refinement_level = *refinement_levels.at( level );
+            const auto [patch_ii, patch_level_dart] = refinement_level.toLocalDart( leaf_elem.dart() );
 
             const topology::Cell patch_leaf_elem( patch_level_dart, leaf_elem.dim() );
 
-            // In 3d we need to do this for the faces of the leaf elements, in 2d, the elements themselves.
-            iterateAdjacentCells( level_cmap, patch_leaf_elem, 2, [&]( const topology::Face& leaf_face ) {
-                const bool all_darts_are_leaves = iterateDartsOfRestrictedCell( level_cmap, leaf_face, 3, [&]( const Dart& d ) {
+            const auto phi_chain = [&level,&refinement_level,&mutable_constituents,&dim]( const size_t patch_ii, const topology::Face& leaf_face ){
+                const TPCombinatorialMap& level_patch_cmap = *refinement_level.constituents().at( patch_ii );
+                auto& mutable_constituent = *mutable_constituents.at( patch_ii );
+
+                const bool all_darts_are_leaves = iterateDartsOfRestrictedCell( level_patch_cmap, leaf_face, 3, [&]( const Dart& d ) {
                     const Dart global_d = mutable_constituent.dartRanges().toGlobalDart( level, d );
                     return mutable_constituent.isLeaf( global_d.id() );
                 } );
 
-                const bool all_darts_are_not_leaves = iterateDartsOfRestrictedCell( level_cmap, leaf_face, 3, [&]( const Dart& d ) {
+                const bool all_darts_are_not_leaves = iterateDartsOfRestrictedCell( level_patch_cmap, leaf_face, 3, [&]( const Dart& d ) {
                     const Dart global_d = mutable_constituent.dartRanges().toGlobalDart( level, d );
                     return not mutable_constituent.isLeaf( global_d.id() );
                 } );
@@ -141,12 +164,28 @@ std::vector<std::shared_ptr<const HierarchicalTPCombinatorialMap>>
                             if( not first_leaf ) first_leaf.emplace( descendant );
                             return true;
                         } );
-                        d = mutable_constituent.dartRanges().toGlobalDart( level, topology::phi( level_cmap, 1, mutable_constituent.dartRanges().toLocalDart( d ).second ).value() );
+                        d = mutable_constituent.dartRanges().toGlobalDart( level, topology::phi( level_patch_cmap, 1, mutable_constituent.dartRanges().toLocalDart( d ).second ).value() );
                     } while ( d != global_leaf_face_dart );
  
                     if( first_leaf )
                     {
                         mutable_constituent.setPhi( previous_leaf.value(), first_leaf.value() );
+                    }
+                }
+            };
+
+            // In 3d we need to do this for the faces of the leaf elements, in 2d, the elements themselves.
+            const TPCombinatorialMap& level_patch_cmap = *refinement_level.constituents().at( patch_ii );
+            iterateAdjacentCells( level_patch_cmap, patch_leaf_elem, 2, [&]( const topology::Face& patch_leaf_face ) {
+                phi_chain( patch_ii, patch_leaf_face );
+                if( dim == 3 )
+                {
+                    const Dart multipatch_leaf_dart = refinement_level.toGlobalDart( patch_ii, patch_leaf_face.dart() );
+                    const auto maybe_phi3 = phi( refinement_level, 3, multipatch_leaf_dart );
+                    if( maybe_phi3.has_value() )
+                    {
+                        const auto [other_patch_ii, other_patch_level_dart] = refinement_level.toLocalDart( maybe_phi3.value() );
+                        phi_chain( other_patch_ii, other_patch_level_dart );
                     }
                 }
                 return true;
