@@ -77,6 +77,8 @@ namespace basis
 
     KnotVector integerKnotsWithNElems( const size_t n_elems, const size_t degree );
 
+    KnotVector unitIntervalKnotVectorWithNElems( const size_t n_elems, const size_t degree );
+
     KnotVector dyadicRefine( const KnotVector& kv );
     KnotVector nAdicRefine( const KnotVector& kv, const size_t n );
 }

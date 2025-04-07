@@ -268,6 +268,17 @@ namespace basis
         return KnotVector( knots );
     }
 
+    KnotVector unitIntervalKnotVectorWithNElems( const size_t n_elems, const size_t degree )
+    {
+        std::vector<std::pair<double, size_t>> knots;
+        knots.reserve( n_elems + 1 );
+        knots.push_back( { 0.0, degree + 1 } );
+        for( size_t i = 1; i < n_elems; i++ ) knots.push_back( { (double)i / (double)n_elems, 1 } );
+        knots.push_back( { 1.0, degree + 1 } );
+
+        return KnotVector( knots );
+    }
+
     KnotVector dyadicRefine( const KnotVector& kv )
     {
         return nAdicRefine( kv, 2 );
