@@ -11,6 +11,7 @@ namespace topology
         GlobalDartMarker( const CombinatorialMap& map ) : mMarkedDarts( map.maxDartId() + 1, false ) {}
 
         void mark( const Dart& d ) { mMarkedDarts.at( d.id() ) = true; }
+        void unmark( const Dart& d ) { mMarkedDarts.at( d.id() ) = false; }
 
         bool isMarked( const Dart& d ) const { return mMarkedDarts.at( d.id() ); }
 

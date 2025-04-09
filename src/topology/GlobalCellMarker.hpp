@@ -20,6 +20,15 @@ namespace topology
             } );
         }
 
+        void unmark( const CombinatorialMap& map, const Cell& c )
+        {
+            if( c.dim() != mCellDim ) throw std::runtime_error( "Bad cell dimension!" );
+            iterateDartsOfCell( map, c, [&]( const Dart& d ) {
+                mDartMarker.unmark( d );
+                return true;
+            } );
+        }
+
         bool isMarked( const Cell& c ) const
         {
             if( c.dim() != mCellDim ) throw std::runtime_error( "Bad cell dimension!" );
