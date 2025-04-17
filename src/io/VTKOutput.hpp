@@ -10,6 +10,7 @@ namespace topology
     class CombinatorialMap;
     class Edge;
     class Cell;
+    class Dart;
 }
 
 namespace basis
@@ -105,4 +106,10 @@ namespace io
                          const VertexPositionsFunc& positions,
                          const topology::Edge& e,
                          const std::string& postfix );
+
+    void outputDarts( const topology::CombinatorialMap& cmap,
+                      const VertexPositionsFunc& positions,
+                      const std::string& filename,
+                      const std::map<std::string, std::function<Eigen::VectorXd( const topology::Dart& )>>& fields = {},
+                      const std::function<bool( const topology::Dart& )>& filter = []( const auto& ) { return true; } );
 } // namespace io

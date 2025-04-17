@@ -323,7 +323,7 @@ namespace io
                 const Eigen::MatrixXd field_bez_points = degreeElevate( field_vals, field_ss.basisComplex().parentBasis( c ), pb );
 
                 util::iterateVTKTPOrdering( tp_lengths, [&] ( const size_t row_ii ) {
-                    for( size_t i = 0; i < field_bez_points.cols() - 1; i++ )
+                    for( Eigen::Index i = 0; i < field_bez_points.cols() - 1; i++ )
                         field_strings.at( label ) << field_bez_points( row_ii, i ) << " ";
                     field_strings.at( label ) << field_bez_points( row_ii, field_bez_points.cols() - 1 ) << std::endl;
                 } );
@@ -501,5 +501,60 @@ namespace io
 
         io::VTKOutputObject output_edges( edges );
         io::outputSimplicialFieldToVTK( output_edges, "edgesneardual" + postfix + ".vtu" );
+    }
+
+    void outputDarts(
+        const topology::CombinatorialMap& cmap,
+        const VertexPositionsFunc& positions,
+        const std::string& filename,
+        const std::map<std::string, std::function<Eigen::VectorXd( const topology::Dart& )>>& field_callbacks,
+        const std::function<bool( const topology::Dart& )>& filter )
+    {
+        SimplicialComplex complex;
+        std::map<std::string, std::vector<Eigen::VectorXd>> fields;
+        fields.emplace( "dart_glyphs", std::vector<Eigen::VectorXd>() );
+        for( const auto& field_callback : field_callbacks )
+        {
+            fields.emplace( field_callback.first, std::vector<Eigen::VectorXd>() );
+        }
+
+        const auto adjusted_positions = [&]( const topology::Vertex& v ) {
+            const Eigen::Vector3d pos = positions( v );
+            const auto tri = triangleOfFace<3>( cmap, positions, topology::Face( v.dart() ) );
+            const Eigen::Vector3d face_normal = triangleNormal( tri );
+            const double edge_length = edgeLength( cmap, positions, topology::Edge( phi( cmap, {2, -1}, v.dart() ).value() ) );
+            const Eigen::Vector3d pt = pos + 0.05 * edge_length * face_normal + 0.1 * face_normal.cross( tri.v2 - tri.v1 ).normalized() -
+                   0.1 * face_normal.cross( tri.v3 - tri.v1 ).normalized();
+            std::cout << "Adjusted position: " << pt.transpose() << std::endl;
+            return pt;
+        };
+
+        iterateDartsWhile( cmap, [&]( const topology::Dart& d ) {
+            if( not filter( d ) ) return true;
+            const size_t n_points = complex.points.size();
+            const auto pt1 = adjusted_positions( topology::Vertex( d ) );
+            const auto pt2 = adjusted_positions( topology::Vertex( phi( cmap, 1, d ).value() ) );
+            complex.points.push_back( 0.95 * pt1 + 0.05 * pt2 );
+            complex.simplices.push_back( { n_points } );
+            fields.at( "dart_glyphs" ).push_back( 0.9 * ( pt2 - pt1 ) );
+            for( const auto& field_callback : field_callbacks )
+            {
+                const Eigen::VectorXd field_val = field_callback.second( d );
+                fields.at( field_callback.first ).push_back( field_val );
+            }
+            return true;
+        } );
+
+        VTKOutputObject out( complex );
+        for( const auto& field : fields )
+        {
+            if( field.second.size() == 0 ) continue;
+
+            Eigen::MatrixXd matrix( field.second.size(), field.second.front().size() );
+            for( size_t i = 0; i < field.second.size(); i++ ) matrix.row( i ) = field.second.at( i ).transpose();
+            out.addVertexField( field.first, matrix );
+        }
+
+        outputSimplicialFieldToVTK( out, filename );
     }
 } // namespace io
