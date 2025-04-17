@@ -180,10 +180,14 @@ namespace basis
         size_t knot_accumulator = 0;
         for( size_t i = 0; i < fine_knots.size(); i++ )
         {
-            const double coarse_knot = knots.uniqueKnotMultiplicities().at( i ).first;
+            const auto& coarse_knots = knots.uniqueKnotMultiplicities();
+            if( i >= coarse_knots.size() )
+                throw std::invalid_argument( "Fine knot vector is not nested within the coarse knot vector" );
+
+            const double coarse_knot = coarse_knots.at( i ).first;
             if( util::equals( coarse_knot, fine_knots.at( i ).first, param_tol ) )
             {
-                knot_accumulator += knots.uniqueKnotMultiplicities().at( i ).second;
+                knot_accumulator += coarse_knots.at( i ).second;
                 while( knots.uniqueKnotMultiplicities().at( i ).second < fine_knots.at( i ).second )
                 {
                     SparseMatrixXd C_ii;
