@@ -446,6 +446,32 @@ class SweepInputTestCases
         return sweep_input;
     }
 
+    static SweepInput sphere()
+    {
+        SweepInput sweep_input =
+            io::loadINPFile( SRC_HOME "/test/data/Sphere.inp", "lala", "lala" );
+        for( size_t i = 0; i < sweep_input.mesh.points.size(); i++ )
+        {
+            sweep_input.zero_bcs.at( i ) = sweep_input.mesh.points.at( i )(2)<-0.98;
+            sweep_input.one_bcs.at( i ) = sweep_input.mesh.points.at( i )(2)>0.98;
+        }
+
+        return sweep_input;
+    }
+
+    static SweepInput neighborhood()
+    {
+        SweepInput sweep_input =
+            io::loadINPFile( SRC_HOME "/test/data/Neighborhood.inp", "lala", "lala" );
+        for( size_t i = 0; i < sweep_input.mesh.points.size(); i++ )
+        {
+            sweep_input.zero_bcs.at( i ) = sweep_input.mesh.points.at( i )(2)<0.00001;
+            sweep_input.one_bcs.at( i ) = sweep_input.mesh.points.at( i )(2)>0.9;
+        }
+
+        return sweep_input;
+    }
+
 };
 
 class TriMeshTestCases
