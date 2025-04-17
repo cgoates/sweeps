@@ -133,7 +133,7 @@ Eigen::MatrixXd HierarchicalTPSplineSpace::extractionOperator( const topology::C
     if( c.dim() != mBasisComplex->parametricAtlas().cmap().dim() )
         throw std::invalid_argument( "HierarchicalTPSplineSpace::extractionOperator only works for elements." );
 
-    const auto [ level, level_d ] = mBasisComplex->parametricAtlas().cmap().unrefinedAncestorDart( c.dart() );
+    const auto [ level, level_d ] = mBasisComplex->parametricAtlas().cmap().unrefinedAncestorDartOfCell( c );
     const topology::Cell level_c( level_d, c.dim() );
     const std::vector<FunctionId> level_conn = mRefinementLevels.at( level )->connectivity( level_c );
     const Eigen::MatrixXd level_op = mRefinementLevels.at( level )->extractionOperator( level_c );
@@ -145,7 +145,7 @@ std::vector<FunctionId> HierarchicalTPSplineSpace::connectivity( const topology:
     if( c.dim() != mBasisComplex->parametricAtlas().cmap().dim() )
         throw std::invalid_argument( "HierarchicalTPSplineSpace::connectivity only works for elements." );
 
-    const auto [ level, level_d ] = mBasisComplex->parametricAtlas().cmap().unrefinedAncestorDart( c.dart() );
+    const auto [ level, level_d ] = mBasisComplex->parametricAtlas().cmap().unrefinedAncestorDartOfCell( c );
     const std::vector<FunctionId> level_conn = mRefinementLevels.at( level )->connectivity( topology::Cell( level_d, c.dim() ) );
     
     std::set<FunctionId> nonzero_rows;

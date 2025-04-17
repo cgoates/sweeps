@@ -15,7 +15,7 @@ const ParentDomain HierarchicalTPParametricAtlas::parentDomain( const topology::
     if( c.dim() != mMap->dim() )
         throw std::invalid_argument( "HierarchicalTPParametricAtlas::parentDomain only works for elements." );
 
-    const auto [ level, level_d ] = mMap->unrefinedAncestorDart( c.dart() );
+    const auto [ level, level_d ] = mMap->unrefinedAncestorDartOfCell( c );
     return mRefinementLevels.at( level )->parentDomain( topology::Cell( level_d, c.dim() ) );
 }
 
@@ -25,7 +25,7 @@ ParentPoint HierarchicalTPParametricAtlas::parentPoint( const topology::Vertex& 
     {
         // We want to know how many darts away from the boundary we are in each direction.
         const auto [ dart_level, local_d ] = mMap->dartRanges().toLocalDart( v.dart() );
-        const auto [elem_level, unrefined_d] = mMap->unrefinedAncestorDart( v.dart() );
+        const auto [elem_level, unrefined_d] = mMap->unrefinedAncestorDartOfCell( topology::Volume( v.dart() ) );
 
         if( dart_level == elem_level ) return mRefinementLevels.at( elem_level )->parentPoint( topology::Vertex( local_d ) );
 
@@ -89,19 +89,20 @@ ParentPoint HierarchicalTPParametricAtlas::parentPoint( const topology::Vertex& 
     else
     {
         // 1. Get the unrefined dart, get the length along that edge.
-        const auto [elem_level, unrefined_d] = mMap->unrefinedAncestorDart( v.dart() );
+        const auto [elem_level, unrefined_d] = mMap->unrefinedAncestorDartOfCell( topology::Volume( v.dart() ) );
+        const auto [v_level, level_local_v_dart] = mMap->dartRanges().toLocalDart( v.dart() );
 
         const TPParametricAtlas& elem_level_atlas = *mRefinementLevels.at( elem_level );
-        const double unrefined_len = [&]() {
-            const size_t len_idx = parametricLengthIndexAlongEdge( elem_level_atlas, topology::Edge( unrefined_d ) );
-            return elem_level_atlas.parametricLengths( topology::Cell( unrefined_d, mMap->dim() ) )( len_idx );
-        }();
+        const TPParametricAtlas& dart_level_atlas = *mRefinementLevels.at( v_level );
 
         // 2. iterate phi(-1) from v.dart() while the answer edge is along the same parametric boundary. Add up the edge lengths of the darts in this iteration.
         double accum_pre_length = 0;
         bool is_zero = true;
-        const auto [v_level, level_local_v_dart] = mMap->dartRanges().toLocalDart( v.dart() );
-        const BaryCoordIsZeroVec bdry = parentDomainBoundary( *mRefinementLevels.at( v_level ), topology::Edge( level_local_v_dart ) );
+        const BaryCoordIsZeroVec bdry = parentDomainBoundary( dart_level_atlas, topology::Edge( level_local_v_dart ) );
+        const double unrefined_len = [&]() {
+            const size_t len_idx = parametricLengthIndexAlongEdge( dart_level_atlas, topology::Edge( level_local_v_dart ) );
+            return elem_level_atlas.parametricLengths( topology::Cell( unrefined_d, mMap->dim() ) )( len_idx );
+        }();
 
         topology::Dart d = phi( *mMap, -1, v.dart() ).value();
         while ( d != v.dart() )
@@ -142,6 +143,6 @@ Vector6dMax HierarchicalTPParametricAtlas::parametricLengths( const topology::Ce
 {
     if( c.dim() != mMap->dim() )
         throw std::invalid_argument( "HierarchicalTPParametricAtlas::parametricLengths only works for elements." );
-    const auto [ level, level_d ] = mMap->unrefinedAncestorDart( c.dart() );
+    const auto [ level, level_d ] = mMap->unrefinedAncestorDartOfCell( c );
     return mRefinementLevels.at( level )->parametricLengths( topology::Cell( level_d, c.dim() ) );
 }

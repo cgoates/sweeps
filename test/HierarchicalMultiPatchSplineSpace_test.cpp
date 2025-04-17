@@ -114,7 +114,7 @@ TEST_CASE( "Simple 3d multi patch hierarchical spline space" )
     CHECK( ss.numFunctions() == 78 );
 
     iterateCellsWhile( ss.basisComplex().parametricAtlas().cmap(), 3, [&]( const Volume& v ) {
-        const auto [level, dart] = ss.basisComplex().parametricAtlas().cmap().unrefinedAncestorDart( v.dart() );
+        const auto [level, dart] = ss.basisComplex().parametricAtlas().cmap().unrefinedAncestorDartOfCell( v );
         if( level == 0 ) CHECK( ss.connectivity( v ).size() == 27 );
         else CHECK( ss.connectivity( v ).size() >= 27 );
         CHECK( util::equals( ss.extractionOperator( v ).colwise().sum().transpose(), Eigen::VectorXd::Ones( 27 ), 1e-9 ) );

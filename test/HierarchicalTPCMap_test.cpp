@@ -38,11 +38,11 @@ TEST_CASE( "Simple hierarchical cmap 1" )
 
     CHECK( n_darts == 42 );
 
-    CHECK( cmap.unrefinedAncestorDart( Dart( 22 ) ) == cmap.dartRanges().toLocalDart( Dart( 22 ) ) );
-    CHECK( cmap.unrefinedAncestorDart( Dart( 5 ) ) == cmap.dartRanges().toLocalDart( Dart( 5 ) ) );
-    CHECK( cmap.unrefinedAncestorDart( Dart( 44 ) ).second.id() == 4 );
-    CHECK( cmap.unrefinedAncestorDart( Dart( 48 ) ).second.id() == 4 );
-    CHECK( cmap.unrefinedAncestorDart( Dart( 52 ) ).second.id() == 4 );
+    CHECK( cmap.unrefinedAncestorDartOfCell( Face( 22 ) ) == cmap.dartRanges().toLocalDart( Dart( 22 ) ) );
+    CHECK( cmap.unrefinedAncestorDartOfCell( Face( 5 ) ) == cmap.dartRanges().toLocalDart( Dart( 5 ) ) );
+    CHECK( cmap.unrefinedAncestorDartOfCell( Face( 44 ) ).second.id() == 4 );
+    CHECK( cmap.unrefinedAncestorDartOfCell( Face( 48 ) ).second.id() == 4 );
+    CHECK( cmap.unrefinedAncestorDartOfCell( Face( 52 ) ).second.id() == 4 );
 }
 
 TEST_CASE( "Simple hierarchical cmap 2" )
@@ -79,12 +79,12 @@ TEST_CASE( "Simple hierarchical cmap 2" )
 
     CHECK( n_darts == 36 );
 
-    CHECK( cmap.unrefinedAncestorDart( Dart( 18 ) ) == cmap.dartRanges().toLocalDart( Dart( 18 ) ) );
-    CHECK( cmap.unrefinedAncestorDart( Dart( 6 ) ) == cmap.dartRanges().toLocalDart( Dart( 6 ) ) );
-    CHECK( cmap.unrefinedAncestorDart( Dart( 96 ) ) == cmap.dartRanges().toLocalDart( Dart( 96 ) ) );
-    CHECK( cmap.unrefinedAncestorDart( Dart( 24 ) ).second.id() == 4 );
-    CHECK( cmap.unrefinedAncestorDart( Dart( 112 ) ).second.id() == 4 );
-    CHECK( cmap.unrefinedAncestorDart( Dart( 66 ) ).second.id() == 6 );
+    CHECK( cmap.unrefinedAncestorDartOfCell( Face( 18 ) ) == cmap.dartRanges().toLocalDart( Dart( 18 ) ) );
+    CHECK( cmap.unrefinedAncestorDartOfCell( Face( 6 ) ) == cmap.dartRanges().toLocalDart( Dart( 6 ) ) );
+    CHECK( cmap.unrefinedAncestorDartOfCell( Face( 96 ) ) == cmap.dartRanges().toLocalDart( Dart( 96 ) ) );
+    CHECK( cmap.unrefinedAncestorDartOfCell( Face( 24 ) ).second.id() == 4 );
+    CHECK( cmap.unrefinedAncestorDartOfCell( Face( 112 ) ).second.id() == 4 );
+    CHECK( cmap.unrefinedAncestorDartOfCell( Face( 66 ) ).second.id() == 6 );
 }
 
 TEST_CASE( "Simplest 3d hierarchical cmap" )

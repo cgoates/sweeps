@@ -30,7 +30,7 @@ namespace topology
 
         virtual std::optional<size_t> cellCount( const uint ) const override;
 
-        std::pair<size_t, Dart> unrefinedAncestorDart( const Dart& leaf_d ) const;
+        std::pair<size_t, Dart> unrefinedAncestorDartOfCell( const Cell& leaf_c ) const;
 
         const std::vector<std::shared_ptr<const MultiPatchCombinatorialMap>>& refinementLevels() const { return mRefinementLevels; }
 

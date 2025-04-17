@@ -46,20 +46,20 @@ TEST_CASE( "Simple hierarchical cmap 1" )
 
     CHECK( n_darts == 18 * 4 + 2 * 8 );
 
-    CHECK( cmap.unrefinedAncestorDart( Dart( 16 ) ) == cmap.constituents().at(0)->dartRanges().toLocalDart( Dart( 16 ) ) );
-    CHECK( cmap.unrefinedAncestorDart( Dart( 6 ) ) == cmap.constituents().at(0)->dartRanges().toLocalDart( Dart( 6 ) ) );
-    CHECK( cmap.unrefinedAncestorDart( Dart( 44 ) ).second.id() == 4 );
-    CHECK( cmap.unrefinedAncestorDart( Dart( 48 ) ).second.id() == 4 );
-    CHECK( cmap.unrefinedAncestorDart( Dart( 52 ) ).second.id() == 4 );
-    CHECK( cmap.unrefinedAncestorDart( Dart( 53 ) ).second.id() == 5 );
-    CHECK( cmap.unrefinedAncestorDart( Dart( 65 ) ).second.id() == 5 );
-    CHECK( cmap.unrefinedAncestorDart( Dart( 77 ) ).second.id() == 5 );
+    CHECK( cmap.unrefinedAncestorDartOfCell( Face( Dart( 16 ) ) ) == cmap.constituents().at(0)->dartRanges().toLocalDart( Dart( 16 ) ) );
+    CHECK( cmap.unrefinedAncestorDartOfCell( Face( Dart( 6 ) ) ) == cmap.constituents().at(0)->dartRanges().toLocalDart( Dart( 6 ) ) );
+    CHECK( cmap.unrefinedAncestorDartOfCell( Face( Dart( 44 ) ) ).second.id() == 4 );
+    CHECK( cmap.unrefinedAncestorDartOfCell( Face( Dart( 48 ) ) ).second.id() == 4 );
+    CHECK( cmap.unrefinedAncestorDartOfCell( Face( Dart( 52 ) ) ).second.id() == 4 );
+    CHECK( cmap.unrefinedAncestorDartOfCell( Face( Dart( 53 ) ) ).second.id() == 5 );
+    CHECK( cmap.unrefinedAncestorDartOfCell( Face( Dart( 65 ) ) ).second.id() == 5 );
+    CHECK( cmap.unrefinedAncestorDartOfCell( Face( Dart( 77 ) ) ).second.id() == 5 );
 
-    CHECK( cmap.unrefinedAncestorDart( Dart( 85 ) ).second == cmap.refinementLevels().at( 0 )->toGlobalDart( 1, Dart( 5 ) ) );
-    CHECK( cmap.unrefinedAncestorDart( Dart( 88 ) ).second == cmap.refinementLevels().at( 1 )->toGlobalDart( 1, Dart( 0 ) ) );
-    CHECK( cmap.unrefinedAncestorDart( Dart( 100 ) ).second == cmap.refinementLevels().at( 0 )->toGlobalDart( 1, Dart( 4 ) ) );
-    CHECK( cmap.unrefinedAncestorDart( Dart( 104 ) ).second == cmap.refinementLevels().at( 0 )->toGlobalDart( 1, Dart( 4 ) ) );
-    CHECK( cmap.unrefinedAncestorDart( Dart( 108 ) ).second == cmap.refinementLevels().at( 0 )->toGlobalDart( 1, Dart( 4 ) ) );
+    CHECK( cmap.unrefinedAncestorDartOfCell( Face( Dart( 85 ) ) ).second == cmap.refinementLevels().at( 0 )->toGlobalDart( 1, Dart( 5 ) ) );
+    CHECK( cmap.unrefinedAncestorDartOfCell( Face( Dart( 88 ) ) ).second == cmap.refinementLevels().at( 1 )->toGlobalDart( 1, Dart( 0 ) ) );
+    CHECK( cmap.unrefinedAncestorDartOfCell( Face( Dart( 100 ) ) ).second == cmap.refinementLevels().at( 0 )->toGlobalDart( 1, Dart( 4 ) ) );
+    CHECK( cmap.unrefinedAncestorDartOfCell( Face( Dart( 104 ) ) ).second == cmap.refinementLevels().at( 0 )->toGlobalDart( 1, Dart( 4 ) ) );
+    CHECK( cmap.unrefinedAncestorDartOfCell( Face( Dart( 108 ) ) ).second == cmap.refinementLevels().at( 0 )->toGlobalDart( 1, Dart( 4 ) ) );
 }
 
 TEST_CASE( "3d multipatch hierarchical cmap bug" )

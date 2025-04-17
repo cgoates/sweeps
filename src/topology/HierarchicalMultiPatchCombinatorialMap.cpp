@@ -303,10 +303,10 @@ std::optional<size_t> HierarchicalMultiPatchCombinatorialMap::cellCount( const u
     else return std::nullopt;
 }
 
-std::pair<size_t, Dart> HierarchicalMultiPatchCombinatorialMap::unrefinedAncestorDart( const Dart& leaf_d ) const
+std::pair<size_t, Dart> HierarchicalMultiPatchCombinatorialMap::unrefinedAncestorDartOfCell( const Cell& leaf_c ) const
 {
-    const auto [patch_ii, local_d] = mRanges.toLocalDart( leaf_d );
-    const auto [level, level_d] = mConstituents.at( patch_ii )->unrefinedAncestorDart( local_d );
+    const auto [patch_ii, local_d] = mRanges.toLocalDart( leaf_c.dart() );
+    const auto [level, level_d] = mConstituents.at( patch_ii )->unrefinedAncestorDartOfCell( Cell( local_d, leaf_c.dim() ) );
     return { level, mRefinementLevels.at( level )->toGlobalDart( patch_ii, level_d ) };
 }
 

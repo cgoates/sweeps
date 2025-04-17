@@ -20,6 +20,6 @@ ParentBasis HierarchicalTPBasisComplex::parentBasis( const topology::Cell& c ) c
     if( c.dim() != mAtlas->cmap().dim() )
         throw std::invalid_argument( "HierarchicalTPBasisComplex::parentBasis only works for elements." );
 
-    const auto [ level, level_d ] = mAtlas->cmap().unrefinedAncestorDart( c.dart() );
+    const auto [ level, level_d ] = mAtlas->cmap().unrefinedAncestorDartOfCell( c );
     return mRefinementLevels.at( level )->parentBasis( topology::Cell( level_d, c.dim() ) );
 }

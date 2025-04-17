@@ -343,10 +343,11 @@ std::optional<size_t> HierarchicalTPCombinatorialMap::cellCount( const uint ) co
     return std::nullopt; // TODO: Do more here for better performance?
 }
 
-std::pair<size_t, Dart> HierarchicalTPCombinatorialMap::unrefinedAncestorDart( const Dart& leaf_d ) const
+std::pair<size_t, Dart> HierarchicalTPCombinatorialMap::unrefinedAncestorDartOfCell( const Cell& leaf_c ) const
 {
+    const Dart& leaf_d = leaf_c.dart();
     if( not mLeafDarts.at( leaf_d.id() ) )
-        throw std::runtime_error( "unrefinedAncestorDart requires a leaf dart as input" );
+        throw std::runtime_error( "unrefinedAncestorDartOfCell requires a leaf dart as input" );
 
     if( mUnrefinedDarts.at( leaf_d.id() ) ) return mRanges.toLocalDart( leaf_d );
 
@@ -363,10 +364,7 @@ std::pair<size_t, Dart> HierarchicalTPCombinatorialMap::unrefinedAncestorDart( c
         } );
     };
 
-    if( dim() == 2 )
-        iterateDartsOfRestrictedCell( *this, topology::Cell( leaf_d, dim() - 1 ), dim(), find_ancestor );
-    else if( dim() == 3 )
-        iterateDartsOfCell( *this, topology::Cell( leaf_d, dim() ), find_ancestor );
+    iterateDartsOfRestrictedCell( *this, leaf_c, dim(), find_ancestor );
 
     if( not global_ancestor_d ) throw std::runtime_error( "Unable to find an unrefined ancestor dart" );
 
@@ -605,7 +603,7 @@ namespace topology
     {
         std::vector<std::vector<Cell>> out( cmap.numLevels(), std::vector<Cell>() );
         iterateCellsWhile( cmap, cmap.dim(), [&]( const Cell& c ) {
-            const auto [level, dart] = cmap.unrefinedAncestorDart( c.dart() );
+            const auto [level, dart] = cmap.unrefinedAncestorDartOfCell( c );
             out.at( level ).push_back( Cell( dart, cmap.dim() ) );
             return true;
         } );
