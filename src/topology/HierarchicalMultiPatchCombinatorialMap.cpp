@@ -307,7 +307,7 @@ std::pair<size_t, Dart> HierarchicalMultiPatchCombinatorialMap::unrefinedAncesto
 {
     const auto [patch_ii, local_d] = mRanges.toLocalDart( leaf_d );
     const auto [level, level_d] = mConstituents.at( patch_ii )->unrefinedAncestorDart( local_d );
-    return { level, mRefinementLevels.at( level )->toGlobalDart( patch_ii, level_d ) }; // TODO: CHECK ME
+    return { level, mRefinementLevels.at( level )->toGlobalDart( patch_ii, level_d ) };
 }
 
 bool HierarchicalMultiPatchCombinatorialMap::iterateChildren( const Cell& local_cell,

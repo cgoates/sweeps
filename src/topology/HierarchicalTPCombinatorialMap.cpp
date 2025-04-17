@@ -352,8 +352,8 @@ std::pair<size_t, Dart> HierarchicalTPCombinatorialMap::unrefinedAncestorDart( c
 
     std::optional<Dart> global_ancestor_d;
 
-    iterateDartsOfRestrictedCell( *this, topology::Cell( leaf_d, dim() - 1 ), dim(), [&]( const Dart& leaf_face ) {
-        return iterateAncestors( leaf_face, [&]( const Dart& ancestor_global_d ) {
+    const auto find_ancestor = [&]( const Dart& leaf_dart ) {
+        return iterateAncestors( leaf_dart, [&]( const Dart& ancestor_global_d ) {
             if( mUnrefinedDarts.at( ancestor_global_d.id() ) )
             {
                 global_ancestor_d.emplace( ancestor_global_d );
@@ -361,7 +361,12 @@ std::pair<size_t, Dart> HierarchicalTPCombinatorialMap::unrefinedAncestorDart( c
             }
             return true;
         } );
-    } );
+    };
+
+    if( dim() == 2 )
+        iterateDartsOfRestrictedCell( *this, topology::Cell( leaf_d, dim() - 1 ), dim(), find_ancestor );
+    else if( dim() == 3 )
+        iterateDartsOfCell( *this, topology::Cell( leaf_d, dim() ), find_ancestor );
 
     if( not global_ancestor_d ) throw std::runtime_error( "Unable to find an unrefined ancestor dart" );
 
