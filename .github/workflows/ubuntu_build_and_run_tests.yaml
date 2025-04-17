@@ -19,8 +19,8 @@ jobs:
       - name: Setup Mold
         uses: rui314/setup-mold@v1
         with:
-          version: 2.34.1
-          make_default: true
+          mold-version: 2.34.1
+          make-default: true
       - name: Use cmake
         run: |
           mkdir build
