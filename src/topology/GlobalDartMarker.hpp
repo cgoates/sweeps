@@ -1,7 +1,7 @@
 #pragma once
 #include <CombinatorialMap.hpp>
 #include <vector>
-#include <SmallVector.hpp>
+#include <GrowableVector.hpp>
 
 namespace topology
 {
@@ -29,9 +29,6 @@ namespace topology
         bool isMarked( const Dart& d ) const { return std::find( mMarkedDarts.begin(), mMarkedDarts.end(), d ) != mMarkedDarts.end(); }
 
         private:
-        // FIXME: I need a growable vector that uses a small stack allocation, but allocates on the heap if needed.
-        //  I keep having to up the number on this, but that removes some of the benefit for the majority of the cases
-        //  where it doesn't need as large of a vector.
-        SmallVector<Dart, 1200> mMarkedDarts;
+        GrowableVector<Dart, 300> mMarkedDarts;
     };
 } // namespace topology

@@ -34,7 +34,7 @@ namespace topology
         const int cell_dim = c.dim();
         const int topo_dim = map.dim();
 
-        SmallQueue<Dart, 300> dart_queue;
+        GrowableQueue<Dart, 300> dart_queue;
         dart_queue.push( c.dart() );
         m.mark( c.dart() );
 
