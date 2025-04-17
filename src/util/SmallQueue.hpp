@@ -1,4 +1,6 @@
 #include <SmallVector.hpp>
+#include <queue>
+#include <deque>
 
 template<typename T, size_t MAX_SIZE>
 class SmallQueue
