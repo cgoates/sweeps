@@ -117,6 +117,35 @@ namespace reparam
         return weights;
     }
 
+    double cotanEdgeWeights2d( const topology::CombinatorialMap& map, const VertexPositionsFunc& vertex_position, const topology::Edge& e )
+    {
+        const Triangle<3> face = triangleOfFace<3>( map, vertex_position, topology::Face( e.dart() ) );
+        const Eigen::Vector3d v4 = vertex_position( topology::Vertex( phi( map, {2, -1}, e.dart() ).value() ) );
+        const Eigen::Vector3d e1 = face.v1 - face.v3;
+        const Eigen::Vector3d e2 = face.v2 - face.v3;
+        const Eigen::Vector3d e3 = face.v1 - v4;
+        const Eigen::Vector3d e4 = face.v2 - v4;
+        const double cos1 = e1.dot( e2 ) / ( e1.norm() * e2.norm() );
+        const double cos2 = e4.dot( e3 ) / ( e4.norm() * e3.norm() );
+
+        // Trying half angles to guarantee positive weights, but it didn't work:
+        // return std::sqrt( (1 + cos1 ) / (1 - cos1) ) + std::sqrt( (1 + cos2 ) / ( 1 - cos2 ) );
+        return cos1 / std::sqrt( 1 - cos1 * cos1 ) + cos2 / std::sqrt( 1 - cos2 * cos2 );
+    }
+
+    double meanValueEdgeWeights2d( const topology::CombinatorialMap& map, const VertexPositionsFunc& vertex_position, const topology::Edge& e )
+    {
+        const Triangle<3> face = triangleOfFace<3>( map, vertex_position, topology::Face( e.dart() ) );
+        const Eigen::Vector3d v4 = vertex_position( topology::Vertex( phi( map, {2, -1}, e.dart() ).value() ) );
+        const Eigen::Vector3d e1 = ( face.v2 - face.v1 ).normalized();
+        const Eigen::Vector3d e2 = ( face.v3 - face.v1 ).normalized();
+        const Eigen::Vector3d e3 = ( v4 - face.v1 ).normalized();
+        const double cos1 = e1.dot( e2 );
+        const double cos2 = e1.dot( e3 );
+        // See section 6.3 of "Surface Parameterization: a Tutorial and Survey", Floater, et al.
+        return ( std::sqrt( ( 1 - cos1 ) / ( 1 + cos1 ) ) + std::sqrt( ( 1 - cos2 ) / ( 1 + cos2 ) ) ) / ( face.v2 - face.v1 ).norm();
+    }
+
     std::vector<double> edgeWeightsLaplace3d( const topology::CombinatorialMap& map,
                                              const VertexPositionsFunc& vertex_position,
                                              const std::vector<Normal>& normals,
@@ -137,6 +166,20 @@ namespace reparam
         }
     }
 
+    double edgeWeightLaplace2d( const topology::CombinatorialMap& map,
+                                const VertexPositionsFunc& vertex_position,
+                                const Laplace2dEdgeWeights& edge_weights,
+                                const topology::Edge& e )
+    {
+        switch( edge_weights )
+        {
+            case Laplace2dEdgeWeights::Cotangent: return cotanEdgeWeights2d( map, vertex_position, e );
+            case Laplace2dEdgeWeights::InverseLength: return 1.0 / edgeLength( map, vertex_position, e );
+            case Laplace2dEdgeWeights::MeanValue: return meanValueEdgeWeights2d( map, vertex_position, phi( map, 2, e.dart() ).value() );
+            case Laplace2dEdgeWeights::Uniform: return 1.0;
+        }
+    }
+
     Eigen::SparseVector<double>
         laplaceOperatorRowSparse( const topology::CombinatorialMap& map,
                                   const topology::Vertex& v1,
@@ -149,17 +192,18 @@ namespace reparam
         const VertexId vid_ref = vertex_ids( v1 );
         t.start( 7 );
         iterateAdjacentCells( map, v1, 1, [&]( const topology::Edge& e ) {
-            const double edge_weight = edge_weights( e );
             const VertexId vid1 = vertex_ids( topology::Vertex( e.dart() ) );
             const VertexId vid2 = vertex_ids( topology::Vertex( phi( map, 1, e.dart() ).value() ) );
 
             if( vid1 == vid_ref )
             {
+                const double edge_weight = edge_weights( e );
                 out.coeffRef( vid1.id() ) -= edge_weight;
                 out.coeffRef( vid2.id() ) += edge_weight;
             }
             else
             {
+                const double edge_weight = edge_weights( topology::Edge( phi( map, 2, e.dart() ).value() ) );
                 out.coeffRef( vid2.id() ) -= edge_weight;
                 out.coeffRef( vid1.id() ) += edge_weight;
             }
@@ -217,12 +261,12 @@ namespace reparam
             return constraints( v ).transform( [&]( const Eigen::Vector2d& vec ) { return Eigen::VectorXd( vec ); } );
         };
 
-        const auto edge_weights = [&]() -> std::function<double( const topology::Edge& )> {
+        const auto edge_weights = [&]( const topology::Edge& e ) -> double {
             if( shape_preserving )
-                return [&]( const topology::Edge& e ) { return 1.0 / edgeLength( map, vert_positions, e ); };
+                return edgeWeightLaplace2d( map, vert_positions, Laplace2dEdgeWeights::InverseLength, e );
             else
-                return []( const auto& ) { return 1.0; };
-        }();
+                return edgeWeightLaplace2d( map, vert_positions, Laplace2dEdgeWeights::Uniform, e );
+        };
 
         return solveLaplaceSparse( map, edge_weights, constraints_wrapper, n_bdry_verts, map.dim() );
     }
@@ -322,7 +366,8 @@ namespace reparam
             }
             else
             {
-                Eigen::SimplicialLDLT<SparseMatrixXd> solver( L_II );
+                // Eigen::SimplicialLDLT<SparseMatrixXd> solver( L_II );
+                Eigen::SparseQR<SparseMatrixXd, Eigen::COLAMDOrdering<int>> solver( L_II );
                 return solver.solve( rhs );
             }
         }();

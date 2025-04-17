@@ -25,6 +25,14 @@ namespace reparam
         Uniform
     };
 
+    enum class Laplace2dEdgeWeights
+    {
+        Cotangent,
+        InverseLength,
+        MeanValue,
+        Uniform
+    };
+
     Eigen::VectorXd sweepEmbedding( const topology::TetMeshCombinatorialMap& map,
                                     const std::vector<bool>& zero_bcs,
                                     const std::vector<bool>& one_bcs,
