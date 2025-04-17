@@ -42,10 +42,15 @@ ParentPoint HierarchicalTPParametricAtlas::parentPoint( const topology::Vertex& 
             if( source_primal.get() == nullptr ) throw std::runtime_error( "HierarchicalTPParametricAtlas only supports tensor products of one dimensional parametric atlases" );
             const auto unflat2 = unflattenCell( *source_primal, unflat1.first.value() );
             
-            return { unflat2.first, unflat1.second, unflat2.second };
+            return { unflat2.first, unflat2.second, unflat1.second };
         }();
 
-        const size_t ratio = mMap->refinementRatios().at( dart_level - 1 );
+        const size_t ratio = [&](){
+            size_t out = 1;
+            for( size_t level_ii = elem_level; level_ii < dart_level; level_ii++ )
+                out *= mMap->refinementRatios().at( level_ii );
+            return out;
+        }();
         const Vector6dMax unrefined_lengths = mRefinementLevels.at( elem_level )->parametricLengths( topology::Cell( unrefined_d, mMap->dim() ) );
 
         Eigen::Vector3d pt = Eigen::Vector3d::Zero();
@@ -135,6 +140,8 @@ ParentPoint HierarchicalTPParametricAtlas::parentPoint( const topology::Vertex& 
 
 Vector6dMax HierarchicalTPParametricAtlas::parametricLengths( const topology::Cell& c ) const
 {
+    if( c.dim() != mMap->dim() )
+        throw std::invalid_argument( "HierarchicalTPParametricAtlas::parametricLengths only works for elements." );
     const auto [ level, level_d ] = mMap->unrefinedAncestorDart( c.dart() );
     return mRefinementLevels.at( level )->parametricLengths( topology::Cell( level_d, c.dim() ) );
 }
