@@ -363,13 +363,13 @@ namespace reparam
             return field_pt;
         };
 
-        Eigen::MatrixXd fit_cpts( cellCount( ss.basisComplex().parametricAtlas().cmap(), 0 ), 3 );
+        Eigen::MatrixXd fit_cpts = Eigen::MatrixXd::Zero( cellCount( ss.basisComplex().parametricAtlas().cmap(), 0 ), 3 );
 
         iterateCellsWhile( ss.basisComplex().parametricAtlas().cmap(), 0, [&]( const topology::Vertex& v ) {
             const auto conn = ss.connectivity( v );
             if( conn.size() != 1 )
             {
-                throw std::runtime_error( "Multiple or no functions on a vertex!" );
+                return true;
             }
 
             fit_cpts.row( conn.front() ) = sample_at( v );
