@@ -142,10 +142,17 @@ Eigen::MatrixXd HierarchicalTPSplineSpace::extractionOperator( const topology::C
 
 std::vector<FunctionId> HierarchicalTPSplineSpace::connectivity( const topology::Cell& c ) const
 {
-    if( c.dim() != mBasisComplex->parametricAtlas().cmap().dim() )
-        throw std::invalid_argument( "HierarchicalTPSplineSpace::connectivity only works for elements." );
+    const auto [ level, level_d ] = [&]() {
+        if( c.dim() == mBasisComplex->parametricAtlas().cmap().dim() )
+        {
+            return mBasisComplex->parametricAtlas().cmap().unrefinedAncestorDartOfCell( c );
+        }
+        else
+        {
+            return mBasisComplex->parametricAtlas().cmap().dartRanges().toLocalDart( c.dart() );
+        }
+    }();
 
-    const auto [ level, level_d ] = mBasisComplex->parametricAtlas().cmap().unrefinedAncestorDartOfCell( c );
     const std::vector<FunctionId> level_conn = mRefinementLevels.at( level )->connectivity( topology::Cell( level_d, c.dim() ) );
     
     std::set<FunctionId> nonzero_rows;
