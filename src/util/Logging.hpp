@@ -1,6 +1,6 @@
 #pragma once
 #include <iostream>
-#include <Eigen/Dense>
+#include <Eigen/Core>
 #include <Eigen/Sparse>
 #include <set>
 #include <vector>

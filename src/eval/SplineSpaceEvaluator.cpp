@@ -2,7 +2,7 @@
 #include <BasisComplex.hpp>
 #include <ParentBasis.hpp>
 #include <ParametricAtlas.hpp>
-#include <CombinatorialMap.hpp>
+#include <Eigen/Dense>
 
 namespace eval
 {

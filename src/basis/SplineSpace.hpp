@@ -1,5 +1,6 @@
 #pragma once
 #include <FunctionId.hpp>
+#include <Eigen/Core>
 
 namespace topology
 {

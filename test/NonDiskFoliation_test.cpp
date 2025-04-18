@@ -29,6 +29,8 @@
 #include <fstream>
 #include <sstream>
 
+#include <Eigen/Dense>
+
 std::function<bool( const topology::Vertex& )> testEqualVertices( const topology::IndexingFunc& vert_ids,
                                                                   const topology::Vertex& end_v )
 {

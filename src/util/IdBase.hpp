@@ -1,5 +1,11 @@
 #pragma once
-#include <Eigen/Dense>
+#include <cstddef>
+#include <ostream>
+
+namespace Eigen
+{
+    using Index = std::ptrdiff_t;
+}
 
 namespace util
 {

@@ -2,7 +2,7 @@
 #include <vector>
 #include <set>
 #include <numbers>
-#include <Eigen/Dense>
+#include <Eigen/Core>
 #include <SimplicialComplex.hpp>
 #include <SweepInput.hpp>
 #include <AbaqusInput.hpp>

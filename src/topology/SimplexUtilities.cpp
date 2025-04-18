@@ -7,6 +7,7 @@
 #include <CombinatorialMapMethods.hpp>
 #include <SweepInput.hpp>
 #include <Logging.hpp>
+#include <Eigen/Dense>
 
 Eigen::Vector3d triangleNormal( const Triangle<3>& tri )
 {

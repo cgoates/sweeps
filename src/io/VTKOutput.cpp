@@ -14,6 +14,7 @@
 #include <unsupported/Eigen/KroneckerProduct>
 #include <iostream>
 #include <optional>
+#include <Eigen/Dense>
 
 namespace io
 {
