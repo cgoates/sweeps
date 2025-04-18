@@ -1,4 +1,5 @@
 #include <HierarchicalMultiPatchSplineSpace.hpp>
+#include <set>
 
 using namespace basis;
 

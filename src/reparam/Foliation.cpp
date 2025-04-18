@@ -5,6 +5,7 @@
 #include <CombinatorialMapBoundary.hpp>
 #include <LevelSetCMap.hpp>
 #include <Logging.hpp>
+#include <optional>
 
 #include <TetMeshCombinatorialMap.hpp>
 #include <CombinatorialMapRestriction.hpp>

@@ -3,6 +3,7 @@
 #include <Eigen/Dense>
 #include <numeric>
 #include <CustomEigen.hpp>
+#include <span>
 
 namespace param
 {

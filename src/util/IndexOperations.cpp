@@ -1,5 +1,6 @@
 #include <IndexOperations.hpp>
 #include <numeric>
+#include <Logging.hpp>
 
 namespace util
 {

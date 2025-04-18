@@ -3,6 +3,7 @@
 #include <IndexOperations.hpp>
 #include <ranges>
 #include <GlobalCellMarker.hpp>
+#include <iostream>
 
 namespace basis
 {

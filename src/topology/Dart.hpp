@@ -1,7 +1,6 @@
 #pragma once
 #include <cstdint>
-#include <string> // For hash
-#include <iostream>
+#include <iosfwd>
 
 namespace topology
 {
@@ -27,12 +26,3 @@ namespace topology
 
     std::ostream& operator<<( std::ostream& o, const topology::Dart& d );
 }; // namespace topology
-
-template <>
-struct std::hash<topology::Dart>
-{
-    std::size_t operator()(const topology::Dart& d) const
-    {
-        return hash<topology::Dart::IndexType>()( d.id() );
-    }
-};

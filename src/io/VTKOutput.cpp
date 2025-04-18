@@ -12,6 +12,8 @@
 #include <IndexOperations.hpp>
 #include <SimplexUtilities.hpp>
 #include <unsupported/Eigen/KroneckerProduct>
+#include <iostream>
+#include <optional>
 
 namespace io
 {
