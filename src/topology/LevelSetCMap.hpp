@@ -3,7 +3,7 @@
 #include <GlobalCellMarker.hpp>
 #include <CombinatorialMapMethods.hpp>
 #include <map>
-#include <Eigen/Dense>
+#include <Eigen/Core>
 
 namespace topology
 {

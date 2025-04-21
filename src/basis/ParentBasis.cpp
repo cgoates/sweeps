@@ -1,5 +1,6 @@
 #include <ParentBasis.hpp>
 #include <ParentDomain.hpp>
+#include <Logging.hpp>
 
 namespace basis
 {

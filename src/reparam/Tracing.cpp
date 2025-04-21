@@ -9,6 +9,7 @@
 #include <SweepInput.hpp>
 #include <Logging.hpp>
 #include <GlobalCellMarker.hpp>
+#include <Eigen/Dense>
 
 namespace reparam
 {

@@ -1,4 +1,5 @@
 #include <Dart.hpp>
+#include <iostream>
 
 namespace topology{
     std::ostream& operator<<( std::ostream& o, const topology::Dart& d )

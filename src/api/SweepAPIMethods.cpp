@@ -11,6 +11,7 @@
 #include <TPSplineSpace.hpp>
 #include <MultiPatchSplineSpace.hpp>
 #include <SplineSpaceEvaluator.hpp>
+#include <iostream>
 
 namespace api
 {

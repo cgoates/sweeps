@@ -1,6 +1,6 @@
 #pragma once
 #include <SmallVector.hpp>
-#include <Eigen/Dense>
+#include <Eigen/Core>
 #include <functional>
 #include <variant>
 

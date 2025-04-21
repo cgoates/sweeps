@@ -1,6 +1,7 @@
 #include <ParentDomain.hpp>
 #include <ParentPoint.hpp>
 #include <CommonUtils.hpp>
+#include <Logging.hpp>
 
 namespace param
 {

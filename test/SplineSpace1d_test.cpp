@@ -8,6 +8,7 @@
 #include <Logging.hpp>
 #include <CommonUtils.hpp>
 #include <TPSplineSpace.hpp>
+#include <Eigen/Dense>
 
 using namespace basis;
 using namespace param;

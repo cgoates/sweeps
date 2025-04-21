@@ -26,11 +26,7 @@ namespace topology
     {
         public:
         Vertex( const Dart& d ) : Cell( d, 0 ) {}
-        Vertex( const Cell& c ) : Cell( c )
-        {
-            if( c.dim() != 0 )
-                throw std::runtime_error( "Cannot convert cell with dimension " + std::to_string( c.dim() ) + " to Vertex" );
-        }
+        Vertex( const Cell& c );
         Vertex() {}
     };
 
@@ -38,11 +34,7 @@ namespace topology
     {
         public:
         Edge( const Dart& d ) : Cell( d, 1 ) {}
-        Edge( const Cell& c ) : Cell( c )
-        {
-            if( c.dim() != 1 )
-                throw std::runtime_error( "Cannot convert cell with dimension " + std::to_string( c.dim() ) + " to Edge" );
-        }
+        Edge( const Cell& c );
         Edge() {}
     };
 
@@ -50,11 +42,7 @@ namespace topology
     {
         public:
         Face( const Dart& d ) : Cell( d, 2 ) {}
-        Face( const Cell& c ) : Cell( c )
-        {
-            if( c.dim() != 2 )
-                throw std::runtime_error( "Cannot convert cell with dimension " + std::to_string( c.dim() ) + " to Face" );
-        }
+        Face( const Cell& c );
         Face() {}
     };
 
@@ -62,11 +50,7 @@ namespace topology
     {
         public:
         Volume( const Dart& d ) : Cell( d, 3 ) {}
-        Volume( const Cell& c ) : Cell( c )
-        {
-            if( c.dim() != 3 )
-                throw std::runtime_error( "Cannot convert cell with dimension " + std::to_string( c.dim() ) + " to Volume" );
-        }
+        Volume( const Cell& c );
         Volume() {}
     };
 

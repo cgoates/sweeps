@@ -1,5 +1,5 @@
 #pragma once
-#include <Eigen/Dense>
+#include <Eigen/Core>
 #include <set>
 #include <VertexPositionsFunc.hpp>
 #include <optional>

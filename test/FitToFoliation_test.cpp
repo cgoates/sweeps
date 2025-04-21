@@ -22,6 +22,7 @@
 #include <CombinatorialMapMethods.hpp>
 #include <ranges>
 #include <Foliation.hpp>
+#include <Eigen/Dense>
 
 using util::linspace;
 using util::concatenate;

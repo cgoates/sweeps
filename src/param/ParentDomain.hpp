@@ -1,8 +1,9 @@
 #pragma once
 #include <SmallVector.hpp>
-#include <Eigen/Dense>
+#include <Eigen/Core>
 #include <numeric>
 #include <CustomEigen.hpp>
+#include <span>
 
 namespace param
 {

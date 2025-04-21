@@ -1,6 +1,7 @@
 #include <CriticalPoints.hpp>
 #include <CombinatorialMapMethods.hpp>
 #include <GlobalCellMarker.hpp>
+#include <Logging.hpp>
 
 using namespace topology;
 

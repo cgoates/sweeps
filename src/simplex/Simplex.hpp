@@ -1,7 +1,7 @@
 #pragma once
 #include <array>
 #include <ostream>
-#include <Eigen/Dense>
+#include <Eigen/Core>
 #include <SmallVector.hpp>
 
 class VertexId

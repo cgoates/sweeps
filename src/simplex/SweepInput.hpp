@@ -2,7 +2,6 @@
 #include <vector>
 #include <set>
 #include <numbers>
-#include <Eigen/Dense>
 #include <SimplicialComplex.hpp>
 
 struct SweepInput

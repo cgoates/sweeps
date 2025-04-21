@@ -1,5 +1,5 @@
 #pragma once
-#include <Eigen/Dense>
+#include <Eigen/Core>
 
 using Vector1d = Eigen::Matrix<double, 1, 1>;
 using Vector6d = Eigen::Matrix<double, 6, 1>;
