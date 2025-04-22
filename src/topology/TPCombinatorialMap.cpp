@@ -315,6 +315,23 @@ namespace topology
         return out;
     }
 
+    TPCombinatorialMap tensorProductCMapFromComponents( const SmallVector<std::shared_ptr<const CombinatorialMap1d>, 3>& components )
+    {
+        if( components.size() == 2 )
+        {
+            return TPCombinatorialMap( components.at( 0 ), components.at( 1 ) );
+        }
+        else if( components.size() == 3 )
+        {
+            const auto source = std::make_shared<const TPCombinatorialMap>( components.at( 0 ), components.at( 1 ) );
+            return TPCombinatorialMap( source, components.at( 2 ) );
+        }
+        else
+        {
+            throw std::invalid_argument( "TPCombinatorialMap must have 2 or 3 components" );
+        }
+    }
+
     Dart flattenFull( const TPCombinatorialMap& cmap, const FullyUnflattenedDart& unflat_darts )
     {
         if( cmap.dim() == 3 )
