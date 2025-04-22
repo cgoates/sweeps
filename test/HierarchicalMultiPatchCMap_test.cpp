@@ -124,4 +124,85 @@ TEST_CASE( "3d multipatch hierarchical cmap bug" )
     CHECK( n_darts == 9 * 24 + 56 + 3 * 40 + 3 * 26 );
 }
 
+TEST_CASE( "3d multipatch hierarchical cmap bug 2" )
+{
+    const auto one_elem_1d = std::make_shared<const CombinatorialMap1d>( 1 );
+    const auto two_elem_1d = std::make_shared<const CombinatorialMap1d>( 2 );
+    const auto three_elem_1d = std::make_shared<const CombinatorialMap1d>( 3 );
+    const auto four_elem_1d = std::make_shared<const CombinatorialMap1d>( 4 );
+    const auto six_elem_1d = std::make_shared<const CombinatorialMap1d>( 6 );
+
+    const auto tp_1_1 = std::make_shared<const TPCombinatorialMap>( tensorProductCMapFromComponents({ three_elem_1d, three_elem_1d, one_elem_1d }) );
+    const auto tp_1_2 = std::make_shared<const TPCombinatorialMap>( tensorProductCMapFromComponents({ three_elem_1d, three_elem_1d, two_elem_1d }) );
+
+    const auto tp_2_1 = std::make_shared<const TPCombinatorialMap>( tensorProductCMapFromComponents({ six_elem_1d, six_elem_1d, two_elem_1d }) );
+    const auto tp_2_2 = std::make_shared<const TPCombinatorialMap>( tensorProductCMapFromComponents({ six_elem_1d, six_elem_1d, four_elem_1d }) );
+
+
+    const auto mp_1 = std::make_shared<const MultiPatchCombinatorialMap>(
+        MultiPatchCombinatorialMap( { tp_1_1, tp_1_2 }, { { { 0, Dart( 5 ) }, { 1, Dart( 0 ) } } } ) );
+    const auto mp_2 = std::make_shared<const MultiPatchCombinatorialMap>(
+        MultiPatchCombinatorialMap( { tp_2_1, tp_2_2 }, mp_1->connections() ) );
+
+    const std::vector<std::vector<topology::Cell>> leaf_elems = [&](){
+        std::vector<topology::Cell> all_first_level;
+        iterateCellsWhile( *mp_1, 3, [&]( const topology::Cell& c ) {
+            all_first_level.push_back( c );
+            return true;
+        } );
+        const HierarchicalMultiPatchCombinatorialMap cmap( { mp_1, mp_2 }, { all_first_level, {} } );
+        std::vector<std::vector<topology::Cell>> out;
+        out.push_back( { Volume( 0 ),
+                         Volume( 24 ),
+                         Volume( 48 ),
+                         Volume( 72 ),
+                         Volume( 96 ),
+                         Volume( 120 ),
+                         Volume( 144 ),
+                         Volume( 168 ),
+                         Volume( 192 ),
+                         Volume( 312 ) } );
+        const std::vector<topology::Cell> children_of( { Volume( 216 ),
+                                                         Volume( 240 ),
+                                                         Volume( 264 ),
+                                                         Volume( 288 ),
+                                                         Volume( 336 ),
+                                                         Volume( 360 ),
+                                                         Volume( 384 ),
+                                                         Volume( 408 ),
+                                                         Volume( 432 ),
+                                                         Volume( 456 ),
+                                                         Volume( 480 ),
+                                                         Volume( 504 ),
+                                                         Volume( 528 ),
+                                                         Volume( 552 ),
+                                                         Volume( 576 ),
+                                                         Volume( 600 ),
+                                                         Volume( 624 ) } );
+        out.push_back( {} );
+        for( const auto & c : children_of )
+        {
+            cmap.iterateChildren( c, 0, [&]( const Cell& c ) {
+                out.at( 1 ).push_back( c );
+                return true;
+            } );
+        }
+
+        return out;
+    }();
+
+    const HierarchicalMultiPatchCombinatorialMap cmap( { mp_1, mp_2 }, leaf_elems );
+
+    iterateDartsWhile( cmap, [&]( const Dart& d ){
+        for( const auto& phis : std::vector<std::vector<int>>{ {1,-1}, {2, 2}, {3, 3} } )
+        {
+            const auto maybe_phi = phi( cmap, phis, d );
+            if( phis.at( 0 ) != 3 ) CHECK( maybe_phi.has_value() );
+            if( maybe_phi )
+                CHECK( maybe_phi.value() == d );
+        }
+        return true;
+    } );
+}
+
 

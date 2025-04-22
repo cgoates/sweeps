@@ -122,7 +122,7 @@ TEST_CASE( "Simplest 3d hierarchical cmap" )
     CHECK( n_darts == 8 * 24 + 40 );
 }
 
-TEST_CASE( "3d multipatch hierarchical cmap bug" )
+TEST_CASE( "3d hierarchical cmap bug" )
 {
     const auto topo1d_1 = std::make_shared<const CombinatorialMap1d>( 1 );
     const auto topo1d_2 = std::make_shared<const CombinatorialMap1d>( 2 );
@@ -176,4 +176,77 @@ TEST_CASE( "3d multipatch hierarchical cmap bug" )
     } );
 
     CHECK( n_darts == 9 * 24 + 56 + 3 * 40 + 3 * 26 );
+}
+
+TEST_CASE( "3d hierarchical cmap bug 2" )
+{
+    const auto three_elem_1d = std::make_shared<const CombinatorialMap1d>( 3 );
+    const auto six_elem_1d = std::make_shared<const CombinatorialMap1d>( 6 );
+    const auto tp_2d_0 = std::make_shared<const TPCombinatorialMap>( three_elem_1d, three_elem_1d );
+
+    const auto topo2d_1 = std::make_shared<const TPCombinatorialMap>( three_elem_1d, three_elem_1d );
+    const auto topo2d_2 = std::make_shared<const TPCombinatorialMap>( six_elem_1d, six_elem_1d );
+
+    const auto tp_topo_1 = std::make_shared<const TPCombinatorialMap>( topo2d_1, three_elem_1d );
+    const auto tp_topo_2 = std::make_shared<const TPCombinatorialMap>( topo2d_2, six_elem_1d );
+
+    const std::vector<std::vector<topology::Cell>> leaf_elems = [&](){
+        std::vector<topology::Cell> all_first_level;
+        iterateCellsWhile( *tp_topo_1, 3, [&]( const topology::Cell& c ) {
+            all_first_level.push_back( c );
+            return true;
+        } );
+        const HierarchicalTPCombinatorialMap cmap( { tp_topo_1, tp_topo_2 }, { all_first_level, {} } );
+        std::vector<std::vector<topology::Cell>> out;
+        out.push_back( { Volume( 0 ),
+                         Volume( 24 ),
+                         Volume( 48 ),
+                         Volume( 72 ),
+                         Volume( 96 ),
+                         Volume( 120 ),
+                         Volume( 144 ),
+                         Volume( 168 ),
+                         Volume( 192 ),
+                         Volume( 312 ) } );
+        const std::vector<topology::Cell> children_of( { Volume( 216 ),
+                                                         Volume( 240 ),
+                                                         Volume( 264 ),
+                                                         Volume( 288 ),
+                                                         Volume( 336 ),
+                                                         Volume( 360 ),
+                                                         Volume( 384 ),
+                                                         Volume( 408 ),
+                                                         Volume( 432 ),
+                                                         Volume( 456 ),
+                                                         Volume( 480 ),
+                                                         Volume( 504 ),
+                                                         Volume( 528 ),
+                                                         Volume( 552 ),
+                                                         Volume( 576 ),
+                                                         Volume( 600 ),
+                                                         Volume( 624 ) } );
+        out.push_back( {} );
+        for( const auto & c : children_of )
+        {
+            cmap.iterateChildren( c, 0, [&]( const Cell& c ) {
+                out.at( 1 ).push_back( c );
+                return true;
+            } );
+        }
+
+        return out;
+    }();
+
+    const HierarchicalTPCombinatorialMap cmap( { tp_topo_1, tp_topo_2 }, leaf_elems );
+
+    iterateDartsWhile( cmap, [&]( const Dart& d ){
+        for( const auto& phis : std::vector<std::vector<int>>{ {1,-1}, {2, 2}, {3, 3} } )
+        {
+            const auto maybe_phi = phi( cmap, phis, d );
+            if( phis.at( 0 ) != 3 ) CHECK( maybe_phi.has_value() );
+            if( maybe_phi )
+                CHECK( maybe_phi.value() == d );
+        }
+        return true;
+    } );
 }
