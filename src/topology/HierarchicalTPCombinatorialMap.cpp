@@ -218,36 +218,76 @@ HierarchicalTPCombinatorialMap::HierarchicalTPCombinatorialMap(
                     return mLeafDarts.at( global_d.id() );
                 } );
 
-                const bool all_darts_are_not_leaves = iterateDartsOfRestrictedCell( level_cmap, leaf_face, 3, [&]( const Dart& d ) {
-                    const Dart global_d = mRanges.toGlobalDart( level, d );
-                    return not mLeafDarts.at( global_d.id() );
-                } );
-
-                if( not all_darts_are_leaves and not ( dim() == 3 and all_darts_are_not_leaves ) )
+                if( not all_darts_are_leaves )
                 {
                     std::optional<Dart> first_leaf;
                     std::optional<Dart> previous_leaf;
+                    bool perform_phi1_chain = true;
                     const Dart global_leaf_face_dart = mRanges.toGlobalDart( level, leaf_face.dart() );
                     Dart d = global_leaf_face_dart;
+                    std::map<Dart, Dart> face_local_phi1s;
                     do
                     {
+                        std::optional<Dart> has_leaf_phi1;
                         iterateLeafDescendants( d, [&]( const Dart& descendant ) {
                             if( previous_leaf )
                             {
-                                mPhiOnes.insert( { previous_leaf.value(), descendant } );
-                                mPhiMinusOnes.insert( { descendant, previous_leaf.value() } );
+                                face_local_phi1s.insert( { previous_leaf.value(), descendant } );
                             }
                             previous_leaf.emplace( descendant );
                             if( not first_leaf ) first_leaf.emplace( descendant );
+
+                            if( not has_leaf_phi1 )
+                            {
+                                const auto [desc_level, desc_level_d] = mRanges.toLocalDart( descendant );
+                                const Dart phi1 = topology::phi( *mRefinementLevels.at( desc_level ), 1, desc_level_d ).value();
+                                if( mLeafDarts.at( mRanges.toGlobalDart( desc_level, phi1 ).id() ) )
+                                {
+                                    has_leaf_phi1.emplace( descendant );
+                                }
+                            }
+
                             return true;
                         } );
+
+                        if( has_leaf_phi1.has_value() and previous_leaf.has_value() and
+                            previous_leaf.value() != has_leaf_phi1.value() )
+                        {
+                            // We shouldn't do the phi chain in this case.
+                            // This means that the face is actually multiple faces.
+                            // *------------------------*
+                            // |                        |
+                            // |                        |
+                            // |                        |
+                            // |                        |
+                            // |          |             |
+                            // |        b |             |
+                            // |      a   |       c     |
+                            // | *------- *  *--------  |
+                            // *------------------------*
+                            // a has a leaf phi1 in its level, means that b is a leaf dart, and therefore
+                            // the face is actually refined.  If it were c that had a leaf phi1, then
+                            // that doesn't actually tell us that the face is refined.
+                            // If the face is refined, Phi 1 and -1 operations will be handled by a higher
+                            // refinement level, as there are higher level cells on the phi3.
+                            perform_phi1_chain = false;
+                            break;
+                        }
                         d = mRanges.toGlobalDart( level, topology::phi( level_cmap, 1, mRanges.toLocalDart( d ).second ).value() );
                     } while ( d != global_leaf_face_dart );
- 
-                    if( first_leaf )
+
+                    if( perform_phi1_chain )
                     {
-                        mPhiOnes.insert( { previous_leaf.value(), first_leaf.value() } );
-                        mPhiMinusOnes.insert( { first_leaf.value(), previous_leaf.value() } );
+                        if( first_leaf )
+                        {
+                            face_local_phi1s.insert( { previous_leaf.value(), first_leaf.value() } );
+                        }
+
+                        for( const auto& [key, value] : face_local_phi1s )
+                        {
+                            mPhiOnes.insert( { key, value } );
+                            mPhiMinusOnes.insert( { value, key } );
+                        }
                     }
                 }
             };
