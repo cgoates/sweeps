@@ -206,7 +206,7 @@ namespace basis
             }
 
             // Fill every fid that hasn't been set already with the next available ids
-            for( size_t func_ii = 0; func_ii < constituent.numFunctions(); func_ii++ )
+            for( size_t func_ii = 0, num_funcs = constituent.numFunctions(); func_ii < num_funcs; func_ii++ )
             {
                 if( constituent_fids.at( func_ii ) == -1 )
                 {

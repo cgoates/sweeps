@@ -330,7 +330,7 @@ std::optional<Dart> HierarchicalTPCombinatorialMap::phi( const int i, const Dart
             const std::map<Dart, Dart>& phi_map = i == 1 ? mPhiOnes : mPhiMinusOnes;
             const auto it = phi_map.find( d );
             if( it != phi_map.end() ) return it->second;
-            else throw std::runtime_error( "Phi 1 or -1 operation unfound!" );
+            else throw std::runtime_error( "Phi " + std::to_string( i ) + " operation unfound!" );
         }
     } );
 }
