@@ -61,6 +61,8 @@ namespace io
         <DataArray type="Float64" Name=")STRING" << label << R"STRING(" NumberOfComponents=")STRING"
                  << data.cols() << R"STRING(" format="ascii">)STRING" << std::endl;
 
+            file << std::setprecision( 16 );
+
             for( Eigen::Index row = 0; row < data.rows(); row++ )
             {
                 for( Eigen::Index col = 0; col < data.cols(); col++ )
@@ -82,6 +84,8 @@ namespace io
             file << R"STRING(
         <DataArray type="Float64" Name=")STRING" << label << R"STRING(" NumberOfComponents=")STRING"
                  << data.cols() << R"STRING(" format="ascii">)STRING" << std::endl;
+
+            file << std::setprecision( 16 );
 
             for( Eigen::Index row = 0; row < data.rows(); row++ )
             {
@@ -528,7 +532,6 @@ namespace io
             const double edge_length = edgeLength( cmap, positions, topology::Edge( phi( cmap, {2, -1}, v.dart() ).value() ) );
             const Eigen::Vector3d pt = pos + 0.05 * edge_length * face_normal + 0.1 * face_normal.cross( tri.v2 - tri.v1 ).normalized() -
                    0.1 * face_normal.cross( tri.v3 - tri.v1 ).normalized();
-            std::cout << "Adjusted position: " << pt.transpose() << std::endl;
             return pt;
         };
 
