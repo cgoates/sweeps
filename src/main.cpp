@@ -190,6 +190,10 @@ int main( int argc, char* argv[] )
                 return SweepInputTestCases::pot_counter();
             else if( std::find( input_args.begin(), input_args.end(), "pot_counter_remeshed" ) != input_args.end() )
                 return SweepInputTestCases::pot_counter( true );
+            else if( std::find( input_args.begin(), input_args.end(), "sphere" ) != input_args.end() )
+                return SweepInputTestCases::neighborhood();
+            else if( std::find( input_args.begin(), input_args.end(), "counter2" ) != input_args.end() )
+                return io::loadINPFile( SRC_HOME "/test/data/counter2.inp", "Surface1", "Surface6" );
             else
                 return SweepInputTestCases::macaroni();
         }();
@@ -320,6 +324,22 @@ int main( int argc, char* argv[] )
                 }
             }
 
+            double edge_length = 0;
+            double min_edge_length = std::numeric_limits<double>::infinity();
+            double max_edge_length = -std::numeric_limits<double>::infinity();
+            iterateCellsWhile( map, 1, [&]( const topology::Edge& e ) {
+                const double length = edgeLength( map, vertex_positions( map ), e );
+                edge_length += length;
+                min_edge_length = std::min( min_edge_length, length );
+                max_edge_length = std::max( max_edge_length, length );
+                return true;
+            } );
+            edge_length /= cellCount( map, 1 );
+
+            std::cout << "Average edge length: " << edge_length << std::endl;
+            std::cout << "Min edge length: " << min_edge_length << std::endl;
+            std::cout << "Max edge length: " << max_edge_length << std::endl;
+
             return 0;
         }
 
@@ -350,6 +370,7 @@ int main( int argc, char* argv[] )
                 return ans( vertex_ids( v ) );
             };
             std::vector<int> euler_characteristics;
+            std::vector<double> laplace_values;
             iterateCellsWhile( map, 0, [&]( const topology::Vertex& v ) {
                 if( sweep_input.zero_bcs.at( vertex_ids( v ) ) ) return true;
                 const int euler = reparam::lowerLinkEulerCharacteristic( map, v, func );
@@ -358,12 +379,14 @@ int main( int argc, char* argv[] )
                     critical_points.points.push_back( vertex_positions( map )( v ) );
                     critical_points.simplices.push_back( Simplex( critical_points.points.size() - 1 ) );
                     euler_characteristics.push_back( euler );
+                    laplace_values.push_back( ans( vertex_ids( v ) ) );
                 }
                 return true;
             } );
             io::VTKOutputObject output( critical_points );
             const auto euler_field = Eigen::Map<Eigen::VectorXi>( euler_characteristics.data(), euler_characteristics.size(), 1 );
             output.addVertexField( "euler", euler_field.cast<double>() );
+            output.addVertexField( "laplace", Eigen::Map<Eigen::VectorXd>( laplace_values.data(), laplace_values.size(), 1 ) );
             io::outputSimplicialFieldToVTK( output, "critical_points.vtu" );
         }
 
