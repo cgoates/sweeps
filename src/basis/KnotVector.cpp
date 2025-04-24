@@ -226,7 +226,8 @@ namespace basis
         Eigen::SparseMatrix<double> op = refinement_op( 0 );
         for( size_t i = 1; i < degrees.size(); i++ )
         {
-            op = Eigen::kroneckerProduct( refinement_op( i ), op ).eval();
+            Eigen::SparseMatrix<double> temp = Eigen::kroneckerProduct( refinement_op( i ), op );
+            op.swap( temp );// Better performance than using .eval()
         }
 
         return op;

@@ -48,12 +48,6 @@ namespace basis
         return Eigen::kroneckerProduct( line_exop(), source_exop() );
     }
 
-    FunctionId TPSplineSpace::flatten( const FunctionId& source_fid, const FunctionId& line_fid ) const
-    {
-        return FunctionId( source_fid + mSource->numFunctions() * line_fid );
-    }
-
-
     std::vector<FunctionId> TPSplineSpace::connectivity( const topology::Cell& c ) const
     {
         if( c.dim() > mBasisComplex->parametricAtlas().cmap().dim() )
@@ -83,6 +77,11 @@ namespace basis
 
         std::vector<FunctionId> out;
         out.reserve( line_conn.size() * source_conn.size() );
+
+        const auto flatten = [num_source_funcs=mSource->numFunctions()]( const FunctionId& source_fid, const FunctionId& line_fid ) {
+            return FunctionId( source_fid + num_source_funcs * line_fid );
+        };
+
         for( const FunctionId& line_fid : line_conn )
         {
             for( const FunctionId& source_fid : source_conn )

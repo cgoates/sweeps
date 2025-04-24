@@ -67,23 +67,20 @@ HierarchicalTPSplineSpace::HierarchicalTPSplineSpace(
 
         return A;
     };
-    const auto active_mask = [this]( const size_t level_ii ) {
-        const Eigen::Index num_funcs = mRefinementLevels.at( level_ii )->numFunctions();
-        Eigen::SparseMatrix<double> A( num_funcs, num_funcs );
-        A.reserve( Eigen::VectorXi::Constant( A.cols(), 1 ) );
-        for( Eigen::Index col_ii = 0; col_ii < A.cols(); col_ii++ )
-            if( std::find( mActiveFunctions.at( level_ii ).begin(), mActiveFunctions.at( level_ii ).end(), FunctionId( col_ii ) ) ==
-                mActiveFunctions.at( level_ii ).end() )
-                A.coeffRef( col_ii, col_ii ) = 1.0;
+    const auto active_mask = [this]( const size_t level_ii, const Eigen::SparseMatrix<double>& M ) {
+        Eigen::SparseMatrix<double> out = M;
+        for( const Eigen::Index col_ii : mActiveFunctions.at( level_ii ) )
+            out.col( col_ii ) = Eigen::SparseMatrix<double>( M.rows(), 1 );
+        out.makeCompressed();
 
-        return A;
+        return out;
     };
 
     mLevelExtractionOps.push_back( active_mat( 0 ) );
     for( size_t i = 1; i < mRefinementLevels.size(); i++ )
     {
-        const auto D = refinementOp( *mRefinementLevels.at( i - 1 ), *mRefinementLevels.at( i ), 1e-10 );
-        const Eigen::SparseMatrix<double> S = util::verticalConcat( mLevelExtractionOps.back() * D * active_mask( i ), active_mat( i ) );
+        const Eigen::SparseMatrix<double> D = refinementOp( *mRefinementLevels.at( i - 1 ), *mRefinementLevels.at( i ), 1e-10 );
+        const Eigen::SparseMatrix<double> S = util::verticalConcat( mLevelExtractionOps.back() * active_mask( i, D ), active_mat( i ) );//SLOW
 
         mLevelExtractionOps.push_back( S );
     }

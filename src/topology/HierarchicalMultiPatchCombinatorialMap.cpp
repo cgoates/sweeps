@@ -45,7 +45,7 @@ std::vector<std::shared_ptr<const HierarchicalTPCombinatorialMap>>
         }
     }
 
-    std::vector<std::unique_ptr<MutableHierarchicalTPCombinatorialMap>> mutable_constituents;
+    std::vector<std::shared_ptr<MutableHierarchicalTPCombinatorialMap>> mutable_constituents;
 
     for( size_t patch_ii = 0; patch_ii < constituent_levels.size(); patch_ii++ )
     {
@@ -240,7 +240,7 @@ std::vector<std::shared_ptr<const HierarchicalTPCombinatorialMap>>
     std::vector<std::shared_ptr<const HierarchicalTPCombinatorialMap>> constituents;
     for( const auto& con : mutable_constituents )
     {
-        constituents.push_back( std::make_shared<const HierarchicalTPCombinatorialMap>( con->asImmutable() ) );
+        constituents.push_back( con->asImmutablePtr() );
     }
     return constituents;
 }

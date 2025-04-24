@@ -20,8 +20,6 @@ namespace basis
 
         const topology::CombinatorialMap1d& cmap = bc->parametricAtlas().cmap();
 
-        const auto elem_ids = indexingOrError( cmap, 1 );
-
         const auto get_elem_connectivity = [&degree, &C]( const size_t elem_ii ) {
             std::set<FunctionId> unique_rows;
             for( size_t col_ii = 0; col_ii <= degree; col_ii++ )
@@ -49,7 +47,7 @@ namespace basis
         };
 
         iterateCellsWhile( cmap, 1, [&]( const topology::Edge& e ) {
-            const size_t elem_ii = elem_ids( e );
+            const size_t elem_ii = e.dart().id();
             const std::vector<FunctionId>& conn_elem =
                 mConnectivity.emplace( elem_ii, get_elem_connectivity( elem_ii ) ).first->second;
             mExtractionOps.emplace( elem_ii, get_elem_operator( elem_ii, conn_elem ) );
@@ -72,9 +70,8 @@ namespace basis
             return C_elem;
         };
 
-        const auto vertex_ids = indexingOrError( cmap, 0 );
         iterateCellsWhile( cmap, 0, [&]( const topology::Vertex& v ) {
-            const size_t vertex_ii = vertex_ids( v );
+            const size_t vertex_ii = v.dart().id();
             const std::vector<FunctionId>& conn_vert = mVertConnectivity.emplace( vertex_ii, get_vertex_connectivity( vertex_ii ) ).first->second;
             mVertExtractionOps.emplace( vertex_ii, get_vertex_operator( vertex_ii, conn_vert ) );
             return true;
@@ -94,13 +91,11 @@ namespace basis
     {
         if( c.dim() == 1 )
         {
-            const auto indexing = indexingOrError( mBasisComplex->parametricAtlas().cmap(), c.dim() );
-            return mExtractionOps.at( indexing( c ) );
+            return mExtractionOps.at( c.dart().id() );
         }
         else if( c.dim() == 0 )
         {
-            const auto indexing = indexingOrError( mBasisComplex->parametricAtlas().cmap(), c.dim() );
-            return mVertExtractionOps.at( indexing( c ) );
+            return mVertExtractionOps.at( c.dart().id() );
         }
         else
             throw std::runtime_error( "Too large cell dimension for BSplineSpace1d" );
@@ -110,13 +105,11 @@ namespace basis
     {
         if( c.dim() == 1 )
         {
-            const auto indexing = indexingOrError( mBasisComplex->parametricAtlas().cmap(), c.dim() );
-            return mConnectivity.at( indexing( c ) );
+            return mConnectivity.at( c.dart().id() );
         }
         else if( c.dim() == 0 )
         {
-            const auto indexing = indexingOrError( mBasisComplex->parametricAtlas().cmap(), c.dim() );
-            return mVertConnectivity.at( indexing( c ) );
+            return mVertConnectivity.at( c.dart().id() );
         }
         else
             throw std::runtime_error( "Extraction operators only supported for elements" );

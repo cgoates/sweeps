@@ -64,7 +64,8 @@ namespace topology
 
     /// @brief A mutable version of HierarchicalTPCombinatorialMap.
     /// This is to be used only for initialization, then call asImmutable() to get an immutable version.
-    class MutableHierarchicalTPCombinatorialMap : public HierarchicalTPCombinatorialMap
+    class MutableHierarchicalTPCombinatorialMap : public HierarchicalTPCombinatorialMap,
+                                                  public std::enable_shared_from_this<MutableHierarchicalTPCombinatorialMap>
     {
         public:
         MutableHierarchicalTPCombinatorialMap(
@@ -108,6 +109,12 @@ namespace topology
         HierarchicalTPCombinatorialMap asImmutable() const
         {
             return HierarchicalTPCombinatorialMap( *this );
+        }
+
+        std::shared_ptr<const HierarchicalTPCombinatorialMap> asImmutablePtr() const
+        {
+            const auto self = shared_from_this();
+            return std::shared_ptr<const HierarchicalTPCombinatorialMap>( self, static_cast<const HierarchicalTPCombinatorialMap*>( this ) );
         }
     };
 
