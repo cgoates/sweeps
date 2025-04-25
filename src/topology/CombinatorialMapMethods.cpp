@@ -38,7 +38,7 @@ namespace topology
         dart_queue.push( c.dart() );
         m.mark( c.dart() );
 
-        const auto add_to_queue = [&]( const std::optional<Dart>& d ) {
+        const auto add_to_queue = [&m,&dart_queue]( const std::optional<Dart>& d ) {
             if( d.has_value() and not m.isMarked( d.value() ) )
             {
                 dart_queue.push( d.value() );
@@ -160,39 +160,52 @@ namespace topology
         const bool edges_of_vert_in_lowD = c.dim() == 0 and cell_dim == 1 and map.dim() <= 2;
         const bool verts_of_edge_in_lowD = c.dim() == 1 and cell_dim == 0 and map.dim() <= 2;
 
-        LocalCellMarker m( cell_dim );
-        const auto mark_and_callback = [&]( const topology::Cell& cell ) {
-            if( not m.isMarked( cell ) )
-            {
-                m.mark( map, cell );
-                return callback( cell );
-            }
-            return true;
+        const auto iterate = [&]( auto& m) {
+            const auto mark_and_callback = [&]( const topology::Cell& cell ) {
+                if( not m.isMarked( cell ) )
+                {
+                    m.mark( map, cell );
+                    return callback( cell );
+                }
+                return true;
+            };
+
+            return iterateDartsOfCell( map, c, [&]( const Dart& d ){
+                const Cell c_adj( d, cell_dim );
+                if( not mark_and_callback( c_adj ) ) return false;
+                if( edges_of_vert_in_lowD )
+                {
+                    const auto phi_1 = phi( map, -1, d );
+                    if( phi_1.has_value() )
+                    {
+                        const topology::Edge c_adj_2( phi_1.value() );
+                        if( not mark_and_callback( c_adj_2 ) ) return false;
+                    }
+                }
+                else if( verts_of_edge_in_lowD )
+                {
+                    const auto phi1 = phi( map, 1, d );
+                    if( phi1.has_value() )
+                    {
+                        const topology::Vertex c_adj_2( phi1.value() );
+                        if( not mark_and_callback( c_adj_2 ) ) return false;
+                    }
+                }
+                return true;
+            } );
         };
 
-        return iterateDartsOfCell( map, c, [&]( const Dart& d ){
-            const Cell c_adj( d, cell_dim );
-            if( not mark_and_callback( c_adj ) ) return false;
-            if( edges_of_vert_in_lowD )
-            {
-                const auto phi_1 = phi( map, -1, d );
-                if( phi_1.has_value() )
-                {
-                    const topology::Edge c_adj_2( phi_1.value() );
-                    if( not mark_and_callback( c_adj_2 ) ) return false;
-                }
-            }
-            else if( verts_of_edge_in_lowD )
-            {
-                const auto phi1 = phi( map, 1, d );
-                if( phi1.has_value() )
-                {
-                    const topology::Vertex c_adj_2( phi1.value() );
-                    if( not mark_and_callback( c_adj_2 ) ) return false;
-                }
-            }
-            return true;
-        } );
+        const auto indexing = map.indexing( cell_dim );
+        if( indexing.has_value() )
+        {
+            IndexingCellMarker m( *indexing, cell_dim );
+            return iterate( m );
+        }
+        else
+        {
+            LocalCellMarker m( cell_dim );
+            return iterate( m );
+        }
     }
 
     bool iterateAdjacentCellsOfRestrictedCell( const CombinatorialMap& map,
