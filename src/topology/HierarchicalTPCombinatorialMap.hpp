@@ -45,13 +45,19 @@ namespace topology
 
         const std::vector<size_t>& refinementRatios() const { return mRefinementRatios; }
 
+        bool isUnrefinedLeafDart( const Dart& d ) const
+        {
+            return mUnrefinedDarts.at( d.id() );
+        }
+
+        bool iterateAncestors( const Dart& global_d,
+                               const std::function<bool( const Dart& )>& callback ) const;
+
         protected:
         bool iterateDartLineage( const Dart& global_d,
                                  const size_t ancestor_or_descendant_level,
                                  const std::function<bool( const Dart& )>& callback ) const;
 
-        bool iterateAncestors( const Dart& global_d,
-                               const std::function<bool( const Dart& )>& callback ) const;
 
         const std::vector<std::shared_ptr<const TPCombinatorialMap>> mRefinementLevels;
         const DartRanges mRanges;

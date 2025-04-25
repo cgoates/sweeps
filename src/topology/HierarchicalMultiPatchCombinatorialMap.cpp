@@ -365,6 +365,21 @@ bool HierarchicalMultiPatchCombinatorialMap::iterateChildren( const Cell& local_
     } );
 }
 
+bool HierarchicalMultiPatchCombinatorialMap::iterateAncestors(
+    const Dart& global_d, const std::function<bool( const Dart& )>& callback ) const
+{
+    const auto [patch_ii, local_d] = mRanges.toLocalDart( global_d );
+    return mConstituents.at( patch_ii )->iterateAncestors( local_d, [&]( const Dart& ancestor_local_d ) {
+        return callback( mRanges.toGlobalDart( patch_ii, ancestor_local_d ) );
+    } );
+}
+
+bool HierarchicalMultiPatchCombinatorialMap::isUnrefinedLeafDart( const Dart& d ) const
+{
+    const auto [patch_ii, local_d] = mRanges.toLocalDart( d );
+    return mConstituents.at( patch_ii )->isUnrefinedLeafDart( local_d );
+}
+
 namespace topology
 {
     std::vector<std::vector<Cell>> leafElements( const HierarchicalMultiPatchCombinatorialMap& cmap )

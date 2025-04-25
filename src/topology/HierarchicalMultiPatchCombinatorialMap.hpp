@@ -44,6 +44,11 @@ namespace topology
                               const size_t cell_level,
                               const std::function<bool( const Cell& )>& callback ) const;
 
+        bool iterateAncestors( const Dart& global_d,
+                               const std::function<bool( const Dart& )>& callback ) const;
+
+        bool isUnrefinedLeafDart( const Dart& d ) const;
+
         private:
         const std::vector<std::shared_ptr<const MultiPatchCombinatorialMap>> mRefinementLevels;
         std::vector<std::shared_ptr<const HierarchicalTPCombinatorialMap>> mConstituents;

@@ -1,5 +1,6 @@
 #include <HierarchicalMultiPatchSplineSpace.hpp>
 #include <set>
+#include <CombinatorialMapMethods.hpp>
 
 using namespace basis;
 
@@ -26,28 +27,38 @@ ActiveFuncs activeFuncs( const topology::HierarchicalMultiPatchCombinatorialMap&
     for( size_t level_ii = 0; level_ii < refinement_levels.size(); level_ii++ )
     {
         const auto& level_ss = refinement_levels.at( level_ii );
+        const auto& level_cmap = *cmap.refinementLevels().at( level_ii );
         std::set<topology::Cell> next_pruned_cells;
         std::set<FunctionId> level_active_funcs;
         for( const topology::Cell& leaf_elem : leaf_elements.at( level_ii ) )
         {
             const std::vector<FunctionId> conn = level_ss->connectivity( leaf_elem );
             level_active_funcs.insert( conn.begin(), conn.end() );
-            cmap.iterateChildren( leaf_elem, level_ii, [&]( const topology::Cell& c ) {
-                next_pruned_cells.insert( c );
+            iterateAdjacentCells( level_cmap, leaf_elem, cmap.dim() - 1, [&]( const topology::Cell& c ) {
+                const auto maybe_phi = phi( level_cmap, cmap.dim(), c.dart() );
+                if( maybe_phi )
+                {
+                    bool ancestor_leaf = false;
+                    if( not ancestor_leaf )
+                    {
+                        cmap.iterateAncestors( cmap.dartRanges().toGlobalDart( level_ii, maybe_phi.value() ), [&]( const topology::Dart& ancestor ) {
+                            if( cmap.isUnrefinedLeafDart( ancestor ) )
+                            {
+                                ancestor_leaf = true;
+                            }
+                            return not ancestor_leaf;
+                        } );
+                    }
+                    if( ancestor_leaf )
+                    {
+                        const std::vector<FunctionId> conn = level_ss->connectivity( topology::Cell( maybe_phi.value(), cmap.dim() ) );
+                        for( const FunctionId& fid : conn ) level_active_funcs.erase( fid );
+                    }
+                }
                 return true;
             } );
         }
 
-        for( const topology::Cell& pruned_cell : pruned_cells )
-        {
-            const std::vector<FunctionId> conn = level_ss->connectivity( pruned_cell );
-            for( const FunctionId& fid : conn ) level_active_funcs.erase( fid );
-            cmap.iterateChildren( pruned_cell, level_ii, [&]( const topology::Cell& c ) {
-                next_pruned_cells.insert( c );
-                return true;
-            } );
-        }
-        pruned_cells = next_pruned_cells;
         for( size_t patch_ii = 0; patch_ii < level_ss->subSpaces().size(); patch_ii++ )
         {
             auto& patch_level_active_funcs = active_funcs.at( patch_ii ).at( level_ii );
