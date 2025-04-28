@@ -171,21 +171,20 @@ std::optional<IndexingFunc> DelaunayTriangulation::indexing( const uint cell_dim
         return mBaseMap->indexing( cell_dim )
             .transform( [this]( const IndexingFunc& underlying_indexing ) -> IndexingFunc {
                 return [this, underlying_indexing]( const Vertex& v ) {
-                    std::optional<size_t> out = std::nullopt;
+                    if( v.dart().id() <= mLowerBound )
+                        return underlying_indexing( v );
+                    else
+                    {
+                        const auto phi21 = topology::phi( *this, { 2, 1 }, v.dart() );
+                        if( phi21.has_value() and phi21.value().id() <= mLowerBound )
+                            return underlying_indexing( Vertex( phi21.value() ) );
+                        const auto phi_12 = topology::phi( *this, { -1, 2 }, v.dart() );
+                        if( phi_12.has_value() and phi_12.value().id() <= mLowerBound )
+                            return underlying_indexing( Vertex( phi_12.value() ) );
 
-                    // Find a dart on the vertex from the underlying cmap
-                    iterateDartsOfCell( *this, v, [&]( const Dart& d ) {
-                        if( d.id() <= mLowerBound )
-                        {
-                            // and use the underlying index
-                            out.emplace( underlying_indexing( Vertex( d ) ) );
-                            return false;
-                        }
-                        return true;
-                    } );
-                    if( not out.has_value() )
+                        // NOTE: If we start supporting more than quads, switch the above to iterateDartsOfCell
                         throw std::runtime_error( "Vertex has no darts from underlying map!" );
-                    return out.value();
+                    }
                 };
             } );
     }
