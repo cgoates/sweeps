@@ -15,6 +15,7 @@
 #include <iostream>
 #include <optional>
 #include <Eigen/Dense>
+#include <iomanip>
 
 namespace io
 {
