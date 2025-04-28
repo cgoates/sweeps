@@ -62,6 +62,7 @@ LevelSetCMap::LevelSetCMap( const CombinatorialMap& base,
     {
         const Edge e = edges_to_process.front();
         edges_to_process.pop();
+        // FIXME: This double iteration is slow.  There's gotta be a better way to do this.
         iterateAdjacentCells( base, e, base_dim, [&]( const Cell& elem ) {
             iterateAdjacentCells( base, elem, 1, [&]( const Edge& e_adj ) {
                 if( not mIntersectedEdges.isMarked( e_adj ) )

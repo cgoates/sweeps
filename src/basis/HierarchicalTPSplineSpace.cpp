@@ -89,6 +89,9 @@ HierarchicalTPSplineSpace::HierarchicalTPSplineSpace(
     mLevelExtractionOps.push_back( active_mat( 0 ) );
     for( size_t i = 1; i < mRefinementLevels.size(); i++ )
     {
+        // TODO: this can be optimized by only assembling the columns of the refinementOp that are for active functions,
+        // since the kronecker product is a slow point for bigger spline spaces.
+        // There are also more performant ways to do a product of a kronecker product with another matrix.  Look into that.
         const Eigen::SparseMatrix<double> D = refinementOp( *mRefinementLevels.at( i - 1 ), *mRefinementLevels.at( i ), 1e-10 );
         const Eigen::SparseMatrix<double> S = util::verticalConcat( mLevelExtractionOps.back() * active_mask( i, D ), active_mat( i ) );//SLOW
 
