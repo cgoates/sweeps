@@ -40,6 +40,8 @@ namespace topology
 
         const DartRanges& dartRanges() const { return mRanges; }
 
+        Dart toGlobalDart( const size_t level_ii, const Dart& level_dart ) const;
+
         bool iterateChildren( const Cell& local_cell,
                               const size_t cell_level,
                               const std::function<bool( const Cell& )>& callback ) const;

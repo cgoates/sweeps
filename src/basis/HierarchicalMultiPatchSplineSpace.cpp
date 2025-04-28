@@ -41,7 +41,7 @@ ActiveFuncs activeFuncs( const topology::HierarchicalMultiPatchCombinatorialMap&
                     bool ancestor_leaf = false;
                     if( not ancestor_leaf )
                     {
-                        cmap.iterateAncestors( cmap.dartRanges().toGlobalDart( level_ii, maybe_phi.value() ), [&]( const topology::Dart& ancestor ) {
+                        cmap.iterateAncestors( cmap.toGlobalDart( level_ii, maybe_phi.value() ), [&]( const topology::Dart& ancestor ) {
                             if( cmap.isUnrefinedLeafDart( ancestor ) )
                             {
                                 ancestor_leaf = true;

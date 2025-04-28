@@ -380,6 +380,14 @@ bool HierarchicalMultiPatchCombinatorialMap::isUnrefinedLeafDart( const Dart& d 
     return mConstituents.at( patch_ii )->isUnrefinedLeafDart( local_d );
 }
 
+Dart HierarchicalMultiPatchCombinatorialMap::toGlobalDart( const size_t level_ii, const Dart& level_dart ) const
+{
+    const auto [patch_ii, patch_d] = mRefinementLevels.at( level_ii )->toLocalDart( level_dart );
+    const Dart patch_hier_dart = mConstituents.at( patch_ii )->dartRanges().toGlobalDart( level_ii, patch_d );
+    return mRanges.toGlobalDart( patch_ii, patch_hier_dart );
+}
+
+
 namespace topology
 {
     std::vector<std::vector<Cell>> leafElements( const HierarchicalMultiPatchCombinatorialMap& cmap )
