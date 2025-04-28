@@ -22,6 +22,8 @@
 #include <Dijkstra.hpp>
 #include <CutCombinatorialMap.hpp>
 
+constexpr bool OUTPUT_LEVEL_SET_CONTINUITY = false;
+
 double atan2( const Eigen::Vector2d& v )
 {
     return atan2( v[1], v[0] );
@@ -147,10 +149,29 @@ void testLevelSetBasedTracing( const SweepInput& sweep_input,
 
         if( output_prefix )
         {
+            size_t i = 0;
             for( const auto& leaf : leaves )
             {
                 addAllTriangles( level_sets, leaf.space_mapping->parametricAtlas().cmap(),
                                                                             leaf.space_mapping->vertPositions() );
+
+                if( OUTPUT_LEVEL_SET_CONTINUITY )
+                {
+                    SimplicialComplex individual_level_set;
+                    addAllTriangles( individual_level_set, leaf.space_mapping->parametricAtlas().cmap(),
+                                                                                leaf.space_mapping->vertPositions() );
+
+                    io::VTKOutputObject output( individual_level_set );
+                    Eigen::MatrixX2d tutte( individual_level_set.points.size(), 2 );
+                    Eigen::Index row = 0;
+                    iterateCellsWhile( leaf.space_mapping->parametricAtlas().cmap(), 0, [&]( const auto& vert ) {
+                        tutte.row( row++ ) = leaf.tutte_mapping->vertPositions()( vert );
+                        return true;
+                    } );
+
+                    output.addVertexField( "tutte", tutte );
+                    io::outputSimplicialFieldToVTK( output, output_prefix.value() + "_level_set_" + std::to_string( i++ ) + ".vtu" );
+                }
             }
         }
 
@@ -253,6 +274,9 @@ TEST_CASE( "Level set parameterization of hook" )
 
     const std::optional<std::string> output_prefix = std::nullopt;//{ "hook" };
     testLevelSetBasedTracing( sweep_input, 30, output_prefix );
+
+    if( OUTPUT_LEVEL_SET_CONTINUITY)
+        testLevelSetBasedTracing( sweep_input, util::concatenate(util::linspace( 0, 0.1, 1000 ),{1.0}), "hook" );
 }
 
 TEST_CASE( "Level set parameterization of cube", "[no_ubuntu]" )// FIXME: Make this run on Ubuntu; this is a legitimate error
