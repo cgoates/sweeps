@@ -28,7 +28,7 @@ ActiveFuncs activeFuncs( const topology::HierarchicalMultiPatchCombinatorialMap&
     {
         const auto& level_ss = refinement_levels.at( level_ii );
         const auto& level_cmap = *cmap.refinementLevels().at( level_ii );
-        std::set<topology::Cell> next_pruned_cells;
+        std::set<topology::Cell> cells_to_prune;
         std::set<FunctionId> level_active_funcs;
         for( const topology::Cell& leaf_elem : leaf_elements.at( level_ii ) )
         {
@@ -39,24 +39,29 @@ ActiveFuncs activeFuncs( const topology::HierarchicalMultiPatchCombinatorialMap&
                 if( maybe_phi )
                 {
                     bool ancestor_leaf = false;
-                    if( not ancestor_leaf )
-                    {
-                        cmap.iterateAncestors( cmap.toGlobalDart( level_ii, maybe_phi.value() ), [&]( const topology::Dart& ancestor ) {
+                    iterateDartsOfCell( level_cmap, topology::Cell( maybe_phi.value(), cmap.dim() ),[&]( const topology::Dart& d ) {
+                        cmap.iterateAncestors( cmap.toGlobalDart( level_ii, d ), [&]( const topology::Dart& ancestor ) {
                             if( cmap.isUnrefinedLeafDart( ancestor ) )
                             {
                                 ancestor_leaf = true;
                             }
                             return not ancestor_leaf;
                         } );
-                    }
+                        return not ancestor_leaf;
+                    } );
                     if( ancestor_leaf )
                     {
-                        const std::vector<FunctionId> conn = level_ss->connectivity( topology::Cell( maybe_phi.value(), cmap.dim() ) );
-                        for( const FunctionId& fid : conn ) level_active_funcs.erase( fid );
+                        cells_to_prune.insert( topology::Cell( maybe_phi.value(), cmap.dim() ) );
                     }
                 }
                 return true;
             } );
+        }
+
+        for( const topology::Cell& prune_cell : cells_to_prune )
+        {
+            const std::vector<FunctionId> conn = level_ss->connectivity( prune_cell );
+            for( const FunctionId& fid : conn ) level_active_funcs.erase( fid );
         }
 
         for( size_t patch_ii = 0; patch_ii < level_ss->subSpaces().size(); patch_ii++ )

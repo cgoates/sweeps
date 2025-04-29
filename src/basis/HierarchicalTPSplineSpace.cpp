@@ -18,7 +18,7 @@ std::vector<std::vector<FunctionId>>
     {
         const auto& level_ss = refinement_levels.at( i );
         const auto& level_cmap = *cmap.refinementLevels().at( i );
-        std::set<topology::Cell> next_pruned_cells;
+        std::set<topology::Cell> cells_to_prune;
         std::set<FunctionId> level_active_funcs;
         for( const topology::Cell& leaf_elem : leaf_elements.at( i ) )
         {
@@ -29,24 +29,28 @@ std::vector<std::vector<FunctionId>>
                 if( maybe_phi )
                 {
                     bool ancestor_leaf = false;
-                    if( not ancestor_leaf )
-                    {
-                        cmap.iterateAncestors( cmap.dartRanges().toGlobalDart( i, maybe_phi.value() ), [&]( const topology::Dart& ancestor ) {
+                    iterateDartsOfCell( level_cmap, topology::Cell( maybe_phi.value(), cmap.dim() ), [&]( const topology::Dart& d ) {
+                        cmap.iterateAncestors( cmap.dartRanges().toGlobalDart( i, d ), [&]( const topology::Dart& ancestor ) {
                             if( cmap.isUnrefinedLeafDart( ancestor ) )
                             {
                                 ancestor_leaf = true;
                             }
                             return not ancestor_leaf;
                         } );
-                    }
+                        return not ancestor_leaf;
+                    } );
                     if( ancestor_leaf )
                     {
-                        const std::vector<FunctionId> conn = level_ss->connectivity( topology::Cell( maybe_phi.value(), cmap.dim() ) );
-                        for( const FunctionId& fid : conn ) level_active_funcs.erase( fid );
+                        cells_to_prune.insert( topology::Cell( maybe_phi.value(), cmap.dim() ) );
                     }
                 }
                 return true;
             } );
+        }
+        for( const topology::Cell& c : cells_to_prune )
+        {
+            const std::vector<FunctionId> conn = level_ss->connectivity( c );
+            for( const FunctionId& fid : conn ) level_active_funcs.erase( fid );
         }
 
         active_funcs.emplace_back( level_active_funcs.begin(), level_active_funcs.end() );
