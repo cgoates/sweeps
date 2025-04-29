@@ -234,3 +234,49 @@ TEST_CASE( "Simple 3d hierarchical atlas 1" )
     test_center_pt( Volume( 192 ), Eigen::Vector3d( 0.25, 0.75, 0.375 ) );
     test_center_pt( Volume( 216 ), Eigen::Vector3d( 0.75, 0.75, 0.375 ) );
 }
+
+TEST_CASE( "Simple 3d hierarchical spline space 2" )
+{
+    const KnotVector kv1( {0, 0, 0, 1, 1, 1}, 1e-10 );
+    const KnotVector kv2( {0, 0, 0, 0.5, 1, 1, 1}, 1e-10 );
+    const KnotVector kv4( {0, 0, 0, 0.25, 0.5, 0.75, 1, 1, 1}, 1e-10 );
+
+    const size_t degree = 2;
+    const auto tp_ss_1 = std::make_shared<const TPSplineSpace>( buildBSpline( { kv1, kv2, kv2 }, { degree, degree, degree } ) );
+    const auto tp_ss_2 = std::make_shared<const TPSplineSpace>( buildBSpline( { kv2, kv4, kv4 }, { degree, degree, degree } ) );
+
+    const HierarchicalTPSplineSpace ss = buildHierarchicalSplineSpace( { tp_ss_1, tp_ss_2 }, {
+        { Volume( 24 ), Volume( 48 ), Volume( 72 ) },
+        { Volume( 0 ), Volume( 24 ), Volume( 48 ), Volume( 72 ), Volume( 192 ), Volume( 216 ), Volume( 240 ), Volume( 264 ) }
+    } );
+
+    CHECK( cellCount( ss.basisComplex().parametricAtlas().cmap(), 3 ) == 11 );
+    CHECK( cellCount( ss.basisComplex().parametricAtlas().cmap(), 2 ) == 50 );
+    CHECK( cellCount( ss.basisComplex().parametricAtlas().cmap(), 1 ) == 75 );
+    CHECK( cellCount( ss.basisComplex().parametricAtlas().cmap(), 0 ) == 37 );
+    CHECK( ss.numFunctions() == 61 );
+
+    iterateCellsWhile( ss.basisComplex().parametricAtlas().cmap(), 3, [&]( const Volume& v ) {
+        const auto [level, dart] = ss.basisComplex().parametricAtlas().cmap().unrefinedAncestorDartOfCell( v );
+        if( level == 0 ) CHECK( ss.connectivity( v ).size() == 27 );
+        else CHECK( ss.connectivity( v ).size() >= 27 );
+        CHECK( util::equals( ss.extractionOperator( v ).colwise().sum().transpose(), Eigen::VectorXd::Ones( 27 ), 1e-9 ) );
+        return true;
+    } );
+
+    const Eigen::MatrixX3d geom = grevillePoints( ss );
+
+    if( VTK_OUTPUT )
+    {
+        io::outputBezierMeshToVTK( ss, geom, "hier_3d_bez_test.vtu" );
+
+        SimplicialComplex cpts;
+        for( size_t i = 0; i < geom.rows(); i++ )
+        {
+            cpts.points.push_back( geom.row( i ) );
+            cpts.simplices.push_back( { i } );
+        }
+        io::VTKOutputObject out( cpts );
+        io::outputSimplicialFieldToVTK( out, "control_points.vtu" );
+    }
+}
