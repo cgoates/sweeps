@@ -3,6 +3,7 @@
 
 namespace util
 {
+    // See https://stackoverflow.com/a/41777589
     Eigen::SparseMatrix<double> verticalConcat( const Eigen::SparseMatrix<double>& mat1,
                                                 const Eigen::SparseMatrix<double>& mat2 )
     {
@@ -12,30 +13,19 @@ namespace util
             std::cerr << "Matrix 2 has size " << mat2.rows() << ", " << mat2.cols() << ".\n";
             throw std::invalid_argument( "Input matrices must have the same number of columns." );
         }
-
-        std::vector<Eigen::Triplet<double>> triplets;
-        triplets.reserve( mat1.nonZeros() + mat2.nonZeros() );
-
-        for( Eigen::Index k = 0; k < mat1.outerSize(); ++k )
+        using namespace Eigen;
+        SparseMatrix<double> M( mat1.rows() + mat2.rows(), mat1.cols() );
+        M.reserve( mat1.nonZeros() + mat2.nonZeros() );
+        for( Index c = 0; c < mat1.cols(); ++c )
         {
-            for( Eigen::SparseMatrix<double>::InnerIterator it( mat1, k ); it; ++it )
-            {
-                triplets.emplace_back( it.row(), it.col(), it.value() );
-            }
+            M.startVec( c ); // Important: Must be called once for each column before inserting!
+            for( SparseMatrix<double>::InnerIterator itL( mat1, c ); itL; ++itL )
+                M.insertBack( itL.row(), c ) = itL.value();
+            for( SparseMatrix<double>::InnerIterator itC( mat2, c ); itC; ++itC )
+                M.insertBack( itC.row() + mat1.rows(), c ) = itC.value();
         }
-
-        for( Eigen::Index k = 0; k < mat2.outerSize(); ++k )
-        {
-            for( Eigen::SparseMatrix<double>::InnerIterator it( mat2, k ); it; ++it )
-            {
-                triplets.emplace_back( it.row() + mat1.rows(), it.col(), it.value() );
-            }
-        }
-
-        Eigen::SparseMatrix<double> result( mat1.rows() + mat2.rows(), mat1.cols() );
-        result.setFromTriplets( triplets.begin(), triplets.end() );
-
-        return result;
+        M.finalize();
+        return M;
     }
 
     Eigen::SparseMatrix<double> sparseIdentity( const Eigen::Index n )
