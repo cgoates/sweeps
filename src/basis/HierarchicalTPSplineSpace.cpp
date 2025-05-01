@@ -81,13 +81,10 @@ HierarchicalTPSplineSpace::HierarchicalTPSplineSpace(
 
         return A;
     };
-    const auto active_mask = [this]( const size_t level_ii, const Eigen::SparseMatrix<double>& M ) {
-        Eigen::SparseMatrix<double> out = M;
+    const auto active_mask = [this]( const size_t level_ii, Eigen::SparseMatrix<double>& M ) {
         for( const Eigen::Index col_ii : mActiveFunctions.at( level_ii ) )
-            out.col( col_ii ) = Eigen::SparseMatrix<double>( M.rows(), 1 );
-        out.makeCompressed();
-
-        return out;
+            M.col( col_ii ) = Eigen::SparseMatrix<double>( M.rows(), 1 );
+        M.makeCompressed();
     };
 
     mLevelExtractionOps.push_back( active_mat( 0 ) );
@@ -96,8 +93,11 @@ HierarchicalTPSplineSpace::HierarchicalTPSplineSpace(
         // TODO: this can be optimized by only assembling the columns of the refinementOp that are for active functions,
         // since the kronecker product is a slow point for bigger spline spaces.
         // There are also more performant ways to do a product of a kronecker product with another matrix.  Look into that.
-        const Eigen::SparseMatrix<double> D = refinementOp( *mRefinementLevels.at( i - 1 ), *mRefinementLevels.at( i ), 1e-10 );
-        const Eigen::SparseMatrix<double> S = util::verticalConcat( mLevelExtractionOps.back() * active_mask( i, D ), active_mat( i ) );//SLOW
+        Eigen::SparseMatrix<double> D = refinementOp( *mRefinementLevels.at( i - 1 ), *mRefinementLevels.at( i ), 1e-10 );
+        active_mask( i, D );
+        Eigen::SparseMatrix<double> temp( mLevelExtractionOps.back().rows(), D.cols() );
+        Eigen::internal::conservative_sparse_sparse_product_impl<Eigen::SparseMatrix<double>,Eigen::SparseMatrix<double>,Eigen::SparseMatrix<double>>(mLevelExtractionOps.back(), D, temp, true);
+        const Eigen::SparseMatrix<double> S = util::verticalConcat( temp, active_mat( i ) );//SLOW
 
         mLevelExtractionOps.push_back( S );
     }
