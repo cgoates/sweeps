@@ -31,5 +31,6 @@ namespace mapping
         const std::shared_ptr<const param::TriangleParametricAtlas> mAtlas;
         const TriangleMeshMapping mTriMapping;
         std::map<size_t, double> mBoundaryAngles;
+        std::map<topology::Face, AABB> mBoundingBoxes;
     };
 }

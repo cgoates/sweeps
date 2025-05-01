@@ -7,9 +7,36 @@ namespace mapping
 {
     TriangleMeshMapping::TriangleMeshMapping( const std::shared_ptr<const param::TriangleParametricAtlas>& atlas,
                                               const VertexPositionsFunc& vertex_positions,
-                                              const size_t dim )
+                                              const size_t dim,
+                                              const bool build_bounding_boxes )
         : mAtlas( atlas ), mPositions( vertex_positions ), mDim( dim )
-    {}
+    {
+        if( build_bounding_boxes )
+        {
+            const auto aabb = [&]( const auto& tri ) {
+                const Vector3dMax mins = tri.v1.array().min( tri.v2.array() ).min( tri.v3.array() );
+                const Vector3dMax maxs = tri.v1.array().max( tri.v2.array() ).max( tri.v3.array() );
+                return AABB( mins, maxs );
+            };
+            if( mDim == 2 )
+            {
+                iterateCellsWhile( mAtlas->cmap(), 2, [&]( const topology::Face& f ) {
+                    const Triangle<2> tri = triangleOfFace<2>( mAtlas->cmap(), mPositions, f );
+                    mBoundingBoxes.emplace( f, aabb( tri ) );
+                    return true;
+                } );
+            }
+            else if( mDim == 3 )
+            {
+                iterateCellsWhile( mAtlas->cmap(), 2, [&]( const topology::Face& f ) {
+                    const Triangle<3> tri = triangleOfFace<3>( mAtlas->cmap(), mPositions, f );
+                    mBoundingBoxes.emplace( f, aabb( tri ) );
+                    return true;
+                } );
+            }
+            else throw std::runtime_error( "TriangleMeshMapping only supports 2D and 3D physical domains" );
+        }
+    }
 
     Eigen::VectorXd TriangleMeshMapping::evaluate( const topology::Cell& c, const param::ParentPoint& pt ) const
     {
@@ -67,6 +94,7 @@ namespace mapping
     {
         std::optional<std::pair<topology::Cell, param::ParentPoint>> out;
         iterateCellsWhile( mAtlas->cmap(), 2, [&]( const topology::Face& f ) {
+            if( not mBoundingBoxes.empty() and not mBoundingBoxes.at( f ).contains( pt ) ) return true;
             out = maybeInverse( f, pt ).transform( [&f]( const param::ParentPoint& ppt ) {
                 return std::pair<topology::Cell, param::ParentPoint>{ f, ppt };
             } );

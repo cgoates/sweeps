@@ -2,25 +2,10 @@
 #include <CombinatorialMapMethods.hpp>
 #include <SimplexUtilities.hpp>
 #include <CommonUtils.hpp>
+#include <iostream>
 
 namespace mapping
 {
-    TriangleMeshCircleMapping::TriangleMeshCircleMapping(
-        const std::shared_ptr<const param::TriangleParametricAtlas>& atlas,
-        const VertexPositionsFunc& vertex_positions )
-        : mAtlas( atlas ), mTriMapping( atlas, vertex_positions, 2 )
-    {
-        const auto vert_ids = indexingOrError( mAtlas->cmap(), 0 );
-        iterateCellsWhile( mAtlas->cmap(), 0, [&]( const topology::Vertex& v ) {
-            if( boundaryAdjacent( mAtlas->cmap(), v ) )
-            {
-                const Eigen::Vector2d pos = mTriMapping.vertPositions()( v );
-                mBoundaryAngles.emplace( vert_ids( v ), atan2( pos( 1 ), pos( 0 ) ) );
-            }
-            return true;
-        } );
-    }
-
     SmallVector<topology::Edge, 3> maybeBoundaryEdges( const topology::CombinatorialMap& cmap, const topology::Face& f )
     {
         SmallVector<topology::Edge, 3> out;
@@ -39,6 +24,65 @@ namespace mapping
         } while( curr_d != ref_dart );
 
         return out;
+    }
+
+    TriangleMeshCircleMapping::TriangleMeshCircleMapping(
+        const std::shared_ptr<const param::TriangleParametricAtlas>& atlas,
+        const VertexPositionsFunc& vertex_positions )
+        : mAtlas( atlas ), mTriMapping( atlas, vertex_positions, 2, false )
+    {
+        const auto vert_ids = indexingOrError( mAtlas->cmap(), 0 );
+        iterateCellsWhile( mAtlas->cmap(), 0, [&]( const topology::Vertex& v ) {
+            if( boundaryAdjacent( mAtlas->cmap(), v ) )
+            {
+                const Eigen::Vector2d pos = mTriMapping.vertPositions()( v );
+                mBoundaryAngles.emplace( vert_ids( v ), atan2( pos( 1 ), pos( 0 ) ) );
+            }
+            return true;
+        } );
+
+        iterateCellsWhile( mAtlas->cmap(), 2, [&]( const topology::Face& f ) {
+            const Triangle<2> tri = triangleOfFace<2>( mAtlas->cmap(), vertex_positions, f );
+            Eigen::Vector2d mins = tri.v1.array().min( tri.v2.array() ).min( tri.v3.array() );
+            Eigen::Vector2d maxs = tri.v1.array().max( tri.v2.array() ).max( tri.v3.array() );
+
+            const SmallVector<topology::Edge, 3> boundary_edges = maybeBoundaryEdges( mAtlas->cmap(), f );
+
+            if( not boundary_edges.empty() )
+            {
+                const double max_angle = mBoundaryAngles.at( vert_ids( topology::Vertex( boundary_edges.front().dart() ) ) );
+                const double min_angle = mBoundaryAngles.at(
+                    vert_ids( topology::Vertex( phi( mAtlas->cmap(), 1, boundary_edges.back().dart() ).value() ) ) );
+
+                // NOTE: We are assuming that the topological normal is in the same direction as the circle normal by RHR.
+                // Nowhere do I check this, but that is how it is used so far. (4/2025)
+
+                if( min_angle > max_angle )
+                {
+                    mins = mins.array().min( Eigen::Vector2d( -1, 0 ).array() );
+                    maxs = maxs.array().max( Eigen::Vector2d( -1, 0 ).array() );
+                }
+                if( min_angle < 0 and max_angle > 0 )
+                {
+                    mins = mins.array().min( Eigen::Vector2d( 1, 0 ).array() );
+                    maxs = maxs.array().max( Eigen::Vector2d( 1, 0 ).array() );
+                }
+                const double pi_half = std::numbers::pi / 2;
+                if( min_angle < pi_half and max_angle > pi_half )
+                {
+                    mins = mins.array().min( Eigen::Vector2d( 0, 1 ).array() );
+                    maxs = maxs.array().max( Eigen::Vector2d( 0, 1 ).array() );
+                }
+                if( min_angle < -pi_half and max_angle > -pi_half )
+                {
+                    mins = mins.array().min( Eigen::Vector2d( 0, -1 ).array() );
+                    maxs = maxs.array().max( Eigen::Vector2d( 0, -1 ).array() );
+                }
+            }
+
+            mBoundingBoxes.emplace( f, AABB( mins - Eigen::Vector2d::Constant( 1e-15 ), maxs + Eigen::Vector2d::Constant( 1e-15 ) ) );
+            return true;
+        } );
     }
 
     size_t vertex_ii( const param::ParametricAtlas& atlas, const topology::Vertex& v )
@@ -295,6 +339,7 @@ namespace mapping
         if( pt.norm() > 1.0 + 1e-15 ) return std::nullopt;
         std::optional<std::pair<topology::Cell, param::ParentPoint>> out;
         iterateCellsWhile( mAtlas->cmap(), 2, [&]( const topology::Face& f ) {
+            if( not mBoundingBoxes.at( f ).contains( pt ) ) return true;
             out = maybeInverse( f, pt ).transform( [&f]( const param::ParentPoint& ppt ) {
                 return std::pair<topology::Cell, param::ParentPoint>{ f, ppt };
             } );

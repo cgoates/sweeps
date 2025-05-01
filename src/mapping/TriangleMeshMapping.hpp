@@ -6,12 +6,31 @@
 
 namespace mapping
 {
+    class AABB
+    {
+        public:
+        AABB( const Vector3dMax& min, const Vector3dMax& max ) : mMin( min ), mMax( max ) {}
+
+        const Vector3dMax& min() const { return mMin; }
+        const Vector3dMax& max() const { return mMax; }
+
+        bool contains( const Vector3dMax& pt ) const
+        {
+            return ( pt.array() >= mMin.array() ).all() and ( pt.array() <= mMax.array() ).all();
+        }
+
+        private:
+        Vector3dMax mMin;
+        Vector3dMax mMax;
+    };
+
     class TriangleMeshMapping : public GeometricMapping
     {
         public:
         TriangleMeshMapping( const std::shared_ptr<const param::TriangleParametricAtlas>& atlas,
                              const VertexPositionsFunc& vertex_positions,
-                             const size_t dim );
+                             const size_t dim,
+                             const bool build_bounding_boxes = true );
 
         virtual ~TriangleMeshMapping() = default;
 
@@ -34,6 +53,7 @@ namespace mapping
         size_t vertexIndex( const topology::Vertex& v ) const;
         const std::shared_ptr<const param::TriangleParametricAtlas> mAtlas;
         VertexPositionsFunc mPositions;
+        std::map<topology::Face, AABB> mBoundingBoxes;
         size_t mDim;
     };
 }
