@@ -25,6 +25,78 @@ namespace topology
         return out;
     }
 
+    bool iterateDartsOfFace( const CombinatorialMap& map,
+                             const Face& f,
+                             const std::function<bool( const Dart& )>& callback )
+    {
+        const uint topo_dim = map.dim();
+        Dart d = f.dart();
+        do
+        {
+            if( not callback( d ) ) return false;
+            d = phi( map, 1, d ).value();
+        } while ( d != f.dart() );
+        if( topo_dim > 2 )
+        {
+            const auto maybe_phi = phi( map, 3, d );
+            if( maybe_phi.has_value() )
+            {
+                d = maybe_phi.value();
+                do
+                {
+                    if( not callback( d ) ) return false;
+                    d = phi( map, 1, d ).value();
+                } while ( d != maybe_phi.value() );
+            }
+        }
+        return true;
+    }
+
+    bool iterateDartsOfEdge( const CombinatorialMap& map,
+                             const Edge& e,
+                             const std::function<bool( const Dart& )>& callback )
+    {
+        const uint topo_dim = map.dim();
+        switch( topo_dim )
+        {
+            case 1: return callback( e.dart() );
+            case 2:
+            {
+                if( not callback( e.dart() ) ) return false;
+                const auto maybe_phi = phi( map, 2, e.dart() );
+                if( maybe_phi.has_value() and not callback( maybe_phi.value() ) ) return false;
+                return true;
+            }
+            case 3:
+            {
+                Dart d = e.dart();
+                do
+                {
+                    if( not callback( d ) ) return false;
+                    d = phi( map, 2, d ).value();
+                    if( not callback( d ) ) return false;
+
+                    const auto maybe_phi = phi( map, 3, d );
+                    if( maybe_phi.has_value() ) d = maybe_phi.value();
+                    else break;
+                } while ( d != e.dart() );
+                if( d != e.dart() )
+                {
+                    auto maybe_phi = phi( map, 3, e.dart() );
+                    while( maybe_phi.has_value() )
+                    {
+                        if( not callback( maybe_phi.value() ) ) return false;
+                        d = phi( map, 2, maybe_phi.value() ).value();
+                        if( not callback( d ) ) return false;
+                        maybe_phi = phi( map, 3, d );
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
     bool iterateDartsOfCell( const CombinatorialMap& map,
                              const Cell& c,
                              DartMarker auto& m,
@@ -82,6 +154,8 @@ namespace topology
                              const Cell& c,
                              const std::function<bool( const Dart& )>& callback )
     {
+        if( c.dim() == 2 ) return iterateDartsOfFace( map, c, callback );
+        if( c.dim() == 1 ) return iterateDartsOfEdge( map, c, callback );
         LocalDartMarker m;
         return iterateDartsOfCell( map, c, m, callback );
     }
