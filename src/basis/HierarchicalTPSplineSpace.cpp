@@ -112,11 +112,21 @@ const std::shared_ptr<const HierarchicalTPBasisComplex>& HierarchicalTPSplineSpa
     return mBasisComplex;
 }
 
+size_t numNonZerosInColumns(const Eigen::SparseMatrix<double>& mat, const std::vector<FunctionId>& cols )
+{
+    size_t out = 0;
+    for( const FunctionId& col : cols )
+    {// WARNING: Requires compressed matrix
+        out += mat.outerIndexPtr()[col + 1] - mat.outerIndexPtr()[col];
+    }
+    return out;
+}
+
 Eigen::SparseMatrix<double> nonzeroRowsOfColumns( const Eigen::SparseMatrix<double>& mat, const std::vector<FunctionId>& cols )
 {
     std::set<Eigen::Index> nonzero_rows;
     std::vector<Eigen::Triplet<double>> triplets;
-    triplets.reserve( mat.nonZeros() ); // Overkill, but I don't see a better number to use here.
+    triplets.reserve( numNonZerosInColumns( mat, cols ) );
 
     for( size_t col_ii = 0; col_ii < cols.size(); ++col_ii )
     {
