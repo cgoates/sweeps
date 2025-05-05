@@ -93,13 +93,27 @@ namespace mapping
     std::optional<std::pair<topology::Cell, param::ParentPoint>> TriangleMeshMapping::maybeInverse( const Vector3dMax& pt ) const
     {
         std::optional<std::pair<topology::Cell, param::ParentPoint>> out;
-        iterateCellsWhile( mAtlas->cmap(), 2, [&]( const topology::Face& f ) {
-            if( not mBoundingBoxes.empty() and not mBoundingBoxes.at( f ).contains( pt ) ) return true;
-            out = maybeInverse( f, pt ).transform( [&f]( const param::ParentPoint& ppt ) {
-                return std::pair<topology::Cell, param::ParentPoint>{ f, ppt };
+        if( not mBoundingBoxes.empty() )
+        {
+            for( const auto& [f, bb] : mBoundingBoxes )
+            {
+                if( not bb.contains( pt ) ) continue;
+                out = maybeInverse( f, pt ).transform( [&f]( const param::ParentPoint& ppt ) {
+                    return std::pair<topology::Cell, param::ParentPoint>{ f, ppt };
+                } );
+                if( out.has_value() ) return out;
+            }
+        }
+        else
+        {
+            iterateCellsWhile( mAtlas->cmap(), 2, [&]( const topology::Face& f ) {
+                if( not mBoundingBoxes.empty() and not mBoundingBoxes.at( f ).contains( pt ) ) return true;
+                out = maybeInverse( f, pt ).transform( [&f]( const param::ParentPoint& ppt ) {
+                    return std::pair<topology::Cell, param::ParentPoint>{ f, ppt };
+                } );
+                return not out.has_value();
             } );
-            return not out.has_value();
-        } );
+        }
         return out;
     }
 
