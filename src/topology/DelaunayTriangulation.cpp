@@ -35,17 +35,17 @@ DelaunayTriangulation::DelaunayTriangulation( const std::shared_ptr<const Combin
         const Dart old_phi1 = topology::phi( *base, 1, f.dart() ).value();
         const Dart old_phi11 = topology::phi( *base, {1, 1}, f.dart() ).value();
 
-        mAlteredPhi1s.emplace( new_d1, f.dart() );
-        mAlteredPhi_1s.emplace( f.dart(), new_d1 );
+        mAlteredPhi1s.emplace( new_d1.id(), f.dart() );
+        mAlteredPhi_1s.emplace( f.dart().id(), new_d1 );
 
-        mAlteredPhi1s.emplace( old_phi1, new_d1 );
-        mAlteredPhi_1s.emplace( new_d1, old_phi1 );
+        mAlteredPhi1s.emplace( old_phi1.id(), new_d1 );
+        mAlteredPhi_1s.emplace( new_d1.id(), old_phi1 );
 
-        mAlteredPhi1s.emplace( old_phi_1, new_d2 );
-        mAlteredPhi_1s.emplace( new_d2, old_phi_1 );
+        mAlteredPhi1s.emplace( old_phi_1.id(), new_d2 );
+        mAlteredPhi_1s.emplace( new_d2.id(), old_phi_1 );
 
-        mAlteredPhi1s.emplace( new_d2, old_phi11 );
-        mAlteredPhi_1s.emplace( old_phi11, new_d2 );
+        mAlteredPhi1s.emplace( new_d2.id(), old_phi11 );
+        mAlteredPhi_1s.emplace( old_phi11.id(), new_d2 );
     };
 
     topology::iterateCellsWhile( *base, 2, [&]( const Face& f ) {
@@ -77,7 +77,7 @@ std::optional<Dart> DelaunayTriangulation::phi( const int i, const Dart& d ) con
 {
     if( i == 1 )
     {
-        const auto it = mAlteredPhi1s.find( d );
+        const auto it = mAlteredPhi1s.find( d.id() );
         if( it == mAlteredPhi1s.end() )
         {
             if( d.id() > mLowerBound ) throw std::runtime_error( "Missing phi1 of dart " + std::to_string( d.id() ) );
@@ -88,7 +88,7 @@ std::optional<Dart> DelaunayTriangulation::phi( const int i, const Dart& d ) con
     }
     else if( i == -1 )
     {
-        const auto it = mAlteredPhi_1s.find( d );
+        const auto it = mAlteredPhi_1s.find( d.id() );
         if( it == mAlteredPhi_1s.end() )
         {
             if( d.id() > mLowerBound ) throw std::runtime_error( "Missing phi-1 of dart " + std::to_string( d.id() ) );
@@ -143,23 +143,15 @@ bool DelaunayTriangulation::iterateCellsWhile( const uint cell_dim,
     else if( cell_dim == 2 )
     {
         GlobalCellMarker m( *this, cell_dim );
-        const bool keep_iterating = topology::iterateCellsWhile( *mBaseMap, cell_dim, [&]( const Face& f ) {
-            m.mark( *this, f );
-            return callback( f );
-        } );
-        if( keep_iterating )
-        {
-            for( Dart::IndexType i = mLowerBound + 1; i <= mMaxDartId; i++ )
+        return iterateDartsWhile( [&]( const Dart& d ) {
+            const Face f( d );
+            if( not m.isMarked( f ) )
             {
-                const Face f( Dart{ i } );
-                if( not m.isMarked( f ) )
-                {
-                    m.mark( *this, f );
-                    if( not callback( f ) ) return false;
-                }
+                m.mark( *this, f );
+                if( not callback( f ) ) return false;
             }
-        }
-        return keep_iterating;
+            return true;
+        } );
     }
     return true;
 }

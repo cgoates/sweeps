@@ -1,6 +1,6 @@
 #pragma once
 #include <CombinatorialMap.hpp>
-#include <map>
+#include <unordered_map>
 #include <VertexPositionsFunc.hpp>
 #include <memory>
 
@@ -31,8 +31,8 @@ namespace topology
 
         private:
         const std::shared_ptr<const CombinatorialMap> mBaseMap;
-        std::map<Dart, Dart> mAlteredPhi1s;
-        std::map<Dart, Dart> mAlteredPhi_1s;
+        std::unordered_map<Dart::IndexType, Dart> mAlteredPhi1s;
+        std::unordered_map<Dart::IndexType, Dart> mAlteredPhi_1s;
         const Dart::IndexType mLowerBound;
         Dart::IndexType mMaxDartId;
     };
