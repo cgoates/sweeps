@@ -96,10 +96,14 @@ HierarchicalTPSplineSpace::HierarchicalTPSplineSpace(
         Eigen::SparseMatrix<double> D = refinementOp( *mRefinementLevels.at( i - 1 ), *mRefinementLevels.at( i ), 1e-10 );
         active_mask( i, D );
         Eigen::SparseMatrix<double> temp( mLevelExtractionOps.back().rows(), D.cols() );
-        Eigen::internal::conservative_sparse_sparse_product_impl<Eigen::SparseMatrix<double>,Eigen::SparseMatrix<double>,Eigen::SparseMatrix<double>>(mLevelExtractionOps.back(), D, temp, true);
-        const Eigen::SparseMatrix<double> S = util::verticalConcat( temp, active_mat( i ) );//SLOW
+        // This is temp = mLevelExtractionOps.back() * D, but using a more performant version, since this is a bottleneck.
+        Eigen::internal::conservative_sparse_sparse_product_impl<Eigen::SparseMatrix<double>,
+                                                                 Eigen::SparseMatrix<double>,
+                                                                 Eigen::SparseMatrix<double>>(
+            mLevelExtractionOps.back(), D, temp, true );
 
-        mLevelExtractionOps.push_back( S );
+        mLevelExtractionOps.emplace_back( temp.rows() + mActiveFunctions.at( i ).size(), temp.cols() );
+        util::verticalConcatInto( temp, active_mat( i ), mLevelExtractionOps.back() );
     }
 }
 
