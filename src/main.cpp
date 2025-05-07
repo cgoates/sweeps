@@ -278,6 +278,7 @@ int main( int argc, char* argv[] )
                 io::outputSimplicialFieldToVTK( output, "target.vtu" );
             }
             io::VTKOutputObject output( sweep_input.mesh );
+            output.addVertexField( "vertex_ids", Eigen::VectorXd::LinSpaced( sweep_input.mesh.points.size(), 0, sweep_input.mesh.points.size() - 1 ) );
             io::outputSimplicialFieldToVTK( output, "mesh.vtu" );
 
             if( std::find( input_args.begin(), input_args.end(), "edge-weights" ) != input_args.end() )
