@@ -106,6 +106,19 @@ namespace std
         return os;
     }
 
+    template <typename T, size_t N> std::ostream& operator<<( std::ostream& o, const std::array<T, N>& v )
+    {
+        if( v.size() == 0 )
+            o << "{}";
+        else
+        {
+            o << "{ ";
+            for( auto it = v.begin(); it != v.end() - 1; it++ ) o << *it << ", ";
+            o << v.back() << " }";
+        }
+        return o;
+    }
+
 }
 
 namespace ecpp
