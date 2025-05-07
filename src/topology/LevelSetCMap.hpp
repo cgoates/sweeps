@@ -32,6 +32,11 @@ namespace topology
         Cell underlyingCell( const topology::Cell& c ) const;
         const CombinatorialMap& underlyingMap() const { return mUnderlyingMap; }
 
+        bool isInMap( const Vertex& v ) const
+        {
+            return mIntersectionPositions.find( v ) != mIntersectionPositions.end();
+        }
+
         private:
         const CombinatorialMap& mUnderlyingMap;
         GlobalCellMarker mIntersectedEdges;
