@@ -38,8 +38,23 @@ namespace topology
 
         std::set<std::pair<double, T>, Comp> mSet;
     };
+
     std::vector<Edge> shortestPath( const CombinatorialMap& map,
                                     const VertexPositionsFunc& vert_positions,
+                                    const Vertex& start_vertex,
+                                    const std::function<bool( const Vertex& )>& stop_condition,
+                                    const bool interior_only )
+    {
+        return shortestPath(
+            map,
+            [&]( const Edge& e ) { return edgeLength( map, vert_positions, e ); },
+            start_vertex,
+            stop_condition,
+            interior_only );
+    }
+
+    std::vector<Edge> shortestPath( const CombinatorialMap& map,
+                                    const std::function<double( const Edge& )>& edge_lengths,
                                     const Vertex& start_vertex,
                                     const std::function<bool( const Vertex& )>& stop_condition,
                                     const bool interior_only )
@@ -82,7 +97,7 @@ namespace topology
             iterateDartsOfCell( map, v, [&]( const Dart& d ) {
                 if( interior_only and onBoundary( map, d ) ) return true;
                 const Vertex v_next( phi( map, 1, d ).value() );
-                const double new_dist = distances.at( vert_ids( v ) ) + edgeLength( map, vert_positions, d );
+                const double new_dist = distances.at( vert_ids( v ) ) + edge_lengths( d );
                 if( new_dist < distances.at( vert_ids( v_next ) ) )
                 {
                     path_lengths.at( vert_ids( v_next ) ) = path_lengths.at( vert_ids( v ) ) + 1;
