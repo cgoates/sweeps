@@ -10,6 +10,7 @@ class Normal;
 namespace topology
 {
     class TetMeshCombinatorialMap;
+    class CutCombinatorialMap;
     class CombinatorialMap;
     class Edge;
 }
@@ -36,6 +37,11 @@ namespace reparam
                         const VertexPositionsFunc& vert_positions,
                         const std::function<std::optional<Eigen::Vector2d>( const topology::Vertex& )>& constraints,
                         const bool shape_preserving = true );
+
+    Eigen::MatrixX2d tutteOrbifoldEmbedding( const topology::CutCombinatorialMap& map,
+                                             const VertexPositionsFunc& vert_positions,
+                                             const std::array<topology::Vertex, 3>& cone_vertices,
+                                             const bool shape_preserving = true );
 
     Eigen::MatrixXd
         solveLaplaceSparse( const topology::CombinatorialMap& map,
