@@ -51,7 +51,7 @@ CutCombinatorialMap::CutCombinatorialMap( const CombinatorialMap& base, const st
 
 std::optional<Dart> CutCombinatorialMap::phi( const int i, const Dart& d ) const
 {
-    if( i == (int)dim() and mNoPhiDimDarts.count( d ) != 0 ) return std::nullopt;
+    if( i == (int)dim() and mNoPhiDimDarts.contains( d ) ) return std::nullopt;
     else
         return topology::phi( mBaseMap, i, d );
 }
