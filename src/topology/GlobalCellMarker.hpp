@@ -72,10 +72,16 @@ namespace topology
         IndexingCellMarker( const IndexingFunc& indexing, const uint cell_dim ) : mIndexing( indexing ), mCellDim( cell_dim )
         {}
 
-        void mark( const CombinatorialMap&, const Cell& c )
+        void mark( const Cell& c )
         {
             if( c.dim() != mCellDim ) throw std::runtime_error( "Bad cell dimension!" );
             mMarkedCellIds.push_back( mIndexing( c ) );
+        }
+
+        /// This version conforms to the common interface
+        void mark( const CombinatorialMap&, const Cell& c )
+        {
+            mark( c );
         }
 
         bool isMarked( const Cell& c ) const
