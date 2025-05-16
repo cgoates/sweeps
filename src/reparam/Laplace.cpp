@@ -285,13 +285,13 @@ namespace reparam
             const topology::Vertex other_v_bdry( phi( uncut_map, {2,1}, v_bdry.dart() ).value() );
             return other_v_bdry;
         };
-        const std::array<std::pair<size_t, Eigen::Index>, 4> constrained_verts = [&]() {
+        const std::array<std::pair<size_t, Eigen::Index>, 4> constrained_verts = [&]() -> std::array<std::pair<size_t, Eigen::Index>, 4> {
             const topology::Vertex other_mid_vert = other_side_of_cut( cone_vertices.at( 1 ) );
 
-            return std::array<std::pair<size_t, Eigen::Index>, 4>( { { vertex_ids( cone_vertices.at( 0 ) ), 0 },
-                                                                     { vertex_ids( cone_vertices.at( 1 ) ), 1 },
-                                                                     { vertex_ids( cone_vertices.at( 2 ) ), 2 },
-                                                                     { vertex_ids( other_mid_vert ), 3 } } );
+            return { { { vertex_ids( cone_vertices.at( 0 ) ), 0 },
+                       { vertex_ids( cone_vertices.at( 1 ) ), 1 },
+                       { vertex_ids( cone_vertices.at( 2 ) ), 2 },
+                       { vertex_ids( other_mid_vert ), 3 } } };
         }();
 
         std::vector<Eigen::Triplet<double>> L_triplets;
