@@ -22,7 +22,7 @@ CombinatorialMapBoundary::CombinatorialMapBoundary( const CombinatorialMap& map,
 std::optional<Dart> CombinatorialMapBoundary::phi( const int i, const Dart& d ) const
 {
     const int effective_i = std::abs( i ) == 1 ? -i : i;
-    if( i < (int)dim() ) return topology::phi( mInteriorMap, effective_i, d );
+    if( std::abs( i ) < (int)dim() ) return topology::phi( mInteriorMap, effective_i, d );
     else if( i > (int)dim() ) return std::nullopt;
     else
     {
@@ -102,7 +102,7 @@ topology::Cell CombinatorialMapBoundary::toUnderlyingCell( const topology::Cell&
 topology::Cell CombinatorialMapBoundary::fromUnderlyingCell( const topology::Cell& c ) const
 {
     if( c.dim() > 0 ) return c;
-    else return Vertex( topology::phi( mInteriorMap, -1, c.dart() ).value() );
+    else return Vertex( phi( 1, c.dart() ).value() );
 }
 
 std::optional<IndexingFunc> CombinatorialMapBoundary::indexing( const uint cell_dim ) const
