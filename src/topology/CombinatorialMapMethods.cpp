@@ -293,6 +293,20 @@ namespace topology
         } );
     }
 
+    std::optional<Dart> maybeBoundaryDart( const CombinatorialMap& map, const Cell& c )
+    {
+        std::optional<Dart> out;
+        iterateDartsOfCell( map, c, [&]( const Dart& d ) {
+            if( onBoundary( map, d ) )
+            {
+                out = d;
+                return false;
+            }
+            return true;
+        } );
+        return out;
+    }
+
     std::set<Dart> boundaryComponentDarts( const CombinatorialMap& map )
     {
         std::set<Dart> out;

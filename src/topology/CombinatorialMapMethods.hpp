@@ -59,6 +59,9 @@ namespace topology
     bool onBoundary( const CombinatorialMap& map, const Dart& d );
 
     bool boundaryAdjacent( const CombinatorialMap& map, const Cell& c );
+    /// If the cell is boundary adjacent, returns a dart of the cell that is on the boundary.
+    /// If the cell is not boundary adjacent, returns std::nullopt.
+    std::optional<Dart> maybeBoundaryDart( const CombinatorialMap& map, const Cell& c );
 
     /// Returns one dart for every boundary connected component.
     /// Topologies homogeneous to a disk or ball will have one dart
