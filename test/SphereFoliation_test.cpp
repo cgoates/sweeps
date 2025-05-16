@@ -46,7 +46,6 @@ reparam::FoliationLeaf leafFromSphereLevelSet( const std::shared_ptr<const topol
     const auto& cmap = *cmap_ptr;
     const auto cmap_vert_ids = indexingOrError( cmap, 0 );
     std::set<topology::Cell> cuts;
-    size_t i = 0;
 
     const auto cut1 = topology::shortestPath( cmap, positions, cut_vertices.at( 0 ), testEqualVertices( cmap_vert_ids, cut_vertices.at( 1 ) ) );
     topology::GlobalCellMarker cut_marker( cmap, 1 );
@@ -334,7 +333,7 @@ void bulletFoliation( const std::vector<double>& level_set_values,
 {
     const SweepInput sweep = SweepInputTestCases::bullet_full();
 
-    const std::array<std::array<size_t, 3>,2> cut_v_ids({ { 2225, 98, 2237 }, { 415, 0, 27 } }); // FIXME
+    const std::array<std::array<size_t, 3>,2> cut_v_ids = {{ { 2225, 98, 2237 }, { 415, 0, 27 } }};
 
     nonDiskFoliations( sweep, level_set_values, cut_v_ids, callback );
 }
