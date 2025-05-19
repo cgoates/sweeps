@@ -57,26 +57,45 @@ namespace mapping
                 // NOTE: We are assuming that the topological normal is in the same direction as the circle normal by RHR.
                 // Nowhere do I check this, but that is how it is used so far. (4/2025)
 
+                const double pi_half = std::numbers::pi / 2;
                 if( min_angle > max_angle )
                 {
                     mins = mins.array().min( Eigen::Vector2d( -1, 0 ).array() );
                     maxs = maxs.array().max( Eigen::Vector2d( -1, 0 ).array() );
+
+                    if( min_angle < 0 or max_angle > 0 )
+                    {
+                        mins = mins.array().min( Eigen::Vector2d( 1, 0 ).array() );
+                        maxs = maxs.array().max( Eigen::Vector2d( 1, 0 ).array() );
+                    }
+                    if( min_angle < pi_half or max_angle > pi_half )
+                    {
+                        mins = mins.array().min( Eigen::Vector2d( 0, 1 ).array() );
+                        maxs = maxs.array().max( Eigen::Vector2d( 0, 1 ).array() );
+                    }
+                    if( min_angle < -pi_half or max_angle > -pi_half )
+                    {
+                        mins = mins.array().min( Eigen::Vector2d( 0, -1 ).array() );
+                        maxs = maxs.array().max( Eigen::Vector2d( 0, -1 ).array() );
+                    }
                 }
-                if( min_angle < 0 and max_angle > 0 )
+                else
                 {
-                    mins = mins.array().min( Eigen::Vector2d( 1, 0 ).array() );
-                    maxs = maxs.array().max( Eigen::Vector2d( 1, 0 ).array() );
-                }
-                const double pi_half = std::numbers::pi / 2;
-                if( min_angle < pi_half and max_angle > pi_half )
-                {
-                    mins = mins.array().min( Eigen::Vector2d( 0, 1 ).array() );
-                    maxs = maxs.array().max( Eigen::Vector2d( 0, 1 ).array() );
-                }
-                if( min_angle < -pi_half and max_angle > -pi_half )
-                {
-                    mins = mins.array().min( Eigen::Vector2d( 0, -1 ).array() );
-                    maxs = maxs.array().max( Eigen::Vector2d( 0, -1 ).array() );
+                    if( min_angle < 0 and max_angle > 0 )
+                    {
+                        mins = mins.array().min( Eigen::Vector2d( 1, 0 ).array() );
+                        maxs = maxs.array().max( Eigen::Vector2d( 1, 0 ).array() );
+                    }
+                    if( min_angle < pi_half and max_angle > pi_half )
+                    {
+                        mins = mins.array().min( Eigen::Vector2d( 0, 1 ).array() );
+                        maxs = maxs.array().max( Eigen::Vector2d( 0, 1 ).array() );
+                    }
+                    if( min_angle < -pi_half and max_angle > -pi_half )
+                    {
+                        mins = mins.array().min( Eigen::Vector2d( 0, -1 ).array() );
+                        maxs = maxs.array().max( Eigen::Vector2d( 0, -1 ).array() );
+                    }
                 }
             }
 
