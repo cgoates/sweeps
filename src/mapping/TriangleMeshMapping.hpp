@@ -24,6 +24,8 @@ namespace mapping
         Vector3dMax mMax;
     };
 
+    std::ostream& operator<<( std::ostream& os, const AABB& aabb );
+
     class TriangleMeshMapping : public GeometricMapping
     {
         public:
