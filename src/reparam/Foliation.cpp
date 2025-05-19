@@ -168,6 +168,13 @@ namespace reparam
         const std::vector<Normal> normals = faceNormals( map );
         const Eigen::VectorXd sol = reparam::sweepEmbedding( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
 
+        for( size_t ii = 1; ii < level_set_values.size() - 1; ii++ )
+        {
+            const double val = level_set_values.at( ii );
+            if( ( sol.array() == val ).any() )
+                throw std::runtime_error( "Cannot have a level set directly on a vertex" );
+        }
+
         LOG( log_level_set_based_tracing ) << "FINISHED LAPLACE\n\n";
 
         const topology::CombinatorialMapBoundary bdry( map );
