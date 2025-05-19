@@ -279,11 +279,11 @@ TEST_CASE( "Level set parameterization of hook" )
         testLevelSetBasedTracing( sweep_input, util::concatenate(util::linspace( 0, 0.1, 1000 ),{1.0}), "hook" );
 }
 
-TEST_CASE( "Level set parameterization of cube", "[no_ubuntu]" )// FIXME: Make this run on Ubuntu; this is a legitimate error
+TEST_CASE( "Level set parameterization of cube" )
 {
     const SweepInput sweep_input = SweepInputTestCases::twelveTetCube();
 
-    testLevelSetBasedTracing( sweep_input, 3 );
+    testLevelSetBasedTracing( sweep_input, 4 );
 }
 
 TEST_CASE( "Level set parameterization of bullet" )
