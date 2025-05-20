@@ -5,12 +5,6 @@
 
 namespace mapping
 {
-    std::ostream& operator<<( std::ostream& os, const AABB& aabb )
-    {
-        os << "AABB(" << aabb.min().transpose() << "; " << aabb.max().transpose() << ")";
-        return os;
-    }
-
     TriangleMeshMapping::TriangleMeshMapping( const std::shared_ptr<const param::TriangleParametricAtlas>& atlas,
                                               const VertexPositionsFunc& vertex_positions,
                                               const size_t dim,

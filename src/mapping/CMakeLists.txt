@@ -2,6 +2,7 @@ add_library( mapping SHARED
   GeometricMapping.cpp
   TriangleMeshMapping.cpp
   TriangleMeshCircleMapping.cpp
+  AABB.cpp
 )
 
 target_link_libraries( mapping PUBLIC util topology param )
