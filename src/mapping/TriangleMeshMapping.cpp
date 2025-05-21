@@ -107,7 +107,6 @@ namespace mapping
         else
         {
             iterateCellsWhile( mAtlas->cmap(), 2, [&]( const topology::Face& f ) {
-                if( not mBoundingBoxes.empty() and not mBoundingBoxes.at( f ).contains( pt ) ) return true;
                 out = maybeInverse( f, pt ).transform( [&f]( const param::ParentPoint& ppt ) {
                     return std::pair<topology::Cell, param::ParentPoint>{ f, ppt };
                 } );
