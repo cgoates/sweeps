@@ -2,6 +2,7 @@ add_library( mapping SHARED
   GeometricMapping.cpp
   TriangleMeshMapping.cpp
   TriangleMeshCircleMapping.cpp
+  OrbifoldMapping.cpp
   AABB.cpp
 )
 
