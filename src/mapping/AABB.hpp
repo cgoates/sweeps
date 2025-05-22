@@ -2,6 +2,8 @@
 #include <CustomEigen.hpp>
 #include <iosfwd>
 
+template<int DIM>
+struct Triangle;
 namespace mapping
 {
     class AABB
@@ -23,4 +25,7 @@ namespace mapping
     };
 
     std::ostream& operator<<( std::ostream& os, const AABB& aabb );
+
+    template<int DIM>
+    AABB aabbFromTriangle( const Triangle<DIM>& tri );
 }

@@ -13,16 +13,11 @@ namespace mapping
     {
         if( build_bounding_boxes )
         {
-            const auto aabb = [&]( const auto& tri ) {
-                const Vector3dMax mins = tri.v1.array().min( tri.v2.array() ).min( tri.v3.array() );
-                const Vector3dMax maxs = tri.v1.array().max( tri.v2.array() ).max( tri.v3.array() );
-                return AABB( mins, maxs );
-            };
             if( mDim == 2 )
             {
                 iterateCellsWhile( mAtlas->cmap(), 2, [&]( const topology::Face& f ) {
                     const Triangle<2> tri = triangleOfFace<2>( mAtlas->cmap(), mPositions, f );
-                    mBoundingBoxes.emplace( f, aabb( tri ) );
+                    mBoundingBoxes.emplace( f, aabbFromTriangle( tri ) );
                     return true;
                 } );
             }
@@ -30,7 +25,7 @@ namespace mapping
             {
                 iterateCellsWhile( mAtlas->cmap(), 2, [&]( const topology::Face& f ) {
                     const Triangle<3> tri = triangleOfFace<3>( mAtlas->cmap(), mPositions, f );
-                    mBoundingBoxes.emplace( f, aabb( tri ) );
+                    mBoundingBoxes.emplace( f, aabbFromTriangle( tri ) );
                     return true;
                 } );
             }
