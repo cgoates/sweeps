@@ -58,30 +58,25 @@ namespace mapping
 
         std::optional<param::ParentPoint> out = std::nullopt;
 
-        iterateAdjacentCellsOfRestrictedCell( mAtlas->cmap(), f, 2, 0, [&]( const topology::Vertex& v ) {
-            if( vertexIndex( v ) == 0 )
-            {
-                const param::ParentDomain pd = mAtlas->parentDomain( f );
-                const std::optional<Eigen::Vector3d> maybe_bary = [&]() {
-                    if( mDim == 2 )
-                    {
-                        const Triangle<2> tri = triangleOfFace<2>( mAtlas->cmap(), mPositions, topology::Face( v.dart() ) );
-                        return invertTriangleMap( tri, pt );
-                    }
-                    else
-                    {
-                        const Triangle<3> tri = triangleOfFace<3>( mAtlas->cmap(), mPositions, topology::Face( v.dart() ) );
-                        return invertTriangleMap( tri, pt );
-                    }
-                }();
-                out = maybe_bary.transform( [&]( const Eigen::Vector3d& bary_coords ) {
-                    return compressCoordinates( pd, bary_coords, 1e-5 );
-                } );
+        const param::ParentDomain pd = mAtlas->parentDomain( f );
 
-                return false;
+        const topology::Vertex v = originVertex( *mAtlas, f );
+        const std::optional<Eigen::Vector3d> maybe_bary = [&]() {
+            if( mDim == 2 )
+            {
+                const Triangle<2> tri = triangleOfFace<2>( mAtlas->cmap(), mPositions, topology::Face( v.dart() ) );
+                return invertTriangleMap( tri, pt );
             }
-            return true;
+            else
+            {
+                const Triangle<3> tri = triangleOfFace<3>( mAtlas->cmap(), mPositions, topology::Face( v.dart() ) );
+                return invertTriangleMap( tri, pt );
+            }
+        }();
+        out = maybe_bary.transform( [&]( const Eigen::Vector3d& bary_coords ) {
+            return compressCoordinates( pd, bary_coords, 1e-5 );
         } );
+
         return out;
     }
 
