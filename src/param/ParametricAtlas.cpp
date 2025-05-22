@@ -70,4 +70,23 @@ namespace param
 
         return index;
     }
+
+    topology::Vertex originVertex( const ParametricAtlas& atlas, const topology::Cell& c )
+    {
+        if( c.dim() != atlas.cmap().dim() ) throw std::runtime_error( "Cell dimension does not match atlas dimension" );
+        const ParentDomain pd = atlas.parentDomain( c );
+
+        std::optional<topology::Vertex> out;
+        iterateAdjacentCellsOfRestrictedCell( atlas.cmap(), c, atlas.cmap().dim(), 0, [&]( const topology::Vertex& v ) {
+            const param::ParentPoint v_pt = atlas.parentPoint( v );
+            bool at_origin = true;
+            iterateGroups( pd, [&]( const size_t expanded_start, const size_t explicit_start, const param::CoordinateSystem& cs ) {
+                if( v_pt.mBaryCoordIsZero.at( expanded_start ) ) at_origin = false;
+            } );
+            if( at_origin ) out.emplace( v );
+            return not at_origin;
+        } );
+
+        return out.value();
+    }
 }
