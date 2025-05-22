@@ -297,7 +297,7 @@ namespace reparam
         std::vector<Eigen::Triplet<double>> L_triplets;
         L_triplets.reserve( 4 * cellCount( map, 1 ) + 2 * n_verts + 5 * ( n_bdry_verts - n_constrained_verts ) );
 
-        const Eigen::Matrix<double, 8, 1> BCs = ( Eigen::Matrix<double, 8, 1>() << 0, -1, 1, 0, 0, 1, -1, 0 ).finished();
+        const Eigen::Matrix<double, 8, 1> BCs = ( Eigen::Matrix<double, 8, 1>() << 0, 0, 1, 0, 1, 1, 0, 1 ).finished();
 
         const auto add_doubled_row = []( const SparseVectorXd& row, const Eigen::Index i, std::vector<Eigen::Triplet<double>>& triplets ) {
             for( SparseVectorXd::InnerIterator it( row ); it; ++it )
