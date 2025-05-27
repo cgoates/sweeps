@@ -80,7 +80,7 @@ namespace param
         iterateAdjacentCellsOfRestrictedCell( atlas.cmap(), c, atlas.cmap().dim(), 0, [&]( const topology::Vertex& v ) {
             const param::ParentPoint v_pt = atlas.parentPoint( v );
             bool at_origin = true;
-            iterateGroups( pd, [&]( const size_t expanded_start, const size_t explicit_start, const param::CoordinateSystem& cs ) {
+            iterateGroups( pd, [&]( const size_t expanded_start, const size_t, const param::CoordinateSystem& ) {
                 if( v_pt.mBaryCoordIsZero.at( expanded_start ) ) at_origin = false;
             } );
             if( at_origin ) out.emplace( v );
