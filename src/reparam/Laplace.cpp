@@ -285,7 +285,7 @@ namespace reparam
             const topology::Vertex other_v_bdry( phi( uncut_map, {2,1}, v_bdry.dart() ).value() );
             return other_v_bdry;
         };
-        const std::array<std::pair<size_t, Eigen::Index>, 4> constrained_verts = [&]() -> std::array<std::pair<size_t, Eigen::Index>, 4> {
+        std::array<std::pair<size_t, Eigen::Index>, 4> constrained_verts = [&]() -> std::array<std::pair<size_t, Eigen::Index>, 4> {
             const topology::Vertex other_mid_vert = other_side_of_cut( cone_vertices.at( 1 ) );
 
             return { { { vertex_ids( cone_vertices.at( 0 ) ), 0 },
@@ -382,6 +382,11 @@ namespace reparam
             SparseMatrixXd rot = sparse_rotation( -0.5 * std::numbers::pi );
             while( bdry_vertex_ids( topology::Vertex( curr_d ) ) != constrained_verts.at( 1 ).first )
             {
+                if( bdry_vertex_ids( topology::Vertex( curr_d ) ) == constrained_verts.at( 3 ).first )
+                {
+                    std::swap( constrained_verts.at( 1 ).first, constrained_verts.at( 3 ).first );
+                    break;
+                }
                 const topology::Vertex curr_v( bdry.toUnderlyingCell( topology::Vertex( curr_d ) ) );
                 const topology::Vertex other_v = other_side_of_cut( curr_v );
                 const Eigen::Index i = unknown_verts.size();
@@ -487,8 +492,6 @@ namespace reparam
         }
         t.stop( 5 );
         t.stop( 0 );
-
-        std::cout << result << std::endl;
 
         LOG( LOG_LAPLACE ) << "returning result\n";
 
