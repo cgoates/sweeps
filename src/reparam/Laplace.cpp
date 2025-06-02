@@ -139,19 +139,6 @@ namespace reparam
         return cos1 / std::sqrt( 1 - cos1 * cos1 ) + cos2 / std::sqrt( 1 - cos2 * cos2 );
     }
 
-    double meanValueEdgeWeights2d( const topology::CombinatorialMap& map, const VertexPositionsFunc& vertex_position, const topology::Edge& e )
-    {
-        const Triangle<3> face = triangleOfFace<3>( map, vertex_position, topology::Face( e.dart() ) );
-        const Eigen::Vector3d v4 = vertex_position( topology::Vertex( phi( map, {2, -1}, e.dart() ).value() ) );
-        const Eigen::Vector3d e1 = ( face.v2 - face.v1 ).normalized();
-        const Eigen::Vector3d e2 = ( face.v3 - face.v1 ).normalized();
-        const Eigen::Vector3d e3 = ( v4 - face.v1 ).normalized();
-        const double cos1 = e1.dot( e2 );
-        const double cos2 = e1.dot( e3 );
-        // See section 6.3 of "Surface Parameterization: a Tutorial and Survey", Floater, et al.
-        return ( std::sqrt( ( 1 - cos1 ) / ( 1 + cos1 ) ) + std::sqrt( ( 1 - cos2 ) / ( 1 + cos2 ) ) ) / ( face.v2 - face.v1 ).norm();
-    }
-
     double barycentricDualWeights2d( const topology::CombinatorialMap& map, const VertexPositionsFunc& vertex_position, const topology::Edge& e )
     {
         const Triangle<3> face = triangleOfFace<3>( map, vertex_position, topology::Face( e.dart() ) );
@@ -190,7 +177,6 @@ namespace reparam
             case Laplace2dEdgeWeights::Cotangent: return cotanEdgeWeights2d( map, vertex_position, e );
             case Laplace2dEdgeWeights::InverseLength: return 1.0 / edgeLength( map, vertex_position, e );
             case Laplace2dEdgeWeights::BarycentricDual: return barycentricDualWeights2d( map, vertex_position, e );
-            case Laplace2dEdgeWeights::MeanValue: return meanValueEdgeWeights2d( map, vertex_position, phi( map, 2, e.dart() ).value() );
             case Laplace2dEdgeWeights::Uniform: return 1.0;
         }
     }
@@ -661,8 +647,7 @@ namespace reparam
             }
             else
             {
-                // Eigen::SimplicialLDLT<SparseMatrixXd> solver( L_II );
-                Eigen::SparseQR<SparseMatrixXd, Eigen::COLAMDOrdering<int>> solver( L_II );
+                Eigen::SimplicialLDLT<SparseMatrixXd> solver( L_II );
                 return solver.solve( rhs );
             }
         }();

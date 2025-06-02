@@ -31,7 +31,6 @@ namespace reparam
         Cotangent,
         InverseLength,
         BarycentricDual,
-        MeanValue,
         Uniform
     };
 
