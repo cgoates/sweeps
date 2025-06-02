@@ -248,7 +248,7 @@ namespace reparam
         tutteEmbedding( const topology::CombinatorialMap& map,
                         const VertexPositionsFunc& vert_positions,
                         const std::function<std::optional<Eigen::Vector2d>( const topology::Vertex& )>& constraints,
-                        const bool shape_preserving )
+                        const Laplace2dEdgeWeights& edge_weights_type )
     {
         if( map.dim() != 2 ) throw std::runtime_error( "Tutte embedding only supports 2d maps" );
 
@@ -262,10 +262,7 @@ namespace reparam
         };
 
         const auto edge_weights = [&]( const topology::Edge& e ) -> double {
-            if( shape_preserving )
-                return edgeWeightLaplace2d( map, vert_positions, Laplace2dEdgeWeights::InverseLength, e );
-            else
-                return edgeWeightLaplace2d( map, vert_positions, Laplace2dEdgeWeights::Uniform, e );
+            return edgeWeightLaplace2d( map, vert_positions, edge_weights_type, e );
         };
 
         return solveLaplaceSparse( map, edge_weights, constraints_wrapper, n_bdry_verts, map.dim() );
@@ -276,16 +273,13 @@ namespace reparam
     Eigen::MatrixX2d tutteOrbifoldEmbedding( const topology::CutCombinatorialMap& map,
                                              const VertexPositionsFunc& vert_positions,
                                              const std::array<topology::Vertex, 3>& cone_vertices,
-                                             const bool shape_preserving )
+                                             const Laplace2dEdgeWeights& edge_weights_type )
     {
         if( map.dim() != 2 ) throw std::runtime_error( "Tutte embedding only supports 2d maps" );
 
-        const auto edge_weights = [&]() -> std::function<double( const topology::Edge& )> {
-            if( shape_preserving )
-                return [&]( const topology::Edge& e ) { return 1.0 / edgeLength( map, vert_positions, e ); };
-            else
-                return []( const auto& ) { return 1.0; };
-        }();
+        const auto edge_weights = [&]( const topology::Edge& e ) -> double {
+            return edgeWeightLaplace2d( map, vert_positions, edge_weights_type, e );
+        };
 
         const topology::Vertex start_v( maybeBoundaryDart( map, cone_vertices.at( 0 ) ).value() );
         const topology::CombinatorialMapBoundary bdry( map, { start_v.dart() } );

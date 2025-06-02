@@ -276,7 +276,7 @@ namespace reparam
                 };
 
                 leaf.tutte = std::make_shared<const Eigen::MatrixX2d>(
-                    reparam::tutteEmbedding( *cmap, positions, constraints_func, true ) );
+                    reparam::tutteEmbedding( *cmap, positions, constraints_func, Laplace2dEdgeWeights::InverseLength ) );
 
                 const auto atlas = std::make_shared<param::TriangleParametricAtlas>( cmap );
                 const auto vert_positions = [tutte = *( leaf.tutte ), base_vert_ids]( const topology::Vertex& v ) {

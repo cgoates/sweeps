@@ -44,12 +44,12 @@ namespace reparam
         tutteEmbedding( const topology::CombinatorialMap& map,
                         const VertexPositionsFunc& vert_positions,
                         const std::function<std::optional<Eigen::Vector2d>( const topology::Vertex& )>& constraints,
-                        const bool shape_preserving = true );
+                        const Laplace2dEdgeWeights& edge_weights_type = Laplace2dEdgeWeights::InverseLength );
 
     Eigen::MatrixX2d tutteOrbifoldEmbedding( const topology::CutCombinatorialMap& map,
                                              const VertexPositionsFunc& vert_positions,
                                              const std::array<topology::Vertex, 3>& cone_vertices,
-                                             const bool shape_preserving = true );
+                                             const Laplace2dEdgeWeights& edge_weights_type = Laplace2dEdgeWeights::InverseLength );
 
     Eigen::MatrixXd
         solveLaplaceSparse( const topology::CombinatorialMap& map,

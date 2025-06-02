@@ -56,7 +56,7 @@ TEST_CASE( "Tutte embedding patch test" )
         return mesh.points.at( vids( v ) );
     };
 
-    const Eigen::MatrixX2d tutte = reparam::tutteEmbedding( map, vert_positions, constraints_func, false );
+    const Eigen::MatrixX2d tutte = reparam::tutteEmbedding( map, vert_positions, constraints_func, reparam::Laplace2dEdgeWeights::Uniform );
 
     const Eigen::MatrixX2d expected = ( Eigen::MatrixX2d( 5, 2 ) << 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.5, 0.5 ).finished();
 
@@ -102,7 +102,7 @@ TEST_CASE( "Tutte Orbifold embedding" )
 
     const Eigen::MatrixX2d tutte = reparam::tutteOrbifoldEmbedding( cut_map, [&]( const topology::Vertex& v ) {
         return mesh.points.at( indexing( v ) );
-    }, { Vertex( 1 ), Vertex( 7 ), Vertex( 8 ) }, false );
+    }, { Vertex( 1 ), Vertex( 7 ), Vertex( 8 ) }, reparam::Laplace2dEdgeWeights::Uniform );
 
     std::cout << tutte.row( 3 ) << std::endl;
 
@@ -168,7 +168,7 @@ TEST_CASE( "Large sphere tutte orbifold embedding" )
 
     const Eigen::MatrixX2d tutte = reparam::tutteOrbifoldEmbedding( cut_cmap, [&]( const topology::Vertex& v ) {
         return sweep.mesh.points.at( bdry_vert_ids( v ) );
-    }, { cut_vertices.at( 0 ), cut_vertices.at( 1 ), cut_vertices.at( 2 ) }, true );
+    }, { cut_vertices.at( 0 ), cut_vertices.at( 1 ), cut_vertices.at( 2 ) }, reparam::Laplace2dEdgeWeights::InverseLength );
 
     io::outputCMap( cut_cmap, [&]( const topology::Vertex& v ) -> Eigen::Vector3d {
         return Eigen::Vector3d( tutte( cutmap_vert_ids( v ), 0 ), tutte( cutmap_vert_ids( v ), 1 ), 0 );
@@ -223,7 +223,7 @@ TEST_CASE( "Sphere tutte orbifold embedding" )
 
     const Eigen::MatrixX2d tutte = reparam::tutteOrbifoldEmbedding( cut_cmap, [&]( const topology::Vertex& v ) {
         return sweep.mesh.points.at( bdry_vert_ids( v ) );
-    }, { cut_vertices.at( 0 ), cut_vertices.at( 1 ), cut_vertices.at( 2 ) }, true );
+    }, { cut_vertices.at( 0 ), cut_vertices.at( 1 ), cut_vertices.at( 2 ) }, reparam::Laplace2dEdgeWeights::InverseLength );
 
     io::outputCMap( cut_cmap, [&]( const topology::Vertex& v ) -> Eigen::Vector3d {
         return Eigen::Vector3d( tutte( cutmap_vert_ids( v ), 0 ), tutte( cutmap_vert_ids( v ), 1 ), 0 );

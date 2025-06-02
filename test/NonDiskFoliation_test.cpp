@@ -127,11 +127,11 @@ reparam::FoliationLeaf
             return std::nullopt;
     };
 
-    const Eigen::MatrixX2d tutte = reparam::tutteEmbedding( *cut_cmap, positions, constraints_func, true );
+    const Eigen::MatrixX2d tutte = reparam::tutteEmbedding( *cut_cmap, positions, constraints_func );
 
     reparam::FoliationLeaf leaf{};
     leaf.tutte =
-        std::make_shared<Eigen::MatrixX2d>( reparam::tutteEmbedding( *cut_cmap, positions, constraints_func, true ) );
+        std::make_shared<Eigen::MatrixX2d>( reparam::tutteEmbedding( *cut_cmap, positions, constraints_func ) );
 
     const auto tutte_positions = [cut_vert_ids, tutte = *leaf.tutte]( const topology::Vertex& v ) -> Eigen::Vector2d {
         return ( Eigen::Vector2d() << tutte( cut_vert_ids( v ), 0 ), tutte( cut_vert_ids( v ), 1 ) ).finished();
