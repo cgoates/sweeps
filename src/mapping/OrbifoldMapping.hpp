@@ -41,6 +41,17 @@ namespace mapping
 
         virtual const VertexPositionsFunc& vertPositions() const override;
 
+        void iterateTriangles( const std::function<void( const Triangle<2>& )>& callback ) const
+        {
+            for( const auto& tri : mTriangles )
+            {
+                for( const auto& [bb, t] : tri.triangles )
+                {
+                    callback( t );
+                }
+            }
+        }
+
         private:
         const TriangleMeshMapping mTriangleMapping;
         std::vector<OrbifoldTriangle> mTriangles;
