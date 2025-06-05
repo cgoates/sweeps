@@ -57,7 +57,7 @@ reparam::FoliationLeaf leafFromSphereLevelSet( const std::shared_ptr<const topol
         return cut_marker.isMarked( e ) ? std::numeric_limits<double>::max() : edgeLength( cmap, positions, e );
     }, cut_vertices.at( 1 ), testEqualVertices( cmap_vert_ids, cut_vertices.at( 2 ) ) );
 
-    io::outputEdges( cmap, positions, util::concatenate( cut1, cut2 ), "level_set_cut_" + std::to_string( j ) + ".vtu" );
+    io::outputEdgeChain( cmap, positions, util::concatenate( cut1, cut2 ), "level_set_cut_" + std::to_string( j ) + ".vtu" );
     j++;
     cuts.insert( cut1.begin(), cut1.end() );
     cuts.insert( cut2.begin(), cut2.end() );
@@ -135,7 +135,7 @@ reparam::FoliationLeaf
         cut_vertices.at( 1 ),
         testEqualVertices( cmap_vert_ids, cut_vertices.at( 2 ) ) );
 
-    io::outputEdges(
+    io::outputEdgeChain(
         cmap, positions, util::concatenate( cut1, cut2 ), "level_set_cut_" + std::to_string( j ) + ".vtu" );
     j++;
     cuts.insert( cut1.begin(), cut1.end() );
@@ -177,9 +177,9 @@ std::vector<std::array<topology::Edge, 3>>
 
     if( true or filename )
     {
-        io::outputEdges( map, map_positions, path0, "sphere_cut_lines0.vtu" );
-        io::outputEdges( map, map_positions, path1, "sphere_cut_lines1.vtu" );
-        io::outputEdges( map, map_positions, path2, "sphere_cut_lines2.vtu" );
+        io::outputEdgeChain( map, map_positions, path0, "sphere_cut_lines0.vtu" );
+        io::outputEdgeChain( map, map_positions, path1, "sphere_cut_lines1.vtu" );
+        io::outputEdgeChain( map, map_positions, path2, "sphere_cut_lines2.vtu" );
     }
 
     std::vector<std::array<std::optional<topology::Edge>, 3>> intersections(

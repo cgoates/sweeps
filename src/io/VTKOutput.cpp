@@ -402,10 +402,10 @@ namespace io
         file.close();
     }
 
-    void outputEdges( const topology::CombinatorialMap& cmap,
-                      const VertexPositionsFunc& positions,
-                      const std::vector<topology::Edge>& edges,
-                      const std::string& filename )
+    void outputEdgeChain( const topology::CombinatorialMap& cmap,
+                          const VertexPositionsFunc& positions,
+                          const std::vector<topology::Edge>& edges,
+                          const std::string& filename )
     {
         SimplicialComplex path;
 

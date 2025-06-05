@@ -93,10 +93,10 @@ namespace io
                                        const std::string& filename,
                                        const std::function<void( const std::function<void( const topology::Cell& )>& )>& cell_iterator );
 
-    void outputEdges( const topology::CombinatorialMap& cmap,
-                      const VertexPositionsFunc& positions,
-                      const std::vector<topology::Edge>& edges,
-                      const std::string& filename );
+    void outputEdgeChain( const topology::CombinatorialMap& cmap,
+                          const VertexPositionsFunc& positions,
+                          const std::vector<topology::Edge>& edges,
+                          const std::string& filename );
 
     void outputCMap( const topology::CombinatorialMap& cmap,
                      const VertexPositionsFunc& positions,

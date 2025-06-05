@@ -83,7 +83,7 @@ reparam::FoliationLeaf
     {
         const auto cut = topology::shortestPath( cmap, positions, pr.first, testFoundOtherBoundary( cmap, pr.second ), interior_only );
         std::cout << "Cut size: " << cut.size() << std::endl;
-        io::outputEdges( cmap, positions, cut, "level_set_cut_" + std::to_string( i++ ) + ".vtu" );
+        io::outputEdgeChain( cmap, positions, cut, "level_set_cut_" + std::to_string( i++ ) + ".vtu" );
         cuts.insert( cut.begin(), cut.end() );
         updated_cut_vertices.push_back( { pr.first, topology::Vertex( phi( cmap, 1, cut.back().dart() ).value() ) } );
     }
@@ -174,7 +174,7 @@ std::vector<std::vector<std::pair<topology::Edge, topology::Edge>>>
                 bdry, bdry_positions, vs.at( 3 ), testEqualVertices( bdry_vertex_ids, vs.at( 0 ) ) );
             const auto tunnel_loop =
                 util::concatenate( util::concatenate( path0, path1 ), util::concatenate( path2, path3 ) );
-            io::outputEdges( bdry, bdry_positions, tunnel_loop, "handle_loop_" + std::to_string( loop_ii ) + ".vtu" );
+            io::outputEdgeChain( bdry, bdry_positions, tunnel_loop, "handle_loop_" + std::to_string( loop_ii ) + ".vtu" );
         }
 
         std::vector<SmallVector<topology::Edge, 2>> intersections( level_set_values.size(),

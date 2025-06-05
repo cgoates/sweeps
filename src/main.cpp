@@ -309,7 +309,7 @@ int main( int argc, char* argv[] )
                 } );
                 std::cout << n_boundary << " boundary edges with negative weight\n";
                 std::cout << n_interior << " interior edges with negative weight\n";
-                io::outputEdges( map, vertex_positions( map ), negative_weight_edges, "negative_weight_edges.vtu" );
+                io::outputEdgeChain( map, vertex_positions( map ), negative_weight_edges, "negative_weight_edges.vtu" );
             }
 
             if( std::find( input_args.begin(), input_args.end(), "delaunay" ) != input_args.end() )

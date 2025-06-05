@@ -158,7 +158,7 @@ TEST_CASE( "Large sphere tutte orbifold embedding" )
         return cut_marker.isMarked( e ) ? std::numeric_limits<double>::max() : edgeLength( bdry, positions, e );
     }, cut_vertices.at( 1 ), testEqualVertices( bdry_vert_ids, cut_vertices.at( 2 ) ) );
 
-    io::outputEdges( bdry, positions, util::concatenate( cut1, cut2 ), "level_set_cut.vtu" );
+    io::outputEdgeChain( bdry, positions, util::concatenate( cut1, cut2 ), "level_set_cut.vtu" );
 
     std::set<topology::Cell> cuts;
     cuts.insert( cut1.begin(), cut1.end() );
@@ -213,7 +213,7 @@ TEST_CASE( "Sphere tutte orbifold embedding" )
         return cut_marker.isMarked( e ) ? std::numeric_limits<double>::max() : edgeLength( bdry, positions, e );
     }, cut_vertices.at( 1 ), testEqualVertices( bdry_vert_ids, cut_vertices.at( 2 ) ) );
 
-    io::outputEdges( bdry, positions, util::concatenate( cut1, cut2 ), "level_set_cut.vtu" );
+    io::outputEdgeChain( bdry, positions, util::concatenate( cut1, cut2 ), "level_set_cut.vtu" );
 
     std::set<topology::Cell> cuts;
     cuts.insert( cut1.begin(), cut1.end() );
