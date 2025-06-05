@@ -9,7 +9,7 @@
 #include <CombinatorialMapMethods.hpp>
 #include <GlobalCellMarker.hpp>
 #include <Laplace.hpp>
-#include <AbaqusInput.hpp>
+#include <MeshInput.hpp>
 #include <random>
 
 TEST_CASE( "Tracing from all the interior faces in the macaroni", "[slow]")
