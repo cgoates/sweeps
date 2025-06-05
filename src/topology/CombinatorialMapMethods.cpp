@@ -307,6 +307,25 @@ namespace topology
         return out;
     }
 
+    bool isExtraordinary( const CombinatorialMap& map, const Vertex& v )
+    {
+        if( map.dim() != 2 ) throw std::runtime_error( "isExtraordinary only works for 2D maps" );
+        size_t num_edges = 0;
+        iterateAdjacentCells( map, v, 1, [&]( const auto& ) {
+            num_edges++;
+            return true;
+        } );
+
+        if( boundaryAdjacent( map, v ) )
+        {
+            return num_edges != 3;
+        }
+        else
+        {
+            return num_edges != 4;
+        }
+    }
+
     std::set<Dart> boundaryComponentDarts( const CombinatorialMap& map )
     {
         std::set<Dart> out;

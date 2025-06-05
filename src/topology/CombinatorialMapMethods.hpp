@@ -63,6 +63,8 @@ namespace topology
     /// If the cell is not boundary adjacent, returns std::nullopt.
     std::optional<Dart> maybeBoundaryDart( const CombinatorialMap& map, const Cell& c );
 
+    bool isExtraordinary( const CombinatorialMap& map, const Vertex& v );
+
     /// Returns one dart for every boundary connected component.
     /// Topologies homogeneous to a disk or ball will have one dart
     /// in the returned set, while a 2-sphere would have zero.
