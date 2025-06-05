@@ -6,6 +6,7 @@
 #include <CombinatorialMapRestriction.hpp>
 #include <TetMeshCombinatorialMap.hpp>
 #include <TriangleMeshMapping.hpp>
+#include <OrbifoldMapping.hpp>
 #include <Logging.hpp>
 #include <CommonUtils.hpp>
 #include <SimplexUtilities.hpp>
@@ -31,6 +32,8 @@
 #include <sstream>
 
 #include <Eigen/Dense>
+
+constexpr bool ORBIFOLD = true;
 
 std::function<bool( const topology::Vertex& )> testEqualVertices( const topology::IndexingFunc& vert_ids,
                                                                   const topology::Vertex& end_v )
@@ -99,7 +102,7 @@ reparam::FoliationLeaf leafFromSphereLevelSet( const std::shared_ptr<const topol
 
     reparam::FoliationLeaf leaf{};
     leaf.tutte =
-        std::make_shared<Eigen::MatrixX2d>( reparam::tutteEmbedding( *cut_cmap, positions, constraints_func, reparam::Laplace2dEdgeWeights::InverseLength ) );
+        std::make_shared<Eigen::MatrixX2d>( reparam::tutteEmbedding( *cut_cmap, positions, constraints_func, reparam::Laplace2dEdgeWeights::Cotangent ) );
 
     const auto tutte_positions = [cut_vert_ids, tutte = *leaf.tutte]( const topology::Vertex& v ) -> Eigen::Vector2d {
         return ( Eigen::Vector2d() << tutte( cut_vert_ids( v ), 0 ), tutte( cut_vert_ids( v ), 1 ) ).finished();
@@ -107,6 +110,50 @@ reparam::FoliationLeaf leafFromSphereLevelSet( const std::shared_ptr<const topol
     const auto cut_atlas = std::make_shared<const param::TriangleParametricAtlas>( cut_cmap );
     const auto atlas = std::make_shared<const param::TriangleParametricAtlas>( cmap_ptr );
     leaf.tutte_mapping = std::make_shared<const mapping::TriangleMeshMapping>( cut_atlas, tutte_positions, 2 );
+    leaf.space_mapping = std::make_shared<const mapping::TriangleMeshMapping>( atlas, positions, 3 );
+    return leaf;
+}
+
+reparam::FoliationLeaf
+    orbifoldLeafFromSphereLevelSet( const std::shared_ptr<const topology::CombinatorialMap>& cmap_ptr,
+                                    const VertexPositionsFunc& positions,
+                                    const std::array<topology::Vertex, 3>& cut_vertices )
+{
+    const auto& cmap = *cmap_ptr;
+    const auto cmap_vert_ids = indexingOrError( cmap, 0 );
+    std::set<topology::Cell> cuts;
+
+    const auto cut1 = topology::shortestPath(
+        cmap, positions, cut_vertices.at( 0 ), testEqualVertices( cmap_vert_ids, cut_vertices.at( 1 ) ) );
+    topology::GlobalCellMarker cut_marker( cmap, 1 );
+    for( const auto& e : cut1 ) cut_marker.mark( cmap, e );
+    const auto cut2 = topology::shortestPath(
+        cmap,
+        [&]( const topology::Edge& e ) {
+            return cut_marker.isMarked( e ) ? std::numeric_limits<double>::max() : edgeLength( cmap, positions, e );
+        },
+        cut_vertices.at( 1 ),
+        testEqualVertices( cmap_vert_ids, cut_vertices.at( 2 ) ) );
+
+    io::outputEdges(
+        cmap, positions, util::concatenate( cut1, cut2 ), "level_set_cut_" + std::to_string( j ) + ".vtu" );
+    j++;
+    cuts.insert( cut1.begin(), cut1.end() );
+    cuts.insert( cut2.begin(), cut2.end() );
+
+    const auto cut_cmap = std::make_shared<const topology::CutCombinatorialMap>( cmap, cuts );
+    const auto cut_vert_ids = indexingOrError( *cut_cmap, 0 );
+
+    reparam::FoliationLeaf leaf{};
+    leaf.tutte =
+        std::make_shared<Eigen::MatrixX2d>( reparam::tutteOrbifoldEmbedding( *cut_cmap, positions, cut_vertices, reparam::Laplace2dEdgeWeights::Cotangent ) );
+
+    const auto tutte_positions = [cut_vert_ids, tutte = *leaf.tutte]( const topology::Vertex& v ) -> Eigen::Vector2d {
+        return ( Eigen::Vector2d() << tutte( cut_vert_ids( v ), 0 ), tutte( cut_vert_ids( v ), 1 ) ).finished();
+    };
+    const auto cut_atlas = std::make_shared<const param::TriangleParametricAtlas>( cut_cmap );
+    const auto atlas = std::make_shared<const param::TriangleParametricAtlas>( cmap_ptr );
+    leaf.tutte_mapping = std::make_shared<const mapping::OrbifoldMapping>( cut_atlas, tutte_positions );
     leaf.space_mapping = std::make_shared<const mapping::TriangleMeshMapping>( atlas, positions, 3 );
     return leaf;
 }
@@ -262,11 +309,10 @@ void nonDiskFoliations( const SweepInput& sweep,
             bdry.fromUnderlyingCell( find_on_base( vs.at( 0 ).at( 1 ) ) ),
             bdry.fromUnderlyingCell( find_on_base( vs.at( 0 ).at( 2 ) ) ) };
         const auto base_positions = vertex_positions( bdry );
-        leaves.push_back( leafFromSphereLevelSet( base, base_positions, cut_points ) );
-
-        std::cout << vertex_positions( map )( vs.at( 0 ).at( 0 ) ).transpose() << " vs " << base_positions( cut_points.at( 0 ) ).transpose() << std::endl;
-        std::cout << vertex_positions( map )( vs.at( 0 ).at( 1 ) ).transpose() << " vs " << base_positions( cut_points.at( 1 ) ).transpose() << std::endl;
-        std::cout << vertex_positions( map )( vs.at( 0 ).at( 2 ) ).transpose() << " vs " << base_positions( cut_points.at( 2 ) ).transpose() << std::endl;
+        if( ORBIFOLD )
+            leaves.push_back( orbifoldLeafFromSphereLevelSet( base, base_positions, cut_points ) );
+        else
+            leaves.push_back( leafFromSphereLevelSet( base, base_positions, cut_points ) );
     }
 
     for( size_t level_ii = 1; level_ii < level_set_values.size() - 1; level_ii++ )
@@ -297,7 +343,10 @@ void nonDiskFoliations( const SweepInput& sweep,
             find_on_level( tunnel_loop_intersections.at( level_ii - 1 ).at( 2 ).dart() ) };
 
         std::cout << "LEVEL " << level_ii << " at value " << level_set_values.at( level_ii ) << std::endl;
-        leaves.push_back( leafFromSphereLevelSet( level_set_tri, tri_positions, cut_points ) );
+        if( ORBIFOLD )
+            leaves.push_back( orbifoldLeafFromSphereLevelSet( level_set_tri, tri_positions, cut_points ) );
+        else
+            leaves.push_back( leafFromSphereLevelSet( level_set_tri, tri_positions, cut_points ) );
     }
 
     { // target level set
@@ -322,7 +371,10 @@ void nonDiskFoliations( const SweepInput& sweep,
             rev_map->fromUnderlyingCell( bdry.fromUnderlyingCell( find_on_target( vs.at( 1 ).at( 1 ) ) ) ),
             rev_map->fromUnderlyingCell( bdry.fromUnderlyingCell( find_on_target( vs.at( 1 ).at( 2 ) ) ) ) };
 
-        leaves.push_back( leafFromSphereLevelSet( rev_map, rev_positions, cut_points ) );
+        if( ORBIFOLD )
+            leaves.push_back( orbifoldLeafFromSphereLevelSet( rev_map, rev_positions, cut_points ) );
+        else
+            leaves.push_back( leafFromSphereLevelSet( rev_map, rev_positions, cut_points ) );
     }
 
     callback( leaves );
@@ -344,13 +396,30 @@ TEST_CASE( "Level set parameterization of bullet in sphere" )
     const std::vector<double> level_set_values = util::linspace( 0, 1, n_levels );
 
     SimplicialComplex level_sets;
-    const std::vector<Eigen::Vector2d> square_points = util::generatePointsInPolygon( 150, 4 );
+
+    const std::vector<Eigen::Vector2d> square_points = [&]() {
+        if( not ORBIFOLD )
+            return util::generatePointsInPolygon( 150, 4 );
+
+        std::vector<Eigen::Vector2d> square_points;
+        for( size_t i = 1; i < 10; i++ )
+        {
+            for( size_t j = 0; j < 10; j++ )
+            {
+                square_points.push_back( Eigen::Vector2d( double( i ) / 10.0, double( j ) / 10.0 ) );
+            }
+        }
+        return square_points;
+    }();
 
     std::vector<std::vector<Eigen::Vector3d>> mapped_points( square_points.size() );
 
+    const std::string output_prefix = ORBIFOLD ? "bulleto" : "bullet";
     bulletFoliation( level_set_values, [&]( const std::vector<reparam::FoliationLeaf>& leaves ) {
+        std::cout << "-------------------------" << std::endl;
         for( size_t level_ii = 0; level_ii < leaves.size(); level_ii++ )
         {
+            std::cout << "LEVEL " << level_ii << " at value " << level_set_values.at( level_ii ) << std::endl;
             const auto& leaf = leaves.at( level_ii );
             const auto& square_mapping = leaf.tutte_mapping;
             const auto& cmap = square_mapping->parametricAtlas().cmap();
@@ -372,10 +441,27 @@ TEST_CASE( "Level set parameterization of bullet in sphere" )
                 addTriangleNoDuplicateChecking( level_sets, triangleOfFace<3>( cmap, positions, f ) );
                 return true;
             } );
+            if( true )
+            {
+                SimplicialComplex individual_level_set;
+                addAllTriangles( individual_level_set, leaf.tutte_mapping->parametricAtlas().cmap(),
+                                                                            leaf.space_mapping->vertPositions() );
+
+                io::VTKOutputObject output( individual_level_set );
+                Eigen::MatrixX2d tutte( individual_level_set.points.size(), 2 );
+                Eigen::Index row = 0;
+                iterateCellsWhile( leaf.tutte_mapping->parametricAtlas().cmap(), 0, [&]( const auto& vert ) {
+                    tutte.row( row++ ) = leaf.tutte_mapping->vertPositions()( vert );
+                    return true;
+                } );
+
+                output.addVertexField( "tutte", tutte );
+                io::outputSimplicialFieldToVTK( output, output_prefix + "_level_set_" + std::to_string( level_ii ) + ".vtu" );
+            }
 
             const auto tutte_positions = [tp=square_mapping->vertPositions(),&level_ii]( const topology::Vertex& v ) -> Eigen::Vector3d {
                 const Eigen::Vector2d tut = tp( v );
-                return ( Eigen::Vector3d() << tut, double( level_ii ) ).finished();
+                return ( Eigen::Vector3d() << tut, 0.0 ).finished();
             };
 
             SimplicialComplex tutte_level_set;
@@ -384,12 +470,28 @@ TEST_CASE( "Level set parameterization of bullet in sphere" )
                 return true;
             } );
             io::VTKOutputObject output( tutte_level_set );
-            io::outputSimplicialFieldToVTK( output, "bullet_level_tutte_" + std::to_string( level_ii ) + ".vtu" );
+            io::outputSimplicialFieldToVTK( output, output_prefix + "_level_tutte_" + std::to_string( level_ii ) + ".vtu" );
+
+            if( ORBIFOLD )
+            {
+                SimplicialComplex tutte_level_set2;
+                const auto& square_mapping2 = static_cast<const mapping::OrbifoldMapping&>( *leaf.tutte_mapping );
+                square_mapping2.iterateTriangles( [&]( const Triangle<2>& t ) {
+                    const Triangle<3> t3{ (Eigen::Vector3d() << t.v1, 0 ).finished(),
+                                           (Eigen::Vector3d() << t.v2, 0 ).finished(),
+                                           (Eigen::Vector3d() << t.v3, 0 ).finished() };
+                    addTriangleNoDuplicateChecking( tutte_level_set2, t3 );
+                    return true;
+                } );
+
+                io::VTKOutputObject output2( tutte_level_set2 );
+                io::outputSimplicialFieldToVTK( output2, output_prefix + "_level_tutte2_" + std::to_string( level_ii ) + ".vtu" );
+            }
         }
     } );
 
     io::VTKOutputObject output( level_sets );
-    io::outputSimplicialFieldToVTK( output, "bullet_level_sets.vtu" );
+    io::outputSimplicialFieldToVTK( output, output_prefix + "_level_sets.vtu" );
 
     SimplicialComplex traces;
     for( const auto& line : mapped_points )
@@ -402,5 +504,5 @@ TEST_CASE( "Level set parameterization of bullet in sphere" )
         }
     }
     io::VTKOutputObject output4( traces );
-    io::outputSimplicialFieldToVTK( output4, "bullet_traces.vtu" );
+    io::outputSimplicialFieldToVTK( output4, output_prefix + "_traces.vtu" );
 }
