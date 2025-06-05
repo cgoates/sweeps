@@ -441,6 +441,8 @@ namespace io
             const VertexId v1 = vert_ids.at( lowestDartId( cmap, topology::Vertex( d ) ) );
             const VertexId v2 = vert_ids.at( lowestDartId( cmap, topology::Vertex( phi( cmap, 1, d ).value() ) ) );
             const VertexId v3 = vert_ids.at( lowestDartId( cmap, topology::Vertex( phi( cmap, -1, d ).value() ) ) );
+            if( vert_ids.at( lowestDartId( cmap, topology::Vertex( phi( cmap, { 1, 1 }, d ).value() ) ) ) != v3 )
+                std::cerr << "Warning: outputCMap only supports triangular faces, but found a face with more than 3 vertices." << std::endl;
             out.simplices.emplace_back( v1, v2, v3 );
             return true;
         } );
