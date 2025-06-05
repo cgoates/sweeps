@@ -141,4 +141,79 @@ namespace io
         return SweepInput::fromSets( { tets, points }, zero_bcs, one_bcs );
     }
 
+    std::pair<std::vector<SmallVector<VertexId, 4>>, std::vector<Eigen::Vector3d>>
+        loadOBJFile( const std::string& filename )
+    {
+        std::ifstream read( filename );
+        if( read.fail() )
+        {
+            throw std::runtime_error( "Could not read file" );
+        }
+
+        std::vector<Eigen::Vector3d> points;
+        std::vector<SmallVector<VertexId, 4>> faces;
+
+        for( std::string line; std::getline( read, line ); )
+        {
+            // Skip empty lines and comments
+            if( line.empty() || line[0] == '#' )
+            {
+                continue;
+            }
+
+            std::stringstream ss( line );
+            std::string prefix;
+            ss >> prefix;
+
+            if( prefix == "v" )
+            {
+                // Vertex line: v x y z
+                double x, y, z;
+                ss >> x >> y >> z;
+
+                points.emplace_back( x, y, z );
+            }
+            else if( prefix == "f" )
+            {
+                // Face line: f v1 v2 v3 [v4] (possibly with texture/normal indices)
+                // Parse vertex indices, handling potential texture/normal coordinates (v/vt/vn format)
+                auto parseVertexIndex = []( const std::string& vertex_str ) -> size_t {
+                    size_t slash_pos = vertex_str.find( '/' );
+                    std::string index_str = vertex_str.substr( 0, slash_pos );
+                    return std::stoul( index_str ) - 1; // OBJ uses 1-based indexing
+                };
+
+                SmallVector<VertexId, 4> face;
+                std::string vertex_str;
+
+                // Read all vertices for this face
+                while( ss >> vertex_str )
+                {
+                    if( face.size() == 4 )
+                    {
+                        throw std::runtime_error( "Face has more than 4 vertices, which is not supported" );
+                    }
+
+                    size_t vertex_idx = parseVertexIndex( vertex_str );
+
+                    if( vertex_idx >= points.size() )
+                    {
+                        throw std::runtime_error( "Invalid vertex index in face definition" );
+                    }
+
+                    face.push_back( vertex_idx );
+                }
+
+                if( face.size() < 3 )
+                {
+                    throw std::runtime_error( "Face must have at least 3 vertices" );
+                }
+
+                faces.push_back( face );
+            }
+        }
+
+        return std::make_pair( faces, points );
+    }
+
 } // namespace io
