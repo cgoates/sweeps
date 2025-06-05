@@ -1,6 +1,7 @@
 add_library( topology SHARED
   TetMeshCombinatorialMap.cpp
   TriMeshCombinatorialMap.cpp
+  QuadMeshCombinatorialMap.cpp
   CombinatorialMapMethods.cpp
   CombinatorialMapBoundary.cpp
   CombinatorialMapRestriction.cpp

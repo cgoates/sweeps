@@ -1,12 +1,12 @@
 #include <Dart.hpp>
-#include<TriMeshCombinatorialMap.hpp>
-#include<queue>
-#include<GlobalCellMarker.hpp>
+#include <QuadMeshCombinatorialMap.hpp>
+#include <queue>
+#include <GlobalCellMarker.hpp>
 #include <Logging.hpp>
 
 namespace topology
 {
-constexpr int darts_per_tri = 3;
+constexpr int darts_per_quad = 4;
 
 inline std::array<VertexId, 2> sortEdgeVerts( const VertexId& v1, const VertexId& v2 )
 {
@@ -14,40 +14,39 @@ inline std::array<VertexId, 2> sortEdgeVerts( const VertexId& v1, const VertexId
     else return std::array<VertexId, 2>{ v1, v2 };
 }
 
-Dart TriMeshCombinatorialMap::dartOfTri( const uint tri_id ) const
+Dart QuadMeshCombinatorialMap::dartOfQuad( const uint quad_id ) const
 {
-    return Dart( tri_id * darts_per_tri ); 
+    return Dart( quad_id * darts_per_quad ); 
 }
 
 inline Dart phi1_1( const int i, const Dart& d )
 {
-    const Dart::IndexType face_local_id = d.id() % darts_per_tri;
-    return Dart( ( face_local_id + darts_per_tri + i ) % darts_per_tri
+    const Dart::IndexType face_local_id = d.id() % darts_per_quad;
+    return Dart( ( face_local_id + darts_per_quad + i ) % darts_per_quad
                  + d.id() - face_local_id );
 }
 
-TriMeshCombinatorialMap::TriMeshCombinatorialMap( const SimplicialComplex& complex ) :
-    mSimplicialComplex( complex ),
+QuadMeshCombinatorialMap::QuadMeshCombinatorialMap( const std::vector<std::array<VertexId, 4>>& quads, const size_t num_vertices ) :
+    mVerticesOfQuads( quads ),
     mPhi2s( maxDartId() + 1, maxDartId() + 1 ),
     mEdgeIds( maxDartId() + 1 ),
-    mVertexDarts( complex.points.size() )
+    mVertexDarts( num_vertices )
 {
     const auto vertex_ids = indexingOrError( *this, 0 );
 
     std::map< std::array< VertexId, 2 >, std::pair< Dart, VertexId > > to_be_paired;
 
     size_t edge_ii = 0;
-    for( size_t i = 0; i < complex.simplices.size(); i++ )
+    for( size_t i = 0; i < quads.size(); i++ )
     {
-        const Simplex& simplex = complex.simplices.at( i );
-        if( simplex.dim() != 2 ) throw std::runtime_error( "Unsupported simplex dimension for TriMeshCombinatorialMap" );
+        const std::array<VertexId, 4>& quad = quads.at( i );
 
-        const Dart simplex_dart = dartOfTri( i );
-        for( Dart::IndexType local_dart_id = 0; local_dart_id < darts_per_tri; local_dart_id++ )
+        const Dart quad_dart = dartOfQuad( i );
+        for( Dart::IndexType local_dart_id = 0; local_dart_id < darts_per_quad; local_dart_id++ )
         {
-            const Dart d( simplex_dart.id() + local_dart_id );
-            const VertexId dart_vertex = simplex.vertex( local_dart_id );
-            const VertexId end_of_dart_vertex = simplex.vertex( ( local_dart_id + 1 ) % darts_per_tri );
+            const Dart d( quad_dart.id() + local_dart_id );
+            const VertexId dart_vertex = quad.at( local_dart_id );
+            const VertexId end_of_dart_vertex = quad.at( ( local_dart_id + 1 ) % darts_per_quad );
             const std::array<VertexId, 2> sorted_edge = sortEdgeVerts( dart_vertex, end_of_dart_vertex );
 
             const auto [it, inserted] = to_be_paired.try_emplace( sorted_edge, d, end_of_dart_vertex );
@@ -65,18 +64,18 @@ TriMeshCombinatorialMap::TriMeshCombinatorialMap( const SimplicialComplex& compl
             }
 
             mEdgeIds.at( d.id() ) = edge_id;
-            mVertexDarts.at( simplex.vertex( local_dart_id ).id() ) = d;
+            mVertexDarts.at( quad.at( local_dart_id ).id() ) = d;
         }
     }
     mNumEdges = edge_ii;
 }
 
-Dart::IndexType TriMeshCombinatorialMap::maxDartId() const
+Dart::IndexType QuadMeshCombinatorialMap::maxDartId() const
 {
-    return mSimplicialComplex.simplices.size() * darts_per_tri - 1;
+    return mVerticesOfQuads.size() * darts_per_quad - 1;
 }
 
-std::optional<Dart> TriMeshCombinatorialMap::phi( const int i, const Dart& d ) const
+std::optional<Dart> QuadMeshCombinatorialMap::phi( const int i, const Dart& d ) const
 {
     switch( i )
     {
@@ -95,7 +94,7 @@ std::optional<Dart> TriMeshCombinatorialMap::phi( const int i, const Dart& d ) c
 }
 
 
-bool TriMeshCombinatorialMap::iterateDartsWhile( const std::function<bool( const Dart& )>& callback ) const
+bool QuadMeshCombinatorialMap::iterateDartsWhile( const std::function<bool( const Dart& )>& callback ) const
 {
     const Dart::IndexType max_dart_id = maxDartId();
     for( Dart::IndexType d = 0; d <= max_dart_id; d++ )
@@ -105,13 +104,13 @@ bool TriMeshCombinatorialMap::iterateDartsWhile( const std::function<bool( const
     return true;
 }
 
-bool TriMeshCombinatorialMap::iterateCellsWhile( const uint cell_dim, const std::function<bool( const Cell& )>& callback ) const
+bool QuadMeshCombinatorialMap::iterateCellsWhile( const uint cell_dim, const std::function<bool( const Cell& )>& callback ) const
 {
     if( cell_dim == 2 )
     {
-        for( size_t i = 0; i < mSimplicialComplex.simplices.size(); i++ )
+        for( size_t i = 0; i < mVerticesOfQuads.size(); i++ )
         {
-            if( not callback( Face( dartOfTri( i ) ) ) ) return false;
+            if( not callback( Face( dartOfQuad( i ) ) ) ) return false;
         }
     }
     else if( cell_dim == 0 )
@@ -137,15 +136,15 @@ bool TriMeshCombinatorialMap::iterateCellsWhile( const uint cell_dim, const std:
     return true;
 }
 
-std::optional<IndexingFunc> TriMeshCombinatorialMap::indexing( const uint cell_dim ) const
+std::optional<IndexingFunc> QuadMeshCombinatorialMap::indexing( const uint cell_dim ) const
 {
     if( cell_dim == 0 )
     {
         return [this]( const Vertex& v ){
-            const size_t simplex_id = v.dart().id() / darts_per_tri;
-            const Simplex& simp = mSimplicialComplex.simplices.at( simplex_id );
-            const VertexId::Type local_vert = v.dart().id() % darts_per_tri;
-            return simp.vertex( local_vert ).id();
+            const size_t quad_id = v.dart().id() / darts_per_quad;
+            const std::array<VertexId, 4>& quad = mVerticesOfQuads.at( quad_id );
+            const VertexId::Type local_vert = v.dart().id() % darts_per_quad;
+            return quad.at( local_vert ).id();
         };
     }
     else if( cell_dim == 1 )
@@ -157,19 +156,19 @@ std::optional<IndexingFunc> TriMeshCombinatorialMap::indexing( const uint cell_d
     else if( cell_dim == 2 )
     {
         return []( const Face& elem ) {
-            return elem.dart().id() / darts_per_tri;
+            return elem.dart().id() / darts_per_quad;
         };
     }
     return std::nullopt;
 }
 
-std::optional<size_t> TriMeshCombinatorialMap::cellCount( const uint cell_dim ) const
+std::optional<size_t> QuadMeshCombinatorialMap::cellCount( const uint cell_dim ) const
 {
     switch( cell_dim )
     {
-        case 0: return mSimplicialComplex.points.size();
+        case 0: return mVertexDarts.size();
         case 1: return mNumEdges;
-        case 2: return mSimplicialComplex.simplices.size();
+        case 2: return mVerticesOfQuads.size();
         default: return 0;
     }
 }
