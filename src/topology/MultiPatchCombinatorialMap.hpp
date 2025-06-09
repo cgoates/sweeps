@@ -26,10 +26,13 @@ namespace topology
             Flip1d
         };
 
+        using InternalConnectionsMap =
+            std::map<ConstituentSide, std::pair<TPPermutation, ConstituentSide>>;
+
         MultiPatchCombinatorialMap( const std::vector<std::shared_ptr<const TPCombinatorialMap>>& constituents,
                                     const std::map<std::pair<size_t, Dart>, std::pair<size_t, Dart>>& connections );
         MultiPatchCombinatorialMap( const std::vector<std::shared_ptr<const TPCombinatorialMap>>& constituents,
-                                    const std::map<ConstituentSide, std::pair<TPPermutation, ConstituentSide>>& connections );
+                                    const InternalConnectionsMap& connections );
 
         virtual ~MultiPatchCombinatorialMap() = default;
 
@@ -52,7 +55,7 @@ namespace topology
         Dart toGlobalDart( const size_t patch_id, const Dart& local_dart ) const;
 
         const std::vector<std::shared_ptr<const TPCombinatorialMap>>& constituents() const { return mSubMaps; }
-        const std::map<ConstituentSide, std::pair<TPPermutation, ConstituentSide>>& connections() const { return mInterMapConnections; }
+        const InternalConnectionsMap& connections() const { return mInterMapConnections; }
 
         private:
         std::vector<std::shared_ptr<const TPCombinatorialMap>> mSubMaps;
@@ -62,4 +65,13 @@ namespace topology
 
     std::ostream& operator<<( std::ostream& o, const MultiPatchCombinatorialMap::ConstituentSide& cs );
     std::ostream& operator<<( std::ostream& o, const MultiPatchCombinatorialMap::TPPermutation& cs );
+
+    /// @brief Computes the connections of a 2d multipatch cmap swept along the third dimension.
+    /// That is, if you tensor product each constituent of the 2d multipatch with the same 1d line
+    /// and then want to connect the resulting 2d TP cmaps consistent with the 2d multipatch, this
+    /// function will compute the necessary connections.
+    /// @param connections_2d The connections from the 2d multipatch cmap.
+    /// @return The connections for the 3d multipatch cmap.
+    MultiPatchCombinatorialMap::InternalConnectionsMap
+        connectionsOfSweptMultipatch( const MultiPatchCombinatorialMap::InternalConnectionsMap& connections_2d );
 } // namespace topology

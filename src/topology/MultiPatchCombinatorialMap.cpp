@@ -414,4 +414,24 @@ namespace topology
         }
         return o;
     }
+
+    MultiPatchCombinatorialMap::InternalConnectionsMap
+        connectionsOfSweptMultipatch( const MultiPatchCombinatorialMap::InternalConnectionsMap& connections_2d )
+    {
+        using InternalConnectionsMap = MultiPatchCombinatorialMap::InternalConnectionsMap;
+        using ConstituentSide = MultiPatchCombinatorialMap::ConstituentSide;
+        using TPPermutation = MultiPatchCombinatorialMap::TPPermutation;
+
+        InternalConnectionsMap out;
+        for( const auto& [left_side, perm_and_right_side] : connections_2d )
+        {
+            if( perm_and_right_side.first != TPPermutation::Flip1d )
+                throw std::runtime_error( "Can only sweep multipatch connections of 2d maps." );
+
+            // All constituents have the same orientation in this situation, so use ZeroToZero.
+            out.emplace( left_side, std::pair<TPPermutation, ConstituentSide>{ TPPermutation::ZeroToZero, perm_and_right_side.second } );
+        }
+
+        return out;
+    }
 } // namespace topology
