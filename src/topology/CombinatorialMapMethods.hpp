@@ -80,6 +80,14 @@ namespace topology
                   const std::function<void( const topology::Face& )>& mark_callback,
                   const std::function<void( const topology::Face& )>& callback );
 
+    /// Floods the entire set of darts using phi 1 and 2 operations on two combinatorial maps simultaneously.
+    ///
+    bool synchronizedFlood2d( const CombinatorialMap& map1,
+                              const CombinatorialMap& map2,
+                              const Dart& d1,
+                              const Dart& d2,
+                              const std::function<bool( const Dart&, const Dart& )>& callback );
+
     IndexingFunc indexingOrError( const CombinatorialMap& map, const uint cell_dim );
 
     int eulerCharacteristic( const CombinatorialMap& map );

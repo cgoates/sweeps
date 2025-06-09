@@ -383,6 +383,45 @@ namespace topology
         }
     }
 
+    bool synchronizedFlood2d( const CombinatorialMap& map1,
+                              const CombinatorialMap& map2,
+                              const Dart& d1,
+                              const Dart& d2,
+                              const std::function<bool( const Dart&, const Dart& )>& callback )
+    {
+        if( map1.dim() != 2 or map2.dim() != 2 ) throw std::runtime_error( "Bad cmap dimension for synchronizedFlood2d" );
+        std::queue<std::pair<Dart, Dart>> to_process;
+        GlobalDartMarker m1( map1 );
+        to_process.push( { d1, d2 } );
+        m1.mark( d1 );
+
+        for( ; not to_process.empty(); to_process.pop() )
+        {
+            const auto [curr_d1, curr_d2] = to_process.front();
+            if( not callback( curr_d1, curr_d2 ) ) return false;
+            for( size_t phi_op : { 1, 2 } )
+            {
+                const auto maybe_next_d1 = phi( map1, phi_op, curr_d1 );
+                const auto maybe_next_d2 = phi( map2, phi_op, curr_d2 );
+                if( maybe_next_d1.has_value() and maybe_next_d2.has_value() )
+                {
+                    const Dart next_d1 = maybe_next_d1.value();
+                    const Dart next_d2 = maybe_next_d2.value();
+                    if( not m1.isMarked( next_d1 ) )
+                    {
+                        m1.mark( next_d1 );
+                        to_process.push( { next_d1, next_d2 } );
+                    }
+                }
+                else if( maybe_next_d1.has_value() or maybe_next_d2.has_value() )
+                {
+                    throw std::runtime_error( "Synchronized flood 2d: provided cmaps do not have the same topology." );
+                }
+            }
+        }
+        return true;
+    }
+
     IndexingFunc indexingOrError( const CombinatorialMap& map, const uint cell_dim )
     {
         return map.indexing( cell_dim ).or_else( [&]() -> std::optional<IndexingFunc> {
