@@ -765,7 +765,7 @@ TEST_CASE( "Flange spline" )
     }();
 
     const basis::MultiPatchSplineSpace ss2d =
-        basis::buildMultiPatchSplineSpace( std::vector<std::shared_ptr<const basis::TPSplineSpace>>( 112, tp2d ), {} );
+        basis::buildMultiPatchSplineSpace( std::vector<std::shared_ptr<const basis::TPSplineSpace>>( 112, tp2d ), topology::MultiPatchCombinatorialMap::InternalConnectionsMap{} );
 
     SimplicialComplex fitting_points;
     eval::SplineSpaceEvaluator evaler( ss, 0 );

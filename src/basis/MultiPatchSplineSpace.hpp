@@ -36,6 +36,10 @@ namespace basis
         const std::vector<std::shared_ptr<const TPSplineSpace>>& patches,
         const std::map<std::pair<size_t, topology::Dart>, std::pair<size_t, topology::Dart>>& connections );
 
+    MultiPatchSplineSpace buildMultiPatchSplineSpace(
+        const std::vector<std::shared_ptr<const TPSplineSpace>>& patches,
+        const topology::MultiPatchCombinatorialMap::InternalConnectionsMap& connections );
+
     Eigen::MatrixX3d multiPatchCoefficients( const MultiPatchSplineSpace& ss,
                                              const std::vector<Eigen::MatrixX3d>& patch_coeffs );
 } // namespace basis
