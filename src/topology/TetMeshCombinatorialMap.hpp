@@ -64,6 +64,7 @@ namespace topology
         virtual std::optional<size_t> cellCount( const uint cell_dim ) const override;
 
         private:
+        Dart phi1_1( const int, const Dart& ) const;
         const SimplicialComplex& mSimplicialComplex;
 
         /// This array holds the tet-local phi2 operations. The ith entry is

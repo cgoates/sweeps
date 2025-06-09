@@ -19,7 +19,7 @@ Dart TriMeshCombinatorialMap::dartOfTri( const uint tri_id ) const
     return Dart( tri_id * darts_per_tri ); 
 }
 
-inline Dart phi1_1( const int i, const Dart& d )
+Dart TriMeshCombinatorialMap::phi1_1( const int i, const Dart& d ) const
 {
     const Dart::IndexType face_local_id = d.id() % darts_per_tri;
     return Dart( ( face_local_id + darts_per_tri + i ) % darts_per_tri

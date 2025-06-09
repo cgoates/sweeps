@@ -8,7 +8,7 @@ namespace topology
 {
 constexpr int darts_per_quad = 4;
 
-inline std::array<VertexId, 2> sortEdgeVerts( const VertexId& v1, const VertexId& v2 )
+std::array<VertexId, 2> sortEdgeVerts( const VertexId& v1, const VertexId& v2 )
 {
     if( v1 > v2 ) return std::array<VertexId, 2>{ v2, v1 };
     else return std::array<VertexId, 2>{ v1, v2 };
@@ -19,7 +19,7 @@ Dart QuadMeshCombinatorialMap::dartOfQuad( const uint quad_id ) const
     return Dart( quad_id * darts_per_quad ); 
 }
 
-inline Dart phi1_1( const int i, const Dart& d )
+Dart QuadMeshCombinatorialMap::phi1_1( const int i, const Dart& d ) const
 {
     const Dart::IndexType face_local_id = d.id() % darts_per_quad;
     return Dart( ( face_local_id + darts_per_quad + i ) % darts_per_quad

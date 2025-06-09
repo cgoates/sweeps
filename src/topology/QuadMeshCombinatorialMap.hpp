@@ -50,6 +50,7 @@ namespace topology
         virtual std::optional<size_t> cellCount( const uint cell_dim ) const override;
 
         private:
+        Dart phi1_1( const int i, const Dart& ) const;
         const std::vector<std::array<VertexId, 4>> mVerticesOfQuads;
 
         /// Stores one phi2 for each half edge.  The other phi2s can be

@@ -51,6 +51,7 @@ namespace topology
         virtual std::optional<size_t> cellCount( const uint cell_dim ) const override;
 
         private:
+        Dart phi1_1( const int, const Dart& ) const;
         const SimplicialComplex& mSimplicialComplex;
 
         /// Stores one phi3 for each half face.  The other phi3s can be
