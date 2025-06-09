@@ -84,5 +84,5 @@ namespace reparam
         const basis::SplineSpace& ss,
         const std::vector<reparam::FoliationLeaf>& leaves,
         const std::function<std::pair<Eigen::Vector2d, size_t>( const topology::Vertex& )>& tutte_points,
-        const std::optional<std::function<Eigen::Vector3d( const topology::Vertex& )>>& first_level_points );
+        const std::optional<std::function<Eigen::Vector3d( const topology::Vertex& )>>& first_level_points = std::nullopt );
 } // namespace reparam
