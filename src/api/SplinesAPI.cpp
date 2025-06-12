@@ -7,6 +7,7 @@
 #include <NavierStokesDiscretization.hpp>
 #include <CombinatorialMapMethods.hpp>
 #include <IndexOperations.hpp>
+#include <Eigen/LU>
 
 namespace py = pybind11;
 using namespace py::literals;
