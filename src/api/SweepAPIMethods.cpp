@@ -12,6 +12,7 @@
 #include <MultiPatchSplineSpace.hpp>
 #include <SplineSpaceEvaluator.hpp>
 #include <iostream>
+#include <Eigen/LU>
 
 namespace api
 {
