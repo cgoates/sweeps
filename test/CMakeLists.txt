@@ -58,3 +58,9 @@ target_link_libraries(NonDiskFoliation_test PUBLIC fitting)
 add_my_test(CriticalPoints_test)
 add_my_test(SphereFoliation_test)
 target_link_libraries(SphereFoliation_test PUBLIC fitting)
+
+add_test(
+    NAME python_import_test
+    COMMAND python3 -c "import sweeps; import splines; print('Import successful')"
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/src/api
+)
