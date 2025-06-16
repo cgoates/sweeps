@@ -169,8 +169,6 @@ namespace topology
                     const size_t constituent_id = constituents.size();
                     constituents.push_back( find_or_add_2d( count_s, count_t ) );
 
-                    std::cout << "{" << count_s << ", " << count_t << "} for vertex " << v.dart().id() << std::endl;
-
                     const std::array<Dart, 4> tp_corners = tp_corner_darts( constituents.back(), count_s, count_t );
                     unstructured_to_constituent_darts.emplace( corner0, std::pair<size_t, Dart>{ constituent_id, tp_corners.at( 0 ) } );
                     unstructured_to_constituent_darts.emplace( corner1, std::pair<size_t, Dart>{ constituent_id, tp_corners.at( 1 ) } );
@@ -187,9 +185,6 @@ namespace topology
             return true;
         } );
 
-        std::cout << "Found " << constituents.size() << " constituents." << std::endl;
-
-        // TODO: Create connections between the constituents.
         std::map<std::pair<size_t, Dart>, std::pair<size_t, Dart>> connections;
 
         std::set<std::pair<size_t, size_t>> connected_constituents;

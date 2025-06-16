@@ -446,10 +446,8 @@ namespace api
                                 decomp.unstructured_first_corner,
                                 topology::Dart( 0 ),
                                 [&]( const topology::Dart& d1, const topology::Dart& d2 ) {
-                                    std::cout << "synchro flood\n";
                                     if( not m.isMarked( topology::Vertex( d1 ) ) )
                                     {
-                                        std::cout << "Not marked, moving ahead\n";
                                         m.mark( quad_layout, topology::Vertex( d1 ) );
                                         const auto vid = quad_layout_vids( topology::Vertex( d1 ) );
                                         cmap2d_positions.insert(
@@ -509,17 +507,6 @@ namespace api
             {
                 const auto [cell, parent_pt] = leaf.space_mapping->closestPoint( pr.second );
                 const Eigen::Vector2d tutte_pt = leaf.tutte_mapping->evaluate( cell, parent_pt );
-                {
-                    std::cout << "Tutte point for " << pr.first << ": " << tutte_pt.transpose() << std::endl;
-                    std::cout << "Space point for " << pr.first << ": " << pr.second.transpose() << std::endl;
-                    const Eigen::Vector3d recreate_pt = leaf.space_mapping->evaluate( cell, parent_pt );
-                    if( ( recreate_pt - pr.second ).norm() > 1e-4 ) std::cout << "   " << recreate_pt.transpose() <<  "\nvs " << pr.second.transpose() << std::endl << "--------\n";
-                    const auto [cell_again, parent_pt_again] = leaf.tutte_mapping->maybeInverse( tutte_pt ).value();
-                    const Eigen::Vector3d recreated_again = leaf.space_mapping->evaluate( cell_again, parent_pt_again );
-                    if( ( recreated_again - pr.second ).norm() > 1e-4 )
-                        std::cout << "X  " << recreated_again.transpose() <<  "\nvs " << pr.second.transpose() << std::endl;
-                    std::cout << "--------\n";
-                }
                 tutte_points.insert( { pr.first, tutte_pt } );
             }
 
