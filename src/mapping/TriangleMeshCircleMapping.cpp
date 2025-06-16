@@ -50,8 +50,8 @@ namespace mapping
 
             if( not boundary_edges.empty() )
             {
-                const double max_angle = mBoundaryAngles.at( vert_ids( topology::Vertex( boundary_edges.front().dart() ) ) );
-                const double min_angle = mBoundaryAngles.at(
+                const double min_angle = mBoundaryAngles.at( vert_ids( topology::Vertex( boundary_edges.front().dart() ) ) );
+                const double max_angle = mBoundaryAngles.at(
                     vert_ids( topology::Vertex( phi( mAtlas->cmap(), 1, boundary_edges.back().dart() ).value() ) ) );
 
                 // NOTE: We are assuming that the topological normal is in the same direction as the circle normal by RHR.

@@ -96,7 +96,7 @@ namespace reparam
         const double factor = 2 * std::numbers::pi / cumulative_length;
         for( auto& pr : out )
         {
-            pr.second = ( pr.second - intersection_point.value() ) * factor;
+            pr.second = 2 * std::numbers::pi - ( pr.second - intersection_point.value() ) * factor;
         }
 
         return out;

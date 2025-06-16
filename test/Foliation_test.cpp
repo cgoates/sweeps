@@ -101,7 +101,7 @@ TEST_CASE( "Theta values on cube foliation" )
 
         for( const auto& pr : thetas )
         {
-            const double expected_theta = atan2( base_positions( pr.first ).head<2>() - Eigen::Vector2d( 0.5, 0.5 ) ) + std::numbers::pi / 2;
+            const double expected_theta = - atan2( base_positions( pr.first ).head<2>() - Eigen::Vector2d( 0.5, 0.5 ) ) + 3 * std::numbers::pi / 2;
             CHECK( util::angleEquals( expected_theta, pr.second, 1e-10 ) );
         }
     }
@@ -117,7 +117,7 @@ TEST_CASE( "Theta values on cube foliation" )
 
         for( const auto& pr : thetas )
         {
-            const double expected_theta = atan2( level_set_positions( pr.first ).head<2>() - Eigen::Vector2d( 0.5, 0.5 ) ) + std::numbers::pi / 2;
+            const double expected_theta = - atan2( level_set_positions( pr.first ).head<2>() - Eigen::Vector2d( 0.5, 0.5 ) ) + 3 * std::numbers::pi / 2;
             CHECK( util::angleEquals( expected_theta, pr.second, 1e-10 ) );
         }
     }
@@ -133,7 +133,7 @@ TEST_CASE( "Theta values on cube foliation" )
 
         for( const auto& pr : thetas )
         {
-            const double expected_theta = atan2( rev_positions( pr.first ).head<2>() - Eigen::Vector2d( 0.5, 0.5 ) ) + std::numbers::pi / 2;
+            const double expected_theta = - atan2( rev_positions( pr.first ).head<2>() - Eigen::Vector2d( 0.5, 0.5 ) ) + 3 * std::numbers::pi / 2;
             CHECK( util::angleEquals( expected_theta, pr.second, 1e-10 ) );
         }
     }
