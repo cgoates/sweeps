@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 path_to_api = Path(__file__).parent.parent.parent / "build" / "src" / "api"
-sys.path.insert(0, "/Users/caleb/sweeps/build/src/api")
+sys.path.insert(0, str(path_to_api))
 import sweeps
 
 
@@ -75,6 +75,26 @@ def meshHook(single_patch=True):
     print( len( mesh.hexes ) )
     print( [ mesh.points[i] for i in mesh.hexes[0] ] )
 
+def meshHookWithQuadMesh():
+    # Load a tet mesh and the source and target surfaces from file. Surface12 is the source, and Surface10 is the target.
+    hook = sweeps.loadFromFile(
+        "/Users/caleb/sweeps/attempt-sweep/test/data/hook.inp", "Surface12", "Surface10")
+    
+    # Load in an OBJ file for the quad mesh
+    hook_base = sweeps.loadQuadMeshFromObjFile( "/Users/caleb/sweeps/attempt-sweep/test/data/hookBase.obj" );
+
+    # This is a set of u values at which you want the mesh to have points.
+    # Try changing this to get an idea for what it does.  The values should all be between 0 and 1.
+    u_values = np.linspace(0.0, 1.0, 30)
+
+    # Setting the debug flag to True will check the mesh jacobians, and write out a vtk file to visualize the mesh and any elements with negative jacobians.
+    mesh = sweeps.fitHexMeshToSweep(hook, hook_base, u_values, debug=True)
+
+    # The resulting hex mesh has a list of points and a list of hexes.
+    print( len( mesh.points ) )
+    print( len( mesh.hexes ) )
+    print( [ mesh.points[i] for i in mesh.hexes[0] ] )
+
 
 def parameterizeBunny():
     level_set_values = np.concatenate((np.linspace(0, 0.177, 35),
@@ -119,4 +139,5 @@ def parameterizeBunny():
 # Comment/uncomment these to run the different examples.
 # parameterizeHook()
 # parameterizeBunny()
-meshHook(single_patch=False)
+# meshHook(single_patch=False)
+meshHookWithQuadMesh()
