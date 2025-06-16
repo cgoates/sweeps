@@ -5,7 +5,7 @@
 #include <TriangleMeshMapping.hpp>
 #include <SimplexUtilities.hpp>
 #include <CombinatorialMapMethods.hpp>
-
+#include <QuadMeshCombinatorialMap.hpp>
 #include <KnotVector.hpp>
 #include <CommonUtils.hpp>
 #include <TPSplineSpace.hpp>
@@ -13,6 +13,8 @@
 #include <SplineSpaceEvaluator.hpp>
 #include <iostream>
 #include <Eigen/LU>
+#include <MultiPatchDecomposition.hpp>
+#include <GlobalCellMarker.hpp>
 
 namespace api
 {
@@ -404,6 +406,190 @@ namespace api
                 return c.id();
             } );
             return true;
+        } );
+
+        return out;
+    }
+
+    HexMesh fitHexMeshToSweep( const api::Sweep& sweep, const api::QuadMesh& quad_mesh, const std::vector<double>& u_values, const bool debug )
+    {
+        if( sweep.source.size() == 0 or sweep.target.size() == 0 )
+            throw std::invalid_argument( "No source or target surface specified" );
+        if( sweep.mesh.points.size() == 0 or sweep.mesh.simplices.size() == 0 )
+            throw std::invalid_argument( "No tet mesh supplied" );
+        if( u_values.size() < 2 )
+            throw std::invalid_argument( "Insufficient u coordinates specified; please include at least two values." );
+        if( quad_mesh.quads.size() < 1 )
+            throw std::invalid_argument( "Invalid number of elements in the source quad mesh" );
+        if( u_values.front() != 0.0 or u_values.back() != 1.0 )
+            throw std::invalid_argument( "u values must start at 0 and end at 1" );
+
+        std::map<topology::Dart::IndexType, Eigen::Vector3d> cmap2d_positions;
+
+        const topology::MultiPatchCombinatorialMap cmap2d = [&]() {
+            std::vector<std::array<VertexId, 4>> quads;
+            quads.reserve( quad_mesh.quads.size() );
+            std::transform( quad_mesh.quads.begin(), quad_mesh.quads.end(), std::back_inserter( quads ),
+                            []( const auto& q ) {
+                                return std::array<VertexId, 4>{ q.at( 3 ), q.at( 2 ), q.at( 1 ), q.at( 0 ) }; // REVERSE NORMAL
+                            } );
+            const topology::QuadMeshCombinatorialMap quad_layout( quads, quad_mesh.points.size() );
+
+            const topology::MultiPatchDecomposition decomp = topology::multiPatchDecomposition( quad_layout );
+            const topology::MultiPatchCombinatorialMap cmap2d( decomp.constituents, decomp.connections );
+
+            topology::GlobalCellMarker m( quad_layout, 0 );
+
+            const auto quad_layout_vids = indexingOrError( quad_layout, 0 );
+            synchronizedFlood2d( quad_layout,
+                                cmap2d,
+                                decomp.unstructured_first_corner,
+                                topology::Dart( 0 ),
+                                [&]( const topology::Dart& d1, const topology::Dart& d2 ) {
+                                    std::cout << "synchro flood\n";
+                                    if( not m.isMarked( topology::Vertex( d1 ) ) )
+                                    {
+                                        std::cout << "Not marked, moving ahead\n";
+                                        m.mark( quad_layout, topology::Vertex( d1 ) );
+                                        const auto vid = quad_layout_vids( topology::Vertex( d1 ) );
+                                        cmap2d_positions.insert(
+                                            { lowestDartId( cmap2d, topology::Vertex( d2 ) ), quad_mesh.points.at( vid ) } );
+                                    }
+                                    return true;
+                                } );
+            return cmap2d;
+        }();
+
+        const SweepInput sweep_input = [&sweep]() {
+            const auto& m = sweep.mesh;
+            std::vector<bool> zero_bcs( m.points.size(), false );
+            std::vector<bool> one_bcs( m.points.size(), false );
+            for( const VertexId::Type& vid : sweep.source ) zero_bcs.at( vid ) = true;
+            for( const VertexId::Type& vid : sweep.target ) one_bcs.at( vid ) = true;
+            return SweepInput( m, zero_bcs, one_bcs );
+        }();
+
+        using namespace topology;
+
+        const size_t degree = 1;
+
+        // Create the 3d linear spline space
+        const basis::MultiPatchSplineSpace ss = [&]() {
+            std::vector<std::shared_ptr<const basis::TPSplineSpace>> constituents;
+            constituents.reserve( cmap2d.constituents().size() );
+
+            const basis::KnotVector kv_u = basis::unitIntervalKnotVectorWithNElems( u_values.size() - 1, 1 );
+
+            for( const auto& constituent : cmap2d.constituents() )
+            {
+                const auto& components = tensorProductComponentCMaps( *constituent );
+                const basis::KnotVector kv_s = basis::unitIntervalKnotVectorWithNElems( cellCount( *components.at( 0 ), 1 ), 1 );
+                const basis::KnotVector kv_t = basis::unitIntervalKnotVectorWithNElems( cellCount( *components.at( 1 ), 1 ), 1 );
+
+                constituents.push_back( std::make_shared<const basis::TPSplineSpace>( basis::buildBSpline( {kv_s, kv_t, kv_u }, {degree, degree, degree} ) ) );
+            }
+            return buildMultiPatchSplineSpace( constituents, topology::connectionsOfSweptMultipatch( cmap2d.connections() ) );
+        }();
+
+        const auto sweep_to_source_vertex = [&]( const topology::Vertex& v ) {
+            const auto [patch_id, d_patch] = ss.basisComplex().parametricAtlas().cmap().toLocalDart( v.dart() );
+            const auto unflattened_cell = unflattenCell( ss.subSpaces().at( patch_id )->basisComplex().parametricAtlas().cmap(), topology::Vertex( d_patch ) );
+            const topology::Vertex v2d( lowestDartId(
+                cmap2d, topology::Vertex( cmap2d.toGlobalDart( patch_id, unflattened_cell.first.value().dart() ) ) ) );
+            const size_t leaf_ii = unflattened_cell.second.has_value() ? unflattened_cell.second.value().dart().id() : u_values.size() - 1;
+
+            return std::pair<topology::Vertex, size_t>( v2d, leaf_ii );
+        };
+
+        const auto get_tutte_points = [&]( const reparam::FoliationLeaf& leaf ) {
+            std::map<topology::Dart::IndexType, Eigen::Vector2d> tutte_points;
+            // Find the tutte domain coordinates of the source cmap vertices.
+
+            for( const auto& pr : cmap2d_positions )
+            {
+                const auto [cell, parent_pt] = leaf.space_mapping->closestPoint( pr.second );
+                const Eigen::Vector2d tutte_pt = leaf.tutte_mapping->evaluate( cell, parent_pt );
+                {
+                    std::cout << "Tutte point for " << pr.first << ": " << tutte_pt.transpose() << std::endl;
+                    std::cout << "Space point for " << pr.first << ": " << pr.second.transpose() << std::endl;
+                    const Eigen::Vector3d recreate_pt = leaf.space_mapping->evaluate( cell, parent_pt );
+                    if( ( recreate_pt - pr.second ).norm() > 1e-4 ) std::cout << "   " << recreate_pt.transpose() <<  "\nvs " << pr.second.transpose() << std::endl << "--------\n";
+                    const auto [cell_again, parent_pt_again] = leaf.tutte_mapping->maybeInverse( tutte_pt ).value();
+                    const Eigen::Vector3d recreated_again = leaf.space_mapping->evaluate( cell_again, parent_pt_again );
+                    if( ( recreated_again - pr.second ).norm() > 1e-4 )
+                        std::cout << "X  " << recreated_again.transpose() <<  "\nvs " << pr.second.transpose() << std::endl;
+                    std::cout << "--------\n";
+                }
+                tutte_points.insert( { pr.first, tutte_pt } );
+            }
+
+            return tutte_points;
+        };
+
+        HexMesh out;
+
+        reparam::levelSetBasedTracing( sweep_input, u_values, [&]( const std::vector<reparam::FoliationLeaf>& leaves ) {
+            const auto tutte_points = get_tutte_points( leaves.front() );
+            const Eigen::MatrixXd fit_cpts = reparam::fitLinearMeshToLeaves( ss, leaves, [&]( const topology::Vertex& v ){
+                const auto [v2d, leaf_ii] = sweep_to_source_vertex( v );
+                return std::pair<Eigen::Vector2d, size_t>( tutte_points.at( v2d.dart().id() ), leaf_ii );
+            }, std::nullopt );
+
+            if( debug )
+            {
+                double min_val = std::numeric_limits<double>::infinity();
+                double max_val = -std::numeric_limits<double>::infinity();
+
+                eval::SplineSpaceEvaluator evaler( ss, 1 );
+
+                iterateCellsWhile( ss.basisComplex().parametricAtlas().cmap(), 3, [&]( const topology::Volume& vol ) {
+                    evaler.localizeElement( vol );
+                    iterateAdjacentCellsOfRestrictedCell( ss.basisComplex().parametricAtlas().cmap(), vol, 2, 0, [&]( const topology::Vertex& v ) {
+                        evaler.localizePoint( ss.basisComplex().parametricAtlas().parentPoint( v ) );
+                        const double val = evaler.evaluateJacobian( fit_cpts.transpose() ).determinant();
+                        min_val = std::min( min_val, val );
+                        max_val = std::max( max_val, val );
+                        return true;
+                    } );
+                    return true;
+                } );
+
+                std::cout << "Min jacobian: " << min_val << std::endl;
+                std::cout << "Max jacobian: " << max_val << std::endl;
+
+                io::outputBezierMeshToVTK( ss, fit_cpts, "hex_mesh.vtu" );
+                io::outputPartialBezierMeshToVTK( ss, fit_cpts, "bad_fit_cells.vtu", [&]( const auto& callback ) {
+                    iterateCellsWhile( ss.basisComplex().parametricAtlas().cmap(), 3, [&]( const topology::Volume& vol ) {
+                        evaler.localizeElement( vol );
+                        double min_jac = std::numeric_limits<double>::infinity();
+                        iterateAdjacentCellsOfRestrictedCell( ss.basisComplex().parametricAtlas().cmap(), vol, 2, 0, [&]( const topology::Vertex& v ) {
+                            evaler.localizePoint( ss.basisComplex().parametricAtlas().parentPoint( v ) );
+                            const double val = evaler.evaluateJacobian( fit_cpts.transpose() ).determinant();
+                            min_jac = std::min( min_jac, val );
+                            return true;
+                        } );
+                        if( min_jac < 0 )
+                        {
+                            callback( vol );
+                        }
+                        return true;
+                    } );
+                } );
+            }
+
+            for( Eigen::Index i = 0; i < fit_cpts.rows(); i++ )
+            {
+                out.points.push_back( fit_cpts.row( i ) );
+            }
+
+            iterateCellsWhile( ss.basisComplex().parametricAtlas().cmap(), 3, [&]( const topology::Volume& vol ) {
+                const auto conn = ss.connectivity( vol );
+                out.hexes.push_back({});
+                std::transform( conn.begin(), conn.end(), out.hexes.back().begin(), []( const auto& c ) {
+                    return c.id();
+                } );
+                return true;
+            } );
         } );
 
         return out;

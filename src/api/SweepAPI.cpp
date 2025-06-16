@@ -35,6 +35,12 @@ PYBIND11_MODULE( sweeps, m )
                  "ordered by their coordinates in the hex-local coordinates system as (0,0,0), (1,0,0), (0,1,0), "
                  "(1,1,0), (0,0,1), (1,0,1), (0,1,1), (1,1,1).";
 
+    py::class_<api::QuadMesh>( m, "QuadMesh" )
+        .def_readwrite( "points", &api::QuadMesh::points )
+        .def_readwrite( "quads", &api::QuadMesh::quads )
+        .doc() = "A simple quad mesh, with a list of points, and a list of quads.  The vertices of the quads are "
+                 "ordered by their coordinates in the local coordinates system as (0,0), (1,0), (1,1), (0,1).";
+
     py::class_<api::Sweep>( m, "Sweep" )
         .def_readwrite(
             "mesh",
@@ -93,5 +99,32 @@ PYBIND11_MODULE( sweeps, m )
         "u_values"_a,
         py::kw_only(),
         "debug"_a = false
+    );
+
+    m.def(
+        "fitHexMeshToSweep",
+        &api::fitHexMeshToSweep,
+        "Fits a hex mesh to a sweep, starting from a user-specified quad mesh on the source surface.",
+        "sweep"_a,
+        "quad_mesh"_a,
+        "u_values"_a,
+        py::kw_only(),
+        "debug"_a = false
+    );
+
+    m.def(
+        "loadQuadMeshFromObjFile",
+        []( const std::string& filename ){
+            const auto [quads, points] = io::loadOBJFile( filename );
+            std::vector<std::array<VertexId::Type, 4>> quads_out;
+            quads_out.reserve( quads.size() );
+            for( const auto& q : quads )
+            {
+                quads_out.push_back( { q[0].id(), q[1].id(), q[2].id(), q[3].id() } );
+            }
+            return api::QuadMesh{ points, quads_out };
+        },
+        "filename"_a,
+        "Loads a quad mesh from an OBJ file. The OBJ file should contain quads, not triangles."
     );
 }
