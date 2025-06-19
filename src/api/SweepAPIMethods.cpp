@@ -434,7 +434,7 @@ namespace api
             quads.reserve( quad_mesh.quads.size() );
             std::transform( quad_mesh.quads.begin(), quad_mesh.quads.end(), std::back_inserter( quads ),
                             []( const auto& q ) {
-                                return std::array<VertexId, 4>{ q.at( 3 ), q.at( 2 ), q.at( 1 ), q.at( 0 ) }; // REVERSE NORMAL
+                                return std::array<VertexId, 4>{ q.at( 0 ), q.at( 1 ), q.at( 2 ), q.at( 3 ) };
                             } );
             const topology::QuadMeshCombinatorialMap quad_layout( quads, quad_mesh.points.size() );
 
