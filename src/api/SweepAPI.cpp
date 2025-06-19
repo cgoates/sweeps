@@ -41,6 +41,11 @@ PYBIND11_MODULE( sweeps, m )
         .doc() = "A simple quad mesh, with a list of points, and a list of quads.  The vertices of the quads are "
                  "ordered by their coordinates in the local coordinates system as (0,0), (1,0), (1,1), (0,1).";
 
+    py::class_<api::TriMesh>( m, "TriMesh" )
+        .def_readwrite( "points", &api::TriMesh::points )
+        .def_readwrite( "tris", &api::TriMesh::tris )
+        .doc() = "A simple triangle mesh, with a list of points, and a list of triangles.";
+
     py::class_<api::Sweep>( m, "Sweep" )
         .def_readwrite(
             "mesh",
@@ -126,5 +131,12 @@ PYBIND11_MODULE( sweeps, m )
         },
         "filename"_a,
         "Loads a quad mesh from an OBJ file. The OBJ file should contain quads, not triangles."
+    );
+
+    m.def(
+        "baseOfSweep",
+        &api::baseOfSweep,
+        "Computes the base surface triangle mesh of a sweep.",
+        "sweep"_a
     );
 }

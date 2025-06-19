@@ -28,6 +28,12 @@ namespace api
         std::vector<std::array<VertexId::Type, 4>> quads;
     };
 
+    struct TriMesh
+    {
+        std::vector<Eigen::Vector3d> points;
+        std::vector<std::array<VertexId::Type, 3>> tris;
+    };
+
     void outputLevelSetsAndTraces( const Sweep& sweep,
                                    const std::vector<double>& level_set_values,
                                    const std::vector<Eigen::Vector2d>& trace_points,
@@ -38,4 +44,6 @@ namespace api
     HexMesh fitFivePatchHexMeshToSweep( const api::Sweep& sweep, const size_t n_elems_st, const std::vector<double>& u_values, const bool debug = false );
 
     HexMesh fitHexMeshToSweep( const api::Sweep& sweep, const api::QuadMesh& quad_mesh, const std::vector<double>& u_values, const bool debug = false );
+
+    TriMesh baseOfSweep( const Sweep& sweep );
 }

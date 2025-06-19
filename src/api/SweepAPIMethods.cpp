@@ -15,6 +15,9 @@
 #include <Eigen/LU>
 #include <MultiPatchDecomposition.hpp>
 #include <GlobalCellMarker.hpp>
+#include <TetMeshCombinatorialMap.hpp>
+#include <CombinatorialMapRestriction.hpp>
+#include <CombinatorialMapBoundary.hpp>
 
 namespace api
 {
@@ -580,5 +583,47 @@ namespace api
         } );
 
         return out;
+    }
+
+    TriMesh baseOfSweep( const Sweep& sweep )
+    {
+        const SweepInput sweep_input = [&sweep]() {
+            const auto& m = sweep.mesh;
+            std::vector<bool> zero_bcs( m.points.size(), false );
+            std::vector<bool> one_bcs( m.points.size(), false );
+            for( const VertexId::Type& vid : sweep.source ) zero_bcs.at( vid ) = true;
+            for( const VertexId::Type& vid : sweep.target ) one_bcs.at( vid ) = true;
+            return SweepInput( m, zero_bcs, one_bcs );
+        }();
+
+        const topology::TetMeshCombinatorialMap cmap( sweep.mesh );
+        const topology::CombinatorialMapBoundary bdry( cmap );
+
+        const auto bdry_vertex_ids = indexingOrError( bdry, 0 );
+
+        const auto keep_face_base = [&]( const topology::Face& f ) {
+            return sweep_input.zero_bcs.at( bdry_vertex_ids( topology::Vertex( f.dart() ) ) ) and
+                    sweep_input.zero_bcs.at( bdry_vertex_ids( topology::Vertex( phi( bdry, 1, f.dart() ).value() ) ) ) and
+                    sweep_input.zero_bcs.at( bdry_vertex_ids( topology::Vertex( phi( bdry, -1, f.dart() ).value() ) ) );
+        };
+
+        const topology::CombinatorialMapRestriction base( bdry, keep_face_base, true );
+
+        const auto base_vertex_ids = indexingOrError( base, 0 );
+
+        TriMesh base_mesh;
+        iterateCellsWhile( base, 0, [&]( const topology::Vertex& v ) {
+            base_mesh.points.push_back( sweep.mesh.points.at( bdry_vertex_ids( v ) ) );
+            return true;
+        } );
+        iterateCellsWhile( base, 2, [&]( const topology::Face& f ) {
+            const auto v1 = base_vertex_ids( topology::Vertex( f.dart() ) );
+            const auto v2 = base_vertex_ids( topology::Vertex( phi( base, 1, f.dart() ).value() ) );
+            const auto v3 = base_vertex_ids( topology::Vertex( phi( base, -1, f.dart() ).value() ) );
+            base_mesh.tris.push_back( { v3, v2, v1 } );// Reversed so normals point along sweep direction
+            return true;
+        } );
+
+        return base_mesh;
     }
 }
