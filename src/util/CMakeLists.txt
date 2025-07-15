@@ -5,6 +5,7 @@ add_library( util SHARED
   CommonUtils.cpp
   IndexOperations.cpp
   SparseMatrixUtilities.cpp
+  CustomEigen.cpp
 )
 
 add_dependencies( util eigen )

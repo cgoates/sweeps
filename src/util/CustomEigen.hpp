@@ -6,3 +6,7 @@ using Vector6d = Eigen::Matrix<double, 6, 1>;
 using Vector3dMax = Eigen::Matrix<double, Eigen::Dynamic, 1, 0, 3>;
 using Vector6dMax = Eigen::Matrix<double, Eigen::Dynamic, 1, 0, 6>;
 using MatrixX3dMax = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, 0, Eigen::Dynamic, 3>;
+
+void writeToFile( const Eigen::MatrixXd& data, const std::string& filename, const int precision = 10 );
+
+Eigen::MatrixXd readFromFile( const std::string& filename );
