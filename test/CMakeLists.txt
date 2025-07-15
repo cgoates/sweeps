@@ -21,6 +21,7 @@ FetchContent_MakeAvailable(Catch2)
 include(CTest)
 include(Catch)
 
+add_my_test(CustomEigen_test)
 add_my_test(tet_map_tests)
 add_my_test(tri_map_tests)
 add_my_test(boundary_map_tests)
