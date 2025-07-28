@@ -483,7 +483,7 @@ namespace api
 
             for( const auto& constituent : cmap2d.constituents() )
             {
-                const auto& components = tensorProductComponentCMaps( *constituent );
+                const auto components = tensorProductComponentCMaps( *constituent );
                 const basis::KnotVector kv_s = basis::unitIntervalKnotVectorWithNElems( cellCount( *components.at( 0 ), 1 ), 1 );
                 const basis::KnotVector kv_t = basis::unitIntervalKnotVectorWithNElems( cellCount( *components.at( 1 ), 1 ), 1 );
 
