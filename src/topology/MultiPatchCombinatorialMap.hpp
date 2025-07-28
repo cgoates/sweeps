@@ -74,4 +74,8 @@ namespace topology
     /// @return The connections for the 3d multipatch cmap.
     MultiPatchCombinatorialMap::InternalConnectionsMap
         connectionsOfSweptMultipatch( const MultiPatchCombinatorialMap::InternalConnectionsMap& connections_2d );
+
+    /// @brief Computes the hex or quad layout of a multipatch combinatorial map by replacing each patch with a single
+    /// element.
+    MultiPatchCombinatorialMap blockLayout( const MultiPatchCombinatorialMap& cmap );
 } // namespace topology

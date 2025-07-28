@@ -434,4 +434,22 @@ namespace topology
 
         return out;
     }
+
+    MultiPatchCombinatorialMap blockLayout( const MultiPatchCombinatorialMap& cmap )
+    {
+        const std::shared_ptr<const TPCombinatorialMap> single_elem_patch = [&]() {
+            const auto cmap1d = std::make_shared<const CombinatorialMap1d>( 1 );
+            const auto cmap2d = std::make_shared<const TPCombinatorialMap>( cmap1d, cmap1d );
+            if( cmap.dim() == 3 ) {
+                return std::make_shared<const TPCombinatorialMap>( cmap2d, cmap1d );
+            } else {
+                return cmap2d;
+            }
+        }();
+
+        const MultiPatchCombinatorialMap block_layout(
+            std::vector<std::shared_ptr<const TPCombinatorialMap>>( cmap.constituents().size(), single_elem_patch ),
+            cmap.connections() );
+        return block_layout;
+    }
 } // namespace topology
