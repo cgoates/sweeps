@@ -194,6 +194,10 @@ int main( int argc, char* argv[] )
                 return SweepInputTestCases::neighborhood();
             else if( std::find( input_args.begin(), input_args.end(), "counter2" ) != input_args.end() )
                 return io::loadINPFile( SRC_HOME "/test/data/counter2.inp", "Surface1", "Surface6" );
+            else if( std::find( input_args.begin(), input_args.end(), "coil" ) != input_args.end() )
+                return io::loadINPFile( SRC_HOME "/test/data/InnerCoil.inp", "Surface1", "Surface2" );
+            else if( std::find( input_args.begin(), input_args.end(), "capsule" ) != input_args.end() )
+                return SweepInputTestCases::capsule();
             else
                 return SweepInputTestCases::macaroni();
         }();
