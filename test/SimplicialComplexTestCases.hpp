@@ -472,6 +472,28 @@ class SweepInputTestCases
         return sweep_input;
     }
 
+    static SweepInput capsule()
+    {
+        SweepInput sweep_input = io::loadINPFile( SRC_HOME "/test/data/capsule.inp", "lala", "lala" );
+        for( size_t i = 0; i < sweep_input.mesh.points.size(); i++ )
+        {
+            sweep_input.zero_bcs.at( i ) = false;
+            sweep_input.one_bcs.at( i ) = false;
+        }
+
+        const topology::TetMeshCombinatorialMap cmap( sweep_input.mesh );
+        const topology::CombinatorialMapBoundary bdry( cmap );
+
+        const auto vert_ids = indexingOrError( bdry, 0 );
+        iterateCellsWhile( bdry, 0, [&]( const topology::Vertex& v ) {
+            const size_t i = vert_ids( v );
+            sweep_input.one_bcs.at( i ) = sweep_input.mesh.points.at( i ).norm() > 4000;
+            sweep_input.zero_bcs.at( i ) = sweep_input.mesh.points.at( i ).norm() < 4000;
+            return true;
+        } );
+
+        return sweep_input;
+    }
 };
 
 class TriMeshTestCases
