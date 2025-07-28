@@ -52,25 +52,28 @@ Eigen::Vector2d multiPatchToUnitDisk( const size_t patch_ii, const Eigen::Vector
     using std::numbers::pi;
     const double& s = square_coords( 0 );
     const double& t = square_coords( 1 );
-    switch( patch_ii )
-    {
-        case 0:
-            return a * 2 * square_coords - Eigen::Vector2d::Constant( a );
-        case 1:
-            return Eigen::Vector2d( ( 1 - s ) * a + s * cos( 0.25 * ( 2 * t - 1 ) * pi ),
-                                    ( 2 * t - 1 ) * a * ( 1 - s ) + s * sin( 0.25 * ( 2 * t - 1 ) * pi ) );
-        case 2:
-            return Eigen::Vector2d( ( 1 - 2 * t ) * a * ( 1 - s ) + s * cos( 0.25 * pi + t * 0.5 * pi ),
-                                    ( 1 - s ) * a + s * sin( 0.25 * pi + t * 0.5 * pi ) );
-        case 3:
-            return Eigen::Vector2d( ( s - 1 ) * a + s * cos( 0.75 * pi + t * 0.5 * pi ),
-                                    ( 1 - 2 * t ) * a * ( 1 - s ) + s * sin( 0.75 * pi + t * 0.5 * pi ) );
-        case 4:
-            return Eigen::Vector2d( ( 2 * t - 1 ) * a * ( 1 - s ) + s * cos( 1.25 * pi + t * 0.5 * pi ),
-                                    ( s - 1 ) * a + s * sin( 1.25 * pi + t * 0.5 * pi ) );
-        default:
-            throw std::runtime_error( "Bad patch id" );
-    }
+    Eigen::Vector2d circle_pt = [&]() -> Eigen::Vector2d {
+        switch( patch_ii )
+        {
+            case 0:
+                return a * 2 * square_coords - Eigen::Vector2d::Constant( a );
+            case 1:
+                return Eigen::Vector2d( ( 1 - s ) * a + s * cos( 0.25 * ( 2 * t - 1 ) * pi ),
+                                        ( 2 * t - 1 ) * a * ( 1 - s ) + s * sin( 0.25 * ( 2 * t - 1 ) * pi ) );
+            case 2:
+                return Eigen::Vector2d( ( 1 - 2 * t ) * a * ( 1 - s ) + s * cos( 0.25 * pi + t * 0.5 * pi ),
+                                        ( 1 - s ) * a + s * sin( 0.25 * pi + t * 0.5 * pi ) );
+            case 3:
+                return Eigen::Vector2d( ( s - 1 ) * a + s * cos( 0.75 * pi + t * 0.5 * pi ),
+                                        ( 1 - 2 * t ) * a * ( 1 - s ) + s * sin( 0.75 * pi + t * 0.5 * pi ) );
+            case 4:
+                return Eigen::Vector2d( ( 2 * t - 1 ) * a * ( 1 - s ) + s * cos( 1.25 * pi + t * 0.5 * pi ),
+                                        ( s - 1 ) * a + s * sin( 1.25 * pi + t * 0.5 * pi ) );
+            default:
+                throw std::runtime_error( "Bad patch id" );
+        }
+    }();
+    return Eigen::Vector2d( circle_pt( 0 ), -1 * circle_pt( 1 ) );
 }
 
 Eigen::MatrixXd fitToLeaves(
