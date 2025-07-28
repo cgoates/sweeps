@@ -302,6 +302,23 @@ namespace basis
         return MultiPatchSplineSpace( bc, patches );
     }
 
+    MultiPatchSplineSpace degreeRefineOrCoarsen( const MultiPatchSplineSpace& ss,
+                                                 const std::function<DegreeAndKnotVector( const size_t )>& degree_and_kv_func )
+    {
+        std::vector<std::shared_ptr<const basis::TPSplineSpace>> constituents;
+        constituents.reserve( ss.subSpaces().size() );
+
+        for( size_t patch_ii = 0; patch_ii < ss.subSpaces().size(); patch_ii++ )
+        {
+            const auto new_degrees_and_kvs = degree_and_kv_func( patch_ii );
+            constituents.push_back( std::make_shared<const basis::TPSplineSpace>( basis::buildBSpline( new_degrees_and_kvs.kvs, new_degrees_and_kvs.degrees ) ) );
+        }
+        const auto temp = buildMultiPatchSplineSpace( constituents, ss.basisComplex().parametricAtlas().cmap().connections() );
+
+        const auto bc = std::make_shared<const basis::MultiPatchBasisComplex>( ss.basisComplex().parametricAtlasPtr(), temp.basisComplex().constituents() );
+        return basis::MultiPatchSplineSpace( bc, temp.subSpaces() );
+    }
+
     Eigen::MatrixX3d multiPatchCoefficients( const MultiPatchSplineSpace& ss,
                                              const std::vector<Eigen::MatrixX3d>& patch_coeffs )
     {

@@ -40,6 +40,15 @@ namespace basis
         const std::vector<std::shared_ptr<const TPSplineSpace>>& patches,
         const topology::MultiPatchCombinatorialMap::InternalConnectionsMap& connections );
 
+    struct DegreeAndKnotVector
+    {
+        SmallVector<size_t, 3> degrees;
+        SmallVector<basis::KnotVector, 3> kvs;
+    };
+
+    MultiPatchSplineSpace degreeRefineOrCoarsen( const MultiPatchSplineSpace& ss,
+                                                 const std::function<DegreeAndKnotVector( const size_t )>& degree_and_kv_func );
+
     Eigen::MatrixX3d multiPatchCoefficients( const MultiPatchSplineSpace& ss,
                                              const std::vector<Eigen::MatrixX3d>& patch_coeffs );
 } // namespace basis
