@@ -266,6 +266,43 @@ namespace topology
         return map.iterateDartsWhile( callback );
     }
 
+    bool iterateReachableWhile( const CombinatorialMap& map,
+                                const Dart& start_dart,
+                                const std::vector<int>& phi_ops,
+                                const std::function<bool( const Dart& )>& callback )
+    {
+        callback( start_dart );
+
+        Dart curr_d = start_dart;
+        while( true )
+        {
+            const auto next_d = phi( map, phi_ops, curr_d );
+            if( not next_d.has_value() ) break;
+            curr_d = next_d.value();
+            if( curr_d == start_dart ) return true;
+            if( not callback( curr_d ) ) return false;
+        }
+
+        std::vector<int> reverse_phi_ops( phi_ops.rbegin(), phi_ops.rend() );
+        for( int& phi_op : reverse_phi_ops )
+        {
+            if( std::abs( phi_op ) == 1 )
+            {
+                phi_op = -phi_op;
+            }
+        }
+
+        curr_d = start_dart;
+        while( true )
+        {
+            const auto next_d = phi( map, reverse_phi_ops, curr_d );
+            if( not next_d.has_value() ) break;
+            curr_d = next_d.value();
+            if( not callback( curr_d ) ) return false;
+        }
+        return true;
+    }
+
     size_t cellCount( const CombinatorialMap& map, const uint cell_dim )
     {
         const auto cc = map.cellCount( cell_dim );

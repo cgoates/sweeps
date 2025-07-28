@@ -54,6 +54,11 @@ namespace topology
     bool iterateDartsWhile( const CombinatorialMap& map,
                             const std::function<bool( const Dart& )>& callback );
 
+    bool iterateReachableWhile( const CombinatorialMap& map,
+                                const Dart& start_dart,
+                                const std::vector<int>& phi_ops,
+                                const std::function<bool( const Dart& )>& callback );
+
     size_t cellCount( const CombinatorialMap& map, const uint cell_dim );
 
     bool onBoundary( const CombinatorialMap& map, const Dart& d );
