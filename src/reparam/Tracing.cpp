@@ -613,6 +613,8 @@ Trace traceBoundaryField( const topology::CombinatorialMap& map,
     std::vector<double> field_values;       // At the verts of the trace
     std::vector<topology::Cell> tracing_faces;
 
+    const size_t n_cells = cellCount( map, 2 );
+
     if( start_cell.dim() == 1 )
     {
         curr_cell = start_cell;
@@ -681,10 +683,9 @@ Trace traceBoundaryField( const topology::CombinatorialMap& map,
         traced_line.simplices.push_back( { traced_line.points.size() - 2, traced_line.points.size() - 1 } );
         tracing_faces.push_back( curr_face );
         n++;
-    } while( not onBoundary( map, curr_cell.dart() ) and n < 2000 );
-    // FIXME: This number being the maximum trace length is completely arbitrary, and I assume at some point this will
-    // break an actual tracing that is supposed to be this long.
-    if( n > 1900 )
+    } while( not onBoundary( map, curr_cell.dart() ) and n < n_cells );
+    // NOTE: I suppose it is possible that his limit is too strict, but highly unlikely.
+    if( n >= n_cells )
         throw std::runtime_error( "Unending tracing loop Cell(" + std::to_string( start_cell.dart().id() ) + ", " +
                                   std::to_string( start_cell.dim() ) + ")" );
 
