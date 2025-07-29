@@ -7,11 +7,18 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Install OpenMP
+        run: brew install libomp
       - name: Use cmake
         run: |
           mkdir build
           cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_FLAGS="-I/opt/homebrew/opt/libomp/include" \
+            -DCMAKE_CXX_FLAGS="-I/opt/homebrew/opt/libomp/include" \
+            -DCMAKE_EXE_LINKER_FLAGS="-L/opt/homebrew/opt/libomp/lib -lomp" \
+            -DCMAKE_SHARED_LINKER_FLAGS="-L/opt/homebrew/opt/libomp/lib -lomp"
           make -j10
       - name: Run tests
         run: |

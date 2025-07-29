@@ -8,6 +8,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Install OpenMP
+        run: apt-get update && apt-get install -y libomp-dev
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v2
         with:
