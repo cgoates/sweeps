@@ -1,6 +1,6 @@
 # Sweeps
 
-[![build-and-run-tests-macos](https://github.com/cgoates/sweeps/actions/workflows/build_and_run_tests_macos.yaml/badge.svg?branch=master)](https://github.com/cgoates/sweeps/actions/workflows/build_and_run_tests_macos.yaml) [![build-and-run-tests-ubuntu](https://github.com/cgoates/sweeps/actions/workflows/ubuntu_build_and_run_tests.yaml/badge.svg)](https://github.com/cgoates/sweeps/actions/workflows/ubuntu_build_and_run_tests.yaml)
+[![build-and-run-tests-macos](https://github.com/cgoates/sweeps/actions/workflows/build_and_run_tests_macos.yaml/badge.svg?branch=master)](https://github.com/cgoates/sweeps/actions/workflows/build_and_run_tests_macos.yaml) [![build-and-run-tests-ubuntu](https://github.com/cgoates/sweeps/actions/workflows/ubuntu_build_and_run_tests.yaml/badge.svg?branch=master)](https://github.com/cgoates/sweeps/actions/workflows/ubuntu_build_and_run_tests.yaml)
 
 This is a research code investigating techniques to create coarse hex layouts for fitting multipatch B-splines to be used in isogeometric analysis.
 It uses foliations and harmonic functions to extend quad layouts to sweepable volumetric geometries.
