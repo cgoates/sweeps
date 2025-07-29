@@ -831,7 +831,9 @@ TEST_CASE( "Flange spline" )
         level_set_values,
         tunnel_loop_points,
         [&ss, &get_tutte_points, &sweep_to_source_vertex]( const std::vector<reparam::FoliationLeaf>& leaves ) {
-            const auto [tutte_points, first_level_points] = get_tutte_points( leaves.front() );
+            const auto pr = get_tutte_points( leaves.front() );
+            const auto& tutte_points = pr.first;
+            const auto& first_level_points = pr.second;
 
             const Eigen::MatrixXd fit_cpts = reparam::fitLinearMeshToLeaves( ss, leaves, [&]( const topology::Vertex& v ){
                 const auto [v2d, leaf_ii] = sweep_to_source_vertex( v );
