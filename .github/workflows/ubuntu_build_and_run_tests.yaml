@@ -31,4 +31,4 @@ jobs:
       - name: Run tests
         run: |
           cd build
-          ctest -j10
+          ctest -j10 --rerun-failed --output-on-failure
