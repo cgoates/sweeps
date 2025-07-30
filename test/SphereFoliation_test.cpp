@@ -459,7 +459,7 @@ TEST_CASE( "Level set parameterization of bullet in sphere" )
                 io::outputSimplicialFieldToVTK( output, output_prefix + "_level_set_" + std::to_string( level_ii ) + ".vtu" );
             }
 
-            const auto tutte_positions = [tp=square_mapping->vertPositions(),&level_ii]( const topology::Vertex& v ) -> Eigen::Vector3d {
+            const auto tutte_positions = [tp=square_mapping->vertPositions()]( const topology::Vertex& v ) -> Eigen::Vector3d {
                 const Eigen::Vector2d tut = tp( v );
                 return ( Eigen::Vector3d() << tut, 0.0 ).finished();
             };
