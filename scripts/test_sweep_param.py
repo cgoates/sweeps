@@ -2,8 +2,9 @@ from math import sin, cos, pi
 import numpy as np
 import sys
 from pathlib import Path
+from TetToQuadConnection.runProcess import runProcess
 
-path_to_api = Path(__file__).parent.parent.parent / "build" / "src" / "api"
+path_to_api = Path(__file__).parent.parent / "build" / "src" / "api"
 sys.path.insert(0, str(path_to_api))
 import sweeps
 
@@ -140,4 +141,46 @@ def parameterizeBunny():
 # parameterizeHook()
 # parameterizeBunny()
 # meshHook(single_patch=False)
-meshHookWithQuadMesh()
+# meshHookWithQuadMesh()
+
+# I added all this:
+
+def meshHookWithQuadMeshNew():
+    # Load a tet mesh and the source and target surfaces from file. Surface12 is the source, and Surface10 is the target.
+    mesh = sweeps.loadFromFile(
+        "/Users/colbyjohnson/Desktop/work/sweeps/test/data/hook.inp", "Surface12", "Surface10")
+    
+    # Load in an OBJ file for the quad mesh
+    # hook_base = sweeps.loadQuadMeshFromObjFile( "/Users/colbyjohnson/Desktop/work/sweeps/test/data/hookBase.obj" )
+
+    #This is a tri_mesh object that is the base of the hook.
+    mesh_base_tri = sweeps.baseOfSweep(mesh)
+    # Save the hook_base tri mesh to an OBJ file using Python's file io library
+    triMeshBasePath = SCRIPT_DIR = Path(__file__).resolve().parent / "TetToQuadConnection" / "Input" / "MeshBase_new.obj"
+    with open(triMeshBasePath, "w") as file:
+        for vertex in mesh_base_tri.points:
+            file.write(f"v {vertex[0]} {vertex[1]} {vertex[2]}\n")
+        for face in mesh_base_tri.tris:
+            file.write(f"f {' '.join(str(idx + 1) for idx in face)}\n")
+
+    # Generate the quad mesh of the base and save it to an OBJ file.
+    # The pwd in the runProcess is going to be whatever the terminal used to run this file is in. 
+    # File paths have to change accordingly.
+    runProcess(tetMesh=str(triMeshBasePath))
+    # Load the quad mesh.
+    pathToQuadMesh = SCRIPT_DIR = Path(__file__).resolve().parent / "TetToQuadConnection" / "output" / "quadMeshBoundary.obj"
+    mesh_base = sweeps.loadQuadMeshFromObjFile(str(pathToQuadMesh))
+
+    # This is a set of u values at which you want the mesh to have points.
+    # Try changing this to get an idea for what it does.  The values should all be between 0 and 1.
+    u_values = np.linspace(0.0, 1.0, 30)
+
+    # Setting the debug flag to True will check the mesh jacobians, and write out a vtk file to visualize the mesh and any elements with negative jacobians.
+    mesh = sweeps.fitHexMeshToSweep(mesh, mesh_base, u_values, debug=True)
+
+    # The resulting hex mesh has a list of points and a list of hexes.
+    print( len( mesh.points ) )
+    print( len( mesh.hexes ) )
+    print( [ mesh.points[i] for i in mesh.hexes[0] ] )
+
+meshHookWithQuadMeshNew()
