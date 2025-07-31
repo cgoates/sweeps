@@ -146,7 +146,7 @@ def parameterizeBunny():
 def meshHookWithQuadMeshNew():
     # Load a tet mesh and the source and target surfaces from file. Surface12 is the source, and Surface10 is the target.
     mesh = sweeps.loadFromFile(
-        "/Users/colbyjohnson/Desktop/work/sweeps/test/data/spring.inp", "Surface12", "Surface10")
+        "/Users/colbyjohnson/Desktop/work/sweeps/test/data/hook.inp", "Surface12", "Surface10")
     
     # Load in an OBJ file for the quad mesh
     # hook_base = sweeps.loadQuadMeshFromObjFile( "/Users/colbyjohnson/Desktop/work/sweeps/test/data/hookBase.obj" )
