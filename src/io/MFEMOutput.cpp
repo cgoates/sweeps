@@ -59,25 +59,25 @@ std::vector<std::string> patchVertexAdjacencies( const MultiPatchCombinatorialMa
 }
 
 bool floodEquivalentEdges( const MultiPatchCombinatorialMap& block_layout, const Edge& start_edge,
-                          const std::function<bool(const Edge&)>& callback )
+                          const std::function<bool(const Edge&,const bool)>& callback )
 {
     const uint dim = block_layout.dim();
     GlobalDartMarker m( block_layout );
-    GrowableQueue<Dart, 300> dart_queue;
-    dart_queue.push( start_edge.dart() );
+    GrowableQueue<std::pair<Dart, bool>, 300> dart_queue;
+    dart_queue.push( { start_edge.dart(), false } );
     m.mark( start_edge.dart() );
 
-    const auto add_to_queue = [&m,&dart_queue]( const std::optional<Dart>& d ) {
+    const auto add_to_queue = [&m,&dart_queue]( const std::optional<Dart>& d, const bool reverse = false ) {
         if( d.has_value() and not m.isMarked( d.value() ) )
         {
-            dart_queue.push( d.value() );
+            dart_queue.push( { d.value(), reverse } );
             m.mark( d.value() );
         }
     };
     while( not dart_queue.empty() )
     {
-        const Dart curr_d = dart_queue.pop();
-        if( not callback( curr_d ) ) return false;
+        const auto [curr_d, reverse] = dart_queue.pop();
+        if( not callback( curr_d, reverse ) ) return false;
         if( dim == 3 )
         {
             add_to_queue( phi( block_layout, { 1, 1, 2 }, curr_d ) );
@@ -85,7 +85,9 @@ bool floodEquivalentEdges( const MultiPatchCombinatorialMap& block_layout, const
         }
         else
         {
-            add_to_queue( phi( block_layout, {1,1,2}, curr_d ) );//FIXME: Doesn't get all edges in 2d with boundary
+            const auto next_d = phi( block_layout, {1,1,2}, curr_d );
+            if( not next_d.has_value() ) add_to_queue( phi( block_layout, {1, 1}, curr_d ), true );
+            else add_to_queue( next_d );
         }
     }
     return true;
@@ -177,10 +179,11 @@ boundary
 
     file << "\nedges\n" << cellCount( block_layout, 1 ) << "\n";
 
-    const auto add_edge = [&]( const size_t i, const Edge& edge ) {
+    const auto add_edge = [&]( const size_t i, const Edge& edge, const bool reverse ) {
         const size_t vert_id1 = block_layout_vert_ids( Vertex( edge.dart() ) );
         const size_t vert_id2 = block_layout_vert_ids( Vertex( topology::phi( block_layout, 1, edge.dart() ).value() ) );
-        file << i << " " << vert_id1 << " " << vert_id2 << "\n";
+        if( reverse ) file << i << " " << vert_id2 << " " << vert_id1 << "\n";
+        else file << i << " " << vert_id1 << " " << vert_id2 << "\n";
     };
 
     const std::initializer_list<Dart> param_dim_darts = ( dim == 2 ) ? std::initializer_list<Dart>{ Dart( 0 ), Dart( 3 ) }
@@ -195,10 +198,10 @@ boundary
             const Edge edge( block_layout.toGlobalDart( i, patch_d ) );
             if( marker.isMarked( edge ) ) continue;
 
-            floodEquivalentEdges( block_layout, edge, [&]( const Edge& e ) {
+            floodEquivalentEdges( block_layout, edge, [&]( const Edge& e, const bool reverse ) {
                 if( marker.isMarked( e ) ) return true; // already marked
                 marker.mark( block_layout, e );
-                add_edge( kv_id, e );
+                add_edge( kv_id, e, reverse );
                 return true;
             } );
 
