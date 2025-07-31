@@ -2,6 +2,7 @@ add_library( fitting SHARED
   CoonsPatch.cpp
   LeastSquaresFitting.cpp
   HexMeshOptimization.cpp
+  FittingUtilities.cpp
 )
 
 FetchContent_Declare(
