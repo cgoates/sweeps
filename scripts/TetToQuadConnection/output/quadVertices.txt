@@ -1,1 +1,0 @@
-Quadrilateral Vertex Index, Triangle Face Index, Barycentric Coordinates (u v w)

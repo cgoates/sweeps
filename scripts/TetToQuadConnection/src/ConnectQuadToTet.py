@@ -160,7 +160,7 @@ def findResidingFace(triMesh, chosenVertex, vertexIndicesOfAdjacentFaces):
         if barycentric[0] >= 0 and barycentric[0] <= 1 and barycentric[1] >= 0 and barycentric[1] <= 1 and barycentric[2] >= 0 and barycentric[2] <= 1:
             badCoord = False
             break
-    return badCoord, projectedPoint, barycentric
+    return badCoord, projectedPoint, barycentric, closestFaceIndex
 
 def findClosestFace(triMesh, facesAdjacentToVertex, projectedPoint):
     """
@@ -219,7 +219,7 @@ def connectQuadVertexOntoTriangle(triMeshFile, quadMeshFile, outputPath):
             vertexIndicesOfAdjacentFaces.append(triMesh.faces[face]) # 2D array
 
         # If the point resides in a face when projected onto the face's plane, find out the barycentric coordinates 
-        badCoord, projectedPoint, barycentric = findResidingFace(triMesh, chosenVertex, vertexIndicesOfAdjacentFaces)
+        badCoord, projectedPoint, barycentric, closestFaceIndex = findResidingFace(triMesh, chosenVertex, vertexIndicesOfAdjacentFaces)
         #if none of them had barycentric coordinates all between 0 and 1, find the closest face and use its barycentric coordinates.
         if badCoord:
             closestProjectedPointOnEdge, closestFaceIndex = findClosestFace(triMesh, facesAdjacentToVertex, projectedPoint)
