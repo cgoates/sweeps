@@ -5,6 +5,8 @@
 #include <Logging.hpp>
 #include <SplineSpaceEvaluator.hpp>
 #include <CommonUtils.hpp>
+#include <MFEMOutput.hpp>
+#include <fstream>
 
 using namespace topology;
 using namespace param;
@@ -163,6 +165,112 @@ TEST_CASE( "Simple 3d two-patch spline space" )
 
         test_c0( ss, *cmap_tp_1, 75, ( degree2 + 1 ) * ( degree1 + 1 ) );
     }
+}
+
+TEST_CASE( "MFEM Output" )
+{
+    const double ptol = 1e-9;
+    const KnotVector kv1( { 0, 0, 1, 1 }, ptol );
+    const auto& kv2 = kv1;
+    const size_t degree1 = 1;
+    const size_t degree2 = degree1;
+
+    const auto ss_tp_1 = std::make_shared<const TPSplineSpace>( buildBSpline( {kv2, kv1, kv1}, {degree2, degree1, degree1} ) );
+    const auto ss_tp_2 = std::make_shared<const TPSplineSpace>( buildBSpline( {kv1, kv2, kv1}, {degree1, degree2, degree1} ) );
+    const auto& bc_tp_1 = ss_tp_1->basisComplexPtr();
+    const auto& bc_tp_2 = ss_tp_2->basisComplexPtr();
+    const auto& atlas_tp_1 = bc_tp_1->parametricAtlasPtr();
+    const auto& atlas_tp_2 = bc_tp_2->parametricAtlasPtr();
+    const auto& cmap_tp_1 = atlas_tp_1->cmapPtr();
+    const auto& cmap_tp_2 = atlas_tp_2->cmapPtr();
+
+    const auto cmap = std::make_shared<const MultiPatchCombinatorialMap>(
+        MultiPatchCombinatorialMap( { cmap_tp_1, cmap_tp_2 }, { { { 0, Dart( 7 ) }, { 1, Dart( 19 ) } } } ) );
+    const auto atlas = std::make_shared<const MultiPatchParametricAtlas>(
+        cmap, std::vector<std::shared_ptr<const TPParametricAtlas>>{ atlas_tp_1, atlas_tp_2 } );
+    const auto bc = std::make_shared<const MultiPatchBasisComplex>(
+        atlas, std::vector<std::shared_ptr<const TPBasisComplex>>{ bc_tp_1, bc_tp_2 } );
+
+    const MultiPatchSplineSpace ss( bc, { ss_tp_1, ss_tp_2 } );
+    
+    const Eigen::MatrixXd cpts0 = ( Eigen::MatrixXd( 8, 3 ) <<
+        0, 0, 0,
+        1, 0, 0,
+        0, 1, 0,
+        1, 1, 0,
+        0, 0, 1,
+        1, 0, 1,
+        0, 1, 1,
+        1, 1, 1 ).finished();
+    const Eigen::MatrixXd cpts1 = ( Eigen::MatrixXd( 8, 3 ) <<
+        1, 0, 0,
+        2, 0, 0,
+        1, 1, 0,
+        2, 1, 0,
+        1, 0, 1,
+        2, 0, 1,
+        1, 1, 1,
+        2, 1, 1 ).finished();
+    
+    const Eigen::MatrixXd cpts = multiPatchCoefficients( ss, { cpts0, cpts1 } );
+
+    const std::string filename = "simple_3d_two_patch.mesh";
+
+    io::outputMultiPatchSplinesToMFEM( ss, cpts.transpose(), filename );
+
+    std::ifstream file( filename );
+    if( not file.is_open() )
+    {
+        FAIL( "Could not open file " + filename );
+    }
+
+    std::string line;
+    int patches = 0;
+    
+    // Read dimension from line 4
+    for( int i = 1; i <= 4; ++i )
+    {
+        if( !std::getline( file, line ) )
+        {
+            FAIL( "File too short, couldn't read line 4 to find dimension." );
+        }
+    }
+    CHECK( std::stoi( line ) == 3 );
+
+    while( std::getline( file, line ) )
+    {
+        line.erase( 0, line.find_first_not_of( " \t" ) );
+        line.erase( line.find_last_not_of( " \t" ) + 1 );
+
+        if( line == "elements" )
+        {
+            std::getline( file, line );
+            CHECK( std::stoi( line ) == 2 );
+        }
+        else if( line == "boundary" )
+        {
+            std::getline( file, line );
+            CHECK( std::stoi( line ) == 10 );
+        }
+        else if( line == "edges" )
+        {
+            std::getline( file, line );
+            CHECK( std::stoi( line ) == 20 );
+        }
+        else if( line == "vertices" )
+        {
+            std::getline( file, line );
+            CHECK( std::stoi( line ) == 12 );
+        }
+        else if( line == "knotvectors" )
+        {
+            patches++;
+        }
+    }
+
+    CHECK( patches == 2 );
+
+    file.close();
 }
 
 TEST_CASE( "More complex 2d multipatch spline space" )
