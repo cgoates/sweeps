@@ -4,6 +4,7 @@
 #include <Cell.hpp>
 #include <optional>
 #include <CustomEigen.hpp>
+#include <VertexPositionsFunc.hpp>
 
 namespace eval
 {
@@ -46,4 +47,9 @@ namespace eval
     Eigen::MatrixXd piolaTransformedVectorFirstDerivatives( const SplineSpaceEvaluator& vec_evals, const SplineSpaceEvaluator& geom_evals, const Eigen::MatrixXd& cpts );
     Eigen::MatrixXd piolaTransformedBivectorBasis( const SplineSpaceEvaluator& bivec_evals, const SplineSpaceEvaluator& geom_evals, const Eigen::MatrixXd& cpts );
     Eigen::MatrixXd piolaTransformedBivectorFirstDerivatives( const SplineSpaceEvaluator& bivec_evals, const SplineSpaceEvaluator& geom_evals, const Eigen::MatrixXd& cpts );
+
+    /// @brief Returns a VertexPositionsFunc by evaluating the manifold at each vertex.
+    /// @param ss The spline space defining the manifold.
+    /// @param cpts The control points defining the manifold, in a spatial_dim x n_control_pts sized matrix.
+    VertexPositionsFunc vertexPositionsFromManifold( const basis::SplineSpace& ss, const Eigen::MatrixXd& cpts );
 }

@@ -200,4 +200,14 @@ namespace eval
                      bivec_evals.evaluateBasis().transpose() )
             .transpose();
     }
+
+    VertexPositionsFunc vertexPositionsFromManifold( const basis::SplineSpace& ss, const Eigen::MatrixXd& cpts )
+    {
+        eval::SplineSpaceEvaluator evaler( ss, 0 );
+        return [evaler, cpts]( const topology::Vertex& v ) mutable -> Eigen::Vector3d {
+            evaler.localizeElement( topology::Cell( v.dart(), evaler.splineSpace().basisComplex().parametricAtlas().cmap().dim() ) );
+            evaler.localizePoint( evaler.splineSpace().basisComplex().parametricAtlas().parentPoint( v ) );
+            return evaler.evaluateManifold( cpts );
+        };
+    }
 }
