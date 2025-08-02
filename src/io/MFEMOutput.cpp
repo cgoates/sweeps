@@ -186,8 +186,8 @@ boundary
         else file << i << " " << vert_id1 << " " << vert_id2 << "\n";
     };
 
-    const std::initializer_list<Dart> param_dim_darts = ( dim == 2 ) ? std::initializer_list<Dart>{ Dart( 0 ), Dart( 3 ) }
-                                                        : std::initializer_list<Dart>{ Dart( 0 ), Dart( 19 ), Dart( 2 ) };
+    const SmallVector<Dart, 3> param_dim_darts = ( dim == 2 ) ? SmallVector<Dart, 3>{ Dart( 0 ), Dart( 3 ) }
+                                                        : SmallVector<Dart, 3>{ Dart( 0 ), Dart( 19 ), Dart( 2 ) };
 
     GlobalCellMarker marker( block_layout, 1 );
     size_t kv_id = 0;
