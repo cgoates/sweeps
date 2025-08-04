@@ -23,6 +23,9 @@
 #include <ranges>
 #include <Foliation.hpp>
 #include <Eigen/Dense>
+#include <MFEMOutput.hpp>
+#include <HexMeshOptimization.hpp>
+#include <FittingUtilities.hpp>
 
 using util::linspace;
 using util::concatenate;
@@ -234,6 +237,33 @@ basis::MultiPatchSplineSpace fivePatchSplineSpace( const size_t degree, const ba
         } );
 }
 
+double checkJacobians( const basis::SplineSpace& ss, const Eigen::MatrixXd& cpts )
+{
+    double min_val = std::numeric_limits<double>::infinity();
+    double max_val = -std::numeric_limits<double>::infinity();
+
+    eval::SplineSpaceEvaluator evaler( ss, 1 );
+
+    min_val = std::numeric_limits<double>::infinity();
+    max_val = -std::numeric_limits<double>::infinity();
+
+    iterateCellsWhile( ss.basisComplex().parametricAtlas().cmap(), 3, [&]( const topology::Volume& vol ) {
+        evaler.localizeElement( vol );
+        iterateAdjacentCellsOfRestrictedCell( ss.basisComplex().parametricAtlas().cmap(), vol, 2, 0, [&]( const topology::Vertex& v ) {
+            evaler.localizePoint( ss.basisComplex().parametricAtlas().parentPoint( v ) );
+            const double val = evaler.evaluateJacobian( cpts.transpose() ).determinant();
+            min_val = std::min( min_val, val );
+            max_val = std::max( max_val, val );
+            return true;
+        } );
+        return true;
+    } );
+
+    std::cout << "Min jacobian: " << min_val << std::endl;
+    std::cout << "Max jacobian: " << max_val << std::endl;
+    return min_val;
+}
+
 void fitToPringles5Patch( const SweepInput& sweep_input,
                           const std::vector<double>& level_set_values,
                           const std::string& output_prefix,
@@ -346,6 +376,122 @@ void fitToPringles5Patch( const SweepInput& sweep_input,
     io::outputBezierMeshToVTK( mp_ss, fit_cpts, "fit_to_" + output_prefix + "_multi_patch.vtu" );
 }
 
+void fitToPringles5PatchAtGrevillePtsAndOptimize( const SweepInput& sweep_input,
+                                                  const std::string& output_prefix,
+                                                  const size_t degree,
+                                                  const basis::KnotVector& kv_u,
+                                                  const size_t n_elems_st )
+{
+    using namespace topology;
+
+    const auto grev_pts = basis::grevillePoints( kv_u, degree );
+    const std::vector<double> level_set_values( grev_pts.data(), grev_pts.data() + grev_pts.size() );
+    const basis::KnotVector kv_st = basis::integerKnotsWithNElems( n_elems_st, degree );
+
+    const basis::MultiPatchSplineSpace mp_ss = fivePatchSplineSpace( degree, kv_u, n_elems_st );
+
+    const basis::KnotVector linear_kv_u = [&]() {
+        size_t curr_degree = degree;
+        basis::KnotVector linear_kv_u = kv_u;
+        while( curr_degree > 1 )
+        {
+            linear_kv_u = reducedOrder( linear_kv_u );
+            curr_degree--;
+        }
+        return linear_kv_u;
+    }();
+    const basis::KnotVector linear_kv_st = basis::integerKnotsWithNElems( n_elems_st, 1 );
+
+    const basis::MultiPatchSplineSpace linear_mp_ss = degreeRefineOrCoarsen( mp_ss, [&]( const size_t ) {
+        return basis::DegreeAndKnotVector{ { 1, 1, 1 }, { linear_kv_st, linear_kv_st, linear_kv_u } };
+    } );
+
+    const std::shared_ptr<const basis::TPSplineSpace> TP_ss = mp_ss.subSpaces().at( 0 );
+    const basis::TPSplineSpace& source_ss = static_cast<const basis::TPSplineSpace&>( TP_ss->source() );
+    const topology::TPCombinatorialMap& vol_cmap = TP_ss->basisComplex().parametricAtlas().cmap();
+
+    const std::vector<std::pair<topology::Cell, param::ParentPoint>> ppt_u =
+        parentPointsOfParamPoints( level_set_values, TP_ss->line().basisComplex().parametricAtlas(), 1e-9 );
+
+    const Eigen::VectorXd greville_st = basis::grevillePoints( kv_st, degree );
+    const std::vector<double> greville_st_vec( greville_st.data(), greville_st.data() + greville_st.size() );
+    const auto ppt_st = parentPointsOfParamPoints( greville_st_vec, source_ss.line().basisComplex().parametricAtlas(), 1e-9 );
+
+    const param::ParentDomain pd_3d = param::cubeDomain( 3 );
+
+    SimplicialComplex fitting_points;
+    eval::SplineSpaceEvaluator evaler( mp_ss, 0 );
+
+    const size_t n_points = ppt_st.size() * ppt_st.size() * 5 * level_set_values.size();
+
+    Eigen::MatrixXd fit_cpts = fitToLeaves( sweep_input, evaler, level_set_values, n_points, [&]( const size_t leaf_ii, const auto& point_callback ) {
+        for( size_t patch_ii = 0; patch_ii < 5; patch_ii++ )
+        {
+            for( const auto& pr : ppt_st )
+            {
+                for( const auto& pr2 : ppt_st )
+                {
+                    const param::ParentPoint vol_ppt = param::tensorProduct( param::tensorProduct( pr.second, pr2.second ), ppt_u.at( leaf_ii ).second );
+                    const topology::Face f( source_ss.basisComplex().parametricAtlas().cmap().flatten( pr.first.dart(), pr2.first.dart(), topology::TPCombinatorialMap::TPDartPos::DartPos0 ) );
+                    const topology::Volume patch_cell(
+                        vol_cmap.flatten( f.dart(),
+                                        ppt_u.at( leaf_ii ).first.dart(),
+                                        topology::TPCombinatorialMap::TPDartPos::DartPos0 ) );
+                    const topology::Volume cell( mp_ss.basisComplex().parametricAtlas().cmap().toGlobalDart( patch_ii, patch_cell.dart() ) );
+
+                    const Eigen::Vector2d circle_pt = multiPatchToUnitDisk(
+                        patch_ii,
+                        toUnitSquare( source_ss.basisComplex().parametricAtlas().cmap(), f, vol_ppt.mPoint.head( 2 ) ) );
+
+                    const Eigen::Vector3d field_pt = point_callback( cell, vol_ppt, circle_pt );
+                    fitting_points.simplices.emplace_back( fitting_points.points.size() );
+                    fitting_points.points.push_back( field_pt );
+                }
+            }
+        }
+    } );
+
+    checkJacobians( mp_ss, fit_cpts );
+
+    io::VTKOutputObject fitting_points_output( fitting_points );
+    io::outputSimplicialFieldToVTK( fitting_points_output, output_prefix + "fitting_points.vtu" );
+
+    io::outputBezierMeshToVTK( mp_ss, fit_cpts, "fit_to_" + output_prefix + "_multi_patch.vtu" );
+
+    io::outputMultiPatchSplinesToMFEM( mp_ss, fit_cpts.transpose(), "fit_to_" + output_prefix + "_multi_patch.mesh" );
+
+    Eigen::MatrixXd final_fit;
+    // Optimize the mesh
+    {
+        const topology::TetMeshCombinatorialMap tet_map( sweep_input.mesh );
+        const auto tet_vert_idx = indexingOrError( tet_map, 0 );
+        const auto tet_vertex_positions = [&]( const topology::Vertex& v ) -> Eigen::Vector3d {
+            return sweep_input.mesh.points.at( tet_vert_idx( v ) );
+        };
+        const auto hex_vertex_positions = eval::vertexPositionsFromManifold( mp_ss, fit_cpts.transpose() );
+        const auto new_positions = fitting::optimizeMesh( tet_map,
+                                                          tet_vertex_positions,
+                                                          mp_ss.basisComplex().parametricAtlas().cmap(),
+                                                          hex_vertex_positions,
+                                                          "output.vtk" );
+
+        const Eigen::MatrixXd new_fit_cpts = fitting::linearControlPointsFromVertexPositions( linear_mp_ss, new_positions );
+
+        final_fit = new_fit_cpts;
+    }
+
+    CHECK( checkJacobians( linear_mp_ss, final_fit ) > 0.0 );
+
+    const Eigen::MatrixXd quadratic_fit_cpts = fitting::fitToManifold( linear_mp_ss, final_fit, mp_ss );
+
+    CHECK( checkJacobians( mp_ss, quadratic_fit_cpts ) > 0.0 );
+
+    io::outputBezierMeshToVTK( mp_ss, quadratic_fit_cpts, "fit_to_" + output_prefix + "_multi_patch_quadratic.vtu" );
+
+    io::outputMultiPatchSplinesToMFEM(
+        mp_ss, quadratic_fit_cpts.transpose(), "optimized_fit_to_" + output_prefix + "_multi_patch.mesh" );
+}
+
 void fitToPringles5Patch( const SweepInput& sweep_input,
                           const std::vector<double>& level_set_values,
                           const std::string& output_prefix,
@@ -360,7 +506,8 @@ void fitToPringles5Patch( const SweepInput& sweep_input,
 void linearMeshPringles5Patch( const SweepInput& sweep_input,
                                const std::string& output_prefix,
                                const std::vector<double>& level_set_values,
-                               const size_t n_elems_st )
+                               const size_t n_elems_st,
+                               const bool optimize = false )
 {
     using namespace topology;
 
@@ -404,44 +551,60 @@ void linearMeshPringles5Patch( const SweepInput& sweep_input,
         }, std::nullopt );
     } );
 
-    double min_val = std::numeric_limits<double>::infinity();
-    double max_val = -std::numeric_limits<double>::infinity();
+    checkJacobians( mp_ss, fit_cpts );
 
     eval::SplineSpaceEvaluator evaler( mp_ss, 1 );
 
-    iterateCellsWhile( mp_ss.basisComplex().parametricAtlas().cmap(), 3, [&]( const topology::Volume& vol ) {
-        evaler.localizeElement( vol );
-        iterateAdjacentCellsOfRestrictedCell( mp_ss.basisComplex().parametricAtlas().cmap(), vol, 2, 0, [&]( const topology::Vertex& v ) {
-            evaler.localizePoint( mp_ss.basisComplex().parametricAtlas().parentPoint( v ) );
-            const double val = evaler.evaluateJacobian( fit_cpts.transpose() ).determinant();
-            min_val = std::min( min_val, val );
-            max_val = std::max( max_val, val );
-            return true;
-        } );
-        return true;
-    } );
-
-    std::cout << "Min jacobian: " << min_val << std::endl;
-    std::cout << "Max jacobian: " << max_val << std::endl;
-
-    io::outputBezierMeshToVTK( mp_ss, fit_cpts, "fit_to_" + output_prefix + "_multi_patch.vtu" );
-    io::outputPartialBezierMeshToVTK( mp_ss, fit_cpts, "bad_fit_cells_" + output_prefix + ".vtu", [&]( const auto& callback ) {
-        iterateCellsWhile( mp_ss.basisComplex().parametricAtlas().cmap(), 3, [&]( const topology::Volume& vol ) {
-            evaler.localizeElement( vol );
-            double min_jac = std::numeric_limits<double>::infinity();
-            iterateAdjacentCellsOfRestrictedCell( mp_ss.basisComplex().parametricAtlas().cmap(), vol, 2, 0, [&]( const topology::Vertex& v ) {
-                evaler.localizePoint( mp_ss.basisComplex().parametricAtlas().parentPoint( v ) );
-                const double val = evaler.evaluateJacobian( fit_cpts.transpose() ).determinant();
-                min_jac = std::min( min_jac, val );
+    if( not optimize )
+    {
+        io::outputBezierMeshToVTK( mp_ss, fit_cpts, "fit_to_" + output_prefix + "_multi_patch.vtu" );
+        io::outputPartialBezierMeshToVTK( mp_ss, fit_cpts, "bad_fit_cells_" + output_prefix + ".vtu", [&]( const auto& callback ) {
+            iterateCellsWhile( mp_ss.basisComplex().parametricAtlas().cmap(), 3, [&]( const topology::Volume& vol ) {
+                evaler.localizeElement( vol );
+                double min_jac = std::numeric_limits<double>::infinity();
+                iterateAdjacentCellsOfRestrictedCell( mp_ss.basisComplex().parametricAtlas().cmap(), vol, 2, 0, [&]( const topology::Vertex& v ) {
+                    evaler.localizePoint( mp_ss.basisComplex().parametricAtlas().parentPoint( v ) );
+                    const double val = evaler.evaluateJacobian( fit_cpts.transpose() ).determinant();
+                    min_jac = std::min( min_jac, val );
+                    return true;
+                } );
+                if( min_jac < 0 )
+                {
+                    callback( vol );
+                }
                 return true;
             } );
-            if( min_jac < 0 )
-            {
-                callback( vol );
-            }
-            return true;
         } );
-    } );
+    }
+    else
+    {
+
+        Eigen::MatrixXd final_fit;
+        // Optimize the mesh
+        {
+            const topology::TetMeshCombinatorialMap tet_map( sweep_input.mesh );
+            const auto tet_vert_idx = indexingOrError( tet_map, 0 );
+            const auto tet_vertex_positions = [&]( const topology::Vertex& v ) -> Eigen::Vector3d {
+                return sweep_input.mesh.points.at( tet_vert_idx( v ) );
+            };
+            const auto hex_vertex_positions = eval::vertexPositionsFromManifold( mp_ss, fit_cpts.transpose() );
+            const auto new_positions = fitting::optimizeMesh( tet_map,
+                                                              tet_vertex_positions,
+                                                              mp_ss.basisComplex().parametricAtlas().cmap(),
+                                                              hex_vertex_positions,
+                                                              "output.vtk",
+                                                              true );
+
+            const Eigen::MatrixXd new_fit_cpts = fitting::linearControlPointsFromVertexPositions( mp_ss, new_positions );
+
+            final_fit = new_fit_cpts;
+        }
+
+        CHECK( checkJacobians( mp_ss, final_fit ) > 0.0 );
+
+        io::outputBezierMeshToVTK( mp_ss, final_fit, "optimized_fit_to_" + output_prefix + "_multi_patch.vtu" );
+        io::outputMultiPatchSplinesToMFEM( mp_ss, final_fit.transpose(), "optimized_fit_to_" + output_prefix + "_multi_patch.mesh" );
+    }
 }
 
 
@@ -548,4 +711,19 @@ TEST_CASE( "Level set parameterization of spring" )
 
     // fitToPringlesSinglePatch( sweep_input, level_set_values, output_prefix, 2, 20, 4 );
     fitToPringles5Patch( sweep_input, level_set_values, output_prefix, 2, kv_u, 2 );
+}
+
+TEST_CASE( "Level set parameterization of coil" )
+{
+    const SweepInput sweep_input = io::loadINPFile( SRC_HOME "/test/data/InnerCoil.inp", "Surface1", "Surface2" );
+
+    const std::string output_prefix = "coil";
+    // const std::vector<double> level_set_values = concatenate({ {0.0}, linspace( 0.006, 0.014, 5 ), linspace( 0.016, 0.984, 200 ), linspace( 0.986, 0.994, 5 ), {1.0} } );
+
+    // const basis::KnotVector kv_u = basis::integerKnotsWithNElems( 100, 2 );
+    const basis::KnotVector kv_u( concatenate( { {0, 0, 0}, linspace( 0.006, 0.012, 3 ), linspace( 0.014, 0.986, 150 ), linspace( 0.988, 0.994, 3 ), {1, 1, 1} } ), 1e-9 );
+    const auto grev_pts = basis::grevillePoints( kv_u, 2 );
+    const std::vector<double> level_set_values( grev_pts.data(), grev_pts.data() + grev_pts.size() );
+
+    fitToPringles5PatchAtGrevillePtsAndOptimize( sweep_input, output_prefix, 2, kv_u, 2 );
 }
