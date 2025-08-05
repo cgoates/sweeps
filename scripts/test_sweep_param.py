@@ -147,12 +147,15 @@ def meshHookWithQuadMeshNew():
     # Load a tet mesh and the source and target surfaces from file. Surface12 is the source, and Surface10 is the target.
     mesh = sweeps.loadFromFile(
         "/Users/colbyjohnson/Desktop/work/sweeps/test/data/hook.inp", "Surface12", "Surface10")
+    # mesh = sweeps.loadFromFile(
+    #     "/Users/colbyjohnson/Desktop/work/sweeps/test/data/femur.inp", "Surface5", "Surface2")
+    # mesh = sweeps.loadFromFile(
+    #     "/Users/colbyjohnson/Desktop/work/sweeps/test/data/spring.inp", "Surface2", "Surface3")
+    # mesh = sweeps.loadFromFile( "test/data/Bat_nodesets.inp", "start", "end")
     
-    # Load in an OBJ file for the quad mesh
-    # hook_base = sweeps.loadQuadMeshFromObjFile( "/Users/colbyjohnson/Desktop/work/sweeps/test/data/hookBase.obj" )
-
     #This is a tri_mesh object that is the base of the hook.
     mesh_base_tri = sweeps.baseOfSweep(mesh)
+    
     # Save the hook_base tri mesh to an OBJ file using Python's file io library
     triMeshBasePath = SCRIPT_DIR = Path(__file__).resolve().parent / "TetToQuadConnection" / "Input" / "MeshBase_new.obj"
     with open(triMeshBasePath, "w") as file:
@@ -162,8 +165,6 @@ def meshHookWithQuadMeshNew():
             file.write(f"f {' '.join(str(idx + 1) for idx in face)}\n")
 
     # Generate the quad mesh of the base and save it to an OBJ file.
-    # The pwd in the runProcess is going to be whatever the terminal used to run this file is in. 
-    # File paths have to change accordingly.
     runProcess(tetMesh=str(triMeshBasePath))
     # Load the quad mesh.
     pathToQuadMesh = SCRIPT_DIR = Path(__file__).resolve().parent / "TetToQuadConnection" / "output" / "quadMeshBoundary.obj"
