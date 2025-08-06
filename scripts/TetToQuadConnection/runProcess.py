@@ -11,14 +11,15 @@ from src.ConnectQuadToTet import *
 from src.PrepConnections import *
 
 SCRIPT_DIR = Path(__file__).resolve().parent
+SWEEPS_DIR = SCRIPT_DIR.parent.parent
 
 def run_quadriflow_program(inputFile: str):
     """
     Runs the quadriflow program to create a quad mesh from a tet mesh input file.
     inputFile: str - Path to the tet mesh file.
     """
-    quadriflowExecutable = SCRIPT_DIR / "ScaleUntrim" / "build" / "quadriflow"
-    configPath = SCRIPT_DIR / "ScaleUntrim" / "setting.config"
+    quadriflowExecutable = SWEEPS_DIR / "deps" / "ScaleUntrim" / "build" / "quadriflow"
+    configPath = SWEEPS_DIR / "deps" / "ScaleUntrim" / "setting.config"
     
     if not quadriflowExecutable.exists():
         raise FileNotFoundError(f"C++ executable not found at {quadriflowExecutable}")
@@ -61,7 +62,7 @@ def runProcess(tetMesh: str, quadMesh: str = None):
         # this uses scale untrim / quadriflow
         run_quadriflow_program(tetMesh)
         # run_quadriflow_program(boundaryFilePath)
-        vtkPath = SCRIPT_DIR / "ScaleUntrim" / "build" / "tempdir" / "quad.vtk"
+        vtkPath = SWEEPS_DIR / "deps" / "ScaleUntrim" / "build" / "tempdir" / "quad.vtk"
         if not vtkPath.exists():
             raise FileNotFoundError("The generated quadrilateral vtk file does not exist.")
 
