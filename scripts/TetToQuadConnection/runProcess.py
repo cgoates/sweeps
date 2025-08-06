@@ -42,7 +42,6 @@ def run_quadriflow_program(inputFile: str):
         print(f"An error occurred: {e}")
         sys.exit(1)
 
-# if __name__ == "__main__":
 def runProcess(tetMesh: str, quadMesh: str = None):
     """
     A python script meant to run the process of taking a tet mesh and creating a quad mesh of one of the boundaries,
