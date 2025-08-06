@@ -137,6 +137,23 @@ def installSystemTools(manager, tools):
             installLibrary(manager, tool)
             print(f"{tool} has been installed.")
 
+def moveDirectoryFromSweeps(source, target, sourceFromSweeps=True):
+    """
+    Move a directory from a source to a target within the sweeps repository. 
+    The path to be used as an argument should be written starting from the sweeps repository.
+    For example, to move a folder in the sweeps/scripts directory to the sweeps/deps directory,
+    the source would be "scripts/exampleFolder" and the target would be "deps/exampleFolder".
+    source: str - the source folder that is being moved.
+    target: str - the target folder where the source is being moved to.
+    """
+    # Create the paths by finding the path to sweeps and appending the arguments to it.
+    sweepsPath = Path(__file__).resolve().parent.parent.parent.parent
+    if sourceFromSweeps:
+        source = Path(sweepsPath, source)
+    target = Path(sweepsPath, target)
+    runCommand(["mv", str(source), str(target)])
+    return
+
 def buildScaleUntrim():
     os = findOS()
     manager = findPackageManager(os)
@@ -153,19 +170,21 @@ def buildScaleUntrim():
     runCommand(["cmake", "-B", "ScaleUntrim/build", "-S", "ScaleUntrim"])
     runCommand(["make", "-C", "ScaleUntrim/build"])
     makeDirectory("ScaleUntrim/build/tempDir")
-    print("ScaleUntrim has been built successfully.")
+    moveDirectoryFromSweeps("ScaleUntrim", "deps/", sourceFromSweeps=False)
+    print("ScaleUntrim has been placed in the sweeps/deps folder and built successfully.")
     print("To run, update the setting.config file in the ScaleUntrim folder:\n1. Change the temp_dir to match your full working path to the tempDir directory in the build folder (This will be where the quad mesh is output).\n2. Change the magnitude value to your desired value, likely between 1 and 2, such as 1.4")
-    print("3. Run the executable from the build folder with the command:\n  ./quadriflow <inputFilePath> <outputFilePath> ../setting.config")
-    print("Currently the value entered for the output file doesn't change anything.")
+    print("3. Run the executable from the build folder with the command:\n  ./quadriflow <inputFilePath> ../setting.config")
     print("The resulting quadrilateral mesh is stored in build/tempDir/quad.vtk")
 
 def runExample():
     """
     Run an example of the ScaleUntrim program.
     """
+    sweepsPath = Path(__file__).resolve().parent.parent.parent.parent
+    quadriflowPath = Path(sweepsPath, "deps", "ScaleUntrim", "build", "quadriflow")
+    hookPath = Path(sweepsPath, "deps", "ScaleUntrim", "hookBase.obj")
+    configPath = Path(sweepsPath, "deps", "ScaleUntrim", "setting.config")
     print("Running example...")
-    runCommand(["./ScaleUntrim/build/quadriflow", "./ScaleUntrim/hookBase.obj", "./ScaleUntrim/setting.config"])
+    runCommand([str(quadriflowPath), str(hookPath), str(configPath)])
     print("Example finished.")
     print("The resulting quadrilateral mesh is stored in ScaleUntrim/build/tempDir/quad.vtk")
-
-buildScaleUntrim()
