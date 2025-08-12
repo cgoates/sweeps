@@ -2,7 +2,7 @@ from math import sin, cos, pi
 import numpy as np
 import sys
 from pathlib import Path
-from TetToQuadConnection.runProcess import runProcess
+from scripts.TetToQuadConnection.generateQuadMesh import generateQuadMesh
 
 path_to_api = Path(__file__).parent.parent / "build" / "src" / "api"
 sys.path.insert(0, str(path_to_api))
@@ -165,7 +165,7 @@ def meshHookWithQuadMeshNew():
             file.write(f"f {' '.join(str(idx + 1) for idx in face)}\n")
 
     # Generate the quad mesh of the base and save it to an OBJ file.
-    runProcess(tetMesh=str(triMeshBasePath))
+    generateQuadMesh(tetMesh=str(triMeshBasePath))
     # Load the quad mesh.
     pathToQuadMesh = SCRIPT_DIR = Path(__file__).resolve().parent / "TetToQuadConnection" / "output" / "quadMeshBoundary.obj"
     mesh_base = sweeps.loadQuadMeshFromObjFile(str(pathToQuadMesh))
