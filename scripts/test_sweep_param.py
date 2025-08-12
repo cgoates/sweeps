@@ -3,6 +3,7 @@ import numpy as np
 import sys
 from pathlib import Path
 from TetToQuadConnection.generateQuadMesh import generateQuadMesh
+from TetToQuadConnection.src.QuadMeshClass import QuadMesh
 
 path_to_api = Path(__file__).parent.parent / "build" / "src" / "api"
 sys.path.insert(0, str(path_to_api))
@@ -159,7 +160,6 @@ def meshHookWithQuadMeshNew():
     # Load the quad mesh.
     pathToQuadMesh = SCRIPT_DIR = Path(__file__).resolve().parent / "TetToQuadConnection" / "output" / "quadMeshBoundary.obj"
     mesh_base = sweeps.loadQuadMeshFromObjFile(str(pathToQuadMesh))
-
     # This is a set of u values at which you want the mesh to have points.
     # Try changing this to get an idea for what it does.  The values should all be between 0 and 1.
     u_values = np.linspace(0.0, 1.0, 30)
