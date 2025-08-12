@@ -2,7 +2,7 @@ from math import sin, cos, pi
 import numpy as np
 import sys
 from pathlib import Path
-from scripts.TetToQuadConnection.generateQuadMesh import generateQuadMesh
+from TetToQuadConnection.generateQuadMesh import generateQuadMesh
 
 path_to_api = Path(__file__).parent.parent / "build" / "src" / "api"
 sys.path.insert(0, str(path_to_api))
@@ -133,16 +133,6 @@ def parameterizeBunny():
     sweeps.writeParameterizationToFile(
         bunny, level_set_values, trace_points, "bunny")
 
-
-# Uncomment this to see what objects and functions are available from the sweeps module
-# help( sweeps )
-
-# Comment/uncomment these to run the different examples.
-# parameterizeHook()
-# parameterizeBunny()
-# meshHook(single_patch=False)
-# meshHookWithQuadMesh()
-
 def meshHookWithQuadMeshNew():
     # Load a tet mesh and the source and target surfaces from file. Surface12 is the source, and Surface10 is the target.
     mesh = sweeps.loadFromFile(
@@ -182,4 +172,12 @@ def meshHookWithQuadMeshNew():
     print( len( mesh.hexes ) )
     print( [ mesh.points[i] for i in mesh.hexes[0] ] )
 
-meshHookWithQuadMeshNew()
+# Uncomment this to see what objects and functions are available from the sweeps module
+help( sweeps )
+
+# Comment/uncomment these to run the different examples.
+# parameterizeHook()
+# parameterizeBunny()
+# meshHook(single_patch=False)
+# meshHookWithQuadMesh()
+# meshHookWithQuadMeshNew()
