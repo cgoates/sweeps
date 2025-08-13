@@ -15,7 +15,7 @@ namespace basis
             throw std::runtime_error( "Cannot build DivConfTPSplineSpace except over B-spline patch" );
 
         SmallVector<std::shared_ptr<const BasisComplex1d>, 3> reduced_1d_bcs;
-        SmallVector<std::shared_ptr<const TPBasisComplex>, 3> scalar_tp_bcs;
+        SmallVector<std::shared_ptr<const TPBasisComplex>, 6> scalar_tp_bcs;
 
         for( const std::shared_ptr<const BSplineSpace1d>& ss_1d : primal_1d_bases )
         {
@@ -107,12 +107,10 @@ namespace basis
         }
         else if( scalar_ops.size() == 3 )
         {
-            const Eigen::MatrixXd zeros_0 = Eigen::MatrixXd::Zero( scalar_ops.at( 0 ).rows(), scalar_ops.at( 0 ).cols() );
-            const Eigen::MatrixXd zeros_1 = Eigen::MatrixXd::Zero( scalar_ops.at( 1 ).rows(), scalar_ops.at( 1 ).cols() );
-            const Eigen::MatrixXd zeros_2 = Eigen::MatrixXd::Zero( scalar_ops.at( 2 ).rows(), scalar_ops.at( 2 ).cols() );
-            return ( Eigen::MatrixXd( rows, cols ) << scalar_ops.at( 0 ), zeros_1, zeros_2,
-                                                      zeros_0, scalar_ops.at( 1 ), zeros_2,
-                                                      zeros_0, zeros_1, scalar_ops.at( 2 ) ).finished();
+            const auto zeros = [&]( const size_t r, const size_t c ) { return Eigen::MatrixXd::Zero( scalar_ops.at( r ).rows(), scalar_ops.at( c ).cols() ); };
+            return ( Eigen::MatrixXd( rows, cols ) << scalar_ops.at( 0 ), zeros( 0, 1 ), zeros( 0, 2 ),
+                                                      zeros( 1, 0 ), scalar_ops.at( 1 ), zeros( 1, 2 ),
+                                                      zeros( 2, 0 ), zeros( 2, 1 ), scalar_ops.at( 2 ) ).finished();
         }
         throw std::runtime_error( "Bad dimension for div conf tp spline space" );
     }
@@ -144,4 +142,10 @@ namespace basis
             return accum + ss->numFunctions();
         } );
     }
+
+    size_t DivConfTPSplineSpace::numVectorComponents() const
+    {
+        return mScalarTPBases.size();
+    }
+
 }

@@ -164,7 +164,7 @@ namespace eval
         const Eigen::MatrixX3d vec1_deriv = bernsteinTPSecondDeriv( p, q - 1, s, t );
         const Eigen::MatrixX3d vec2_deriv = bernsteinTPSecondDeriv( p - 1, q, s, t );
 
-        return ( Eigen::MatrixX4d( vec1_deriv.rows() + vec2_deriv.rows(), 6 ) << vec1_deriv.col( 0 ),
+        return ( Eigen::MatrixXd( vec1_deriv.rows() + vec2_deriv.rows(), 6 ) << vec1_deriv.col( 0 ),
                  Eigen::VectorXd::Zero( vec1_deriv.rows() ),
                  vec1_deriv.col( 1 ),
                  Eigen::VectorXd::Zero( vec1_deriv.rows() ),
@@ -177,6 +177,60 @@ namespace eval
                  Eigen::VectorXd::Zero( vec2_deriv.rows() ),
                  vec2_deriv.col( 2 ) )
             .finished();
+    }
+
+    Eigen::MatrixX3d bernsteinDivConf( const size_t p, const size_t q, const size_t r, const double s, const double t, const double u )
+    {
+        const Eigen::VectorXd vec1_evals = bernsteinTP( p, q - 1, r - 1, s, t, u );
+        const Eigen::VectorXd vec2_evals = bernsteinTP( p - 1, q, r - 1, s, t, u );
+        const Eigen::VectorXd vec3_evals = bernsteinTP( p - 1, q - 1, r, s, t, u );
+
+        return ( Eigen::MatrixX3d( vec1_evals.size() + vec2_evals.size() + vec3_evals.size(), 3 ) <<
+                    vec1_evals, Eigen::VectorXd::Zero( vec1_evals.size() ), Eigen::VectorXd::Zero( vec1_evals.size() ),
+                    Eigen::VectorXd::Zero( vec2_evals.size() ), vec2_evals, Eigen::VectorXd::Zero( vec2_evals.size() ),
+                    Eigen::VectorXd::Zero( vec3_evals.size() ), Eigen::VectorXd::Zero( vec3_evals.size() ), vec3_evals
+                ).finished();
+    }
+
+    Eigen::MatrixXd bernsteinDivConfFirstDeriv( const size_t p, const size_t q, const size_t r, const double s, const double t, const double u )
+    {
+        const Eigen::MatrixX3d vec1_deriv = bernsteinTPFirstDeriv( p, q - 1, r - 1, s, t, u );
+        const Eigen::MatrixX3d vec2_deriv = bernsteinTPFirstDeriv( p - 1, q, r - 1, s, t, u );
+        const Eigen::MatrixX3d vec3_deriv = bernsteinTPFirstDeriv( p - 1, q - 1, r, s, t, u );
+
+        return ( Eigen::MatrixXd( vec1_deriv.rows() + vec2_deriv.rows() + vec3_deriv.rows(), 9 ) <<
+                    vec1_deriv.col( 0 ), Eigen::MatrixXd::Zero( vec1_deriv.rows(), 2 ), vec1_deriv.col( 1 ), Eigen::MatrixXd::Zero( vec1_deriv.rows(), 2 ), vec1_deriv.col( 2 ), Eigen::MatrixXd::Zero( vec1_deriv.rows(), 2 ),
+                    Eigen::MatrixXd::Zero( vec2_deriv.rows(), 1 ), vec2_deriv.col( 0 ), Eigen::MatrixXd::Zero( vec2_deriv.rows(), 2 ), vec2_deriv.col( 1 ), Eigen::MatrixXd::Zero( vec2_deriv.rows(), 2 ), vec2_deriv.col( 2 ), Eigen::MatrixXd::Zero( vec2_deriv.rows(), 1 ),
+                    Eigen::MatrixXd::Zero( vec3_deriv.rows(), 2 ), vec3_deriv.col( 0 ), Eigen::MatrixXd::Zero( vec3_deriv.rows(), 2 ), vec3_deriv.col( 1 ), Eigen::MatrixXd::Zero( vec3_deriv.rows(), 2 ), vec3_deriv.col( 2 )
+                ).finished();
+    }
+
+    Eigen::MatrixXd bernsteinDivConfSecondDeriv( const size_t p, const size_t q, const size_t r, const double s, const double t, const double u )
+    {
+        const Eigen::MatrixXd vec1_deriv = bernsteinTPSecondDeriv( p, q - 1, r - 1, s, t, u );
+        const Eigen::MatrixXd vec2_deriv = bernsteinTPSecondDeriv( p - 1, q, r - 1, s, t, u );
+        const Eigen::MatrixXd vec3_deriv = bernsteinTPSecondDeriv( p - 1, q - 1, r, s, t, u );
+
+        Eigen::MatrixXd result = Eigen::MatrixXd::Zero( vec1_deriv.rows() + vec2_deriv.rows() + vec3_deriv.rows(), 18 );
+        result.block( 0, 0, vec1_deriv.rows(), 1 ) = vec1_deriv.col( 0 );
+        result.block( 0, 3, vec1_deriv.rows(), 1 ) = vec1_deriv.col( 1 );
+        result.block( 0, 6, vec1_deriv.rows(), 1 ) = vec1_deriv.col( 2 );
+        result.block( 0, 9, vec1_deriv.rows(), 1 ) = vec1_deriv.col( 3 );
+        result.block( 0, 12, vec1_deriv.rows(), 1 ) = vec1_deriv.col( 4 );
+        result.block( 0, 15, vec1_deriv.rows(), 1 ) = vec1_deriv.col( 5 );
+        result.block( vec1_deriv.rows(), 1, vec2_deriv.rows(), 1 ) = vec2_deriv.col( 0 );
+        result.block( vec1_deriv.rows(), 4, vec2_deriv.rows(), 1 ) = vec2_deriv.col( 1 );
+        result.block( vec1_deriv.rows(), 7, vec2_deriv.rows(), 1 ) = vec2_deriv.col( 2 );
+        result.block( vec1_deriv.rows(), 10, vec2_deriv.rows(), 1 ) = vec2_deriv.col( 3 );
+        result.block( vec1_deriv.rows(), 13, vec2_deriv.rows(), 1 ) = vec2_deriv.col( 4 );
+        result.block( vec1_deriv.rows(), 16, vec2_deriv.rows(), 1 ) = vec2_deriv.col( 5 );
+        result.block( vec1_deriv.rows() + vec2_deriv.rows(), 2, vec3_deriv.rows(), 1 ) = vec3_deriv.col( 0 );
+        result.block( vec1_deriv.rows() + vec2_deriv.rows(), 5, vec3_deriv.rows(), 1 ) = vec3_deriv.col( 1 );
+        result.block( vec1_deriv.rows() + vec2_deriv.rows(), 8, vec3_deriv.rows(), 1 ) = vec3_deriv.col( 2 );
+        result.block( vec1_deriv.rows() + vec2_deriv.rows(), 11, vec3_deriv.rows(), 1 ) = vec3_deriv.col( 3 );
+        result.block( vec1_deriv.rows() + vec2_deriv.rows(), 14, vec3_deriv.rows(), 1 ) = vec3_deriv.col( 4 );
+        result.block( vec1_deriv.rows() + vec2_deriv.rows(), 17, vec3_deriv.rows(), 1 ) = vec3_deriv.col( 5 );
+        return result;
     }
 
     inline Eigen::Index numCols( const size_t dim, const size_t n_deriv )
@@ -249,17 +303,41 @@ namespace eval
         }
         else
         {
-            if( param_dim != 2 ) throw std::runtime_error( "Not implemented" );
-
-            mEvals.leftCols( 2 ) = bernsteinDivConf( degs.at( 0 ), degs.at( 1 ), point.mPoint( 0 ), point.mPoint( 1 ) );
-            if( n_derivatives > 0 )
+            switch( param_dim )
             {
-                mEvals.middleCols<4>( 2 ) =
-                    bernsteinDivConfFirstDeriv( degs.at( 0 ), degs.at( 1 ), point.mPoint( 0 ), point.mPoint( 1 ) );
-                if( n_derivatives > 1 )
-                    mEvals.middleCols<6>( 6 ) =
-                        bernsteinDivConfSecondDeriv( degs.at( 0 ), degs.at( 1 ), point.mPoint( 0 ), point.mPoint( 1 ) );
+                case 2:
+                    mEvals.leftCols( 2 ) = bernsteinDivConf( degs.at( 0 ), degs.at( 1 ), point.mPoint( 0 ), point.mPoint( 1 ) );
+                    if( n_derivatives > 0 )
+                    {
+                        mEvals.middleCols<4>( 2 ) =
+                            bernsteinDivConfFirstDeriv( degs.at( 0 ), degs.at( 1 ), point.mPoint( 0 ), point.mPoint( 1 ) );
+                        if( n_derivatives > 1 )
+                            mEvals.middleCols<6>( 6 ) =
+                                bernsteinDivConfSecondDeriv( degs.at( 0 ), degs.at( 1 ), point.mPoint( 0 ), point.mPoint( 1 ) );
+                    }
+                    break;
+                case 3:
+                    mEvals.leftCols( 3 ) = bernsteinDivConf( degs.at( 0 ),
+                                                            degs.at( 1 ),
+                                                            degs.at( 2 ),
+                                                            point.mPoint( 0 ),
+                                                            point.mPoint( 1 ),
+                                                            point.mPoint( 2 ) );
+                    if( n_derivatives > 0 )
+                    {
+                        mEvals.middleCols<9>( 3 ) =
+                            bernsteinDivConfFirstDeriv( degs.at( 0 ), degs.at( 1 ), degs.at( 2 ),
+                                                        point.mPoint( 0 ), point.mPoint( 1 ), point.mPoint( 2 ) );
+                        if( n_derivatives > 1 )
+                            mEvals.middleCols<18>( 12 ) =
+                                bernsteinDivConfSecondDeriv( degs.at( 0 ), degs.at( 1 ), degs.at( 2 ),
+                                                             point.mPoint( 0 ), point.mPoint( 1 ), point.mPoint( 2 ) );
+                    }
+                    break;
+                default: throw std::runtime_error( "Unsupported dimension for vector-valued splines: " + std::to_string( param_dim ) );
             }
+
+
         }
     }
 } // namespace eval

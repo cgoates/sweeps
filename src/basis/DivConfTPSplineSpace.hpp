@@ -19,7 +19,7 @@ namespace basis
 
         virtual size_t numFunctions() const override;
 
-        virtual size_t numVectorComponents() const override { return 2; }
+        virtual size_t numVectorComponents() const override;
 
         const SmallVector<std::shared_ptr<const BSplineSpace1d>, 3>& reducedDegree1dBases() const
         {

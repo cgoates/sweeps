@@ -91,11 +91,10 @@ namespace eval
         if( not param::isCartesian( mSpline.basisComplex().parametricAtlas().parentDomain( mCurrentCell.value() ) ) )
             throw std::runtime_error( "ParamToSpatial not supported on non-square domains" );
 
-        const Vector6dMax doubled_lengths =
-            ( Eigen::MatrixX2d( mParametricLengths.rows(), 2 ) << mParametricLengths, mParametricLengths )
-                .finished()
-                .transpose()
-                .reshaped();
+        const size_t param_dim = mSpline.basisComplex().parametricAtlas().cmap().dim();
+
+        const Eigen::VectorXd doubled_lengths =
+            Eigen::MatrixXd( mParametricLengths.replicate( 1, param_dim ) ).transpose().reshaped();
 
         const Eigen::MatrixXd scaling = doubled_lengths.array().inverse().matrix().asDiagonal();
 
@@ -129,13 +128,54 @@ namespace eval
         return jac.determinant();
     }
 
-    Eigen::Vector2d paramToSpatialGradDeterminant( const SplineSpaceEvaluator& geom_evals, const Eigen::MatrixXd& cpts )
+    Eigen::VectorXd paramToSpatialGradDeterminant( const SplineSpaceEvaluator& geom_evals, const Eigen::MatrixXd& cpts )
     {
-        const Eigen::Matrix2d J = geom_evals.evaluateParamToSpatialJacobian( cpts );
+        const Eigen::MatrixXd J = geom_evals.evaluateParamToSpatialJacobian( cpts );
         const Eigen::MatrixXd H = geom_evals.evaluateParamToSpatialHessian( cpts );
 
-        return Eigen::Vector2d( H( 0, 0 ) * J( 1, 1 ) + J( 0, 0 ) * H( 1, 1 ) - H( 1, 0 ) * J( 0, 1 ) - J( 1, 0 ) * H( 0, 1 ),
-                                H( 0, 1 ) * J( 1, 1 ) + J( 0, 0 ) * H( 1, 2 ) - H( 1, 1 ) * J( 0, 1 ) - J( 1, 0 ) * H( 0, 2 ) );
+        if( geom_evals.splineSpace().basisComplex().parametricAtlas().cmap().dim() == 2 and cpts.rows() == 2 )
+        {
+            return Eigen::Vector2d( H( 0, 0 ) * J( 1, 1 ) + J( 0, 0 ) * H( 1, 1 ) - H( 1, 0 ) * J( 0, 1 ) - J( 1, 0 ) * H( 0, 1 ),
+                                    H( 0, 1 ) * J( 1, 1 ) + J( 0, 0 ) * H( 1, 2 ) - H( 1, 1 ) * J( 0, 1 ) - J( 1, 0 ) * H( 0, 2 ) );
+        }
+        else if( geom_evals.splineSpace().basisComplex().parametricAtlas().cmap().dim() == 3 )
+        {
+            const double& x_s = J(0,0), x_t = J(0,1), x_u = J(0,2);
+            const double& y_s = J(1,0), y_t = J(1,1), y_u = J(1,2);
+            const double& z_s = J(2,0), z_t = J(2,1), z_u = J(2,2);
+
+            const double& x_ss = H(0,0), x_st = H(0,1), x_su = H(0,2), x_tt = H(0,3), x_tu = H(0,4), x_uu = H(0,5);
+            const double& y_ss = H(1,0), y_st = H(1,1), y_su = H(1,2), y_tt = H(1,3), y_tu = H(1,4), y_uu = H(1,5);
+            const double& z_ss = H(2,0), z_st = H(2,1), z_su = H(2,2), z_tt = H(2,3), z_tu = H(2,4), z_uu = H(2,5);
+
+            return Eigen::Vector3d( // Generated with mathematica
+                        z_t * y_s * x_su - y_t * z_s * x_su - z_t * x_s * y_su +
+                        x_t * z_s * y_su + y_t * x_s * z_su - x_t * y_s * z_su -
+                        z_u * y_s * x_st + y_u * z_s * x_st + z_u * x_s * y_st -
+                        x_u * z_s * y_st - y_u * x_s * z_st + x_u * y_s * z_st +
+                        z_u * y_t * x_ss - y_u * z_t * x_ss - z_u * x_t * y_ss +
+                        x_u * z_t * y_ss + y_u * x_t * z_ss - x_u * y_t * z_ss,
+
+                        -z_t * y_tu * x_s + y_t * z_tu * x_s + z_u * y_tt * x_s -
+                        y_u * z_tt * x_s + z_t * x_tu * y_s - x_t * z_tu * y_s -
+                        z_u * x_tt * y_s + x_u * z_tt * y_s - y_t * x_tu * z_s +
+                        x_t * y_tu * z_s + y_u * x_tt * z_s - x_u * y_tt * z_s +
+                        z_u * y_t * x_st - y_u * z_t * x_st - z_u * x_t * y_st +
+                        x_u * z_t * y_st + y_u * x_t * z_st - x_u * y_t * z_st,
+
+                        z_uu * y_t * x_s - y_uu * z_t * x_s + z_u * y_tu * x_s -
+                        y_u * z_tu * x_s - z_uu * x_t * y_s + x_uu * z_t * y_s -
+                        z_u * x_tu * y_s + x_u * z_tu * y_s + y_uu * x_t * z_s -
+                        x_uu * y_t * z_s + y_u * x_tu * z_s - x_u * y_tu * z_s +
+                        z_u * y_t * x_su - y_u * z_t * x_su - z_u * x_t * y_su +
+                        x_u * z_t * y_su + y_u * x_t * z_su - x_u * y_t * z_su
+            );
+        }
+        else
+        {
+            // FIXME: Make this work on a 2d manifold in 3d
+            throw std::runtime_error( "Unsupported parametric/spatial dimension for determinant gradient evaluation." );
+        }
     }
 
     Eigen::MatrixXd piolaTransformedVectorBasis( const SplineSpaceEvaluator& vec_evals,
@@ -151,11 +191,12 @@ namespace eval
                                                             const SplineSpaceEvaluator& geom_evals,
                                                             const Eigen::MatrixXd& cpts )
     {
-        const auto jac = geom_evals.evaluateParamToSpatialJacobian( cpts );
+        const Eigen::MatrixXd jac = geom_evals.evaluateParamToSpatialJacobian( cpts );
         const double det_inverse = 1.0 / determinant( jac );
         const Eigen::MatrixXd vector_basis = vec_evals.evaluateBasis().transpose();
         const size_t n_funcs = vector_basis.cols();
-        const size_t dim = 2;
+        const size_t param_dim = geom_evals.splineSpace().basisComplex().parametricAtlas().cmap().dim();
+        const size_t spatial_dim = cpts.rows();
 
         // The product rule on the derivative of the piola transform v = ( det J )^-1 J v'
         // yields three terms from the three factors. These are the first, second, third terms here.
@@ -163,21 +204,37 @@ namespace eval
         const Eigen::MatrixXd first_term =
             -det_inverse * det_inverse *
             ( ( jac * vector_basis ).reshaped() * paramToSpatialGradDeterminant( geom_evals, cpts ).transpose() )
-                .reshaped( dim * dim, n_funcs );
+                .reshaped( spatial_dim * param_dim, n_funcs );
 
-        const auto modified_hessian = [&geom_evals, &cpts, &dim]() {
+        const auto modified_hessian = [&geom_evals, &cpts, &param_dim, &spatial_dim]() {
             const Eigen::MatrixXd hess = geom_evals.evaluateParamToSpatialHessian( cpts );
-            Eigen::MatrixXd out( dim * dim, dim );
-            out << hess( 0, 0 ), hess( 0, 1 ), hess( 1, 0 ), hess( 1, 1 ), hess( 0, 1 ), hess( 0, 2 ), hess( 1, 1 ),
-                hess( 1, 2 );
+            Eigen::MatrixXd out( spatial_dim * param_dim, param_dim );
+            if( param_dim == 2 )
+                // FIXME: Make this work for 3d spatial/2d manifold
+                out << hess( 0, 0 ), hess( 0, 1 ),
+                       hess( 1, 0 ), hess( 1, 1 ),
+                       hess( 0, 1 ), hess( 0, 2 ),
+                       hess( 1, 1 ), hess( 1, 2 );
+            else if( param_dim == 3 )
+                out << hess( 0, 0 ), hess( 0, 1 ), hess( 0, 2 ),
+                       hess( 1, 0 ), hess( 1, 1 ), hess( 1, 2 ),
+                       hess( 2, 0 ), hess( 2, 1 ), hess( 2, 2 ),
+                       hess( 0, 1 ), hess( 0, 3 ), hess( 0, 4 ),
+                       hess( 1, 1 ), hess( 1, 3 ), hess( 1, 4 ),
+                       hess( 2, 1 ), hess( 2, 3 ), hess( 2, 4 ),
+                       hess( 0, 2 ), hess( 0, 4 ), hess( 0, 5 ),
+                       hess( 1, 2 ), hess( 1, 4 ), hess( 1, 5 ),
+                       hess( 2, 2 ), hess( 2, 4 ), hess( 2, 5 );
+            else
+                throw std::runtime_error( "Unsupported parametric dimension for piola transformed vector first derivatives." );
             return out;
         };
 
         const Eigen::MatrixXd second_term = det_inverse * modified_hessian() * vector_basis;
 
         const Eigen::MatrixXd third_term =
-            ( det_inverse * jac * vec_evals.evaluateFirstDerivativesFromParamToSpatial().transpose().reshaped( dim, n_funcs * dim ) )
-                .reshaped( dim * dim, n_funcs );
+            ( det_inverse * jac * vec_evals.evaluateFirstDerivativesFromParamToSpatial().transpose().reshaped( param_dim, n_funcs * param_dim ) )
+                .reshaped( spatial_dim * param_dim, n_funcs );
 
         return ( first_term + second_term + third_term ).transpose();
     }
