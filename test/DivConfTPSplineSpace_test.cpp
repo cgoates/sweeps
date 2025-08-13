@@ -215,3 +215,81 @@ TEST_CASE( "Simple Hierarchical Div Conf TP Spline space" )
 
     // FIXME: Add asserts!
 }
+
+TEST_CASE( "Simple 3d Div Conf TP Spline space" )
+{
+    // Input info
+    const KnotVector kv1( { 0, 0, 0, 0, 1, 2, 3, 4, 4, 4, 4 }, 1e-10 );
+    // const KnotVector kv1( {0,0,0,0,1,2,2,2,2}, 1e-10 );
+    const KnotVector kv2( { 0, 0, 0, 1, 2, 2, 2 }, 1e-10 );
+    const size_t degree1 = 3;
+    const size_t degree2 = 2;
+
+    const TPSplineSpace ss_3d = buildBSpline( {kv1, kv2, kv2},  {degree1, degree2, degree2} );
+
+    const auto dcbc = std::make_shared<const DivConfBasisComplex>( ss_3d.basisComplexPtr() );
+    const DivConfTPSplineSpace dcss( dcbc, ss_3d );
+
+    const auto& param_3d = dcss.basisComplex().parametricAtlas();
+    const auto& cmap_3d = param_3d.cmap();
+
+    Eigen::MatrixX3d geom = util::tensorProduct( { grevillePoints( kv1, degree1 ), grevillePoints( kv2, degree2 ), grevillePoints( kv2, degree2 ) } );
+    geom.col( 1 ) += sin( 2 * geom.col( 0 ).array() ).matrix();
+
+    if( OUTPUT_TO_VTK ) io::outputBezierMeshToVTK( ss_3d, geom, "bez_test.vtu" );
+
+    eval::SplineSpaceEvaluator primal_evals( ss_3d, 2 );
+    eval::SplineSpaceEvaluator vec_evals( dcss, 1 );
+
+    const SmallVector<double, 4> points{ 0.0, 0.3333333, 0.6666666, 1.0 };
+
+    SimplicialComplex output_points;
+
+    std::vector<Eigen::MatrixX3d> vecs( dcss.numFunctions(), Eigen::MatrixX3d::Zero( cellCount( cmap_3d, 2 ) * points.size() * points.size(), 3 ) );
+    std::vector<Eigen::MatrixX3d> vec_dvec( dcss.numFunctions(), Eigen::MatrixX3d::Zero( cellCount( cmap_3d, 2 ) * points.size() * points.size(), 3 ) );
+    size_t i = 0;
+    iterateCellsWhile( cmap_3d, 3, [&]( const topology::Volume& f ) {
+        primal_evals.localizeElement( f );
+        vec_evals.localizeElement( f );
+        const ParentDomain pd = param_3d.parentDomain( f );
+        util::iterateTensorProduct( {points.size(), points.size(), points.size()}, [&]( const util::IndexVec& indices ){
+            const Eigen::Vector3d pt( points.at( indices.at( 0 ) ), points.at( indices.at( 1 ) ), points.at( indices.at( 2 ) ) );
+            const ParentPoint ppt( pd, pt, {false, false, false, false, false, false} );
+
+            primal_evals.localizePoint( ppt );
+            vec_evals.localizePoint( ppt );
+
+            const Eigen::VectorXd spatial_point = primal_evals.evaluateManifold( geom.transpose() );
+            const Eigen::MatrixXd spatial_vecs = eval::piolaTransformedVectorBasis( vec_evals, primal_evals, geom.transpose() );//primal_evals.evaluatePiola( geom.transpose() ) * vec_evals.evaluateBasis().transpose();
+            const Eigen::MatrixXd param_vecs = vec_evals.evaluateBasis();
+            const Eigen::MatrixXd spatial_vec_derivs = eval::piolaTransformedVectorFirstDerivatives( vec_evals, primal_evals, geom.transpose() );
+
+            output_points.simplices.push_back( { output_points.points.size() } );
+            output_points.points.push_back( spatial_point );
+
+            const auto conn = dcss.connectivity( f );
+
+            for( size_t j = 0; j < conn.size(); j++ )
+            {
+                vecs.at( conn.at( j ) ).row( i ).head( spatial_vecs.cols() ) = spatial_vecs.row( j );
+                vec_dvec.at( conn.at( j ) ).row( i ).head( spatial_vecs.cols() ) = spatial_vec_derivs.row( j ).reshaped( 3, 3 ) * param_vecs.row( j ).transpose();
+            }
+            i++;
+        } );
+
+        return true;
+    } );
+
+    if( OUTPUT_TO_VTK )
+    {
+        for( size_t func_ii = 0; func_ii < vecs.size(); func_ii++ )
+        {
+            io::VTKOutputObject out( output_points );
+            out.addVertexField( "vecs", vecs.at( func_ii ) );
+            out.addVertexField( "derivatives", vec_dvec.at( func_ii ) );
+            io::outputSimplicialFieldToVTK( out, "vec_points" + zeroPadNum( 3, func_ii ) + ".vtu" );
+        }
+    }
+
+    // FIXME: Add asserts!
+}
