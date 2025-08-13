@@ -3,12 +3,11 @@
 import sys
 import subprocess
 from pathlib import Path
-import os
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
-from src.ConnectQuadToTet import *
-from src.PrepConnections import *
+from TetToQuadConnection.QuadMeshClass import QuadMesh
+
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 SWEEPS_DIR = SCRIPT_DIR.parent.parent
@@ -54,13 +53,4 @@ def generateQuadMesh(tetMesh: str):
     vtkPath = SWEEPS_DIR / "deps" / "ScaleUntrim" / "build" / "tempdir" / "quad.vtk"
     if not vtkPath.exists():
         raise FileNotFoundError("The generated quadrilateral vtk file does not exist.")
-
-    # Convert the vtk file to an obj file.
-    quadMeshObjPath = SCRIPT_DIR / "output" / "quadMeshBoundary.obj"
-    vtkToObj(vtkPath, quadMeshObjPath)
-    if not quadMeshObjPath.exists():
-        raise FileNotFoundError("The converted quadrilateral obj file does not exist.")
-
-    # print results
-    print("Quad Mesh of the boundary as an obj file is stored at: input/quadMeshBoundary.obj")
-    print("The vtk version is stored at: sweeps/deps/ScaleUntrim/build/tempdir/quad.vtk")
+    return QuadMesh(vtkPath)
