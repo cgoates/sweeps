@@ -155,7 +155,10 @@ def meshHookWithQuadMeshNew():
             file.write(f"f {' '.join(str(idx + 1) for idx in face)}\n")
 
     # Generate the quad mesh of the base and return a QuadMesh object.
-    mesh_base = generateQuadMesh(tetMesh=str(triMeshBasePath))
+    # TODO: remove the next two lines and replace with the vtk file to quadMesh object once implemented.
+    objFilePath = Path(__file__).resolve().parent / "TetToQuadConnection" / "Output" / "quadMeshBoundary.obj"
+    mesh_base = sweeps.loadQuadMeshFromObjFile(str(objFilePath))
+    # mesh_base = generateQuadMesh(tetMesh=str(triMeshBasePath))
 
     # This is a set of u values at which you want the mesh to have points.
     # Try changing this to get an idea for what it does.  The values should all be between 0 and 1.
@@ -171,7 +174,6 @@ def meshHookWithQuadMeshNew():
 
 # Uncomment this to see what objects and functions are available from the sweeps module
 # help( sweeps )
-# help( sweeps.QuadMesh )
 
 # Comment/uncomment these to run the different examples.
 # parameterizeHook()
