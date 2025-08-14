@@ -16,6 +16,7 @@
 #include <optional>
 #include <Eigen/Dense>
 #include <iomanip>
+#include <format>
 
 namespace io
 {
@@ -58,17 +59,15 @@ namespace io
 
         for( const auto& [label, data] : to_output.cellFields() )
         {
-            file << R"STRING(
-        <DataArray type="Float64" Name=")STRING" << label << R"STRING(" NumberOfComponents=")STRING"
-                 << data.cols() << R"STRING(" format="ascii">)STRING" << std::endl;
-
-            file << std::setprecision( 16 );
+            file << std::format( R"STRING(
+        <DataArray type="Float64" Name="{}" NumberOfComponents="{}" format="ascii">
+)STRING", label, data.cols());
 
             for( Eigen::Index row = 0; row < data.rows(); row++ )
             {
                 for( Eigen::Index col = 0; col < data.cols(); col++ )
                 {
-                    file << data( row, col ) << " ";
+                    file << std::format( "{:.16g} ", data( row, col ) );
                 }
             }
 
@@ -82,17 +81,15 @@ namespace io
 
         for( const auto& [label, data] : to_output.vertexFields() )
         {
-            file << R"STRING(
-        <DataArray type="Float64" Name=")STRING" << label << R"STRING(" NumberOfComponents=")STRING"
-                 << data.cols() << R"STRING(" format="ascii">)STRING" << std::endl;
-
-            file << std::setprecision( 16 );
+            file << std::format( R"STRING(
+        <DataArray type="Float64" Name="{}" NumberOfComponents="{}" format="ascii">
+)STRING", label, data.cols() );
 
             for( Eigen::Index row = 0; row < data.rows(); row++ )
             {
                 for( Eigen::Index col = 0; col < data.cols(); col++ )
                 {
-                    file << data( row, col ) << " ";
+                    file << std::format( "{:.16g} ", data( row, col ) );
                 }
             }
 
@@ -108,7 +105,7 @@ namespace io
 
         for( const Eigen::Vector3d& point : to_output.complex().points )
         {
-            file << point( 0 ) << " " << point( 1 ) << " " << point( 2 ) << " ";
+            file << std::format( "{:.16g} {:.16g} {:.16g} ", point( 0 ), point( 1 ), point( 2 ) );
         }
 
         file << R"STRING(
@@ -147,10 +144,10 @@ namespace io
             switch( simplex.dim() )
             {
                 // See documentation at https://vtk.org/wp-content/uploads/2015/04/file-formats.pdf page 9
-                case 0: file << 1 << " "; break;
-                case 1: file << 3 << " "; break;
-                case 2: file << 5 << " "; break;
-                case 3: file << 10 << " "; break;
+                case 0: file << "1 "; break;
+                case 1: file << "3 "; break;
+                case 2: file << "5 "; break;
+                case 3: file << "10 "; break;
                 default: break;
             }
         }
