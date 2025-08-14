@@ -18,7 +18,7 @@ namespace basis
 
         virtual size_t numFunctions() const override;
 
-        virtual size_t numVectorComponents() const override { return 2; }
+        virtual size_t numVectorComponents() const override { return mScalarTPBases.size(); }
 
         const SmallVector<std::shared_ptr<const HierarchicalTPSplineSpace>, 3>& scalarBases() const { return mScalarTPBases; }
 
