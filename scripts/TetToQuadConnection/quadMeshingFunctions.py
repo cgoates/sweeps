@@ -21,13 +21,10 @@ def runQuadriflowProgram(inputFile: str):
     """
     quadriflowExecutable = SWEEPS_DIR / "deps" / "ScaleUntrim" / "build" / "quadriflow"
     configPath = SWEEPS_DIR / "deps" / "ScaleUntrim" / "setting.config"
-    
     if not quadriflowExecutable.exists():
         raise FileNotFoundError(f"C++ executable not found at {quadriflowExecutable}")
     
-    
     command = [str(quadriflowExecutable), inputFile, configPath]
-
     try:
         result = subprocess.run(command, check=True, capture_output=True, text=True)
         print("OUTPUT:")
