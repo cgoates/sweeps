@@ -21,6 +21,18 @@ namespace basis
                 }
                 return result;
             }
+            case BasisType::CurlConformingBernstein:
+            {
+                size_t result = 0;
+                for( size_t i = 0; i < bb.degrees.size(); i++ )
+                {
+                    size_t result_i = 1;
+                    for( size_t j = 0; j < bb.degrees.size(); j++ )
+                        result_i *= j == i ? bb.degrees.at( j ) : bb.degrees.at( j ) + 1;
+                    result += result_i;
+                }
+                return result;
+            }
         }
         return 0;// Added to make linux build happy
     }
@@ -46,7 +58,7 @@ namespace basis
     size_t numVectorComponents( const ParentBasis& pb )
     {
         if( std::any_of( pb.mBasisGroups.begin(), pb.mBasisGroups.end(), []( const BarycentricBasis& bb ) {
-                return bb.type == BasisType::DivConformingBernstein;
+                return bb.type == BasisType::DivConformingBernstein or bb.type == BasisType::CurlConformingBernstein;
             } ) )
         {
             if( pb.mBasisGroups.size() == 1 )
@@ -72,6 +84,16 @@ namespace basis
         return BarycentricBasis{ BasisType::DivConformingBernstein, degrees };
     }
 
+    BarycentricBasis curlConformingBernsteinBasis( const size_t dim, const size_t degree )
+    {
+        return curlConformingBernsteinBasis( SmallVector<size_t, 3>( dim, degree ) );
+    }
+
+    BarycentricBasis curlConformingBernsteinBasis( const SmallVector<size_t, 3>& degrees )
+    {
+        return BarycentricBasis{ BasisType::CurlConformingBernstein, degrees };
+    }
+
     ParentBasis bernsteinSimplex( const size_t dim, const size_t degree )
     {
         return ParentBasis{ param::simplexDomain( dim ), { bernsteinBasis( degree ) } };
@@ -85,6 +107,11 @@ namespace basis
     ParentBasis divConformingBernsteinCube( const size_t dim, const size_t primal_degree )
     {
         return ParentBasis{ param::cubeDomain( dim ), { divConformingBernsteinBasis( dim, primal_degree ) } };
+    }
+
+    ParentBasis curlConformingBernsteinCube( const size_t dim, const size_t primal_degree )
+    {
+        return ParentBasis{ param::cubeDomain( dim ), { curlConformingBernsteinBasis( dim, primal_degree ) } };
     }
 
     ParentBasis tensorProduct( const ParentBasis& pb1, const ParentBasis& pb2 )
@@ -104,6 +131,10 @@ namespace basis
                 break;
             case BasisType::DivConformingBernstein:
                 o << "DivConformingBernstein";
+                break;
+            case BasisType::CurlConformingBernstein:
+                o << "CurlConformingBernstein";
+                break;
         }
         o << ", " << bb.degrees << " )";
         return o;
@@ -124,20 +155,39 @@ namespace basis
         {
             if( group.type == BasisType::DivConformingBernstein )
             {
-                SmallVector<BarycentricBasis, 3> primal_groups;
-                std::transform( group.degrees.begin(), group.degrees.end(), std::back_inserter( primal_groups ), []( const size_t degree ) {
+                if( pb.mBasisGroups.size() != 1 )
+                    throw std::runtime_error( "Cannot tensor product vector valued bases" );
+
+                SmallVector<BarycentricBasis, 3> reduced_degree_groups;
+                std::transform( group.degrees.begin(), group.degrees.end(), std::back_inserter( reduced_degree_groups ), []( const size_t degree ) {
                     return BarycentricBasis{ BasisType::Bernstein, { degree - 1 } };
                 } );
                 for( size_t i = 0; i < group.degrees.size(); i++ )
                 {
-                    SmallVector<BarycentricBasis, 3> primal_groups_i = primal_groups;
-                    primal_groups_i.at( i ) = BarycentricBasis{ BasisType::Bernstein, { group.degrees.at( i ) } };
-                    out.push_back( ParentBasis{ pb.mParentDomain, primal_groups_i } );
+                    SmallVector<BarycentricBasis, 3> component_i_groups = reduced_degree_groups;
+                    component_i_groups.at( i ) = BarycentricBasis{ BasisType::Bernstein, { group.degrees.at( i ) } };
+                    out.push_back( ParentBasis{ pb.mParentDomain, component_i_groups } );
+                }
+            }
+            else if( group.type == BasisType::CurlConformingBernstein )
+            {
+                if( pb.mBasisGroups.size() != 1 )
+                    throw std::runtime_error( "Cannot tensor product vector valued bases" );
+
+                SmallVector<BarycentricBasis, 3> primal_groups;
+                std::transform( group.degrees.begin(), group.degrees.end(), std::back_inserter( primal_groups ), []( const size_t degree ) {
+                    return BarycentricBasis{ BasisType::Bernstein, { degree } };
+                } );
+                for( size_t i = 0; i < group.degrees.size(); i++ )
+                {
+                    SmallVector<BarycentricBasis, 3> component_i_groups = primal_groups;
+                    component_i_groups.at( i ) = BarycentricBasis{ BasisType::Bernstein, { group.degrees.at( i ) - 1 } };
+                    out.push_back( ParentBasis{ pb.mParentDomain, component_i_groups } );
                 }
             }
             else
             {
-                throw std::runtime_error( "Cannot tensor product div conforming and scalar bases" );
+                throw std::runtime_error( "Cannot tensor product vector and scalar bases" );
             }
         }
 

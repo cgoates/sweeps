@@ -6,6 +6,7 @@ namespace basis
     enum class BasisType {
         Bernstein,
         DivConformingBernstein,
+        CurlConformingBernstein,
         //BSpline
     };
 
@@ -23,6 +24,8 @@ namespace basis
     BarycentricBasis bernsteinBasis( const size_t degree );
     BarycentricBasis divConformingBernsteinBasis( const size_t dim, const size_t degree );
     BarycentricBasis divConformingBernsteinBasis( const SmallVector<size_t, 3>& degrees );
+    BarycentricBasis curlConformingBernsteinBasis( const size_t dim, const size_t degree );
+    BarycentricBasis curlConformingBernsteinBasis( const SmallVector<size_t, 3>& degrees );
 
     class ParentBasis
     {
@@ -39,6 +42,7 @@ namespace basis
     ParentBasis bernsteinSimplex( const size_t dim, const size_t degree );
     ParentBasis bernsteinCube( const size_t dim, const size_t degree );
     ParentBasis divConformingBernsteinCube( const size_t dim, const size_t primal_degree );
+    ParentBasis curlConformingBernsteinCube( const size_t dim, const size_t primal_degree );
     ParentBasis tensorProduct( const ParentBasis& pb1, const ParentBasis& pb2 );
 
     std::ostream& operator<<( std::ostream& o, const ParentBasis& pb );
