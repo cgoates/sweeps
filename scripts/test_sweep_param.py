@@ -147,23 +147,23 @@ def meshHookWithQuadMeshNew():
     mesh_base_tri = sweeps.baseOfSweep(mesh)
     
     # Save the hook_base tri mesh to an OBJ file using Python's file io library
-    triMeshBasePath = SCRIPT_DIR = Path(__file__).resolve().parent / "TetToQuadConnection" / "Input" / "MeshBase_new.obj"
-    with open(triMeshBasePath, "w") as file:
+    tri_mesh_base_path = SCRIPT_DIR = Path(__file__).resolve().parent / "TetToQuadConnection" / "Input" / "MeshBase_new.obj"
+    with open(tri_mesh_base_path, "w") as file:
         for vertex in mesh_base_tri.points:
             file.write(f"v {vertex[0]} {vertex[1]} {vertex[2]}\n")
         for face in mesh_base_tri.tris:
             file.write(f"f {' '.join(str(idx + 1) for idx in face)}\n")
 
     # Generate the quad mesh of the base and return a sweeps QuadMesh object.
-    mesh_base_path = generateQuadMesh(tetMesh=str(triMeshBasePath))
-    quadMesh = createQuadMeshObjectFromVTK(mesh_base_path)
+    mesh_base_path = generateQuadMesh(tetMesh=str(tri_mesh_base_path))
+    quad_mesh = createQuadMeshObjectFromVTK(mesh_base_path)
 
     # This is a set of u values at which you want the mesh to have points.
     # Try changing this to get an idea for what it does.  The values should all be between 0 and 1.
     u_values = np.linspace(0.0, 1.0, 30)
 
     # Setting the debug flag to True will check the mesh jacobians, and write out a vtk file to visualize the mesh and any elements with negative jacobians.
-    mesh = sweeps.fitHexMeshToSweep(mesh, quadMesh, u_values, debug=True)
+    mesh = sweeps.fitHexMeshToSweep(mesh, quad_mesh, u_values, debug=True)
 
     # The resulting hex mesh has a list of points and a list of hexes.
     print( len( mesh.points ) )
