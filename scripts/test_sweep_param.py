@@ -155,17 +155,16 @@ def meshHookWithQuadMeshNew():
             file.write(f"f {' '.join(str(idx + 1) for idx in face)}\n")
 
     # Generate the quad mesh of the base and return a QuadMesh object.
-    # TODO: remove the next two lines and replace with the vtk file to quadMesh object once implemented.
-    objFilePath = Path(__file__).resolve().parent / "TetToQuadConnection" / "Output" / "quadMeshBoundary.obj"
-    mesh_base = sweeps.loadQuadMeshFromObjFile(str(objFilePath))
-    # mesh_base = generateQuadMesh(tetMesh=str(triMeshBasePath))
+
+    mesh_base = generateQuadMesh(tetMesh=str(triMeshBasePath))
+    quadMesh = sweeps.QuadMesh(mesh_base.points, mesh_base.quads)
 
     # This is a set of u values at which you want the mesh to have points.
     # Try changing this to get an idea for what it does.  The values should all be between 0 and 1.
     u_values = np.linspace(0.0, 1.0, 30)
 
     # Setting the debug flag to True will check the mesh jacobians, and write out a vtk file to visualize the mesh and any elements with negative jacobians.
-    mesh = sweeps.fitHexMeshToSweep(mesh, mesh_base, u_values, debug=True)
+    mesh = sweeps.fitHexMeshToSweep(mesh, quadMesh, u_values, debug=True)
 
     # The resulting hex mesh has a list of points and a list of hexes.
     print( len( mesh.points ) )
