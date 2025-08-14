@@ -25,5 +25,3 @@ def test_QuadMesh():
         mesh = sweeps.fitHexMeshToSweep(mesh, quad_mesh, u_values, debug=True)
     except:
         raise AssertionError("Quad mesh couldn't be generated.")
-
-test_QuadMesh()
