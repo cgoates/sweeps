@@ -4,15 +4,15 @@
 import sys
 import subprocess
 from pathlib import Path
+import numpy as np
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
-from TetToQuadConnection.QuadMeshClass import QuadMesh
-import numpy as np
-
-
-SCRIPT_DIR = Path(__file__).resolve().parent
 SWEEPS_DIR = SCRIPT_DIR.parent.parent
+
+path_to_api = Path(__file__).parent.parent.parent / "build" / "src" / "api"
+sys.path.insert(0, str(path_to_api))
+import sweeps
 
 def runQuadriflowProgram(inputFile: str):
     """
@@ -46,8 +46,7 @@ def runQuadriflowProgram(inputFile: str):
 
 def generateQuadMesh(tetMesh: str):
     """
-    A python function meant to take a tet mesh and create a quad mesh of the input. 
-    A obj and vtk are generated.
+    A python function meant to take a tet mesh and create a quad mesh of the input as a vtk file. 
     Outputs the filepath of the new quad mesh.
     tetMesh: str - Path to the tet mesh file.
     """
@@ -57,7 +56,11 @@ def generateQuadMesh(tetMesh: str):
         raise FileNotFoundError("The generated quadrilateral vtk file does not exist.")
     return vtkPath
 
-def analyzeVTK(vtkPath: str):
+def createQuadMeshObjectFromVTK(vtkPath: str):
+    """
+    Takes a file path to a quad mesh as a vtk file and returns a sweeps.QuadMesh object derived from that vtk file.
+    vtkPath: str - path to the vtk file to use in creating the sweeps.QuadMesh object.
+    """
     f = open(vtkPath, "r")
     lines = f.readlines()
     f.close()
@@ -80,10 +83,14 @@ def analyzeVTK(vtkPath: str):
     quadLines = lines[quadsStartIndex+1:quadsStartIndex+numQuads+1]
     points = getPoints(pointLines)
     quads = getQuads(quadLines)
-
-    return points, quads
+    return sweeps.QuadMesh(points, quads)
 
 def getPoints(lines):
+    """
+    Given lines of a file which contain vertices in vtk format, returns all vertices as a list of np arrays.
+    lines: list - a list of lines, each line containing the 3 coordinates of a vertex.
+    return: [np.array]
+    """
     points = []
     for line in lines:
         nums = line.split()
@@ -91,6 +98,11 @@ def getPoints(lines):
     return points
 
 def getQuads(lines):
+    """
+    Given lines of a file which contain quadrilaterals in vtk format, returns all quads as a list of lists.
+    lines: list = a list of lines, each line containing the number of vertices, and the 4 indices of the vertices in the quad.
+    return: [list] - 2d list
+    """
     quads = []
     for line in lines:
         nums = line.split()
