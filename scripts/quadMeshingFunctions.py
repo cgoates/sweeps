@@ -41,32 +41,19 @@ def runQuadriflowProgram(input_file: str):
         print(f"An error occurred: {e}")
         raise Exception("Could not run Quadriflow.")
 
-def generateQuadMesh(tri_mesh: sweeps.triMesh):
-    # 1. turn objec tinto obj
-    # Save the hook_base tri mesh to an OBJ file using Python's file io library
-    tri_mesh_base_path = SCRIPT_DIR = Path(__file__).resolve().parent / "TetToQuadConnection" / "Input" / "MeshBase_new.obj"
-    with open(tri_mesh_base_path, "w") as file:
-        for vertex in mesh_base_tri.points:
-            file.write(f"v {vertex[0]} {vertex[1]} {vertex[2]}\n")
-        for face in mesh_base_tri.tris:
-            file.write(f"f {' '.join(str(idx + 1) for idx in face)}\n")
-
-    # 2. turn obj into quad vtk
-    # 3. make vtk an object
-
-
-
-def generateQuadMeshOLD(tri_mesh: str):
+def generateQuadMesh(tri_mesh: sweeps.TriMesh):
     """
     A python function meant to take a tet mesh and create a quad mesh of the input as a vtk file. 
     Outputs the filepath of the new quad mesh.
     tetMesh: str - Path to the tet mesh file.
     """
-    runQuadriflowProgram(tri_mesh)
+    tri_mesh_base_path = Path(__file__).resolve().parent / "MeshBase_new.obj"
+    saveTriMeshAsObj(tri_mesh, str(tri_mesh_base_path))
+    runQuadriflowProgram(tri_mesh_base_path)
     vtk_path = SWEEPS_DIR / "deps" / "ScaleUntrim" / "build" / "tempdir" / "quad.vtk"
     if not vtk_path.exists():
         raise FileNotFoundError("The generated quadrilateral vtk file does not exist.")
-    return vtk_path
+    return createQuadMeshObjectFromVtk(str(vtk_path))
 
 def createQuadMeshObjectFromVtk(vtk_path: str):
     """
@@ -121,3 +108,9 @@ def getQuads(lines):
         quads.append(list(map(int, nums[1:])))
     return quads
 
+def saveTriMeshAsObj(mesh_base_tri: sweeps.TriMesh, path_to_file: str):
+    with open(path_to_file, "w") as file:
+        for vertex in mesh_base_tri.points:
+            file.write(f"v {vertex[0]} {vertex[1]} {vertex[2]}\n")
+        for face in mesh_base_tri.tris:
+            file.write(f"f {' '.join(str(idx + 1) for idx in face)}\n")

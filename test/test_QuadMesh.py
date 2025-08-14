@@ -6,7 +6,6 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = SCRIPT_DIR.parent
 PATH_TO_API = PROJECT_DIR / "build" / "src" / "api"
 TEST_HOOK_FILE = SCRIPT_DIR / "data" / "hook.inp"
-TEST_HOOK_BASE_FILE = SCRIPT_DIR / "data" / "hookBaseTri.obj"
 sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PATH_TO_API))
 from scripts.quadMeshingFunctions import generateQuadMesh, createQuadMeshObjectFromVtk
@@ -19,8 +18,8 @@ def test_QuadMesh():
     """
     try:
         mesh = sweeps.loadFromFile(str(TEST_HOOK_FILE), "Surface12", "Surface10")
-        mesh_path = generateQuadMesh(tri_mesh=str(TEST_HOOK_BASE_FILE))
-        quad_mesh = createQuadMeshObjectFromVtk(mesh_path)
+        tri_mesh_base = sweeps.baseOfSweep(mesh)
+        quad_mesh = generateQuadMesh(tri_mesh_base)
         u_values = np.linspace(0.0, 1.0, 30)
         mesh = sweeps.fitHexMeshToSweep(mesh, quad_mesh, u_values, debug=True)
     except:
