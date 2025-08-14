@@ -1,5 +1,6 @@
 # A python script meant to run the process of taking a tet mesh and creating a quad mesh of one of the boundaries.
-# It also outputs a file containing the barycentric coordinates of the quad vertices in the tet mesh faces.
+# The resulting vtk file path can be returned, along with a list of points and quads from the vtk file.
+
 import sys
 import subprocess
 from pathlib import Path
@@ -7,6 +8,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 from TetToQuadConnection.QuadMeshClass import QuadMesh
+import numpy as np
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -53,4 +55,44 @@ def generateQuadMesh(tetMesh: str):
     vtkPath = SWEEPS_DIR / "deps" / "ScaleUntrim" / "build" / "tempdir" / "quad.vtk"
     if not vtkPath.exists():
         raise FileNotFoundError("The generated quadrilateral vtk file does not exist.")
-    return QuadMesh(vtkPath)
+    return vtkPath
+
+def analyzeVTK(vtkPath: str):
+    f = open(vtkPath, "r")
+    lines = f.readlines()
+    f.close()
+    numPoints = -1
+    pointsStartIndex = -1
+    numQuads = -1
+    quadsStartIndex = -1
+    for line in range(len(lines)):
+        if lines[line].startswith("POINTS"):
+            pointsLine = lines[line].split()
+            numPoints = int(pointsLine[1])
+            pointsStartIndex = line
+        elif lines[line].startswith("CELLS"):
+            quadsLine = lines[line].split()
+            numQuads = int(quadsLine[1])
+            quadsStartIndex = line
+    if (numPoints < 0) or (numQuads < 0) or (pointsStartIndex < 0) or (quadsStartIndex < 0):
+        raise Exception("Given Vtk file is empty or formatted incorrectly.")
+    pointLines = lines[pointsStartIndex+1:pointsStartIndex+numPoints+1]
+    quadLines = lines[quadsStartIndex+1:quadsStartIndex+numQuads+1]
+    points = getPoints(pointLines)
+    quads = getQuads(quadLines)
+
+    return points, quads
+
+def getPoints(lines):
+    points = []
+    for line in lines:
+        nums = line.split()
+        points.append(np.array(nums, dtype=float))
+    return points
+
+def getQuads(lines):
+    quads = []
+    for line in lines:
+        nums = line.split()
+        quads.append(list(map(int, nums[1:])))
+    return quads

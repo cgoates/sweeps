@@ -2,7 +2,7 @@ from math import sin, cos, pi
 import numpy as np
 import sys
 from pathlib import Path
-from TetToQuadConnection.generateQuadMesh import generateQuadMesh
+from TetToQuadConnection.quadMeshingFunctions import generateQuadMesh, analyzeVTK
 
 path_to_api = Path(__file__).parent.parent / "build" / "src" / "api"
 sys.path.insert(0, str(path_to_api))
@@ -156,8 +156,9 @@ def meshHookWithQuadMeshNew():
 
     # Generate the quad mesh of the base and return a QuadMesh object.
 
-    mesh_base = generateQuadMesh(tetMesh=str(triMeshBasePath))
-    quadMesh = sweeps.QuadMesh(mesh_base.points, mesh_base.quads)
+    mesh_base_path = generateQuadMesh(tetMesh=str(triMeshBasePath))
+    points, quads = analyzeVTK(mesh_base_path)
+    quadMesh = sweeps.QuadMesh(points, quads)
 
     # This is a set of u values at which you want the mesh to have points.
     # Try changing this to get an idea for what it does.  The values should all be between 0 and 1.
