@@ -22,5 +22,5 @@ def test_QuadMesh():
         quad_mesh = generateQuadMesh(tri_mesh_base)
         u_values = np.linspace(0.0, 1.0, 30)
         mesh = sweeps.fitHexMeshToSweep(mesh, quad_mesh, u_values, debug=True)
-    except:
-        raise AssertionError("Quad mesh couldn't be generated.")
+    except Exception as e:
+        raise AssertionError(f"Quad mesh couldn't be generated: {e}") from e
