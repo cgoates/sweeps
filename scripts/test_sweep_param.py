@@ -2,7 +2,7 @@ from math import sin, cos, pi
 import numpy as np
 import sys
 from pathlib import Path
-from quadMeshingFunctions import generateQuadMesh, createQuadMeshObjectFromVtk
+from quadMeshingFunctions import generateQuadMesh
 
 path_to_api = Path(__file__).parent.parent / "build" / "src" / "api"
 sys.path.insert(0, str(path_to_api))
@@ -133,7 +133,7 @@ def parameterizeBunny():
     sweeps.writeParameterizationToFile(
         bunny, level_set_values, trace_points, "bunny")
 
-def meshHookWithQuadMeshNew():
+def meshHookWithGeneratedQuadMesh():
     # Load a tet mesh and the source and target surfaces from file. Surface12 is the source, and Surface10 is the target.
     mesh = sweeps.loadFromFile(
         "/Users/colbyjohnson/Desktop/work/sweeps/test/data/hook.inp", "Surface12", "Surface10")
@@ -157,11 +157,11 @@ def meshHookWithQuadMeshNew():
     print( [ mesh.points[i] for i in mesh.hexes[0] ] )
 
 # Uncomment this to see what objects and functions are available from the sweeps module
-# help( sweeps )
+help( sweeps )
 
 # Comment/uncomment these to run the different examples.
 # parameterizeHook()
 # parameterizeBunny()
 # meshHook(single_patch=False)
 # meshHookWithQuadMesh()
-meshHookWithQuadMeshNew()
+# meshHookWithQuadMeshNew()

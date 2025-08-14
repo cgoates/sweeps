@@ -8,7 +8,7 @@ PATH_TO_API = PROJECT_DIR / "build" / "src" / "api"
 TEST_HOOK_FILE = SCRIPT_DIR / "data" / "hook.inp"
 sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PATH_TO_API))
-from scripts.quadMeshingFunctions import generateQuadMesh, createQuadMeshObjectFromVtk
+from scripts.quadMeshingFunctions import generateQuadMesh
 import sweeps
 
 def test_QuadMesh():
