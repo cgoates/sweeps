@@ -2,7 +2,7 @@ from math import sin, cos, pi
 import numpy as np
 import sys
 from pathlib import Path
-from TetToQuadConnection.quadMeshingFunctions import generateQuadMesh, createQuadMeshObjectFromVTK
+from quadMeshingFunctions import generateQuadMesh, createQuadMeshObjectFromVTK
 
 path_to_api = Path(__file__).parent.parent / "build" / "src" / "api"
 sys.path.insert(0, str(path_to_api))

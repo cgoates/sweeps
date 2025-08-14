@@ -9,7 +9,7 @@ TEST_HOOK_FILE = SCRIPT_DIR / "data" / "hook.inp"
 TEST_HOOK_BASE_FILE = SCRIPT_DIR / "data" / "hookBaseTri.obj"
 sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PATH_TO_API))
-from scripts.TetToQuadConnection.quadMeshingFunctions import generateQuadMesh, createQuadMeshObjectFromVTK
+from scripts.quadMeshingFunctions import generateQuadMesh, createQuadMeshObjectFromVTK
 import sweeps
 
 def test_QuadMesh():
@@ -25,3 +25,5 @@ def test_QuadMesh():
         mesh = sweeps.fitHexMeshToSweep(mesh, quad_mesh, u_values, debug=True)
     except:
         raise AssertionError("Quad mesh couldn't be generated.")
+    
+test_QuadMesh()

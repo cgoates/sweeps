@@ -8,9 +8,9 @@ import numpy as np
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
-SWEEPS_DIR = SCRIPT_DIR.parent.parent
+SWEEPS_DIR = SCRIPT_DIR.parent
 
-path_to_api = Path(__file__).parent.parent.parent / "build" / "src" / "api"
+path_to_api = Path(__file__).parent.parent / "build" / "src" / "api"
 sys.path.insert(0, str(path_to_api))
 import sweeps
 
