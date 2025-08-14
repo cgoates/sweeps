@@ -9,7 +9,7 @@ TEST_HOOK_FILE = SCRIPT_DIR / "data" / "hook.inp"
 TEST_HOOK_BASE_FILE = SCRIPT_DIR / "data" / "hookBaseTri.obj"
 sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PATH_TO_API))
-from scripts.quadMeshingFunctions import generateQuadMesh, createQuadMeshObjectFromVTK
+from scripts.quadMeshingFunctions import generateQuadMesh, createQuadMeshObjectFromVtk
 import sweeps
 
 def test_QuadMesh():
@@ -19,8 +19,8 @@ def test_QuadMesh():
     """
     try:
         mesh = sweeps.loadFromFile(str(TEST_HOOK_FILE), "Surface12", "Surface10")
-        mesh_path = generateQuadMesh(triMesh=str(TEST_HOOK_BASE_FILE))
-        quad_mesh = createQuadMeshObjectFromVTK(mesh_path)
+        mesh_path = generateQuadMesh(tri_mesh=str(TEST_HOOK_BASE_FILE))
+        quad_mesh = createQuadMeshObjectFromVtk(mesh_path)
         u_values = np.linspace(0.0, 1.0, 30)
         mesh = sweeps.fitHexMeshToSweep(mesh, quad_mesh, u_values, debug=True)
     except:

@@ -2,7 +2,7 @@ from math import sin, cos, pi
 import numpy as np
 import sys
 from pathlib import Path
-from quadMeshingFunctions import generateQuadMesh, createQuadMeshObjectFromVTK
+from quadMeshingFunctions import generateQuadMesh, createQuadMeshObjectFromVtk
 
 path_to_api = Path(__file__).parent.parent / "build" / "src" / "api"
 sys.path.insert(0, str(path_to_api))
@@ -155,8 +155,8 @@ def meshHookWithQuadMeshNew():
             file.write(f"f {' '.join(str(idx + 1) for idx in face)}\n")
 
     # Generate the quad mesh of the base and return a sweeps QuadMesh object.
-    mesh_base_path = generateQuadMesh(triMesh=str(tri_mesh_base_path))
-    quad_mesh = createQuadMeshObjectFromVTK(mesh_base_path)
+    mesh_base_path = generateQuadMesh(tri_mesh=str(tri_mesh_base_path))
+    quad_mesh = createQuadMeshObjectFromVtk(mesh_base_path)
 
     # This is a set of u values at which you want the mesh to have points.
     # Try changing this to get an idea for what it does.  The values should all be between 0 and 1.
