@@ -17,7 +17,7 @@ import sweeps
 def runQuadriflowProgram(input_file: str):
     """
     Runs the quadriflow program to create a quad mesh from a tet mesh input file.
-    inputFile: str - Path to the tet mesh file.
+    input_file: str - Path to the tet mesh file.
     """
     quadriflow_executable = SWEEPS_DIR / "deps" / "ScaleUntrim" / "build" / "quadriflow"
     config_path = SWEEPS_DIR / "deps" / "ScaleUntrim" / "setting.config"
@@ -43,9 +43,10 @@ def runQuadriflowProgram(input_file: str):
 
 def generateQuadMesh(tri_mesh: sweeps.TriMesh):
     """
-    A python function meant to take a tet mesh and create a quad mesh of the input as a vtk file. 
-    Outputs the filepath of the new quad mesh.
-    tetMesh: str - Path to the tet mesh file.
+    Takes a sweeps.TriMesh object and creates an obj using the data. The obj is used to create a quad mesh vtk file.
+    The vtk file is used to generate a sweeps.QuadMesh object which is then returned.
+    tri_mesh: sweeps.TriMesh - A TriMesh object containing points and face data for the mesh to be generated.
+    Returns: a sweeps.QuadMesh object containing the points and face (quads) data from the vtk output.
     """
     tri_mesh_base_path = Path(__file__).resolve().parent / "MeshBase_new.obj"
     saveTriMeshAsObj(tri_mesh, str(tri_mesh_base_path))
@@ -58,7 +59,7 @@ def generateQuadMesh(tri_mesh: sweeps.TriMesh):
 def createQuadMeshObjectFromVtk(vtk_path: str):
     """
     Takes a file path to a quad mesh as a vtk file and returns a sweeps.QuadMesh object derived from that vtk file.
-    vtkPath: str - path to the vtk file to use in creating the sweeps.QuadMesh object.
+    vtk_path: str - path to the vtk file to use in creating the sweeps.QuadMesh object.
     """
     f = open(vtk_path, "r")
     lines = f.readlines()
@@ -109,6 +110,12 @@ def getQuads(lines):
     return quads
 
 def saveTriMeshAsObj(mesh_base_tri: sweeps.TriMesh, path_to_file: str):
+    """
+    Takes in a sweeps.TriMesh object and a desired file path to save to and
+    creates an obj file using the data from the TriMesh object.
+    mesh_base_tri: sweeps.TriMesh - a TriMesh object created using the sweeps api.
+    path_to_file: str - the path for the obj file to be saved to.
+    """
     with open(path_to_file, "w") as file:
         for vertex in mesh_base_tri.points:
             file.write(f"v {vertex[0]} {vertex[1]} {vertex[2]}\n")

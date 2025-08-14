@@ -137,26 +137,12 @@ def meshHookWithQuadMeshNew():
     # Load a tet mesh and the source and target surfaces from file. Surface12 is the source, and Surface10 is the target.
     mesh = sweeps.loadFromFile(
         "/Users/colbyjohnson/Desktop/work/sweeps/test/data/hook.inp", "Surface12", "Surface10")
-    # mesh = sweeps.loadFromFile(
-    #     "/Users/colbyjohnson/Desktop/work/sweeps/test/data/femur.inp", "Surface5", "Surface2")
-    # mesh = sweeps.loadFromFile(
-    #     "/Users/colbyjohnson/Desktop/work/sweeps/test/data/spring.inp", "Surface2", "Surface3")
-    # mesh = sweeps.loadFromFile( "test/data/Bat_nodesets.inp", "start", "end")
-    
+        
     #This is a tri_mesh object that is the base of the hook.
     tri_mesh_base = sweeps.baseOfSweep(mesh)
     
-    # Save the hook_base tri mesh to an OBJ file using Python's file io library
-    # tri_mesh_base_path = SCRIPT_DIR = Path(__file__).resolve().parent / "TetToQuadConnection" / "Input" / "MeshBase_new.obj"
-    # with open(tri_mesh_base_path, "w") as file:
-    #     for vertex in mesh_base_tri.points:
-    #         file.write(f"v {vertex[0]} {vertex[1]} {vertex[2]}\n")
-    #     for face in mesh_base_tri.tris:
-    #         file.write(f"f {' '.join(str(idx + 1) for idx in face)}\n")
-
     # Generate the quad mesh of the base and return a sweeps QuadMesh object.
     quad_mesh = generateQuadMesh(tri_mesh_base)
-    # quad_mesh = createQuadMeshObjectFromVtk(mesh_base_path)
 
     # This is a set of u values at which you want the mesh to have points.
     # Try changing this to get an idea for what it does.  The values should all be between 0 and 1.
