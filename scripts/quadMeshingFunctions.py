@@ -41,13 +41,13 @@ def runQuadriflowProgram(inputFile: str):
         print(f"An error occurred: {e}")
         raise Exception("Could not run Quadriflow.")
 
-def generateQuadMesh(tetMesh: str):
+def generateQuadMesh(triMesh: str):
     """
     A python function meant to take a tet mesh and create a quad mesh of the input as a vtk file. 
     Outputs the filepath of the new quad mesh.
     tetMesh: str - Path to the tet mesh file.
     """
-    runQuadriflowProgram(tetMesh)
+    runQuadriflowProgram(triMesh)
     vtkPath = SWEEPS_DIR / "deps" / "ScaleUntrim" / "build" / "tempdir" / "quad.vtk"
     if not vtkPath.exists():
         raise FileNotFoundError("The generated quadrilateral vtk file does not exist.")

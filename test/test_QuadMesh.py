@@ -19,7 +19,7 @@ def test_QuadMesh():
     """
     try:
         mesh = sweeps.loadFromFile(str(TEST_HOOK_FILE), "Surface12", "Surface10")
-        mesh_path = generateQuadMesh(tetMesh=str(TEST_HOOK_BASE_FILE))
+        mesh_path = generateQuadMesh(triMesh=str(TEST_HOOK_BASE_FILE))
         quad_mesh = createQuadMeshObjectFromVTK(mesh_path)
         u_values = np.linspace(0.0, 1.0, 30)
         mesh = sweeps.fitHexMeshToSweep(mesh, quad_mesh, u_values, debug=True)

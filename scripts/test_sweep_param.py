@@ -155,7 +155,7 @@ def meshHookWithQuadMeshNew():
             file.write(f"f {' '.join(str(idx + 1) for idx in face)}\n")
 
     # Generate the quad mesh of the base and return a sweeps QuadMesh object.
-    mesh_base_path = generateQuadMesh(tetMesh=str(tri_mesh_base_path))
+    mesh_base_path = generateQuadMesh(triMesh=str(tri_mesh_base_path))
     quad_mesh = createQuadMeshObjectFromVTK(mesh_base_path)
 
     # This is a set of u values at which you want the mesh to have points.
