@@ -36,10 +36,10 @@ def runQuadriflowProgram(inputFile: str):
         print("END OF OUTPUT MESSAGE")
         print(f"ERROR OUTPUT: {e.stderr}")
         print("END OF ERROR MESSAGE")
-        sys.exit(1)
+        raise Exception("Error while running Quadriflow.")
     except Exception as e:
         print(f"An error occurred: {e}")
-        sys.exit(1)
+        raise Exception("Could not run Quadriflow.")
 
 def generateQuadMesh(tetMesh: str):
     """
