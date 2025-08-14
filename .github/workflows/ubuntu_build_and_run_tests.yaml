@@ -21,7 +21,7 @@ jobs:
       - name: Install Python Dependencies
         run: |
           python3 -m pip install --upgrade pip
-          pip install numpy
+          python3 -m pip install numpy
       - name: Setup Mold
         uses: rui314/setup-mold@v1
         with:
