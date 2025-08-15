@@ -178,18 +178,18 @@ namespace eval
         }
     }
 
-    Eigen::MatrixXd piolaTransformedVectorBasis( const SplineSpaceEvaluator& vec_evals,
-                                                 const SplineSpaceEvaluator& geom_evals,
-                                                 const Eigen::MatrixXd& cpts )
+    Eigen::MatrixXd piolaTransformedHDivBasis( const SplineSpaceEvaluator& vec_evals,
+                                               const SplineSpaceEvaluator& geom_evals,
+                                               const Eigen::MatrixXd& cpts )
     {
         const auto jac = geom_evals.evaluateParamToSpatialJacobian( cpts );
         const double det = determinant( jac );
         return 1.0 / det * vec_evals.evaluateBasis() * jac.transpose();
     }
 
-    Eigen::MatrixXd piolaTransformedVectorFirstDerivatives( const SplineSpaceEvaluator& vec_evals,
-                                                            const SplineSpaceEvaluator& geom_evals,
-                                                            const Eigen::MatrixXd& cpts )
+    Eigen::MatrixXd piolaTransformedHDivFirstDerivatives( const SplineSpaceEvaluator& vec_evals,
+                                                          const SplineSpaceEvaluator& geom_evals,
+                                                          const Eigen::MatrixXd& cpts )
     {
         const Eigen::MatrixXd jac = geom_evals.evaluateParamToSpatialJacobian( cpts );
         const double det_inverse = 1.0 / determinant( jac );
@@ -239,15 +239,15 @@ namespace eval
         return ( first_term + second_term + third_term ).transpose();
     }
 
-    Eigen::MatrixXd piolaTransformedBivectorBasis( const SplineSpaceEvaluator& bivec_evals,
-                                                   const SplineSpaceEvaluator& geom_evals,
-                                                   const Eigen::MatrixXd& cpts )
+    Eigen::MatrixXd piolaTransformedL2Basis( const SplineSpaceEvaluator& bivec_evals,
+                                             const SplineSpaceEvaluator& geom_evals,
+                                             const Eigen::MatrixXd& cpts )
     {
         return 1.0 / determinant( geom_evals.evaluateParamToSpatialJacobian( cpts ) ) * bivec_evals.evaluateBasis();
     }
-    Eigen::MatrixXd piolaTransformedBivectorFirstDerivatives( const SplineSpaceEvaluator& bivec_evals,
-                                                              const SplineSpaceEvaluator& geom_evals,
-                                                              const Eigen::MatrixXd& cpts )
+    Eigen::MatrixXd piolaTransformedL2FirstDerivatives( const SplineSpaceEvaluator& bivec_evals,
+                                                        const SplineSpaceEvaluator& geom_evals,
+                                                        const Eigen::MatrixXd& cpts )
     {
         const auto jac = geom_evals.evaluateParamToSpatialJacobian( cpts );
         const double det_inverse = 1.0 / determinant( jac );

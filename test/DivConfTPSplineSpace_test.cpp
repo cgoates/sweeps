@@ -74,9 +74,9 @@ TEST_CASE( "Simple Div Conf TP Spline space" )
             vec_evals.localizePoint( ppt );
 
             const Eigen::VectorXd spatial_point = primal_evals.evaluateManifold( geom.transpose() );
-            const Eigen::MatrixXd spatial_vecs = eval::piolaTransformedVectorBasis( vec_evals, primal_evals, geom.transpose() );//primal_evals.evaluatePiola( geom.transpose() ) * vec_evals.evaluateBasis().transpose();
+            const Eigen::MatrixXd spatial_vecs = eval::piolaTransformedHDivBasis( vec_evals, primal_evals, geom.transpose() );//primal_evals.evaluatePiola( geom.transpose() ) * vec_evals.evaluateBasis().transpose();
             const Eigen::MatrixXd param_vecs = vec_evals.evaluateBasis();
-            const Eigen::MatrixXd spatial_vec_derivs = eval::piolaTransformedVectorFirstDerivatives( vec_evals, primal_evals, geom.transpose() );
+            const Eigen::MatrixXd spatial_vec_derivs = eval::piolaTransformedHDivFirstDerivatives( vec_evals, primal_evals, geom.transpose() );
 
             output_points.simplices.push_back( { output_points.points.size() } );
             output_points.points.push_back( (Eigen::Vector3d() << spatial_point, 0 ).finished() );
@@ -182,9 +182,9 @@ TEST_CASE( "Simple Hierarchical Div Conf TP Spline space" )
             vec_evals.localizePoint( ppt );
 
             const Eigen::VectorXd spatial_point = primal_evals.evaluateManifold( geom.transpose() );
-            const Eigen::MatrixXd spatial_vecs = eval::piolaTransformedVectorBasis( vec_evals, primal_evals, geom.transpose() );//primal_evals.evaluatePiola( geom.transpose() ) * vec_evals.evaluateBasis().transpose();
+            const Eigen::MatrixXd spatial_vecs = eval::piolaTransformedHDivBasis( vec_evals, primal_evals, geom.transpose() );//primal_evals.evaluatePiola( geom.transpose() ) * vec_evals.evaluateBasis().transpose();
             const Eigen::MatrixXd param_vecs = vec_evals.evaluateBasis();
-            const Eigen::MatrixXd spatial_vec_derivs = eval::piolaTransformedVectorFirstDerivatives( vec_evals, primal_evals, geom.transpose() );
+            const Eigen::MatrixXd spatial_vec_derivs = eval::piolaTransformedHDivFirstDerivatives( vec_evals, primal_evals, geom.transpose() );
 
             output_points.simplices.push_back( { output_points.points.size() } );
             output_points.points.push_back( (Eigen::Vector3d() << spatial_point, 0 ).finished() );
@@ -260,9 +260,9 @@ TEST_CASE( "Simple 3d Div Conf TP Spline space" )
             vec_evals.localizePoint( ppt );
 
             const Eigen::VectorXd spatial_point = primal_evals.evaluateManifold( geom.transpose() );
-            const Eigen::MatrixXd spatial_vecs = eval::piolaTransformedVectorBasis( vec_evals, primal_evals, geom.transpose() );//primal_evals.evaluatePiola( geom.transpose() ) * vec_evals.evaluateBasis().transpose();
+            const Eigen::MatrixXd spatial_vecs = eval::piolaTransformedHDivBasis( vec_evals, primal_evals, geom.transpose() );//primal_evals.evaluatePiola( geom.transpose() ) * vec_evals.evaluateBasis().transpose();
             const Eigen::MatrixXd param_vecs = vec_evals.evaluateBasis();
-            const Eigen::MatrixXd spatial_vec_derivs = eval::piolaTransformedVectorFirstDerivatives( vec_evals, primal_evals, geom.transpose() );
+            const Eigen::MatrixXd spatial_vec_derivs = eval::piolaTransformedHDivFirstDerivatives( vec_evals, primal_evals, geom.transpose() );
 
             output_points.simplices.push_back( { output_points.points.size() } );
             output_points.points.push_back( spatial_point );
@@ -386,9 +386,9 @@ TEST_CASE( "Simple 3d Hierarchical Div Conf TP Spline space" )
             vec_evals.localizePoint( ppt );
 
             const Eigen::VectorXd spatial_point = primal_evals.evaluateManifold( geom );
-            const Eigen::MatrixXd spatial_vecs = eval::piolaTransformedVectorBasis( vec_evals, primal_evals, geom );
+            const Eigen::MatrixXd spatial_vecs = eval::piolaTransformedHDivBasis( vec_evals, primal_evals, geom );
             const Eigen::MatrixXd param_vecs = vec_evals.evaluateBasis();
-            const Eigen::MatrixXd spatial_vec_derivs = eval::piolaTransformedVectorFirstDerivatives( vec_evals, primal_evals, geom );
+            const Eigen::MatrixXd spatial_vec_derivs = eval::piolaTransformedHDivFirstDerivatives( vec_evals, primal_evals, geom );
 
             output_points.simplices.push_back( { output_points.points.size() } );
             output_points.points.push_back( spatial_point );

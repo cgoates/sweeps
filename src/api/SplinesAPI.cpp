@@ -177,7 +177,7 @@ PYBIND11_MODULE( splines, m )
         .def(
             "piolaTransformedHDIVBasis",
             []( const api::NavierStokesDiscretization& nsd ) {
-                return piolaTransformedVectorBasis( nsd.getHDIV(), nsd.getH1(), nsd.controlPoints() );
+                return piolaTransformedHDivBasis( nsd.getHDIV(), nsd.getH1(), nsd.controlPoints() );
             },
             "Evaluates the Piola transformed HDiv basis at the parametric position from the latest calls to "
             "localizeElement and localizePoint. The basis is returned as a matrix with HDIV.numFunctions( elem ) rows "
@@ -186,7 +186,7 @@ PYBIND11_MODULE( splines, m )
         .def(
             "piolaTransformedHDIVFirstDerivatives",
             []( const api::NavierStokesDiscretization& nsd ) {
-                return piolaTransformedVectorFirstDerivatives( nsd.getHDIV(), nsd.getH1(), nsd.controlPoints() );
+                return piolaTransformedHDivFirstDerivatives( nsd.getHDIV(), nsd.getH1(), nsd.controlPoints() );
             },
             "Evaluates the Piola transformed first derivatives of the HDiv basis at the parametric position from the "
             "latest calls to localizeElement and localizePoint. The basis is returned as a matrix with "
@@ -195,7 +195,7 @@ PYBIND11_MODULE( splines, m )
         .def(
             "piolaTransformedL2",
             []( const api::NavierStokesDiscretization& nsd ) {
-                return piolaTransformedBivectorBasis( nsd.getL2(), nsd.getH1(), nsd.controlPoints() );
+                return piolaTransformedL2Basis( nsd.getL2(), nsd.getH1(), nsd.controlPoints() );
             },
             "Evaluates the Piola transformed L2 basis at the parametric position from the latest calls to "
             "localizeElement and localizePoint. The basis is returned as a matrix with L2.numFunctions( elem ) rows "
@@ -203,7 +203,7 @@ PYBIND11_MODULE( splines, m )
         .def(
             "piolaTransformedL2FirstDerivatives",
             []( const api::NavierStokesDiscretization& nsd ) {
-                return piolaTransformedBivectorFirstDerivatives( nsd.getL2(), nsd.getH1(), nsd.controlPoints() );
+                return piolaTransformedL2FirstDerivatives( nsd.getL2(), nsd.getH1(), nsd.controlPoints() );
             },
             "Evaluates the piola transformed derivatives of the L2 basis at the parametric position from the latest "
             "calls to localizeElement and localizePoint. The basis is returned as a matrix with L2.numFunctions( elem "
