@@ -9,6 +9,7 @@ import shutil
 import subprocess
 from pathlib import Path
 import sys
+import io
 
 def findOS():
     try:
@@ -147,12 +148,31 @@ def moveDirectoryFromSweeps(source, target, sourceFromSweeps=True):
     target: str - the target folder where the source is being moved to.
     """
     # Create the paths by finding the path to sweeps and appending the arguments to it.
-    sweepsPath = Path(__file__).resolve().parent.parent.parent.parent
+    sweepsPath = Path(__file__).resolve().parent.parent
     if sourceFromSweeps:
         source = Path(sweepsPath, source)
     target = Path(sweepsPath, target)
     runCommand(["mv", str(source), str(target)])
     return
+
+def writeConfigFile():
+    """
+    Write the necessary config file so the built scaleUntrim library can be immediately run.
+    """
+    sweeps_path = Path(__file__).resolve().parent.parent
+    config_path = sweeps_path / "deps" / "ScaleUntrim" / "setting.config"
+    f = open(config_path, "r")
+    lines = f.readlines()
+    f.close()
+    temp_dir_path = sweeps_path / "deps" / "ScaleUntrim" / "build" / "tempDir"
+    f = open(config_path, "w")
+    first_line = "temp_dir: " + str(temp_dir_path) + "/\n"
+    lines[0] = first_line
+    output = ""
+    for line in lines:
+        output += line
+    f.write(output)
+    f.close()
 
 def buildScaleUntrim():
     os = findOS()
@@ -171,6 +191,7 @@ def buildScaleUntrim():
     runCommand(["make", "-C", "ScaleUntrim/build"])
     makeDirectory("ScaleUntrim/build/tempDir")
     moveDirectoryFromSweeps("ScaleUntrim", "deps/", sourceFromSweeps=False)
+    writeConfigFile()
     print("ScaleUntrim has been placed in the sweeps/deps folder and built successfully.")
     print("To run, update the setting.config file in the ScaleUntrim folder:\n1. Change the temp_dir to match your full working path to the tempDir directory in the build folder (This will be where the quad mesh is output).\n2. Change the magnitude value to your desired value, likely between 1 and 2, such as 1.4")
     print("3. Run the executable from the build folder with the command:\n  ./quadriflow <inputFilePath> ../setting.config")
