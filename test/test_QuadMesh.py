@@ -9,6 +9,7 @@ TEST_HOOK_FILE = SCRIPT_DIR / "data" / "hook.inp"
 sys.path.insert(0, str(PROJECT_DIR))
 sys.path.insert(0, str(PATH_TO_API))
 from scripts.quadMeshingFunctions import generateQuadMesh
+from scripts.scaleUntrimBuilder import buildScaleUntrim
 import sweeps
 
 def test_QuadMesh():
@@ -17,6 +18,7 @@ def test_QuadMesh():
     The test will fail if any errors occur in the process.
     """
     try:
+        buildScaleUntrim()
         mesh = sweeps.loadFromFile(str(TEST_HOOK_FILE), "Surface12", "Surface10")
         tri_mesh_base = sweeps.baseOfSweep(mesh)
         quad_mesh = generateQuadMesh(tri_mesh_base)
@@ -24,3 +26,5 @@ def test_QuadMesh():
         mesh = sweeps.fitHexMeshToSweep(mesh, quad_mesh, u_values, debug=True)
     except Exception as e:
         raise AssertionError(f"Quad mesh couldn't be generated: {e}") from e
+
+test_QuadMesh()
