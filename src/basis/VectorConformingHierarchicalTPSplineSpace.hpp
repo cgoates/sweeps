@@ -1,16 +1,16 @@
 #pragma once
 #include <SplineSpace.hpp>
-#include <DivConfBasisComplex.hpp>
+#include <VectorConformingBasisComplex.hpp>
 #include <HierarchicalTPSplineSpace.hpp>
 
 namespace basis
 {
-    class DivConfHierarchicalTPSplineSpace : public SplineSpace
+    class VectorConformingHierarchicalTPSplineSpace : public SplineSpace
     {
         public:
-        DivConfHierarchicalTPSplineSpace( const std::shared_ptr<const DivConfBasisComplex>& bc, const HierarchicalTPSplineSpace& primal_basis );
+        VectorConformingHierarchicalTPSplineSpace( const std::shared_ptr<const VectorConformingBasisComplex>& bc, const HierarchicalTPSplineSpace& primal_basis );
 
-        virtual const DivConfBasisComplex& basisComplex() const override;
+        virtual const VectorConformingBasisComplex& basisComplex() const override;
 
         virtual Eigen::MatrixXd extractionOperator( const topology::Cell& ) const override;
 
@@ -23,7 +23,7 @@ namespace basis
         const SmallVector<std::shared_ptr<const HierarchicalTPSplineSpace>, 3>& scalarBases() const { return mScalarTPBases; }
 
         private:
-        const std::shared_ptr<const DivConfBasisComplex> mBasisComplex;
+        const std::shared_ptr<const VectorConformingBasisComplex> mBasisComplex;
         SmallVector<std::shared_ptr<const HierarchicalTPSplineSpace>, 3> mScalarTPBases;
     };
 }

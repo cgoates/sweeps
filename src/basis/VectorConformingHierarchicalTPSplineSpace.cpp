@@ -1,19 +1,19 @@
-#include <DivConfHierarchicalTPSplineSpace.hpp>
-#include <DivConfTPSplineSpace.hpp>
+#include <VectorConformingHierarchicalTPSplineSpace.hpp>
+#include <VectorConformingTPSplineSpace.hpp>
 #include <KnotVector.hpp>
 
 namespace basis
 {
-    DivConfHierarchicalTPSplineSpace::DivConfHierarchicalTPSplineSpace(
-        const std::shared_ptr<const DivConfBasisComplex>& bc, const HierarchicalTPSplineSpace& primal_basis )
+    VectorConformingHierarchicalTPSplineSpace::VectorConformingHierarchicalTPSplineSpace(
+        const std::shared_ptr<const VectorConformingBasisComplex>& bc, const HierarchicalTPSplineSpace& primal_basis )
         : mBasisComplex( bc )
     {
         // Construct d HierarchicalTPSplineSpaces for the d vector components by constructing a series of
-        // DivConfTPSplineSpaces, and then pulling out the underlying scalar bases.
+        // VectorConformingTPSplineSpaces, and then pulling out the underlying scalar bases.
 
         if( &bc->parametricAtlas() != &primal_basis.basisComplex().parametricAtlas() )
             throw std::invalid_argument(
-                "The basis complex and primal basis given to DivConfHierarchicalTPSplineSpace must have the same parametric atlas" );
+                "The basis complex and primal basis given to VectorConformingHierarchicalTPSplineSpace must have the same parametric atlas" );
 
         const size_t num_levels = primal_basis.basisComplex().parametricAtlas().cmap().numLevels();
         const size_t dim = primal_basis.basisComplex().parametricAtlas().cmap().dim();
@@ -29,8 +29,8 @@ namespace basis
 
         for( size_t level = 0; level < num_levels; level++ )
         {
-            const auto level_bc = std::make_shared<const DivConfBasisComplex>( primal_refinement_levels.at( level )->basisComplexPtr() );
-            const DivConfTPSplineSpace level_ss( level_bc, *primal_refinement_levels.at( level ) );
+            const auto level_bc = std::make_shared<const VectorConformingBasisComplex>( primal_refinement_levels.at( level )->basisComplexPtr() );
+            const VectorConformingTPSplineSpace level_ss( level_bc, *primal_refinement_levels.at( level ) );
             const SmallVector<std::shared_ptr<const TPSplineSpace>,3>& scalar = level_ss.scalarTPBases();
             if( scalar.size() != scalar_level_bases.size() ) throw std::runtime_error( "Scalar size is not the same" );
 
@@ -49,12 +49,12 @@ namespace basis
         }
     }
 
-    const DivConfBasisComplex& DivConfHierarchicalTPSplineSpace::basisComplex() const
+    const VectorConformingBasisComplex& VectorConformingHierarchicalTPSplineSpace::basisComplex() const
     {
         return *mBasisComplex;
     }
 
-    Eigen::MatrixXd DivConfHierarchicalTPSplineSpace::extractionOperator( const topology::Cell& c ) const
+    Eigen::MatrixXd VectorConformingHierarchicalTPSplineSpace::extractionOperator( const topology::Cell& c ) const
     {
         SmallVector<Eigen::MatrixXd, 3> scalar_ops;
         std::transform( mScalarTPBases.begin(), mScalarTPBases.end(), std::back_inserter( scalar_ops ), [&]( const auto& scalar_basis ) {
@@ -86,7 +86,7 @@ namespace basis
         throw std::runtime_error( "Bad dimension for div conf tp spline space" );
     }
 
-    std::vector<FunctionId> DivConfHierarchicalTPSplineSpace::connectivity( const topology::Cell& c ) const
+    std::vector<FunctionId> VectorConformingHierarchicalTPSplineSpace::connectivity( const topology::Cell& c ) const
     {
         std::vector<FunctionId> connectivity;
 
@@ -107,7 +107,7 @@ namespace basis
         return connectivity;
     }
 
-    size_t DivConfHierarchicalTPSplineSpace::numFunctions() const
+    size_t VectorConformingHierarchicalTPSplineSpace::numFunctions() const
     {
         return std::accumulate( mScalarTPBases.begin(), mScalarTPBases.end(), 0, [&]( const size_t accum, const auto& ss ) {
             return accum + ss->numFunctions();

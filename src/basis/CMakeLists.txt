@@ -4,18 +4,18 @@ add_library( basis SHARED
   BasisComplex1d.cpp
   TPBasisComplex.cpp
   MultiPatchBasisComplex.cpp
-  DivConfBasisComplex.cpp
+  VectorConformingBasisComplex.cpp
   SplineSpace.cpp
   BSplineSpace1d.cpp
   TPSplineSpace.cpp
   MultiPatchSplineSpace.cpp
-  DivConfTPSplineSpace.cpp
+  VectorConformingTPSplineSpace.cpp
   KnotVector.cpp
   HierarchicalTPBasisComplex.cpp
   HierarchicalMultiPatchBasisComplex.cpp
   HierarchicalTPSplineSpace.cpp
   HierarchicalMultiPatchSplineSpace.cpp
-  DivConfHierarchicalTPSplineSpace.cpp
+  VectorConformingHierarchicalTPSplineSpace.cpp
 )
 
 target_link_libraries( basis PUBLIC util topology param )

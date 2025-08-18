@@ -7,14 +7,14 @@
 
 namespace api
 {
-    basis::DivConfTPSplineSpace buildHDIV( const basis::TPSplineSpace& H1 )
+    basis::VectorConformingTPSplineSpace buildHDIV( const basis::TPSplineSpace& H1 )
     {
-        const auto HDIV_bc = std::make_shared<basis::DivConfBasisComplex>( H1.basisComplexPtr() );
-        return basis::DivConfTPSplineSpace( HDIV_bc, H1 );
+        const auto HDIV_bc = std::make_shared<basis::VectorConformingBasisComplex>( H1.basisComplexPtr() );
+        return basis::VectorConformingTPSplineSpace( HDIV_bc, H1 );
     }
 
     basis::TPSplineSpace buildL2( const std::shared_ptr<const param::TPParametricAtlas>& param,
-                                  const basis::DivConfTPSplineSpace& HDIV )
+                                  const basis::VectorConformingTPSplineSpace& HDIV )
     {
         const auto L2_bc =
             std::make_shared<basis::TPBasisComplex>( param,
@@ -117,14 +117,14 @@ namespace api
         return basis::buildHierarchicalSplineSpace( refinement_levels, leafElements( refinement_level_cmaps, elems_to_refine ) );
     }
 
-    basis::DivConfHierarchicalTPSplineSpace buildHDIV( const basis::HierarchicalTPSplineSpace& H1 )
+    basis::VectorConformingHierarchicalTPSplineSpace buildHDIV( const basis::HierarchicalTPSplineSpace& H1 )
     {
-        const auto HDIV_bc = std::make_shared<basis::DivConfBasisComplex>( H1.basisComplexPtr() );
-        return basis::DivConfHierarchicalTPSplineSpace( HDIV_bc, H1 );
+        const auto HDIV_bc = std::make_shared<basis::VectorConformingBasisComplex>( H1.basisComplexPtr() );
+        return basis::VectorConformingHierarchicalTPSplineSpace( HDIV_bc, H1 );
     }
 
     basis::HierarchicalTPSplineSpace buildL2( const std::shared_ptr<const param::HierarchicalTPParametricAtlas>& param,
-                                              const basis::DivConfHierarchicalTPSplineSpace& HDIV )
+                                              const basis::VectorConformingHierarchicalTPSplineSpace& HDIV )
     {
         std::vector<std::shared_ptr<const basis::TPBasisComplex>> refinement_level_bcs;
         std::vector<std::shared_ptr<const basis::TPSplineSpace>> refinement_level_ss;

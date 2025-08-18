@@ -10,9 +10,9 @@
 #include <TPSplineSpace.hpp>
 #include <VTKOutput.hpp>
 #include <IndexOperations.hpp>
-#include <DivConfBasisComplex.hpp>
-#include <DivConfTPSplineSpace.hpp>
-#include <DivConfHierarchicalTPSplineSpace.hpp>
+#include <VectorConformingBasisComplex.hpp>
+#include <VectorConformingTPSplineSpace.hpp>
+#include <VectorConformingHierarchicalTPSplineSpace.hpp>
 #include <SplineSpaceEvaluator.hpp>
 #include <VTKOutput.hpp>
 #include <iomanip>
@@ -41,8 +41,8 @@ TEST_CASE( "Simple Div Conf TP Spline space" )
 
     const TPSplineSpace ss_2d = buildBSpline( {kv1, kv2},  {degree1, degree2} );
 
-    const auto dcbc = std::make_shared<const DivConfBasisComplex>( ss_2d.basisComplexPtr() );
-    const DivConfTPSplineSpace dcss( dcbc, ss_2d );
+    const auto dcbc = std::make_shared<const VectorConformingBasisComplex>( ss_2d.basisComplexPtr() );
+    const VectorConformingTPSplineSpace dcss( dcbc, ss_2d );
 
     const auto& param_2d = dcss.basisComplex().parametricAtlas();
     const auto& cmap_2d = param_2d.cmap();
@@ -145,8 +145,8 @@ TEST_CASE( "Simple Hierarchical Div Conf TP Spline space" )
         { Face( 40 ), Face( 44 ), Face( 48 ), Face( 52 ), Face( 136 ), Face( 140 ), Face( 144 ), Face( 148 ) }
     } );
 
-    const auto dcbc = std::make_shared<const DivConfBasisComplex>( primal.basisComplexPtr() );
-    const DivConfHierarchicalTPSplineSpace dcss( dcbc, primal );
+    const auto dcbc = std::make_shared<const VectorConformingBasisComplex>( primal.basisComplexPtr() );
+    const VectorConformingHierarchicalTPSplineSpace dcss( dcbc, primal );
 
     const auto& param_2d = dcss.basisComplex().parametricAtlas();
     const auto& cmap_2d = param_2d.cmap();
@@ -227,8 +227,8 @@ TEST_CASE( "Simple 3d Div Conf TP Spline space" )
 
     const TPSplineSpace ss_3d = buildBSpline( {kv1, kv2, kv2},  {degree1, degree2, degree2} );
 
-    const auto dcbc = std::make_shared<const DivConfBasisComplex>( ss_3d.basisComplexPtr() );
-    const DivConfTPSplineSpace dcss( dcbc, ss_3d );
+    const auto dcbc = std::make_shared<const VectorConformingBasisComplex>( ss_3d.basisComplexPtr() );
+    const VectorConformingTPSplineSpace dcss( dcbc, ss_3d );
 
     const auto& param_3d = dcss.basisComplex().parametricAtlas();
     const auto& cmap_3d = param_3d.cmap();
@@ -348,8 +348,8 @@ TEST_CASE( "Simple 3d Hierarchical Div Conf TP Spline space" )
     }
     const HierarchicalTPSplineSpace primal = buildHierarchicalSplineSpace( { level1, level2, level3 }, leaf_elements );
 
-    const auto dcbc = std::make_shared<const DivConfBasisComplex>( primal.basisComplexPtr() );
-    const DivConfHierarchicalTPSplineSpace dcss( dcbc, primal );
+    const auto dcbc = std::make_shared<const VectorConformingBasisComplex>( primal.basisComplexPtr() );
+    const VectorConformingHierarchicalTPSplineSpace dcss( dcbc, primal );
 
     const auto& param_3d = dcss.basisComplex().parametricAtlas();
     const auto& cmap_3d = param_3d.cmap();

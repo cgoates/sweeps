@@ -1,17 +1,19 @@
 #pragma once
 #include <SplineSpace.hpp>
-#include <DivConfBasisComplex.hpp>
+#include <VectorConformingBasisComplex.hpp>
 #include <TPSplineSpace.hpp>
 
 namespace basis
 {
-    class DivConfTPSplineSpace : public SplineSpace
+    class VectorConformingTPSplineSpace : public SplineSpace
     {
         public:
-        DivConfTPSplineSpace( const std::shared_ptr<const DivConfBasisComplex>& bc, const TPSplineSpace& primal_basis );
-        virtual ~DivConfTPSplineSpace() = default;
+        VectorConformingTPSplineSpace( const std::shared_ptr<const VectorConformingBasisComplex>& bc,
+                              const TPSplineSpace& primal_basis,
+                              const ConformingType conforming_type = ConformingType::Divergence );
+        virtual ~VectorConformingTPSplineSpace() = default;
 
-        virtual const DivConfBasisComplex& basisComplex() const override;
+        virtual const VectorConformingBasisComplex& basisComplex() const override;
 
         virtual Eigen::MatrixXd extractionOperator( const topology::Cell& ) const override;
 
@@ -28,9 +30,12 @@ namespace basis
 
         const SmallVector<std::shared_ptr<const TPSplineSpace>, 3>& scalarTPBases() const { return mScalarTPBases; }
 
+        const ConformingType& conformingType() const { return mConformingType; }
+
         private:
-        const std::shared_ptr<const DivConfBasisComplex> mBasisComplex;
+        const std::shared_ptr<const VectorConformingBasisComplex> mBasisComplex;
         SmallVector<std::shared_ptr<const BSplineSpace1d>, 3> mReducedDegree1dBases;
         SmallVector<std::shared_ptr<const TPSplineSpace>, 3> mScalarTPBases;
+        const ConformingType mConformingType;
     };
 }

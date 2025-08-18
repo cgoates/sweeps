@@ -10,8 +10,8 @@
 #include <TPSplineSpace.hpp>
 #include <VTKOutput.hpp>
 #include <IndexOperations.hpp>
-#include <DivConfBasisComplex.hpp>
-#include <DivConfTPSplineSpace.hpp>
+#include <VectorConformingBasisComplex.hpp>
+#include <VectorConformingTPSplineSpace.hpp>
 #include <SplineSpaceEvaluator.hpp>
 #include <VTKOutput.hpp>
 

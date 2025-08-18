@@ -1,8 +1,8 @@
 #pragma once
-#include <DivConfTPSplineSpace.hpp>
+#include <VectorConformingTPSplineSpace.hpp>
 #include <SplineSpaceEvaluator.hpp>
 #include <CombinatorialMapBoundary.hpp>
-#include <DivConfHierarchicalTPSplineSpace.hpp>
+#include <VectorConformingHierarchicalTPSplineSpace.hpp>
 #include <IndexOperations.hpp>
 
 namespace api
@@ -50,7 +50,7 @@ namespace api
         virtual const eval::SplineSpaceEvaluator& getL2() const override { return L2; }
 
         const basis::TPSplineSpace H1_ss;
-        const basis::DivConfTPSplineSpace HDIV_ss;
+        const basis::VectorConformingTPSplineSpace HDIV_ss;
         const basis::TPSplineSpace L2_ss;
 
         private:
@@ -97,7 +97,7 @@ namespace api
         virtual const eval::SplineSpaceEvaluator& getL2() const override { return L2; }
 
         const basis::HierarchicalTPSplineSpace H1_ss;
-        const basis::DivConfHierarchicalTPSplineSpace HDIV_ss;
+        const basis::VectorConformingHierarchicalTPSplineSpace HDIV_ss;
         const basis::HierarchicalTPSplineSpace L2_ss;
 
         private:
