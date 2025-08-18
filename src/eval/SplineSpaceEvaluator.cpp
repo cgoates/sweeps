@@ -178,6 +178,68 @@ namespace eval
         }
     }
 
+    Eigen::MatrixXd piolaTransformedHCurlBasis( const SplineSpaceEvaluator& vec_evals,
+                                                const SplineSpaceEvaluator& geom_evals,
+                                                const Eigen::MatrixXd& cpts )
+    {
+        const Eigen::MatrixXd jac_inverse_transpose = geom_evals.evaluateParamToSpatialJacobian( cpts ).cwiseInverse();
+        return vec_evals.evaluateBasis() * jac_inverse_transpose.transpose();
+    }
+
+    Eigen::MatrixXd piolaTransformedHCurlFirstDerivatives( const SplineSpaceEvaluator& vec_evals,
+                                                           const SplineSpaceEvaluator& geom_evals,
+                                                           const Eigen::MatrixXd& cpts )
+    {
+        const Eigen::MatrixXd vector_basis = vec_evals.evaluateBasis().transpose();
+        const size_t param_dim = geom_evals.splineSpace().basisComplex().parametricAtlas().cmap().dim();
+        const size_t spatial_dim = cpts.rows();
+        const size_t n_funcs = vector_basis.cols();
+        const Eigen::MatrixXd jac = geom_evals.evaluateParamToSpatialJacobian( cpts );
+        const auto inverse_transpose_jacobian = jac.cwiseInverse();
+
+        const auto modified_hessian = [&geom_evals, &cpts, &param_dim, &spatial_dim]() {
+            const Eigen::MatrixXd hess = geom_evals.evaluateParamToSpatialHessian( cpts );
+            Eigen::MatrixXd out( spatial_dim * param_dim, param_dim );
+            if( param_dim == 2 )
+                // FIXME: Make this work for 3d spatial/2d manifold
+                out << hess( 0, 0 ), hess( 0, 1 ),
+                       hess( 1, 0 ), hess( 1, 1 ),
+                       hess( 0, 1 ), hess( 0, 2 ),
+                       hess( 1, 1 ), hess( 1, 2 );
+            else if( param_dim == 3 )
+                out << hess( 0, 0 ), hess( 0, 1 ), hess( 0, 2 ),
+                       hess( 1, 0 ), hess( 1, 1 ), hess( 1, 2 ),
+                       hess( 2, 0 ), hess( 2, 1 ), hess( 2, 2 ),
+                       hess( 0, 1 ), hess( 0, 3 ), hess( 0, 4 ),
+                       hess( 1, 1 ), hess( 1, 3 ), hess( 1, 4 ),
+                       hess( 2, 1 ), hess( 2, 3 ), hess( 2, 4 ),
+                       hess( 0, 2 ), hess( 0, 4 ), hess( 0, 5 ),
+                       hess( 1, 2 ), hess( 1, 4 ), hess( 1, 5 ),
+                       hess( 2, 2 ), hess( 2, 4 ), hess( 2, 5 );
+            else
+                throw std::runtime_error( "Unsupported parametric dimension for piola transformed vector first derivatives." );
+            return out;
+        };
+
+        const Eigen::MatrixXd second_term = [&](){
+            const auto inverse_jacobian = inverse_transpose_jacobian.transpose();
+            Eigen::MatrixXd multiplier = modified_hessian();
+
+            multiplier = multiplier * inverse_jacobian;
+
+            multiplier.topRows( spatial_dim ) = inverse_jacobian * multiplier.topRows( spatial_dim );
+            multiplier.bottomRows( spatial_dim ) = inverse_jacobian * multiplier.bottomRows( spatial_dim );
+            return multiplier * vector_basis;
+        }();
+
+        return ( ( inverse_transpose_jacobian *
+                   vec_evals.evaluateFirstDerivativesFromParamToSpatial().transpose().reshaped( param_dim,
+                                                                                                n_funcs * param_dim ) )
+                     .reshaped( spatial_dim * param_dim, n_funcs ) +
+                 second_term )
+            .transpose();
+    }
+
     Eigen::MatrixXd piolaTransformedHDivBasis( const SplineSpaceEvaluator& vec_evals,
                                                const SplineSpaceEvaluator& geom_evals,
                                                const Eigen::MatrixXd& cpts )

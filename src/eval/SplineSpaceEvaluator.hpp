@@ -43,6 +43,8 @@ namespace eval
         std::optional<ParentBasisEval> mLocalEvals;
     };
 
+    Eigen::MatrixXd piolaTransformedHCurlBasis( const SplineSpaceEvaluator& vec_evals, const SplineSpaceEvaluator& geom_evals, const Eigen::MatrixXd& cpts );
+    Eigen::MatrixXd piolaTransformedHCurlFirstDerivatives( const SplineSpaceEvaluator& vec_evals, const SplineSpaceEvaluator& geom_evals, const Eigen::MatrixXd& cpts );
     Eigen::MatrixXd piolaTransformedHDivBasis( const SplineSpaceEvaluator& vec_evals, const SplineSpaceEvaluator& geom_evals, const Eigen::MatrixXd& cpts );
     Eigen::MatrixXd piolaTransformedHDivFirstDerivatives( const SplineSpaceEvaluator& vec_evals, const SplineSpaceEvaluator& geom_evals, const Eigen::MatrixXd& cpts );
     Eigen::MatrixXd piolaTransformedL2Basis( const SplineSpaceEvaluator& bivec_evals, const SplineSpaceEvaluator& geom_evals, const Eigen::MatrixXd& cpts );
