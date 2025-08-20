@@ -22,6 +22,12 @@ def test_QuadMesh():
         mesh = sweeps.loadFromFile(str(TEST_HOOK_FILE), "Surface12", "Surface10")
         tri_mesh_base = sweeps.baseOfSweep(mesh)
         quad_mesh = generateQuadMesh(tri_mesh_base)
+        SWEEPS_DIR = Path(__file__).resolve().parent.parent
+        vtk_path = SWEEPS_DIR / "deps" / "ScaleUntrim" / "build" / "tempdir" / "quad.vtk"
+        print(SWEEPS_DIR)
+        print(vtk_path)
+        if not vtk_path.exists():
+            raise FileNotFoundError("The generated quadrilateral vtk file does not exist.")
         u_values = np.linspace(0.0, 1.0, 30)
         mesh = sweeps.fitHexMeshToSweep(mesh, quad_mesh, u_values, debug=True)
     except Exception as e:
