@@ -9,6 +9,7 @@ add_subdirectory( fitting )
 add_subdirectory( io )
 add_subdirectory( reparam )
 add_subdirectory( api )
+add_subdirectory( assembly )
 
 add_executable( sweep main.cpp )
 
