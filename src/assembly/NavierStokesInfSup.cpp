@@ -9,6 +9,7 @@
 #include <Eigen/LU>
 #include <KnotVector.hpp>
 #include <Eigen/Eigenvalues>
+#include <Eigen/IterativeLinearSolvers>
 
 constexpr double SIGMA = 0;
 constexpr double KINEMATIC_VISCOSITY = -1;
@@ -75,12 +76,12 @@ Eigen::MatrixXd localStiffness( api::NavierStokesDiscretization& nsd,
         // Pressure coupling
         for( size_t a = 0; a < n_local_hdiv; ++a )
         {
-            const double trace_grad = gradient_basis( a, 0 ) + gradient_basis( a, 3 );
+            const double trace_grad = gradient_basis( a, 0 ) + gradient_basis( a, 3 );//FIXME: 3d, and gradient in parametric space
             for( size_t b = 0; b < n_local_L2; ++b )
             {
                 const double ke_val = -trace_grad * transformed_basis_L2( b ) * jac_det * qwt;
                 ke( a, b + n_local_hdiv ) += ke_val;
-                ke( b + n_local_hdiv, a ) += -ke_val;
+                ke( b + n_local_hdiv, a ) += ke_val;
             }
         }
     } );
@@ -88,7 +89,7 @@ Eigen::MatrixXd localStiffness( api::NavierStokesDiscretization& nsd,
     return ke;
 }
 
-Eigen::SparseMatrix<double> assembleStiffnessMatrix( api::NavierStokesDiscretization& nsd, const assembly::QuadratureRule& quad_rule )
+std::pair<Eigen::SparseMatrix<double>, Eigen::SparseMatrix<double>> assembleStiffnessMatrix( api::NavierStokesDiscretization& nsd, const assembly::QuadratureRule& quad_rule )
 {
     // # global SIGMA  # Use global SIGMA
     // # SIGMA = 1  # Set for Stokes flow
@@ -98,7 +99,8 @@ Eigen::SparseMatrix<double> assembleStiffnessMatrix( api::NavierStokesDiscretiza
     const size_t n_total_funcs = n_hdiv + n_l2;
     const topology::CombinatorialMap& cmap = nsd.getHDIV().splineSpace().basisComplex().parametricAtlas().cmap();
 
-    std::vector<Eigen::Triplet<double>> triplets;
+    std::vector<Eigen::Triplet<double>> triplets_uu;
+    std::vector<Eigen::Triplet<double>> triplets_up;
 
     Eigen::VectorXi ID = Eigen::VectorXi::LinSpaced( n_total_funcs, 0, n_total_funcs - 1 );
 
@@ -125,16 +127,16 @@ Eigen::SparseMatrix<double> assembleStiffnessMatrix( api::NavierStokesDiscretiza
                     const Eigen::Index B = elem_connectivity_HDIV.at( b ).id();
                     if( ID( B ) != -1 )
                     {
-                        triplets.emplace_back( A, B, k_e( a, b ) );
+                        triplets_uu.emplace_back( A, B, k_e( a, b ) );
                     }
                 }
                 for( size_t b = 0; b < n_local_L2; ++b )
                 {
-                    const Eigen::Index B = elem_connectivity_L2.at( b ).id() + n_hdiv;
-                    if( ID( B ) != -1 )
+                    const Eigen::Index B = elem_connectivity_L2.at( b ).id();
+                    if( ID( B + n_hdiv ) != -1 )
                     {
-                        triplets.emplace_back( A, B, k_e( a, b + n_local_hdiv ) );
-                        triplets.emplace_back( B, A, k_e( b + n_local_hdiv, a ) );
+                        // triplets_up.emplace_back( A, B, k_e( a, b + n_local_hdiv ) );
+                        triplets_up.emplace_back( B, A, k_e( b + n_local_hdiv, a ) );
                     }
                 }
             }
@@ -142,10 +144,12 @@ Eigen::SparseMatrix<double> assembleStiffnessMatrix( api::NavierStokesDiscretiza
         return true;
     } );
 
-    Eigen::SparseMatrix<double> K( n_total_funcs, n_total_funcs );
-    K.setFromTriplets(triplets.begin(), triplets.end());
+    Eigen::SparseMatrix<double> K( n_hdiv, n_hdiv );
+    K.setFromTriplets(triplets_uu.begin(), triplets_uu.end());
+    Eigen::SparseMatrix<double> P( n_l2, n_hdiv );
+    P.setFromTriplets(triplets_up.begin(), triplets_up.end());
 
-    return K;
+    return {K, P};
 }
 
 Eigen::SparseMatrix<double> pressureMassMatrix( api::NavierStokesDiscretization& nsd, const assembly::QuadratureRule& quad_rule )
@@ -231,7 +235,9 @@ Eigen::SparseMatrix<double> matrixN( api::NavierStokesDiscretization& nsd,
 int main()
 {
     const size_t degree = 2;
-    const basis::KnotVector kv_s( { 0.0, 0.0, 0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0, 1.0, 1.0 }, 1e-9 );
+    for( size_t factor : {1, 2, 4, 8, 16} )
+    {
+    const basis::KnotVector kv_s = basis::nAdicRefine( basis::KnotVector( { 0.0, 0.0, 0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0, 1.0, 1.0 }, 1e-9 ), factor );
     const basis::KnotVector kv_t = kv_s;
     const param::ParentDomain domain = param::cubeDomain( 2 );
     const assembly::QuadratureRule quad_rule = assembly::QuadratureRule( degree + 1, domain );
@@ -242,17 +248,34 @@ int main()
         degree,
         util::tensorProduct( { grevillePoints( kv_s, degree ), grevillePoints( kv_t, degree ) } ).transpose() );
 
-    const Eigen::SparseMatrix<double> K = assembleStiffnessMatrix( nsd, quad_rule );
-    std::cout << "K( " << K.rows() << ", " << K.cols() << " ):" << std::endl;
-    std::cout << K.toDense() << std::endl;
-    const Eigen::SparseMatrix<double> N = matrixN( nsd, quad_rule, K );
-    std::cout << "N( " << N.rows() << ", " << N.cols() << " ):" << std::endl;
-    std::cout << N.toDense() << std::endl;
+    const auto [K2, K1_bar] = assembleStiffnessMatrix( nsd, quad_rule );
+    const auto Q = pressureMassMatrix( nsd, quad_rule );
 
-    Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::MatrixXd> solver( K.toDense(), N.toDense() );
-    std::cout << "Eigenvalues:" << std::endl;
-    std::cout << solver.eigenvalues() << std::endl;
-    std::cout << "Eigenvectors (by column):" << std::endl;
-    std::cout << solver.eigenvectors() << std::endl;
+    // Eigen::SparseLU<Eigen::SparseMatrix<double>> Q_solver;
+    // Q_solver.compute(Q);
+    Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower|Eigen::Upper> Q_solver;
+    Q_solver.compute(Q);
+    // std::cout << "Q( " << Q.rows() << ", " << Q.cols() << " ):" << std::endl;
+    // std::cout << "K2( " << K2.rows() << ", " << K2.cols() << " ):" << std::endl;
+    // std::cout << "K1_bar( " << K1_bar.rows() << ", " << K1_bar.cols() << " ):" << std::endl;
+
+    Eigen::SparseMatrix<double> temp = Q_solver.solve(K1_bar);
+    Eigen::SparseMatrix<double> K1 = K1_bar.transpose() * temp;
+
+    // Solve generalized eigenproblem
+    Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> solver( K1.toDense(), K2.toDense() );
+
+    // std::cout << "Eigenvalues:" << std::endl;
+    // std::cout << solver.eigenvalues() << std::endl;
+    Eigen::VectorXd magnitudes = solver.eigenvalues().cwiseAbs();
+    std::sort( magnitudes.data(), magnitudes.data() + magnitudes.size() );
+    // std::cout << "Eigenvalue magnitudes:" << std::endl;
+    // std::cout << magnitudes << std::endl;
+
+    std::cout << "kth largest eigenvalue magnitude:" << std::endl;
+    std::cout << magnitudes( magnitudes.size() - nsd.getL2().splineSpace().numFunctions() ) << std::endl;
+    // std::cout << "Eigenvectors (by column):" << std::endl;
+    // std::cout << solver.eigenvectors() << std::endl;
+    }
     return 0;
 }
