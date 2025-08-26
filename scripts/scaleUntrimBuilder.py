@@ -21,9 +21,12 @@ def findOS():
 
 def findPackageManager(os):
     os = os.lower()
-    if os == "darwin" or os == "linux":
+    if os == "darwin":
         if checkSystemToolIsInstalled("brew"):
             return "brew"
+    if os == "linux":
+        if checkSystemToolIsInstalled("apt"):
+            return "apt"
     elif os == "windows":
         if checkSystemToolIsInstalled("choco"):
             return "choco"
@@ -104,8 +107,10 @@ def installLibrary(manager, package):
     package: str - the name of the library that the package manager will recognize.
     """
     if checkSystemToolIsInstalled(manager):
-        
-        command = [manager, "install", package]
+        if manager == "apt":
+            command = [manager, "install", "-y", package]
+        else:
+            command = [manager, "install", package]
         try:
             runCommand(command)
         except:
@@ -118,9 +123,8 @@ def installLibraries(manager, libraries):
     libraries: List[str] - a list of libraries to install.
     """
     for library in libraries:
-        if not checkLibraryIsInstalled(manager, library):
-            installLibrary(manager, library)
-            print(f"{library} has been installed.")
+        installLibrary(manager, library)
+        print(f"{library} has been installed.")
 
 def installSystemTools(manager, tools):
     """
@@ -131,10 +135,6 @@ def installSystemTools(manager, tools):
     for tool in tools:
         if not checkSystemToolIsInstalled(tool):
             print(f"{tool} is not installed. It will be installed now.")
-            usrIn = input("Enter y to continue or n to cancel program: ")
-            if usrIn == "n":
-                print("Exiting...")
-                sys.exit(0)
             installLibrary(manager, tool)
             print(f"{tool} has been installed.")
 
@@ -180,11 +180,14 @@ def buildScaleUntrim():
     if not manager:
         print("No package manager found, please install homebrew or chocolatey to use this script.")
         return 
-    # print("DEBUG: CHECKING DEPENDENCIES")
+    if manager == "apt":
+        runCommand(["apt-get", "update"])
     installSystemTools(manager, ["cmake", "git", "make"])
-    # print("DEBUG: FINISHED CHECKING DEPENDENCIES")
-    installLibraries(manager, ["eigen", "boost", "OpenCascade"])
-    # print("DEBUG: ABOUT TO BUILD")
+    if os == "linux":
+        openCascade = ["libocct-foundation-dev", "libocct-modeling-data-dev", "libocct-modeling-algorithms-dev", "libocct-ocaf-dev", "libocct-data-exchange-dev", "libocct-visualization-dev", "libocct-draw-dev"]
+        installLibraries(manager, ["libeigen3-dev", "libboost-all-dev", "libtbb-dev"] + openCascade)
+    else:
+        installLibraries(manager, ["eigen", "boost", "OpenCascade"])
     cloneRepository("https://github.com/colbyj427/edited-scale-untrim.git", "ScaleUntrim")
     makeDirectory("ScaleUntrim/build")
     runCommand(["cmake", "-B", "ScaleUntrim/build", "-S", "ScaleUntrim"])
@@ -201,11 +204,14 @@ def runExample():
     """
     Run an example of the ScaleUntrim program.
     """
-    sweepsPath = Path(__file__).resolve().parent.parent.parent.parent
-    quadriflowPath = Path(sweepsPath, "deps", "ScaleUntrim", "build", "quadriflow")
+    sweepsPath = Path(__file__).resolve().parent.parent
+    quadriflowPath = Path(sweepsPath, "deps", "ScaleUntrim", "build", "QuadriFlow")
     hookPath = Path(sweepsPath, "deps", "ScaleUntrim", "hookBase.obj")
     configPath = Path(sweepsPath, "deps", "ScaleUntrim", "setting.config")
     print("Running example...")
     runCommand([str(quadriflowPath), str(hookPath), str(configPath)])
     print("Example finished.")
     print("The resulting quadrilateral mesh is stored in ScaleUntrim/build/tempDir/quad.vtk")
+
+buildScaleUntrim()
+runExample()
