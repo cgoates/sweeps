@@ -36,7 +36,6 @@ jobs:
           make -j10
       - name: Build ScaleUntrim
         run : |
-          lsb_release -a
           uname -a
           python3 scripts/scaleUntrimBuilder.py
       - name: Run tests
