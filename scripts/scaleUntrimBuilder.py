@@ -153,8 +153,12 @@ def moveDirectoryFromSweeps(source, target, sourceFromSweeps=True):
         source = Path(sweepsPath, source)
     target = Path(sweepsPath, target)
     oldPath = target / "ScaleUntrim"
-    if target.exists():
-        shutil.rmtree(oldPath)
+    if oldPath.exists():
+        try:
+            shutil.rmtree(oldPath)
+        except:
+            print("Could not find the outdated file to remove.")
+            raise(FileNotFoundError)
     runCommand(["mv", str(source), str(target)])
     return
 
