@@ -30,7 +30,7 @@ jobs:
           make -j10
       - name: Build ScaleUntrim
         run : |
-          python3 ../scripts/scaleUntrimBuilder.py
+          python3 scripts/scaleUntrimBuilder.py
       - name: Run tests
         run: |
           cd build
