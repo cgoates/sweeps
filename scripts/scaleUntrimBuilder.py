@@ -152,6 +152,9 @@ def moveDirectoryFromSweeps(source, target, sourceFromSweeps=True):
     if sourceFromSweeps:
         source = Path(sweepsPath, source)
     target = Path(sweepsPath, target)
+    oldPath = target / "ScaleUntrim"
+    if target.exists():
+        shutil.rmtree(oldPath)
     runCommand(["mv", str(source), str(target)])
     return
 
