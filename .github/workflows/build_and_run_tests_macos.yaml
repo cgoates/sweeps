@@ -28,6 +28,9 @@ jobs:
             -DCMAKE_EXE_LINKER_FLAGS="-L/opt/homebrew/opt/libomp/lib -lomp" \
             -DCMAKE_SHARED_LINKER_FLAGS="-L/opt/homebrew/opt/libomp/lib -lomp"
           make -j10
+      - name: Build ScaleUntrim
+        run : |
+          python3 ../scripts/scaleUntrimBuilder.py
       - name: Run tests
         run: |
           cd build

@@ -18,7 +18,7 @@ def test_QuadMesh():
     The test will fail if any errors occur in the process.
     """
     try:
-        buildScaleUntrim()
+        # buildScaleUntrim()
         mesh = sweeps.loadFromFile(str(TEST_HOOK_FILE), "Surface12", "Surface10")
         tri_mesh_base = sweeps.baseOfSweep(mesh)
         quad_mesh = generateQuadMesh(tri_mesh_base)
