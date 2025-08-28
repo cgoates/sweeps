@@ -29,8 +29,8 @@ namespace basis
 
         for( size_t level = 0; level < num_levels; level++ )
         {
-            const auto level_bc = std::make_shared<const VectorConformingBasisComplex>( primal_refinement_levels.at( level )->basisComplexPtr() );
-            const VectorConformingTPSplineSpace level_ss( level_bc, *primal_refinement_levels.at( level ) );
+            const auto level_bc = std::make_shared<const VectorConformingBasisComplex>( primal_refinement_levels.at( level )->basisComplexPtr(), bc->conformingType() );
+            const VectorConformingTPSplineSpace level_ss( level_bc, *primal_refinement_levels.at( level ), bc->conformingType() );
             const SmallVector<std::shared_ptr<const TPSplineSpace>,3>& scalar = level_ss.scalarTPBases();
             if( scalar.size() != scalar_level_bases.size() ) throw std::runtime_error( "Scalar size is not the same" );
 

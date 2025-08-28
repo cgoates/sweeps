@@ -23,6 +23,8 @@ namespace basis
 
         virtual ParentBasis parentBasis( const topology::Cell& ) const override;
 
+        ConformingType conformingType() const { return mConformingType; }
+
         private:
         const std::shared_ptr<const BasisComplex> mPrimalComplex;
         const ConformingType mConformingType;
