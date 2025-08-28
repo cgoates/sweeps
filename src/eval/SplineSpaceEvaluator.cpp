@@ -178,6 +178,15 @@ namespace eval
         }
     }
 
+    Eigen::MatrixXd piolaTransformedH1FirstDerivatives( const SplineSpaceEvaluator& scalar_evals,
+                                                        const SplineSpaceEvaluator& geom_evals,
+                                                        const Eigen::MatrixXd& cpts )
+    {
+        const Eigen::MatrixXd jac = geom_evals.evaluateParamToSpatialJacobian( cpts );
+        return scalar_evals.evaluateFirstDerivativesFromParamToSpatial() *
+            jac.cwiseInverse().diagonal().asDiagonal(); // transform from ds denominator to dx
+    }
+
     Eigen::MatrixXd piolaTransformedHCurlBasis( const SplineSpaceEvaluator& vec_evals,
                                                 const SplineSpaceEvaluator& geom_evals,
                                                 const Eigen::MatrixXd& cpts )
@@ -237,7 +246,8 @@ namespace eval
                                                                                                 n_funcs * param_dim ) )
                      .reshaped( spatial_dim * param_dim, n_funcs ) +
                  second_term )
-            .transpose();
+                   .transpose() *
+               jac.cwiseInverse().diagonal().transpose().replicate( param_dim, 1 ).reshaped().asDiagonal(); // transform from ds denominator to dx
     }
 
     Eigen::MatrixXd piolaTransformedHDivBasis( const SplineSpaceEvaluator& vec_evals,
@@ -298,7 +308,8 @@ namespace eval
             ( det_inverse * jac * vec_evals.evaluateFirstDerivativesFromParamToSpatial().transpose().reshaped( param_dim, n_funcs * param_dim ) )
                 .reshaped( spatial_dim * param_dim, n_funcs );
 
-        return ( first_term + second_term + third_term ).transpose();
+        return ( first_term + second_term + third_term ).transpose() *
+               jac.cwiseInverse().diagonal().transpose().replicate( param_dim, 1 ).reshaped().asDiagonal(); // transform from ds denominator to dx
     }
 
     Eigen::MatrixXd piolaTransformedL2Basis( const SplineSpaceEvaluator& bivec_evals,
@@ -317,7 +328,7 @@ namespace eval
         return ( det_inverse * jac_inverse_transpose * bivec_evals.evaluateFirstDerivativesFromParamToSpatial().transpose() -
                  det_inverse * det_inverse * jac_inverse_transpose * paramToSpatialGradDeterminant( geom_evals, cpts ) *
                      bivec_evals.evaluateBasis().transpose() )
-            .transpose();
+            .transpose() * jac.cwiseInverse().diagonal().asDiagonal(); // transform from ds denominator to dx
     }
 
     VertexPositionsFunc vertexPositionsFromManifold( const basis::SplineSpace& ss, const Eigen::MatrixXd& cpts )
