@@ -110,4 +110,8 @@ namespace api
         eval::SplineSpaceEvaluator HDIV;
         eval::SplineSpaceEvaluator L2;
     };
+
+    void localizeElement( api::NavierStokesDiscretization& nsd, const topology::Cell& elem );
+
+    void localizePoint( api::NavierStokesDiscretization& nsd, const param::ParentPoint& ppt );
 }

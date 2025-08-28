@@ -1,6 +1,5 @@
 #include <NavierStokesDiscretization.hpp>
 #include <KnotVector.hpp>
-
 #include <IndexOperations.hpp>
 #include <HierarchicalTPSplineSpace.hpp>
 #include <CombinatorialMapMethods.hpp>
@@ -168,4 +167,18 @@ namespace api
           HDIV( HDIV_ss, 1 ),
           L2( L2_ss, 1 )
     {}
+
+    void localizeElement( api::NavierStokesDiscretization& nsd, const topology::Cell& elem )
+    {
+        nsd.getH1().localizeElement( elem );
+        nsd.getHDIV().localizeElement( elem );
+        nsd.getL2().localizeElement( elem );
+    }
+
+    void localizePoint( api::NavierStokesDiscretization& nsd, const param::ParentPoint& ppt )
+    {
+        nsd.getH1().localizePoint( ppt );
+        nsd.getHDIV().localizePoint( ppt );
+        nsd.getL2().localizePoint( ppt );
+    }
 }

@@ -10,23 +10,10 @@
 #include <KnotVector.hpp>
 #include <Eigen/Eigenvalues>
 #include <Eigen/IterativeLinearSolvers>
+#include <SLEPcUtils.hpp>
 
 constexpr double SIGMA = 0;
-constexpr double KINEMATIC_VISCOSITY = -1;
-
-void localizeElement( api::NavierStokesDiscretization& nsd, const topology::Cell& elem )
-{
-    nsd.getH1().localizeElement( elem );
-    nsd.getHDIV().localizeElement( elem );
-    nsd.getL2().localizeElement( elem );
-}
-
-void localizePoint( api::NavierStokesDiscretization& nsd, const param::ParentPoint& ppt )
-{
-    nsd.getH1().localizePoint( ppt );
-    nsd.getHDIV().localizePoint( ppt );
-    nsd.getL2().localizePoint( ppt );
-}
+constexpr double KINEMATIC_VISCOSITY = 1;
 
 Eigen::MatrixXd localStiffness( api::NavierStokesDiscretization& nsd,
                                 const assembly::QuadratureRule& quad_rule,
@@ -44,7 +31,7 @@ Eigen::MatrixXd localStiffness( api::NavierStokesDiscretization& nsd,
     const Eigen::PermutationMatrix<4> symmetric_permutation( Eigen::Vector4i( 0, 2, 1, 3 ));
 
     quad_rule.iterateQuadraturePoints( [&]( const param::ParentPoint& qpt, const double qwt ) {
-        localizePoint( nsd, qpt );
+        api::localizePoint( nsd, qpt );
         const double jac_det = nsd.getH1().evaluateJacobian( nsd.controlPoints() ).determinant();
 
         const Eigen::MatrixXd transformed_basis =
@@ -107,7 +94,7 @@ std::pair<Eigen::SparseMatrix<double>, Eigen::SparseMatrix<double>> assembleStif
     // ID( n_hdiv ) = -1;  // Mark first pressure term as known (Dirichlet boundary)
 
     topology::iterateCellsWhile( cmap, cmap.dim(), [&]( const topology::Cell& elem ) {
-        localizeElement( nsd, elem );
+        api::localizeElement( nsd, elem );
         const std::vector<basis::FunctionId> elem_connectivity_HDIV = nsd.getHDIV().splineSpace().connectivity( elem );
         const std::vector<basis::FunctionId> elem_connectivity_L2 = nsd.getL2().splineSpace().connectivity( elem );
         const size_t n_local_hdiv = elem_connectivity_HDIV.size();
@@ -160,14 +147,14 @@ Eigen::SparseMatrix<double> pressureMassMatrix( api::NavierStokesDiscretization&
     std::vector<Eigen::Triplet<double>> triplets;
 
     topology::iterateCellsWhile( cmap, cmap.dim(), [&]( const topology::Cell& elem ) {
-        localizeElement( nsd, elem );
+        api::localizeElement( nsd, elem );
         const std::vector<basis::FunctionId> elem_connectivity_L2 = nsd.getL2().splineSpace().connectivity( elem );
         const size_t n_local_L2 = elem_connectivity_L2.size();
 
         Eigen::MatrixXd me = Eigen::MatrixXd::Zero( n_local_L2, n_local_L2 );
 
         quad_rule.iterateQuadraturePoints( [&]( const param::ParentPoint& qpt, const double qwt ) {
-            localizePoint( nsd, qpt );
+            api::localizePoint( nsd, qpt );
             const double jac_det = nsd.getH1().evaluateJacobian( nsd.controlPoints() ).determinant();
 
             const Eigen::VectorXd transformed_basis_L2 =
@@ -232,13 +219,18 @@ Eigen::SparseMatrix<double> matrixN( api::NavierStokesDiscretization& nsd,
     return N;
 }
 
-int main()
+int main(int argc, char** argv)
 {
+    // Initialize SLEPc (this also initializes PETSc and MPI)
+    PetscCall( SlepcInitialize(&argc, &argv, NULL, NULL) );
+
     const size_t degree = 2;
-    for( size_t factor : {1, 2, 4, 8, 16} )
+    for( size_t factor : {1, 2, 4, 8, 16, 32} )
     {
-    const basis::KnotVector kv_s = basis::nAdicRefine( basis::KnotVector( { 0.0, 0.0, 0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0, 1.0, 1.0 }, 1e-9 ), factor );
-    const basis::KnotVector kv_t = kv_s;
+    // const size_t factor = 1;
+        std::cout << "Refinement factor: " << factor << std::endl;
+    const basis::KnotVector kv_s = basis::nAdicRefine( basis::KnotVector( { 0.0, 0.0, 0.0, 0.5, 1.0, 1.0, 1.0 }, 1e-9 ), factor );
+    const basis::KnotVector kv_t = kv_s;//basis::KnotVector( {0.0, 0.0, 0.0, 1.0, 1.0, 1.0 }, 1e-9 );
     const param::ParentDomain domain = param::cubeDomain( 2 );
     const assembly::QuadratureRule quad_rule = assembly::QuadratureRule( degree + 1, domain );
     api::NavierStokesTPDiscretization nsd(
@@ -251,19 +243,17 @@ int main()
     const auto [K2, K1_bar] = assembleStiffnessMatrix( nsd, quad_rule );
     const auto Q = pressureMassMatrix( nsd, quad_rule );
 
-    // Eigen::SparseLU<Eigen::SparseMatrix<double>> Q_solver;
-    // Q_solver.compute(Q);
+    if( factor < 4 )
+    {
+
     Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower|Eigen::Upper> Q_solver;
     Q_solver.compute(Q);
-    // std::cout << "Q( " << Q.rows() << ", " << Q.cols() << " ):" << std::endl;
-    // std::cout << "K2( " << K2.rows() << ", " << K2.cols() << " ):" << std::endl;
-    // std::cout << "K1_bar( " << K1_bar.rows() << ", " << K1_bar.cols() << " ):" << std::endl;
 
     Eigen::SparseMatrix<double> temp = Q_solver.solve(K1_bar);
     Eigen::SparseMatrix<double> K1 = K1_bar.transpose() * temp;
 
     // Solve generalized eigenproblem
-    Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> solver( K1.toDense(), K2.toDense() );
+    Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> solver( K2.toDense(), K1.toDense() );
 
     // std::cout << "Eigenvalues:" << std::endl;
     // std::cout << solver.eigenvalues() << std::endl;
@@ -273,9 +263,42 @@ int main()
     // std::cout << magnitudes << std::endl;
 
     std::cout << "kth largest eigenvalue magnitude:" << std::endl;
-    std::cout << magnitudes( magnitudes.size() - nsd.getL2().splineSpace().numFunctions() ) << std::endl;
+    std::cout << magnitudes.transpose() << std::endl;
+    std::cout << solver.eigenvalues().imag().transpose() << std::endl;
+    }
     // std::cout << "Eigenvectors (by column):" << std::endl;
     // std::cout << solver.eigenvectors() << std::endl;
+
+
+    try {
+        // Solve eigenvalue problem
+        const size_t nev = nsd.getL2().splineSpace().numFunctions();
+        std::cout << "Solving generalized eigenvalue problem for " << nev << " eigenvalues" << std::endl;
+
+        auto [eigenvalues, eigenvectors] = slepc_utils::solveGeneralizedEigenvalueSparse(K1_bar, Q, K2, nev);
+
+        // Print results
+        std::cout << "\nEigenvalues:" << std::endl;
+        // for (size_t i = 0; i < std::min( nev, eigenvalues.size() ); i++) {
+            size_t i = std::min( nev, eigenvalues.size() ) - 1;
+            std::cout << "λ[" << i << "] = " << eigenvalues[i] << std::endl;
+        // }
+
+        // // Print first few components of first eigenvector
+        // if (!eigenvectors.empty()) {
+        //     std::cout << "\nFirst eigenvector (first 5 components):" << std::endl;
+        //     for (int i = 0; i < std::min(5, static_cast<int>(eigenvectors[0].size())); i++) {
+        //         std::cout << "u[" << i << "] = " << eigenvectors[0](i) << std::endl;
+        //     }
+        // }
+
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        PetscCall( SlepcFinalize() );
+        return 1;
     }
+
+    }
+    PetscCall( SlepcFinalize() );
     return 0;
 }
