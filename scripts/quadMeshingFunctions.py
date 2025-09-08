@@ -51,7 +51,7 @@ def generateQuadMesh(tri_mesh: sweeps.TriMesh):
     tri_mesh_base_path = Path(__file__).resolve().parent / "MeshBase_new.obj"
     saveTriMeshAsObj(tri_mesh, str(tri_mesh_base_path))
     runQuadriflowProgram(tri_mesh_base_path)
-    vtk_path = SWEEPS_DIR / "deps" / "ScaleUntrim" / "build" / "tempdir" / "quad.vtk"
+    vtk_path = SWEEPS_DIR / "deps" / "ScaleUntrim" / "build" / "tempDir" / "quad.vtk"
     if not vtk_path.exists():
         raise FileNotFoundError("The generated quadrilateral vtk file does not exist.")
     return createQuadMeshObjectFromVtk(str(vtk_path))
