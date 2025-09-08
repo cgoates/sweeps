@@ -19,7 +19,7 @@ def runQuadriflowProgram(input_file: str):
     Runs the quadriflow program to create a quad mesh from a tet mesh input file.
     input_file: str - Path to the tet mesh file.
     """
-    quadriflow_executable = SWEEPS_DIR / "deps" / "ScaleUntrim" / "build" / "Quadriflow"
+    quadriflow_executable = SWEEPS_DIR / "deps" / "ScaleUntrim" / "build" / "QuadriFlow"
     config_path = SWEEPS_DIR / "deps" / "ScaleUntrim" / "setting.config"
     if not quadriflow_executable.exists():
         raise FileNotFoundError(f"C++ executable not found at {quadriflow_executable}")
