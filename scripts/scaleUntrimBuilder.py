@@ -198,13 +198,9 @@ def buildScaleUntrim():
     cloneRepository("https://github.com/colbyj427/edited-scale-untrim.git", "ScaleUntrim")
     makeDirectory("ScaleUntrim/build")
     runCommand(["cmake", "-B", "ScaleUntrim/build", "-S", "ScaleUntrim", "-DCMAKE_CXX_COMPILER=g++"])
-    print("DEBUG: RUNNING MAKE")
     runCommand(["make", "-C", "ScaleUntrim/build"])
-    print("DEBUG: MAKING TEMP DIR")
     makeDirectory("ScaleUntrim/build/tempDir")
-    print("DEBUG: MOVING TO DEPS")
     moveDirectoryFromSweeps("ScaleUntrim", "deps/", sourceFromSweeps=False)
-    print("DEBUG: WRITING CONFIG")
     writeConfigFile()
     print("ScaleUntrim has been placed in the sweeps/deps folder and built successfully.")
     print("To run, update the setting.config file in the ScaleUntrim folder:\n1. Change the temp_dir to match your full working path to the tempDir directory in the build folder (This will be where the quad mesh is output).\n2. Change the magnitude value to your desired value, likely between 1 and 2, such as 1.4")
@@ -225,4 +221,3 @@ def runExample():
     print("The resulting quadrilateral mesh is stored in ScaleUntrim/build/tempDir/quad.vtk")
 
 buildScaleUntrim()
-# runExample()

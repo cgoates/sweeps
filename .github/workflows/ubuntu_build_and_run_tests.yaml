@@ -43,9 +43,6 @@ jobs:
         run : |
           uname -a
           python3 scripts/scaleUntrimBuilder.py
-      - name: List files in workspace
-        run: |
-          ls -alR
       - name: Run tests
         run: |
           cd build
