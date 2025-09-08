@@ -197,7 +197,7 @@ def buildScaleUntrim():
         installLibraries(manager, ["eigen", "boost", "OpenCascade"])
     cloneRepository("https://github.com/colbyj427/edited-scale-untrim.git", "ScaleUntrim")
     makeDirectory("ScaleUntrim/build")
-    runCommand(["cmake", "-B", "ScaleUntrim/build", "-S", "ScaleUntrim"])
+    runCommand(["cmake", "-B", "ScaleUntrim/build", "-S", "ScaleUntrim", "-DCMAKE_CXX_COMPILER=g++"])
     print("DEBUG: RUNNING MAKE")
     runCommand(["make", "-C", "ScaleUntrim/build"])
     print("DEBUG: MAKING TEMP DIR")
