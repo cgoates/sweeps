@@ -34,8 +34,11 @@ jobs:
           echo "CXX=g++-10" >> $GITHUB_ENV
           cmake .. -DCMAKE_BUILD_TYPE=Release
           make -j10
-      - name: Install OpenMP
-        run: apt-get update && apt-get install -y gfortran
+      - name: Install Fortran
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran-12
+          sudo update-alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran-12 100
       - name: Build ScaleUntrim
         run : |
           uname -a
