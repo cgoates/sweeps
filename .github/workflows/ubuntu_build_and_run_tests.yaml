@@ -36,9 +36,9 @@ jobs:
           make -j10
       - name: Install Fortran
         run: |
-          sudo apt-get update
-          sudo apt-get install -y gfortran-12
-          sudo update-alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran-12 100
+          apt-get update
+          apt-get install -y gfortran-12
+          update-alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran-12 100
       - name: Build ScaleUntrim
         run : |
           uname -a
