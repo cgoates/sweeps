@@ -23,7 +23,7 @@ def test_QuadMesh():
         tri_mesh_base = sweeps.baseOfSweep(mesh)
         quad_mesh = generateQuadMesh(tri_mesh_base)
         SWEEPS_DIR = Path(__file__).resolve().parent.parent
-        vtk_path = SWEEPS_DIR / "deps" / "ScaleUntrim" / "build" / "tempdir" / "quad.vtk"
+        vtk_path = SWEEPS_DIR / "deps" / "ScaleUntrim" / "build" / "tempDir" / "quad.vtk"
         print(SWEEPS_DIR)
         print(vtk_path)
         if not vtk_path.exists():
