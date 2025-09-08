@@ -192,7 +192,7 @@ def buildScaleUntrim():
     installSystemTools(manager, ["cmake", "git", "make"])
     if os == "linux":
         openCascade = ["libocct-foundation-dev", "libocct-modeling-data-dev", "libocct-modeling-algorithms-dev", "libocct-ocaf-dev", "libocct-data-exchange-dev", "libocct-visualization-dev", "libocct-draw-dev"]
-        installLibraries(manager, ["libeigen3-dev", "gfortran-11", "libcoarrays-dev", "libcoarrays-openmpi-dev", "libboost-all-dev", "libtbb-dev"] + openCascade)
+        installLibraries(manager, ["libeigen3-dev", "gfortran", "libcoarrays-dev", "libcoarrays-openmpi-dev", "libboost-all-dev", "libtbb-dev"] + openCascade)
     else:
         installLibraries(manager, ["eigen", "boost", "OpenCascade"])
     cloneRepository("https://github.com/colbyj427/edited-scale-untrim.git", "ScaleUntrim")
