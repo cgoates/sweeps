@@ -112,7 +112,7 @@ PetscErrorCode createK1Matrix( const Mat& Q, const Mat& K1_bar, Mat& A, MPI_Comm
     checkErrorCode( ierr );
 
     // Get matrix dimensions
-    PetscInt m, n, n_rhs;
+    PetscInt m, n_rhs;
     ierr = MatGetSize(K1_bar, &m, &n_rhs);
     checkErrorCode( ierr );
 
@@ -310,6 +310,132 @@ std::pair<std::vector<PetscScalar>, std::vector<Eigen::VectorXd>>
     ierr = MatDestroy( &K2_petsc );
     checkErrorCode( ierr );
     ierr = MatDestroy( &K1 );
+    checkErrorCode( ierr );
+
+    return std::make_pair( eigenvalues, eigenvectors );
+}
+
+std::pair<std::vector<PetscScalar>, std::vector<Eigen::VectorXd>>
+    solveGeneralizedEigenvalueSparse( const Eigen::SparseMatrix<double>& A,
+                                      const Eigen::SparseMatrix<double>& B,
+                                      int nev,
+                                      int n_edge,
+                                      MPI_Comm comm )
+{
+    PetscErrorCode ierr;
+
+    const int n_node = A.rows() - n_edge;
+
+    // Convert matrices to PETSc format
+    Mat B_petsc, A_petsc;
+    ierr = eigenSparseToPetsc( B, B_petsc, comm );
+    checkErrorCode( ierr );
+    ierr = eigenSparseToPetsc( A, A_petsc, comm );
+    checkErrorCode( ierr );
+
+    // Create EPS solver
+    EPS eps;
+    ierr = EPSCreate( comm, &eps );
+    checkErrorCode( ierr );
+
+    // Set the problem type
+    ierr = EPSSetOperators( eps, A_petsc, B_petsc );
+    checkErrorCode( ierr );
+    ierr = EPSSetProblemType( eps, EPS_GHEP );//This will be automatically detected if not set
+    // checkErrorCode( ierr );
+
+    // For shift-and-invert, we need to set target and which eigenpairs appropriately
+    ierr = EPSSetWhichEigenpairs( eps, EPS_LARGEST_MAGNITUDE );
+    checkErrorCode( ierr );
+    
+    // Set target for shift-and-invert (0 for largest magnitude)
+    // ierr = EPSSetTarget( eps, 0.0 );
+    checkErrorCode( ierr );
+    
+    // This is important for shift-and-invert with largest magnitude
+    ierr = EPSSetWhichEigenpairs( eps, EPS_TARGET_MAGNITUDE );
+    checkErrorCode( ierr );
+
+    // Set number of eigenvalues to compute
+    ierr = EPSSetDimensions( eps, nev, PETSC_DEFAULT, PETSC_DEFAULT );
+    checkErrorCode( ierr );
+
+    // Configure iterative solver for shift-and-invert
+    ST st;
+    KSP ksp;
+    PC pc;
+
+    IS is_edge, is_node;
+    ISCreateStride(PETSC_COMM_WORLD, n_edge, 0, 1, &is_edge);
+    ISCreateStride(PETSC_COMM_WORLD, n_node, n_edge, 1, &is_node);
+    
+    ierr = EPSGetST(eps, &st);
+    checkErrorCode(ierr);
+    ierr = STSetType(st, STSHIFT);
+    ierr = STSetShift( st, 1e-6 );
+    checkErrorCode(ierr);
+    ierr = STGetKSP(st, &ksp);
+    checkErrorCode(ierr);
+    ierr = KSPSetType(ksp, KSPPREONLY);
+    checkErrorCode(ierr);
+    ierr = KSPGetPC(ksp, &pc);
+    checkErrorCode(ierr);
+    ierr = PCSetType(pc, PCFIELDSPLIT);
+    ierr = PCFieldSplitSetIS(pc, "edge", is_edge);
+    ierr = PCFieldSplitSetIS(pc, "node", is_node);
+    ierr = PCFieldSplitSetType(pc, PC_COMPOSITE_SCHUR);
+    checkErrorCode(ierr);
+    ierr = KSPSetTolerances(ksp, 1e-8, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT);
+    checkErrorCode(ierr);
+
+    // Set solver options from command line
+    ierr = EPSSetFromOptions( eps );
+    checkErrorCode( ierr );
+
+    // Solve the eigenvalue problem
+    ierr = EPSSolve( eps );
+    checkErrorCode( ierr );
+
+    // Get number of converged eigenvalues
+    PetscInt nconv;
+    ierr = EPSGetConverged( eps, &nconv );
+    checkErrorCode( ierr );
+
+    std::cout << "Number of converged eigenvalues: " << nconv << std::endl;
+
+    // Extract eigenvalues and eigenvectors
+    std::vector<PetscScalar> eigenvalues( nconv );
+    std::vector<Eigen::VectorXd> eigenvectors( nconv );
+
+    for( PetscInt i = 0; i < nconv; i++ )
+    {
+        Vec eigenvector;
+        ierr = MatCreateVecs( A_petsc, &eigenvector, NULL );
+        checkErrorCode( ierr );
+
+        PetscScalar eigenvalue;
+        PetscScalar eigenvalue_im;
+        ierr = EPSGetEigenpair( eps, i, &eigenvalue, &eigenvalue_im, eigenvector, NULL );
+        checkErrorCode( ierr );
+
+        std::cout << "( " << eigenvalue << ", " << eigenvalue_im << " ), ";
+
+        eigenvalues[i] = eigenvalue;
+        eigenvectors[i] = petscToEigen( eigenvector, comm );
+
+        ierr = VecDestroy( &eigenvector );
+        checkErrorCode( ierr );
+    }
+    std::cout << std::endl;
+    ISDestroy( &is_edge );
+    ISDestroy( &is_node );
+
+    // Clean up
+    ierr = EPSDestroy( &eps );
+    checkErrorCode( ierr );
+    ierr = MatDestroy( &B_petsc );
+    checkErrorCode( ierr );
+    ierr = MatDestroy( &A_petsc );
     checkErrorCode( ierr );
 
     return std::make_pair( eigenvalues, eigenvectors );

@@ -1,7 +1,5 @@
 #pragma once
 #include <Eigen/Sparse>
-#include <petscmat.h>
-#include <petscvec.h>
 #include <slepceps.h>
 #include <vector>
 #include <tuple>
@@ -18,5 +16,12 @@ namespace slepc_utils
                                           const Eigen::SparseMatrix<double>& Q,
                                           const Eigen::SparseMatrix<double>& K2,
                                           int nev,
+                                          MPI_Comm comm = PETSC_COMM_WORLD );
+
+    std::pair<std::vector<PetscScalar>, std::vector<Eigen::VectorXd>>
+        solveGeneralizedEigenvalueSparse( const Eigen::SparseMatrix<double>& A,
+                                          const Eigen::SparseMatrix<double>& B,
+                                          int nev,
+                                          int n_edge,
                                           MPI_Comm comm = PETSC_COMM_WORLD );
 } // namespace slepc_utils
