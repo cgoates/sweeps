@@ -33,6 +33,22 @@ make -j10
 Dependencies will be downloaded and built automatically.
 To run tests, run `ctest -j10` in the build directory after building.
 
+Recreating Results
+---
+To recreate the results published in the journal article (reference to be added once it is published), follow these steps:
+Once the code is built and the tests are passing, run the following command in the build directory to generate the results for the bordered surface counterexample that is a union of two cylinders:
+```
+src/sweep output-laplace counter2 output-critical-points
+```
+This will generate two files: `test.vtu`, containing the tetrahedral mesh with the discrete harmonic function defined on it as a field called "laplace" and `critical_points.vtu`, which contains the critical points of the discrete harmonic function.
+
+To generate the results for the closed surface counterexample, run the command
+```
+src/sweep output-laplace part_torus_in_sphere output-critical-points
+```
+which will generate the same files, overwriting them if they exist.
+These `.vtu` files can be opened in ParaView to generate level sets using their Contour filter.
+
 API
 ---
 The sweeps codebase includes a work-in-progress Python API.
