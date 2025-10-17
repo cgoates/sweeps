@@ -6,6 +6,6 @@ add_library( io SHARED
   MFEMOutput.cpp
 )
 
-target_link_libraries( io PUBLIC util topology basis )
+target_link_libraries( io PUBLIC util topology basis eval )
 
 target_include_directories( io PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} )

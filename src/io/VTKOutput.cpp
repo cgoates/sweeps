@@ -17,6 +17,7 @@
 #include <Eigen/Dense>
 #include <iomanip>
 #include <format>
+#include <SplineSpaceEvaluator.hpp>
 
 namespace io
 {
@@ -562,5 +563,89 @@ namespace io
         }
 
         outputSimplicialFieldToVTK( out, filename );
+    }
+
+    std::string zeroPadNum( const size_t width, const size_t num )
+{
+    std::stringstream ss;
+    ss << std::setw( width ) << std::setfill( '0' ) << num;
+    return ss.str();
+}
+
+    void outputVectorBasis( const basis::SplineSpace& dcss,
+                            const basis::SplineSpace& primal_ss,
+                            const Eigen::MatrixXd& geom,
+                            const std::string& filename,
+                            std::optional<std::vector<basis::FunctionId>> basis_function_ids )
+    {
+        eval::SplineSpaceEvaluator primal_evals( primal_ss, 2 );
+        eval::SplineSpaceEvaluator vec_evals( dcss, 1 );
+
+        const topology::CombinatorialMap& cmap_3d = dcss.basisComplex().parametricAtlas().cmap();
+        const param::ParametricAtlas& param_3d = dcss.basisComplex().parametricAtlas();
+
+        using namespace topology;
+        using namespace param;
+
+        const SmallVector<double, 4> points{ 0.0, 0.3333333, 0.6666666, 1.0 };
+
+        SimplicialComplex output_points;
+
+        std::vector<Eigen::MatrixX3d> vecs( dcss.numFunctions(), Eigen::MatrixX3d::Zero( cellCount( cmap_3d, 3 ) * points.size() * points.size() * points.size(), 3 ) );
+        std::vector<Eigen::MatrixX3d> vec_dvec( dcss.numFunctions(), Eigen::MatrixX3d::Zero( cellCount( cmap_3d, 3 ) * points.size() * points.size() * points.size(), 3 ) );
+        size_t i = 0;
+        iterateCellsWhile( cmap_3d, 3, [&]( const topology::Volume& f ) {
+            primal_evals.localizeElement( f );
+            vec_evals.localizeElement( f );
+            const ParentDomain pd = param_3d.parentDomain( f );
+            util::iterateTensorProduct( {points.size(), points.size(), points.size()}, [&]( const util::IndexVec& indices ){
+                const Eigen::Vector3d pt( points.at( indices.at( 0 ) ), points.at( indices.at( 1 ) ), points.at( indices.at( 2 ) ) );
+                const ParentPoint ppt( pd, pt, {false, false, false, false, false, false} );
+
+                primal_evals.localizePoint( ppt );
+                vec_evals.localizePoint( ppt );
+
+                const Eigen::VectorXd spatial_point = primal_evals.evaluateManifold( geom );
+                const Eigen::MatrixXd spatial_vecs = eval::piolaTransformedHDivBasis( vec_evals, primal_evals, geom );
+                const Eigen::MatrixXd param_vecs = vec_evals.evaluateBasis();
+                const Eigen::MatrixXd spatial_vec_derivs = eval::piolaTransformedHDivFirstDerivatives( vec_evals, primal_evals, geom );
+
+                output_points.simplices.push_back( { output_points.points.size() } );
+                output_points.points.push_back( spatial_point );
+
+                const auto conn = dcss.connectivity( f );
+
+                for( size_t j = 0; j < conn.size(); j++ )
+                {
+                    vecs.at( conn.at( j ) ).row( i ).head( spatial_vecs.cols() ) = spatial_vecs.row( j );
+                    vec_dvec.at( conn.at( j ) ).row( i ).head( spatial_vecs.cols() ) = spatial_vec_derivs.row( j ).reshaped( 3, 3 ) * param_vecs.row( j ).transpose();
+                }
+                i++;
+            } );
+
+            return true;
+        } );
+
+        const auto output_func = [&]( const size_t func_ii ) {
+            io::VTKOutputObject out( output_points );
+            out.addVertexField( "vecs", vecs.at( func_ii ) );
+            out.addVertexField( "derivatives", vec_dvec.at( func_ii ) );
+            io::outputSimplicialFieldToVTK( out, "vec_points" + zeroPadNum( 3, func_ii ) + ".vtu" );
+        };
+
+        if( basis_function_ids.has_value() )
+        {
+            for( const auto& func_id : basis_function_ids.value() )
+            {
+                output_func( func_id.id() );
+            }
+        }
+        else
+        {
+            for( size_t func_ii = 0; func_ii < dcss.numFunctions(); func_ii++ )
+            {
+                output_func( func_ii );
+            }
+        }
     }
 } // namespace io

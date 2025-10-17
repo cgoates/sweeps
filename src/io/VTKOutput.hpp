@@ -4,6 +4,7 @@
 #include <SimplicialComplex.hpp>
 #include <VertexPositionsFunc.hpp>
 #include <map>
+#include<FunctionId.hpp>
 
 namespace topology
 {
@@ -112,4 +113,10 @@ namespace io
                       const std::string& filename,
                       const std::map<std::string, std::function<Eigen::VectorXd( const topology::Dart& )>>& fields = {},
                       const std::function<bool( const topology::Dart& )>& filter = []( const auto& ) { return true; } );
+
+        void outputVectorBasis( const basis::SplineSpace& dcss,
+                            const basis::SplineSpace& primal_ss,
+                            const Eigen::MatrixXd& geom,
+                            const std::string& filename,
+                            std::optional<std::vector<basis::FunctionId>> basis_function_ids = std::nullopt );
 } // namespace io
