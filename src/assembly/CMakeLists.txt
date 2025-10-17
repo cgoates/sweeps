@@ -3,7 +3,7 @@ find_package(MPI REQUIRED)
 pkg_check_modules(PETSC REQUIRED PETSc)
 pkg_check_modules(SLEPC REQUIRED slepc)
 
-add_executable( navier_infsup NavierStokesInfSup.cpp SLEPcUtils.cpp )
+add_executable( navier_infsup NavierStokesInfSup.cpp SLEPcUtils.cpp DeRhamComplexDiscretization.cpp )
 
 target_link_libraries( navier_infsup PUBLIC spline_api io eval basis util MPI::MPI_CXX ${SLEPC_LIBRARIES} )
 target_include_directories( navier_infsup PUBLIC
@@ -18,7 +18,7 @@ target_link_directories( navier_infsup PRIVATE
 )
 
 
-add_executable( maxwell_eigenproblem MaxwellEigenproblem.cpp SLEPcUtils.cpp DeRhamComplexDiscretization.cpp )
+add_executable( maxwell_eigenproblem MaxwellEigenproblem.cpp SLEPcUtils.cpp DeRhamComplexDiscretization.cpp SaddlePointSolve.cpp )
 
 target_link_libraries( maxwell_eigenproblem PUBLIC spline_api io eval basis util MPI::MPI_CXX ${SLEPC_LIBRARIES} )
 target_include_directories( maxwell_eigenproblem PUBLIC
@@ -31,3 +31,6 @@ target_include_directories( maxwell_eigenproblem PUBLIC
 target_link_directories( maxwell_eigenproblem PRIVATE
     ${SLEPC_LIBRARY_DIRS}
 )
+
+add_executable( hier_tests HierMeshShowcase.cpp )
+target_link_libraries( hier_tests PUBLIC io basis eval util )

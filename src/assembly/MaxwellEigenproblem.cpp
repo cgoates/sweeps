@@ -14,6 +14,9 @@
 #include <CommonUtils.hpp>
 #include <NavierStokesDiscretization.hpp>
 #include <SLEPcUtils.hpp>
+#include <SaddlePointSolve.hpp>
+#include <unsupported/Eigen/SparseExtra>
+#include <DeRhamComplexTestCases.hpp>
 
 using namespace assembly;
 
@@ -261,38 +264,43 @@ Eigen::VectorXi idArray( const DeRhamComplexHierarchicalDiscretization& drcd )
     const auto& hcurl = drcd.HCURL_ss;
     const auto& component_bases = hcurl.scalarBases();
     const size_t num_levels = component_bases.at( 0 )->basisComplex().parametricAtlas().cmap().numLevels();
-    SmallVector<size_t, 3> offsets;
+    SmallVector<size_t, 4> offsets;
     offsets.push_back( 0 );
-    std::transform( component_bases.begin(), component_bases.end() - 1, std::back_inserter( offsets ),
-                    []( const std::shared_ptr<const basis::HierarchicalTPSplineSpace>& b ) { return b->numFunctions(); } );
+    for( size_t i = 0; i < component_bases.size(); i++ )
+    {
+        offsets.push_back( offsets.back() + component_bases.at( i )->numFunctions() );
+    }
+    std::cout << "offsets: " << offsets << std::endl;
     const util::IndexVec order = hcurl.basisComplex().parametricAtlas().cmap().dim() == 2 ? util::IndexVec{ 0, 1 } : util::IndexVec{ 0, 1, 2 };
+    const auto get_iter_dir = []( const util::IndexVec& lengths, const api::PatchSide& side ) -> SmallVector<std::variant<bool, size_t>, 3> {
+        if( lengths.size() == 2 )
+        {
+            switch( side )
+            {
+                case api::PatchSide::S0: return { size_t{ 0 }, true };
+                case api::PatchSide::S1: return { lengths.at( 0 ) - 1, true };
+                case api::PatchSide::T0: return { true, size_t{ 0 } };
+                case api::PatchSide::T1: return { true, lengths.at( 1 ) - 1 };
+                default: throw std::runtime_error( "Invalid side for 2D patch." );
+            }
+        }
+        else if( lengths.size() == 3 )
+        {
+            switch( side )
+            {
+                case api::PatchSide::S0: return { size_t{ 0 }, true, true };
+                case api::PatchSide::S1: return { lengths.at( 0 ) - 1, true, true };
+                case api::PatchSide::T0: return { true, size_t{ 0 }, true };
+                case api::PatchSide::T1: return { true, lengths.at( 1 ) - 1, true };
+                case api::PatchSide::U0: return { true, true, size_t{ 0 } };
+                case api::PatchSide::U1: return { true, true, lengths.at( 2 ) - 1 };
+            }
+        }
+        else
+            throw std::runtime_error( "Invalid number of dimensions for patch." );
+    };
     const auto tangent_on_side = [&]( const api::PatchSide& side ) {
         const size_t which_coord = side == api::PatchSide::S0 or side == api::PatchSide::S1 ? 0 : side == api::PatchSide::T0 or side == api::PatchSide::T1 ? 1 : 2;
-        const auto get_iter_dir = [&side]( const util::IndexVec& lengths ) -> SmallVector<std::variant<bool, size_t>, 3> {
-            if( lengths.size() == 2 )
-            {
-                switch( side )
-                {
-                    case api::PatchSide::S0: return { size_t{ 0 }, true };
-                    case api::PatchSide::S1: return { lengths.at( 0 ) - 1, true };
-                    case api::PatchSide::T0: return { true, size_t{ 0 } };
-                    case api::PatchSide::T1: return { true, lengths.at( 1 ) - 1 };
-                    default: throw std::runtime_error( "Invalid side for 2D patch." );
-                }
-            }
-            else if( lengths.size() == 3 )
-            {
-                switch( side )
-                {
-                    case api::PatchSide::S0: return { size_t{ 0 }, true, true };
-                    case api::PatchSide::S1: return { lengths.at( 0 ) - 1, true, true };
-                    case api::PatchSide::T0: return { true, size_t{ 0 }, true };
-                    case api::PatchSide::T1: return { true, lengths.at( 1 ) - 1, true };
-                    case api::PatchSide::U0: return { true, true, size_t{ 0 } };
-                    case api::PatchSide::U1: return { true, true, lengths.at( 2 ) - 1 };
-                }
-            }
-        };
 
         std::vector<size_t> result;
         for( size_t comp_ii = 0; comp_ii < component_bases.size(); comp_ii++ )
@@ -305,13 +313,21 @@ Eigen::VectorXi idArray( const DeRhamComplexHierarchicalDiscretization& drcd )
             {
                 const basis::TPSplineSpace& comp = *hier_comp.refinementLevels().at( i );
                 const util::IndexVec lengths = getTPLengths( comp );
-                const auto iter_dir = get_iter_dir( lengths );
+                const auto iter_dir = get_iter_dir( lengths, side );
                 const auto& exop = hier_comp.levelExtractionOperators().at( i );
 
                 util::iterateTensorProduct( lengths, order, iter_dir, [&]( const util::IndexVec& iv ) {
                     const size_t fid = util::flatten( iv, lengths );
                     for( Eigen::SparseMatrix<double>::InnerIterator it( exop, fid ); it; ++it )
+                    {
                         result.push_back( it.row() + offsets.at( comp_ii ) );
+                        if( result.back() == 544 ) 
+                        {
+                            std::cout << "side: " << std::to_underlying( side ) << " comp_ii: " << comp_ii << " " << iter_dir << " " << iv << std::endl;
+                            std::cout << "level: " << i << " lengths: " << lengths << std::endl;
+                            std::cout << "fid: " << fid << std::endl;
+                        }
+                    }
                 } );
             }
         }
@@ -321,25 +337,58 @@ Eigen::VectorXi idArray( const DeRhamComplexHierarchicalDiscretization& drcd )
         return result;
     };
 
+    std::vector<size_t> h1_bcs;
+    const auto h1_on_side = [&]( const api::PatchSide& side ) {
+        std::vector<size_t> result;
+        for( size_t i = 0; i < num_levels; i++ )
+        {
+            const basis::TPSplineSpace& comp = *drcd.H1_ss.refinementLevels().at( i );
+            const util::IndexVec lengths = getTPLengths( comp );
+            const auto iter_dir = get_iter_dir( lengths, side );
+            const auto& exop = drcd.H1_ss.levelExtractionOperators().at( i );
+
+            util::iterateTensorProduct( lengths, order, iter_dir, [&]( const util::IndexVec& iv ) {
+                const size_t fid = util::flatten( iv, lengths );
+                for( Eigen::SparseMatrix<double>::InnerIterator it( exop, fid ); it; ++it )
+                {
+                    result.push_back( it.row() + offsets.back() );
+                }
+            } );
+        }
+        std::ranges::sort( result );
+        result.erase( std::ranges::unique( result ).end(), result.end() );
+        return result;
+    };
+
     const std::vector<size_t> dirichlet_funcs = component_bases.size() == 2 ? util::concatenate( {
         tangent_on_side( api::PatchSide::S0 ),
         tangent_on_side( api::PatchSide::S1 ),
         tangent_on_side( api::PatchSide::T0 ),
-        tangent_on_side( api::PatchSide::T1 )
+        tangent_on_side( api::PatchSide::T1 ),
+        h1_on_side( api::PatchSide::S0 ),
+        h1_on_side( api::PatchSide::S1 ),
+        h1_on_side( api::PatchSide::T0 ),
+        h1_on_side( api::PatchSide::T1 )
     } ) : util::concatenate( {
         tangent_on_side( api::PatchSide::S0 ),
         tangent_on_side( api::PatchSide::S1 ),
         tangent_on_side( api::PatchSide::T0 ),
         tangent_on_side( api::PatchSide::T1 ),
         tangent_on_side( api::PatchSide::U0 ),
-        tangent_on_side( api::PatchSide::U1 )
+        tangent_on_side( api::PatchSide::U1 ),
+        h1_on_side( api::PatchSide::S0 ),
+        h1_on_side( api::PatchSide::S1 ),
+        h1_on_side( api::PatchSide::T0 ),
+        h1_on_side( api::PatchSide::T1 ),
+        h1_on_side( api::PatchSide::U0 ),
+        h1_on_side( api::PatchSide::U1 )
     } );
 
     Eigen::VectorXi id_array = Eigen::VectorXi::Zero( drcd.HCURL_ss.numFunctions() + drcd.H1_ss.numFunctions() );
     int j = 0;
     for( size_t i = 0; i < drcd.HCURL_ss.numFunctions() + drcd.H1_ss.numFunctions(); i++ )
     {
-        if( std::find( dirichlet_funcs.begin(), dirichlet_funcs.end(), i ) != dirichlet_funcs.end() or i == drcd.HCURL_ss.numFunctions() )
+        if( std::find( dirichlet_funcs.begin(), dirichlet_funcs.end(), i ) != dirichlet_funcs.end() )//or i == drcd.HCURL_ss.numFunctions() )
         {
             id_array( i ) = -1;
         }
@@ -352,195 +401,69 @@ Eigen::VectorXi idArray( const DeRhamComplexHierarchicalDiscretization& drcd )
     return id_array;
 }
 
-Eigen::VectorXd calculateDivFreeField( DeRhamComplexTPDiscretization& drcd, const Eigen::VectorXi& id_array )
-{
-    const size_t n_hcurl = drcd.HCURL_ss.numFunctions();
-    const auto& component_bases = drcd.HCURL_ss.scalarTPBases();
-    SmallVector<Eigen::MatrixXd, 3> cpt_components;
-    for( const auto& comp_base : component_bases )
-    {
-        cpt_components.push_back( grevillePoints( *comp_base ) );
-    }
-
-    Eigen::VectorXd x = Eigen::VectorXd::Zero( n_hcurl - ( id_array.head( n_hcurl ).array() == -1 ).count() );
-    size_t i;
-    for( i = 0; i < component_bases.at( 0 )->numFunctions(); i++ )
-    {
-        if( id_array( i ) != -1 )
-            x( id_array( i ) ) = cpt_components.at( 0 )( i, 1 );
-    }
-    for( ; i < n_hcurl; i++ )
-    {
-        if( id_array( i ) != -1 )
-            x( id_array( i ) ) = -cpt_components.at( 1 )( i - component_bases.at( 0 )->numFunctions(), 0 );
-    }
-    return x;
-}
-
-DeRhamComplexHierarchicalDiscretization cases( const size_t which_case )
-{
-    switch( which_case )
-    {
-        case 0:
-        {
-            const size_t degree = 4;
-
-    // const basis::KnotVector kv_s( util::concatenate({ std::vector<double>( degree, 0.0 ),
-    //                                                              util::linspace( 0.0, std::numbers::pi, 11 ),
-    //                                                              std::vector<double>( degree, std::numbers::pi ) }), 1e-9 );
-    const basis::KnotVector kv_s = basis::unitIntervalKnotVectorWithNElems( 16, degree );
-    // const basis::KnotVector kv_s = basis::integerKnotsWithNElems( 2, degree );
-
-    const basis::KnotVector kv_t = kv_s;
-    const param::ParentDomain domain = param::cubeDomain( 2 );
-    const assembly::QuadratureRule quad_rule = assembly::QuadratureRule( degree + 1, domain );
-    const Eigen::MatrixXd control_points = util::tensorProduct( { grevillePoints( kv_s, degree ), grevillePoints( kv_t, degree ) } ).transpose();
-    // DeRhamComplexTPDiscretization drcd( kv_s, kv_t, degree, degree, control_points );
-    DeRhamComplexHierarchicalDiscretization drcd( kv_s,
-                                                  kv_t,
-                                                  degree,
-                                                  degree,
-                                                  control_points,
-                                                //   { { { 1, 1 },
-                                                //       { 1, 2 },
-                                                //       { 1, 3 },
-                                                //       { 1, 4 },
-                                                //       { 1, 5 },
-                                                //       { 1, 6 },
-                                                //       { 1, 7 },
-                                                //       { 2, 1 },
-                                                //       { 2, 2 },
-                                                //       { 2, 3 },
-                                                //       { 2, 4 },
-                                                //       { 2, 5 },
-                                                //       { 2, 6 },
-                                                //       { 2, 7 },
-                                                //       { 3, 1 },
-                                                //       { 3, 2 },
-                                                //       { 3, 3 },
-                                                //       { 3, 4 },
-                                                //       { 3, 5 },
-                                                //       { 3, 6 },
-                                                //       { 3, 7 },
-                                                //       { 4, 1 },
-                                                //       { 4, 2 },
-                                                //       { 4, 3 },
-                                                //       { 4, 5 },
-                                                //       { 4, 6 },
-                                                //       { 4, 7 },
-                                                //       { 5, 3 },
-                                                //       { 5, 4 },
-                                                //       { 5, 5 },
-                                                //       { 5, 6 },
-                                                //       { 5, 7 },
-                                                //       { 6, 3 },
-                                                //       { 6, 4 },
-                                                //       { 6, 5 },
-                                                //       { 6, 6 },
-                                                //       { 6, 7 },
-                                                //       { 7, 3 },
-                                                //       { 7, 4 },
-                                                //       { 7, 5 },
-                                                //       { 7, 6 },
-                                                //       { 7, 7 }
-                                                //      } } );
-    //   { { { 1, 1 },
-    //       { 1, 2 },
-    //       { 1, 3 },
-    //       { 2, 1 },
-    //       { 2, 2 },
-    //       { 2, 3 },
-    //       { 3, 1 },
-    //       { 3, 2 },
-    //       { 3, 3 },
-    //       { 3, 4 },
-    //       { 3, 5 },
-    //       { 4, 3 },
-    //       { 4, 4 },
-    //       { 4, 5 },
-    //       { 5, 3 },
-    //       { 5, 4 },
-    //       { 5, 5 } } } );
-    { {
-        { 5, 0 }, { 5, 1 }, { 5, 2 }, { 5, 3 }, { 5, 4 }, { 5, 5 }, { 5, 6 }, { 5, 7 }, { 5, 8 }, { 5, 9 }, { 5, 10 }, { 5, 11 }, { 5, 12 }, { 5, 13 }, { 5, 14 }, { 5, 15 },
-        { 6, 0 }, { 6, 1 }, { 6, 2 }, { 6, 3 }, { 6, 4 }, { 6, 5 }, { 6, 6 }, { 6, 7 }, { 6, 8 }, { 6, 9 }, { 6, 10 }, { 6, 11 }, { 6, 12 }, { 6, 13 }, { 6, 14 }, { 6, 15 },
-        { 7, 0 }, { 7, 1 }, { 7, 2 }, { 7, 3 }, { 7, 4 }, { 7, 5 }, { 7, 6 }, { 7, 7 }, { 7, 8 }, { 7, 9 }, { 7, 10 }, { 7, 11 }, { 7, 12 }, { 7, 13 }, { 7, 14 }, { 7, 15 }
-    }
-
-    } );
-            return drcd;
-        }
-        case 1:
-        {
-            const size_t degree = 4;
-            const size_t n_elems_1d = 16;
-            const basis::KnotVector kv_s = basis::unitIntervalKnotVectorWithNElems( n_elems_1d, degree );
-
-            const basis::KnotVector kv_t = kv_s;
-            const basis::KnotVector kv_u = kv_s;
-            const Eigen::MatrixXd control_points = util::tensorProduct( { grevillePoints( kv_s, degree ), grevillePoints( kv_t, degree ), grevillePoints( kv_u, degree ) } ).transpose();
-
-            std::vector<std::array<size_t, 3>> elems_to_refine;
-            for( size_t i = 0; i < n_elems_1d; i++ )
-            {
-                // elems_to_refine.push_back( {6, 6, i } );
-                // elems_to_refine.push_back( {7, 6, i } );
-                // elems_to_refine.push_back( {6, 7, i } );
-                // elems_to_refine.push_back( {7, 7, i } );
-                // elems_to_refine.push_back( {8, 6, i } );
-                // elems_to_refine.push_back( {6, 8, i } );
-                // elems_to_refine.push_back( {8, 7, i } );
-                // elems_to_refine.push_back( {7, 8, i } );
-                // elems_to_refine.push_back( {8, 8, i } );
-                // elems_to_refine.push_back( {5, 5, i } );
-                // elems_to_refine.push_back( {5, 6, i } );
-                // elems_to_refine.push_back( {5, 7, i } );
-                // elems_to_refine.push_back( {5, 8, i } );
-                // elems_to_refine.push_back( {5, 9, i } );
-                // elems_to_refine.push_back( {6, 5, i } );
-                // elems_to_refine.push_back( {7, 5, i } );
-                // elems_to_refine.push_back( {8, 5, i } );
-                // elems_to_refine.push_back( {9, 5, i } );
-                // elems_to_refine.push_back( {9, 6, i } );
-                // elems_to_refine.push_back( {9, 7, i } );
-                // elems_to_refine.push_back( {9, 8, i } );
-                // elems_to_refine.push_back( {9, 9, i } );
-                // elems_to_refine.push_back( {6, 9, i } );
-                // elems_to_refine.push_back( {7, 9, i } );
-                // elems_to_refine.push_back( {8, 9, i } );
-            }
-
-            DeRhamComplexHierarchicalDiscretization drcd( kv_s, kv_t, kv_u, degree, degree, degree, control_points, { elems_to_refine } );
-            return drcd;
-        }
-    }
-}
-
 int main(int argc, char** argv)
 {
     PetscCall( SlepcInitialize(&argc, &argv, NULL, NULL) );
     // See arXiv:2411.15828v1 for the strong form of the Maxwell eigenproblem
 
-    DeRhamComplexHierarchicalDiscretization drcd = cases( 1 );
+    // DeRhamComplexHierarchicalDiscretization drcd = cases( TestCase::Case2p1KittyCornersIntersection_2d, 2 );
+    DeRhamComplexHierarchicalDiscretization drcd = cases( TestCase::Case2d_nForm );
+    // DeRhamComplexHierarchicalDiscretization drcd = cases( TestCase::ShortestChainExists_2d );
 
     const size_t dim = drcd.H1_ss.basisComplex().parametricAtlas().cmap().dim();
     const param::ParentDomain domain = param::cubeDomain( dim );
-    const size_t degree = drcd.H1_ss.basisComplex().parentBasis( topology::Cell( 0, dim ) ).mBasisGroups.at( 0 ).degrees.at( 0 );
+    const size_t degree = [&](){
+        std::optional<topology::Cell> c;
+        iterateCellsWhile( drcd.H1_ss.basisComplex().parametricAtlas().cmap(), drcd.H1_ss.basisComplex().parametricAtlas().cmap().dim(), [&]( const topology::Cell& cell ) {
+            c = cell;
+            return false;
+        } );
+        return drcd.H1_ss.basisComplex().parentBasis( c.value() ).mBasisGroups.at( 0 ).degrees.at( 0 );
+    }();
     const assembly::QuadratureRule quad_rule = assembly::QuadratureRule( degree + 1, domain );
 
     const MatrixX3dMax cpts_t = drcd.controlPoints().transpose();
     const io::BezierOutputObject bz_out( drcd.getH1().splineSpace(), cpts_t );
     io::outputBezierMeshToVTK( bz_out, "maxwell_eigenproblem_initial_mesh.vtu" );
 
+    io::outputPartialBezierMeshToVTK( bz_out, "maxwell_eigenproblem_initial_mesh_partial.vtu", [&]( const std::function<void(const topology::Cell& )>& callback ) {
+        iterateCellsWhile( drcd.H1_ss.basisComplex().parametricAtlas().cmap(), dim, [&]( const topology::Cell& cell ) {
+            const size_t level = drcd.H1_ss.basisComplex().parametricAtlas().cmap().unrefinedAncestorDartOfCell( cell ).first;
+            if( level == 1 )
+                callback( cell );
+            return true;
+        } );
+    } );
+
     const Eigen::VectorXi id_array = idArray( drcd );
     std::cout << "ID array:\n";// << id_array.transpose() << std::endl << std::endl;
     // const Eigen::VectorXi id_array = Eigen::VectorXi::LinSpaced( drcd.getHCURL().splineSpace().numFunctions() + drcd.getH1().splineSpace().numFunctions(), 0, drcd.getHCURL().splineSpace().numFunctions() + drcd.getH1().splineSpace().numFunctions() - 1 );
 
     const size_t n_hcurl_constraints = ( id_array.head( drcd.HCURL_ss.numFunctions() ).array() == -1 ).count();
+    const size_t n_constraints = ( id_array.array() == -1 ).count();
+    const size_t n_h1_constraints = n_constraints - n_hcurl_constraints;
+    std::cout << drcd.getHCURL().splineSpace().numFunctions() - n_hcurl_constraints << " free HCURL functions\n";
+    std::cout << drcd.getH1().splineSpace().numFunctions() - n_h1_constraints << " free H1 functions\n";
 
     const Eigen::SparseMatrix<double> K = assembleStiffnessMatrix( drcd, quad_rule, id_array );
     const Eigen::SparseMatrix<double> M = massMatrix( drcd, quad_rule, id_array );
     std::cout << "Assembled stiffness and mass matrices." << std::endl;
+
+    Eigen::saveMarket( K, "stiffness_matrix.mtx" );
+    Eigen::saveMarket( M, "mass_matrix.mtx" );
+
+    // std::vector<basis::FunctionId> bc_funcs;
+    // for( Eigen::Index i = 0; i < id_array.size(); i++ )
+    // {
+    //     if( id_array( i ) == -1 )
+    //     {
+    //         bc_funcs.push_back( basis::FunctionId( i ) );
+    //     }
+    // }
+    // std::cout << bc_funcs << std::endl;
+    // io::outputVectorBasis( drcd.getHCURL().splineSpace(), drcd.H1_ss, drcd.controlPoints(), "test", bc_funcs );
+
+    // std::cout << K.toDense() << std::endl;
 
     // std::cout << "Stiffness matrix K:" << std::endl;
     // std::cout << Eigen::MatrixXd( K ) << std::endl;
@@ -548,36 +471,37 @@ int main(int argc, char** argv)
     // std::cout << Eigen::MatrixXd( M ) << std::endl;
     // std::cout << "=============================================" << std::endl;
     
-    // // Solve generalized eigenproblem
+    // // // Solve generalized eigenproblem
     // Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> solver( K.toDense(), M.toDense() );
 
     // // std::cout << "Eigenvalues:" << std::endl;
     // // std::cout << solver.eigenvalues() << std::endl;
     // std::cout << solver.eigenvalues().transpose() << std::endl;
-    // // Eigen::VectorXd magnitudes = solver.eigenvalues().cwiseAbs();
-    // // std::sort( magnitudes.data(), magnitudes.data() + magnitudes.size() );
-    // // std::cout << "Eigenvalue magnitudes:" << std::endl;
-    // // std::cout << magnitudes.tail( magnitudes.size() - (magnitudes.array() <= 1e-10 ).count()).transpose() << std::endl;
+    // Eigen::VectorXd magnitudes = solver.eigenvalues().cwiseAbs();
+    // std::sort( magnitudes.data(), magnitudes.data() + magnitudes.size() );
+    // std::cout << "Eigenvalue magnitudes:" << std::endl;
+    // std::cout << magnitudes.tail( magnitudes.size() - (magnitudes.array() <= 1e-10 ).count()).transpose() << std::endl;
 
-    // // std::cout << (magnitudes.array() <= 1e-10 ).count() << " zero eigenvalues due to constraints." << std::endl;
-    // // std::cout << solver.alphas().transpose() << std::endl;
-    // // std::cout << solver.betas().transpose() << std::endl;
-    // // std::cout << "Total eigenvalues: " << magnitudes.size() << std::endl;
-    // // std::cout << "=============================================" << std::endl;
-    // // std::cout << "=============================================" << std::endl;
-    // // std::cout << "=============================================" << std::endl;
-    // // std::cout << "=============================================" << std::endl;
-    // // std::cout << "=============================================" << std::endl;
-    // // std::cout << "=============================================" << std::endl;
-    // // std::cout << "=============================================" << std::endl;
-    // // std::cout << "=============================================" << std::endl;
-    // // std::cout << "=============================================" << std::endl;
-    // // std::cout << "=============================================" << std::endl;
-    // // std::cout << "=============================================" << std::endl;
-    // // std::cout << "=============================================" << std::endl;
-    // // std::cout << "Constraints: " << n_constraints << std::endl;
-    // // std::cout << id_array.transpose() << std::endl;
+    // std::cout << (magnitudes.array() <= 1e-10 ).count() << " zero eigenvalues due to constraints." << std::endl;
+    // std::cout << solver.alphas().transpose() << std::endl;
+    // std::cout << solver.betas().transpose() << std::endl;
+    // std::cout << "Total eigenvalues: " << magnitudes.size() << std::endl;
     // std::cout << "=============================================" << std::endl;
+    // std::cout << "=============================================" << std::endl;
+    // std::cout << "=============================================" << std::endl;
+    // std::cout << "=============================================" << std::endl;
+    // std::cout << "=============================================" << std::endl;
+    // std::cout << "=============================================" << std::endl;
+    // std::cout << "=============================================" << std::endl;
+    // std::cout << "=============================================" << std::endl;
+    // std::cout << "=============================================" << std::endl;
+    // std::cout << "=============================================" << std::endl;
+    // std::cout << "=============================================" << std::endl;
+    // std::cout << "=============================================" << std::endl;
+    // std::cout << "Constraints: " << n_constraints << std::endl;
+    // std::cout << id_array.transpose() << std::endl;
+    std::cout << "=============================================" << std::endl;
+    // std::cout << "HCURL block size: " << drcd.getHCURL().splineSpace().numFunctions() - n_hcurl_constraints << std::endl;
 
     // const Eigen::MatrixXd k_part = K.toDense().topLeftCorner( drcd.getHCURL().splineSpace().numFunctions() - n_hcurl_constraints,
     //                                                                     drcd.getHCURL().splineSpace().numFunctions() - n_hcurl_constraints );
@@ -612,7 +536,7 @@ int main(int argc, char** argv)
 
     try {
         // Solve eigenvalue problem
-        const size_t nev = 100;//drcd.getHCURL().splineSpace().numFunctions() / 2;
+        const size_t nev = 200;//drcd.getHCURL().splineSpace().numFunctions() / 2;
         std::cout << "Solving generalized eigenvalue problem for " << nev << " eigenvalues" << std::endl;
 
         auto [eigenvalues, eigenvectors] = slepc_utils::solveGeneralizedEigenvalueSparse(K, M, nev, drcd.HCURL_ss.numFunctions() - n_hcurl_constraints );
@@ -626,20 +550,20 @@ int main(int argc, char** argv)
         std::cout << "Total eigenvalues: " << eigenvalues.size() << std::endl;
         std::cout << "Non-zero eigenvalue magnitudes:" << std::endl;
         std::cout << Eigen::Map<Eigen::VectorXd>( eigenvalues.data(), eigenvalues.size() ).tail( eigenvalues.size() - num_zero_eigenvalues ).transpose() << std::endl;
-
-        // // Print first few components of first eigenvector
-        // if (!eigenvectors.empty()) {
-        //     std::cout << "\nFirst eigenvector (first 5 components):" << std::endl;
-        //     for (int i = 0; i < std::min(5, static_cast<int>(eigenvectors[0].size())); i++) {
-        //         std::cout << "u[" << i << "] = " << eigenvectors[0](i) << std::endl;
-        //     }
-        // }
-
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
         PetscCall( SlepcFinalize() );
         return 1;
     }
+
+    // const Eigen::SparseMatrix<double> k_part = K.topLeftCorner( drcd.getHCURL().splineSpace().numFunctions() - n_hcurl_constraints,
+    //                                                                     drcd.getHCURL().splineSpace().numFunctions() - n_hcurl_constraints );
+    // const Eigen::SparseMatrix<double> m_part = M.topLeftCorner( drcd.getHCURL().splineSpace().numFunctions() - n_hcurl_constraints,
+    //                                                                     drcd.getHCURL().splineSpace().numFunctions() - n_hcurl_constraints );
+    // const Eigen::SparseMatrix<double> b_part = K.bottomLeftCorner( drcd.getH1().splineSpace().numFunctions(),
+    //                                                                     drcd.getHCURL().splineSpace().numFunctions() - n_hcurl_constraints );
+
+    // return assembly::solveMixedEigenproblem( argc, argv, 100, k_part, m_part, b_part );
     PetscCall( SlepcFinalize() );
 
     return 0;

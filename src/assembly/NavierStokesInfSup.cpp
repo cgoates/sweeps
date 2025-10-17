@@ -11,6 +11,8 @@
 #include <Eigen/Eigenvalues>
 #include <Eigen/IterativeLinearSolvers>
 #include <SLEPcUtils.hpp>
+#include <DeRhamComplexTestCases.hpp>
+#include <iomanip>
 
 constexpr double SIGMA = 0;
 constexpr double KINEMATIC_VISCOSITY = 1;
@@ -224,48 +226,52 @@ int main(int argc, char** argv)
     // Initialize SLEPc (this also initializes PETSc and MPI)
     PetscCall( SlepcInitialize(&argc, &argv, NULL, NULL) );
 
-    const size_t degree = 2;
-    for( size_t factor : {1, 2, 4, 8, 16, 32} )
+    for( const size_t factor : {1, 2, 3,4, 5, 6, 7, 8, 9} )
     {
-    // const size_t factor = 1;
-        std::cout << "Refinement factor: " << factor << std::endl;
-    const basis::KnotVector kv_s = basis::nAdicRefine( basis::KnotVector( { 0.0, 0.0, 0.0, 0.5, 1.0, 1.0, 1.0 }, 1e-9 ), factor );
-    const basis::KnotVector kv_t = kv_s;//basis::KnotVector( {0.0, 0.0, 0.0, 1.0, 1.0, 1.0 }, 1e-9 );
+    assembly::DeRhamComplexHierarchicalDiscretization nsd = cases( TestCase::Case2d_nForm, factor );
+
+    const MatrixX3dMax cpts_t = nsd.controlPoints().transpose();
+    const io::BezierOutputObject bz_out( nsd.getH1().splineSpace(), cpts_t );
+    io::outputBezierMeshToVTK( bz_out, "stokes_infsup" + std::to_string( factor) + ".vtu" );
+
+    const size_t dim = nsd.getH1().splineSpace().basisComplex().parametricAtlas().cmap().dim();
     const param::ParentDomain domain = param::cubeDomain( 2 );
+    const size_t degree = [&](){
+        std::optional<topology::Cell> c;
+        iterateCellsWhile( nsd.H1_ss.basisComplex().parametricAtlas().cmap(), dim, [&]( const topology::Cell& cell ) {
+            c = cell;
+            return false;
+        } );
+        return nsd.H1_ss.basisComplex().parentBasis( c.value() ).mBasisGroups.at( 0 ).degrees.at( 0 );
+    }();
     const assembly::QuadratureRule quad_rule = assembly::QuadratureRule( degree + 1, domain );
-    api::NavierStokesTPDiscretization nsd(
-        kv_s,
-        kv_t,
-        degree,
-        degree,
-        util::tensorProduct( { grevillePoints( kv_s, degree ), grevillePoints( kv_t, degree ) } ).transpose() );
 
     const auto [K2, K1_bar] = assembleStiffnessMatrix( nsd, quad_rule );
     const auto Q = pressureMassMatrix( nsd, quad_rule );
 
-    if( factor < 4 )
-    {
+    // if( factor < 4 )
+    // {
 
-    Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower|Eigen::Upper> Q_solver;
-    Q_solver.compute(Q);
+    // Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower|Eigen::Upper> Q_solver;
+    // Q_solver.compute(Q);
 
-    Eigen::SparseMatrix<double> temp = Q_solver.solve(K1_bar);
-    Eigen::SparseMatrix<double> K1 = K1_bar.transpose() * temp;
+    // Eigen::SparseMatrix<double> temp = Q_solver.solve(K1_bar);
+    // Eigen::SparseMatrix<double> K1 = K1_bar.transpose() * temp;
 
-    // Solve generalized eigenproblem
-    Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> solver( K2.toDense(), K1.toDense() );
+    // // Solve generalized eigenproblem
+    // Eigen::GeneralizedEigenSolver<Eigen::MatrixXd> solver( K2.toDense(), K1.toDense() );
 
-    // std::cout << "Eigenvalues:" << std::endl;
-    // std::cout << solver.eigenvalues() << std::endl;
-    Eigen::VectorXd magnitudes = solver.eigenvalues().cwiseAbs();
-    std::sort( magnitudes.data(), magnitudes.data() + magnitudes.size() );
-    // std::cout << "Eigenvalue magnitudes:" << std::endl;
-    // std::cout << magnitudes << std::endl;
+    // // std::cout << "Eigenvalues:" << std::endl;
+    // // std::cout << solver.eigenvalues() << std::endl;
+    // Eigen::VectorXd magnitudes = solver.eigenvalues().cwiseAbs();
+    // std::sort( magnitudes.data(), magnitudes.data() + magnitudes.size() );
+    // // std::cout << "Eigenvalue magnitudes:" << std::endl;
+    // // std::cout << magnitudes << std::endl;
 
-    std::cout << "kth largest eigenvalue magnitude:" << std::endl;
-    std::cout << magnitudes.transpose() << std::endl;
-    std::cout << solver.eigenvalues().imag().transpose() << std::endl;
-    }
+    // std::cout << "kth largest eigenvalue magnitude:" << std::endl;
+    // std::cout << magnitudes.transpose() << std::endl;
+    // std::cout << solver.eigenvalues().imag().transpose() << std::endl;
+    // }
     // std::cout << "Eigenvectors (by column):" << std::endl;
     // std::cout << solver.eigenvectors() << std::endl;
 
@@ -281,7 +287,7 @@ int main(int argc, char** argv)
         std::cout << "\nEigenvalues:" << std::endl;
         // for (size_t i = 0; i < std::min( nev, eigenvalues.size() ); i++) {
             size_t i = std::min( nev, eigenvalues.size() ) - 1;
-            std::cout << "λ[" << i << "] = " << eigenvalues[i] << std::endl;
+            std::cout << "λ[" << i << "] = " << std::setprecision(10) << eigenvalues[i] << std::endl;
         // }
 
         // // Print first few components of first eigenvector
@@ -297,8 +303,8 @@ int main(int argc, char** argv)
         PetscCall( SlepcFinalize() );
         return 1;
     }
-
     }
+
     PetscCall( SlepcFinalize() );
     return 0;
 }

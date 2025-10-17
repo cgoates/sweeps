@@ -137,6 +137,71 @@ namespace assembly
         return out;
     }
 
+    // std::vector<std::vector<std::array<size_t, 3>>>
+    //     enforceAdmissibility( const std::vector<std::shared_ptr<const topology::TPCombinatorialMap>>& refinement_levels,
+    //                           std::vector<std::vector<std::array<size_t, 3>>> elem_indices_to_refine,
+    //                           const size_t admissibility,
+    //                           const size_t degree )
+    // {
+    //     const size_t dim = refinement_levels.front()->dim();
+
+    //     if( elem_indices_to_refine.size() == 0 ) return elem_indices_to_refine;
+
+    //     const auto get_tp_lengths = []( const topology::TPCombinatorialMap& cmap ) -> util::IndexVec {
+    //         const auto cmaps = tensorProductComponentCMaps( cmap );
+    //         util::IndexVec out;
+    //         std::transform( cmaps.begin(), cmaps.end(), std::back_inserter( out ), []( const auto& c ) { return topology::cellCount( *c, 1 ); } );
+    //         return out;
+    //     };
+
+    //     std::vector<util::IndexVec> lengths;
+    //     std::transform( refinement_levels.begin(), refinement_levels.end(), std::back_inserter( lengths ), get_tp_lengths );
+
+    //     // Enforce admissibility
+    //     for( int level_ii = elem_indices_to_refine.size() - 1; level_ii >= 0; level_ii-- )
+    //     {
+    //         for( const std::array<size_t, 3>& elem_indices : elem_indices_to_refine.at( level_ii ) )
+    //         {
+
+    //             for( size_t dlevel = 1; dlevel <= admissibility; dlevel++ )
+    //             {
+    //                 if( level_ii - dlevel < 0 ) break;
+    //                 std::array<size_t, 3> coarse_parent;
+    //                 std::transform( elem_indices.begin(),
+    //                                 elem_indices.end(),
+    //                                 coarse_parent.begin(),
+    //                                 [ratio = lengths.at( level_ii ).at( 0 ) / lengths.at( level_ii - dlevel ).at( 0 )](
+    //                                     size_t x ) { return x / ratio; } );
+    //                 const size_t radius = std::ceil( static_cast<double>( degree + 1 ) / std::pow( 2.0, dlevel ) );
+    //                 auto& coarser_level_refine = elem_indices_to_refine.at( level_ii - dlevel );
+
+    //                 util::iterateTensorProduct( util::IndexVec( dim, 2*radius + 1 ), [&]( const util::IndexVec& it ) {
+    //                     // If out of bounds, skip it
+    //                     bool out_of_bounds = false;
+    //                     std::array<size_t, 3> coarse_neighbor;
+    //                     for( size_t i = 0; i < dim; i++ )
+    //                     {
+    //                         coarse_neighbor.at( i ) = coarse_parent.at( i ) + it.at( i ) - radius;
+    //                         if( coarse_neighbor.at( i ) > lengths.at( level_ii - dlevel ).at( i ) )
+    //                             out_of_bounds = true;
+    //                     }
+    //                     if( not out_of_bounds )
+    //                         coarser_level_refine.push_back( coarse_neighbor );
+    //                 } );
+    //             }
+    //         }
+    //     }
+
+    //     // Remove duplicates
+    //     for( auto& level_refine : elem_indices_to_refine )
+    //     {
+    //         std::sort( level_refine.begin(), level_refine.end() );
+    //         level_refine.erase( std::unique( level_refine.begin(), level_refine.end() ), level_refine.end() );
+    //     }
+
+    //     return elem_indices_to_refine;
+    // }
+
     basis::HierarchicalTPSplineSpace buildHierarchicalH1(
         const basis::KnotVector& kv_s,
         const basis::KnotVector& kv_t,

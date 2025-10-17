@@ -53,6 +53,9 @@ namespace topology
         bool iterateAncestors( const Dart& global_d,
                                const std::function<bool( const Dart& )>& callback ) const;
 
+        const std::map<Dart, Dart>& phiOnes() const { return mPhiOnes; }
+        const std::map<Dart, Dart>& phiMinusOnes() const { return mPhiMinusOnes; }
+
         protected:
         bool iterateDartLineage( const Dart& global_d,
                                  const size_t ancestor_or_descendant_level,

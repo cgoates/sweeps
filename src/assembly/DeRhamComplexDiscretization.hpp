@@ -4,6 +4,7 @@
 #include <CombinatorialMapBoundary.hpp>
 #include <VectorConformingHierarchicalTPSplineSpace.hpp>
 #include <IndexOperations.hpp>
+#include <NavierStokesDiscretization.hpp>
 
 namespace assembly
 {
@@ -75,7 +76,7 @@ namespace assembly
         eval::SplineSpaceEvaluator L2;
     };
 
-    class DeRhamComplexHierarchicalDiscretization : public DeRhamComplexDiscretization
+    class DeRhamComplexHierarchicalDiscretization : public DeRhamComplexDiscretization, public api::NavierStokesDiscretization
     {
         public:
         DeRhamComplexHierarchicalDiscretization( const basis::KnotVector& kv_s,
