@@ -59,7 +59,7 @@ namespace topology
 
         private:
         std::vector<std::shared_ptr<const TPCombinatorialMap>> mSubMaps;
-        std::map<ConstituentSide, std::pair<TPPermutation, ConstituentSide>> mInterMapConnections;
+        InternalConnectionsMap mInterMapConnections;
         const DartRanges mRanges;
     };
 
