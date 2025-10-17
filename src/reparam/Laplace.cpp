@@ -546,6 +546,47 @@ namespace reparam
         return Eigen::MatrixX2d();
     }
 
+    Eigen::MatrixXd checkLinearPrecision(
+        const topology::CombinatorialMap& map,
+        const Laplace3dEdgeWeights& edge_weights_type,
+        const std::vector<Normal>& normals,
+        const VertexPositionsFunc& v_positions,
+        const size_t n_constrained_verts,
+        const size_t spatial_dim )
+    {
+        t.start( 0 );
+
+        using SparseVectorXd = Eigen::SparseVector<double>;
+        using SparseMatrixXd = Eigen::SparseMatrix<double>;
+
+        const auto edge_ids = indexingOrError( map, 1 );
+
+        const std::vector<double> edge_weights = edgeWeightsLaplace3d( map, v_positions, normals, edge_weights_type );
+        const auto edge_weights_func = [&]( const topology::Edge& e ) { return edge_weights.at( edge_ids( e ) ); };
+
+        const size_t n_verts = cellCount( map, 0 );
+
+        const auto vertex_ids = indexingOrError( map, 0 );
+
+        Eigen::MatrixXd positions = Eigen::MatrixXd::Zero( n_verts, spatial_dim );
+        iterateCellsWhile( map, 0, [&]( const topology::Vertex& v ) {
+            positions.row( vertex_ids( v ) ) = v_positions( v ).transpose();
+            return true;
+        } );
+
+        Eigen::MatrixXd result( n_verts, spatial_dim );
+
+        iterateCellsWhile( map, 0, [&]( const topology::Vertex& v ) {
+            if( boundaryAdjacent( map, v ) ) return true;
+            const size_t vid = vertex_ids( v );
+            const SparseVectorXd row = laplaceOperatorRowSparse( map, v, edge_weights_func, n_verts );
+            result.row( vid ) = row.transpose() * positions;
+            return true;
+        } );
+
+        return result;
+    }
+
     Eigen::MatrixXd
         solveLaplaceSparse( const topology::CombinatorialMap& map,
                             const std::function<double( const topology::Edge& )>& edge_weights,

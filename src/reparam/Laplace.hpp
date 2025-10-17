@@ -63,4 +63,11 @@ namespace reparam
                                               const std::vector<Normal>& normals,
                                               const Laplace3dEdgeWeights& edge_weights );
 
+    Eigen::MatrixXd checkLinearPrecision( const topology::CombinatorialMap& map,
+                                          const Laplace3dEdgeWeights& edge_weights,
+                                          const std::vector<Normal>& normals,
+                                          const VertexPositionsFunc& v_positions,
+                                          const size_t n_constrained_verts,
+                                          const size_t spatial_dim );
+
 } // namespace reparam
