@@ -13,7 +13,7 @@ namespace api
 
         virtual ~NavierStokesDiscretization() = default;
 
-        virtual const Eigen::Matrix2Xd& controlPoints() const = 0;
+        virtual const Eigen::MatrixXd& controlPoints() const = 0;
 
         virtual const topology::CombinatorialMapBoundary& cmapBdry() const = 0;
 
@@ -37,7 +37,7 @@ namespace api
 
         virtual ~NavierStokesTPDiscretization() = default;
 
-        virtual const Eigen::Matrix2Xd& controlPoints() const override { return cpts; }
+        virtual const Eigen::MatrixXd& controlPoints() const override { return cpts; }
 
         virtual const topology::CombinatorialMapBoundary& cmapBdry() const override { return cmap_bdry; }
 
@@ -57,7 +57,7 @@ namespace api
 
         const topology::CombinatorialMapBoundary cmap_bdry;
 
-        const Eigen::Matrix2Xd cpts;
+        const Eigen::MatrixXd cpts;
 
         eval::SplineSpaceEvaluator H1;
         eval::SplineSpaceEvaluator HDIV;
@@ -86,7 +86,7 @@ namespace api
 
         virtual ~NavierStokesHierarchicalDiscretization() = default;
 
-        virtual const Eigen::Matrix2Xd& controlPoints() const override { return cpts; }
+        virtual const Eigen::MatrixXd& controlPoints() const override { return cpts; }
 
         virtual const topology::CombinatorialMapBoundary& cmapBdry() const override { return cmap_bdry; }
 
@@ -106,7 +106,7 @@ namespace api
 
         const topology::CombinatorialMapBoundary cmap_bdry;
 
-        const Eigen::Matrix2Xd cpts;
+        const Eigen::MatrixXd cpts;
 
         eval::SplineSpaceEvaluator H1;
         eval::SplineSpaceEvaluator HDIV;
