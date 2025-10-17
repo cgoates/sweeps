@@ -3,6 +3,7 @@
 #include <ParentBasis.hpp>
 #include <ParametricAtlas.hpp>
 #include <Eigen/Dense>
+#include <unsupported/Eigen/KroneckerProduct>
 
 namespace eval
 {
@@ -182,17 +183,23 @@ namespace eval
                                                         const SplineSpaceEvaluator& geom_evals,
                                                         const Eigen::MatrixXd& cpts )
     {
-        const Eigen::MatrixXd jac = geom_evals.evaluateParamToSpatialJacobian( cpts );
-        return scalar_evals.evaluateFirstDerivativesFromParamToSpatial() *
-            jac.cwiseInverse().diagonal().asDiagonal(); // transform from ds denominator to dx
+        const Eigen::MatrixXd jac = geom_evals.evaluateJacobian( cpts );
+        return scalar_evals.evaluateFirstDerivatives() *
+            jac.inverse(); // transform from dxi denominator to dx
     }
 
     Eigen::MatrixXd piolaTransformedHCurlBasis( const SplineSpaceEvaluator& vec_evals,
                                                 const SplineSpaceEvaluator& geom_evals,
                                                 const Eigen::MatrixXd& cpts )
     {
-        const Eigen::MatrixXd jac_inverse_transpose = geom_evals.evaluateParamToSpatialJacobian( cpts ).cwiseInverse();
-        return vec_evals.evaluateBasis() * jac_inverse_transpose.transpose();
+        const Eigen::MatrixXd jac_inverse = geom_evals.evaluateParamToSpatialJacobian( cpts ).inverse();
+        return vec_evals.evaluateBasis() * jac_inverse;
+    }
+
+    Eigen::MatrixXd doubledInverseJacobian( const Eigen::MatrixXd& jac )
+    {
+        const Eigen::MatrixXd inv_jac = jac.inverse();
+        return kroneckerProduct( inv_jac, Eigen::MatrixXd::Identity( inv_jac.rows(), inv_jac.cols() ) );
     }
 
     Eigen::MatrixXd piolaTransformedHCurlFirstDerivatives( const SplineSpaceEvaluator& vec_evals,
@@ -204,7 +211,7 @@ namespace eval
         const size_t spatial_dim = cpts.rows();
         const size_t n_funcs = vector_basis.cols();
         const Eigen::MatrixXd jac = geom_evals.evaluateParamToSpatialJacobian( cpts );
-        const auto inverse_transpose_jacobian = jac.cwiseInverse();
+        const auto inverse_transpose_jacobian = jac.inverse().transpose();
 
         const auto modified_hessian = [&geom_evals, &cpts, &param_dim, &spatial_dim]() {
             const Eigen::MatrixXd hess = geom_evals.evaluateParamToSpatialHessian( cpts );
@@ -230,7 +237,7 @@ namespace eval
             return out;
         };
 
-        const Eigen::MatrixXd second_term = [&](){
+        const Eigen::MatrixXd second_term = [&]() -> Eigen::MatrixXd {
             const auto inverse_jacobian = inverse_transpose_jacobian.transpose();
             Eigen::MatrixXd multiplier = modified_hessian();
 
@@ -247,7 +254,7 @@ namespace eval
                      .reshaped( spatial_dim * param_dim, n_funcs ) +
                  second_term )
                    .transpose() *
-               jac.cwiseInverse().diagonal().transpose().replicate( param_dim, 1 ).reshaped().asDiagonal(); // transform from ds denominator to dx
+               doubledInverseJacobian( jac ); // transform from ds denominator to dx
     }
 
     Eigen::MatrixXd piolaTransformedHDivBasis( const SplineSpaceEvaluator& vec_evals,
@@ -309,7 +316,7 @@ namespace eval
                 .reshaped( spatial_dim * param_dim, n_funcs );
 
         return ( first_term + second_term + third_term ).transpose() *
-               jac.cwiseInverse().diagonal().transpose().replicate( param_dim, 1 ).reshaped().asDiagonal(); // transform from ds denominator to dx
+               doubledInverseJacobian( jac ); // transform from ds denominator to dx
     }
 
     Eigen::MatrixXd piolaTransformedL2Basis( const SplineSpaceEvaluator& bivec_evals,
@@ -328,7 +335,7 @@ namespace eval
         return ( det_inverse * jac_inverse_transpose * bivec_evals.evaluateFirstDerivativesFromParamToSpatial().transpose() -
                  det_inverse * det_inverse * jac_inverse_transpose * paramToSpatialGradDeterminant( geom_evals, cpts ) *
                      bivec_evals.evaluateBasis().transpose() )
-            .transpose() * jac.cwiseInverse().diagonal().asDiagonal(); // transform from ds denominator to dx
+            .transpose() * jac.inverse(); // transform from ds denominator to dx
     }
 
     VertexPositionsFunc vertexPositionsFromManifold( const basis::SplineSpace& ss, const Eigen::MatrixXd& cpts )
