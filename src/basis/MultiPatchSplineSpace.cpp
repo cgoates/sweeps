@@ -7,6 +7,22 @@
 
 namespace basis
 {
+    /// A coordinate frame is a triple of parent points corresponding to the (0,0), (1,0), and (0,1) corners of a face,
+    /// if the input dart is taken as aligned with the s+ direction.  If reverse_dart is true, then the dart is taken as
+    /// pointing in the s- direction instead.
+    std::tuple<param::ParentPoint, param::ParentPoint, param::ParentPoint>
+        buildCoordinateFrame( const param::TPParametricAtlas& param, const topology::Face& f, const bool reverse_dart )
+    {
+        const param::ParentPoint ppt00 = param.parentPoint( f.dart() );
+        const param::ParentPoint ppt10 = param.parentPoint( phi( param.cmap(), 1, f.dart() ).value() );
+        const topology::Vertex third_corner(
+            phi( param.cmap(), reverse_dart ? std::vector<int>{ 1, 1 } : std::vector<int>{ -1 }, f.dart() ).value() );
+        const param::ParentPoint ppt01 = param.parentPoint( third_corner );
+
+        return reverse_dart ? std::make_tuple( ppt10, ppt00, ppt01 )
+                            : std::make_tuple( ppt00, ppt10, ppt01 );
+    }
+
     std::tuple<util::IndexVec, util::IndexVec, SmallVector<std::variant<bool, size_t>, 3>>
         getIterVars( const TPSplineSpace& constituent, const topology::Cell& corner, const bool reverse_dart = false )
     {
@@ -17,17 +33,30 @@ namespace basis
         const param::BaryCoordIsZeroVec corner_bdry = param::parentDomainBoundary( param, corner );
         SmallVector<std::variant<bool, size_t>, 3> direction;
         util::IndexVec order( param_dim );
+
+        const auto handle_on_group_boundary = [&]( const size_t first_idx, const size_t order_idx ) {
+            if( corner_bdry.at( first_idx ) )
+            {
+                order.at( order_idx ) = direction.size();
+                direction.push_back( lengths.at( direction.size() ) - 1 );
+                return true;
+            }
+            else if( corner_bdry.at( first_idx + 1 ) )
+            {
+                order.at( order_idx ) = direction.size();
+                direction.push_back( size_t{0} );
+                return true;
+            }
+
+            return false;
+        };
+
         switch( corner.dim() )
         {
             case 0:
             {
-                const param::BaryCoordIsZeroVec corner_bdry = param::parentDomainBoundary( constituent.basisComplex().parametricAtlas(), corner );
                 iterateGroups( pd, [&]( const size_t first_idx, const auto, const auto ){
-                    if( corner_bdry.at( first_idx ) )
-                        direction.push_back( lengths.at( direction.size() ) - 1 );
-                    else if( corner_bdry.at( first_idx + 1 ) )
-                        direction.push_back( size_t{0} );
-                    else
+                    if( not handle_on_group_boundary( first_idx, 0 ) )
                         throw std::runtime_error( "Bad boundary for a vertex" );
                 } );
                 const auto range = std::ranges::iota_view( size_t{0}, param_dim );
@@ -35,20 +64,11 @@ namespace basis
             }
             case 1:
             {
-                size_t dummy_index = 1;
-                const param::BaryCoordIsZeroVec corner_bdry = param::parentDomainBoundary( constituent.basisComplex().parametricAtlas(), corner );
+                size_t next_non_edge_group_id = 1;
                 iterateGroups( pd, [&]( const size_t first_idx, const auto, const auto ){
-                    if( corner_bdry.at( first_idx ) )
-                    {
-                        order.at( dummy_index++ ) = direction.size();
-                        direction.push_back( lengths.at( direction.size() ) - 1 );
-                    }
-                    else if( corner_bdry.at( first_idx + 1 ) )
-                    {
-                        order.at( dummy_index++ ) = direction.size();
-                        direction.push_back( size_t{0} );
-                    }
-                    else
+                    if( handle_on_group_boundary( first_idx, next_non_edge_group_id ) )
+                        next_non_edge_group_id++;
+                    else // This is the group along which the edge runs
                     {
                         order.at( 0 ) = direction.size();
                         const param::ParentPoint ppt = param.parentPoint( corner.dart() );
@@ -58,64 +78,42 @@ namespace basis
                 } );
                 return { lengths, order, direction };
             }
-            break;
             case 2:
             {
                 // Build a coordinate frame
-                const auto [ ppt00, ppt10, ppt01 ] = [&]() -> std::tuple<param::ParentPoint, param::ParentPoint, param::ParentPoint> {
-                    const param::ParentPoint ppt00 = param.parentPoint( corner.dart() );
-                    const param::ParentPoint ppt10 = param.parentPoint( phi( param.cmap(), 1, corner.dart() ).value() );
-                    if( reverse_dart )
-                    {
-                        const param::ParentPoint ppt01 =
-                            param.parentPoint( phi( param.cmap(), { 1, 1 }, corner.dart() ).value() );
-                        return { ppt10, ppt00, ppt01 };
-                    }
-                    else
-                    {
-                        const param::ParentPoint ppt01 =
-                            param.parentPoint( phi( param.cmap(), -1, corner.dart() ).value() );
-                        return { ppt00, ppt10, ppt01 };
-                    }
-                }();
+                const auto [ppt00, ppt10, ppt01] = buildCoordinateFrame( param, corner, reverse_dart );
 
-                const param::BaryCoordIsZeroVec corner_bdry = param::join( param::join( ppt00.mBaryCoordIsZero, ppt10.mBaryCoordIsZero ), ppt01.mBaryCoordIsZero );
+                const auto find_face_direction = [&]( const param::ParentPoint& ppt_a,
+                                                      const param::ParentPoint& ppt_b,
+                                                      const size_t first_idx,
+                                                      const size_t order_idx ) {
+                    if( ppt_b.mBaryCoordIsZero.at( first_idx ) and not ppt_a.mBaryCoordIsZero.at( first_idx ) )
+                    {
+                        order.at( order_idx ) = direction.size();
+                        direction.push_back( true );
+                        return true;
+                    }
+                    else if( not ppt_b.mBaryCoordIsZero.at( first_idx ) and ppt_a.mBaryCoordIsZero.at( first_idx ) )
+                    {
+                        order.at( order_idx ) = direction.size();
+                        direction.push_back( false );
+                        return true;
+                    }
+                    return false;
+                };
+
                 iterateGroups( pd, [&, ppt00 = ppt00, ppt10 = ppt10, ppt01 = ppt01]( const size_t first_idx, const auto, const auto ){
-                    if( corner_bdry.at( first_idx ) )
+                    if( not handle_on_group_boundary( first_idx, 2 ) )
                     {
-                        order.at( 2 ) = direction.size();
-                        direction.push_back( lengths.at( direction.size() ) - 1 );
-                    }
-                    else if( corner_bdry.at( first_idx + 1 ) )
-                    {
-                        order.at( 2 ) = direction.size();
-                        direction.push_back( size_t{0} );
-                    }
-                    else if( ppt10.mBaryCoordIsZero.at( first_idx ) and not ppt00.mBaryCoordIsZero.at( first_idx ) )
-                    {
-                        order.at( 0 ) = direction.size();
-                        direction.push_back( true );
-                    }
-                    else if( not ppt10.mBaryCoordIsZero.at( first_idx ) and ppt00.mBaryCoordIsZero.at( first_idx ) )
-                    {
-                        order.at( 0 ) = direction.size();
-                        direction.push_back( false );
-                    }
-                    else if( ppt01.mBaryCoordIsZero.at( first_idx ) and not ppt00.mBaryCoordIsZero.at( first_idx ) )
-                    {
-                        order.at( 1 ) = direction.size();
-                        direction.push_back( true );
-                    }
-                    else if( not ppt01.mBaryCoordIsZero.at( first_idx ) and ppt00.mBaryCoordIsZero.at( first_idx ) )
-                    {
-                        order.at( 1 ) = direction.size();
-                        direction.push_back( false );
+                        // Then the face runs along this group.
+                        // Figure out which of the two face directions this group corresponds to.
+                        if( not find_face_direction( ppt00, ppt10, first_idx, 0 ) )
+                            find_face_direction( ppt00, ppt01, first_idx, 1 );
                     }
                 } );
 
                 return { lengths, order, direction };
             }
-            break;
             default:
                 throw std::runtime_error( "Corner cells should be dimension 2 or less" );
         }
