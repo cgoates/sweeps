@@ -126,22 +126,16 @@ namespace basis
                                                            accum.first + op.rows(), accum.second + op.cols() );
                                                    } );
 
-        if( scalar_ops.size() == 2 )
+        Eigen::MatrixXd result = Eigen::MatrixXd::Zero( rows, cols );
+        for( size_t i = 0, row_offset = 0, col_offset = 0; i < scalar_ops.size(); i++ )
         {
-            return ( Eigen::MatrixXd( rows, cols ) << scalar_ops.at( 0 ),
-                     Eigen::MatrixXd::Zero( scalar_ops.at( 0 ).rows(), scalar_ops.at( 1 ).cols() ),
-                     Eigen::MatrixXd::Zero( scalar_ops.at( 1 ).rows(), scalar_ops.at( 0 ).cols() ),
-                     scalar_ops.at( 1 ) )
-                .finished();
+            const Eigen::MatrixXd& op = scalar_ops.at( i );
+            result.block( row_offset, col_offset, op.rows(), op.cols() ) = op;
+            row_offset += op.rows();
+            col_offset += op.cols();
         }
-        else if( scalar_ops.size() == 3 )
-        {
-            const auto zeros = [&]( const size_t r, const size_t c ) { return Eigen::MatrixXd::Zero( scalar_ops.at( r ).rows(), scalar_ops.at( c ).cols() ); };
-            return ( Eigen::MatrixXd( rows, cols ) << scalar_ops.at( 0 ), zeros( 0, 1 ), zeros( 0, 2 ),
-                                                      zeros( 1, 0 ), scalar_ops.at( 1 ), zeros( 1, 2 ),
-                                                      zeros( 2, 0 ), zeros( 2, 1 ), scalar_ops.at( 2 ) ).finished();
-        }
-        throw std::runtime_error( "Bad dimension for div conf tp spline space" );
+
+        return result;
     }
 
     std::vector<FunctionId> VectorConformingTPSplineSpace::connectivity( const topology::Cell& c ) const
