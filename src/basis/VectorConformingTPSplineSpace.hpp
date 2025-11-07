@@ -9,8 +9,7 @@ namespace basis
     {
         public:
         VectorConformingTPSplineSpace( const std::shared_ptr<const VectorConformingBasisComplex>& bc,
-                              const TPSplineSpace& primal_basis,
-                              const ConformingType conforming_type = ConformingType::Divergence );
+                                       const TPSplineSpace& primal_basis );
         virtual ~VectorConformingTPSplineSpace() = default;
 
         virtual const VectorConformingBasisComplex& basisComplex() const override;

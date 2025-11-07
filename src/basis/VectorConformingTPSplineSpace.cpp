@@ -43,9 +43,8 @@ namespace basis
     }
 
     VectorConformingTPSplineSpace::VectorConformingTPSplineSpace( const std::shared_ptr<const VectorConformingBasisComplex>& bc,
-                                                const TPSplineSpace& primal_basis,
-                                                const ConformingType conforming_type )
-        : mBasisComplex( bc ), mConformingType( conforming_type )
+                                                                  const TPSplineSpace& primal_basis )
+        : mBasisComplex( bc ), mConformingType( bc->conformingType() )
     {
         const size_t dim = primal_basis.basisComplex().parametricAtlas().cmap().dim();
 
@@ -62,7 +61,7 @@ namespace basis
             {
                 component_1d_bases.push_back( { primal_1d_bases.at( i ), mReducedDegree1dBases.at( i ) } );
             }
-            return [component_1d_bases, index_pattern = getIndexPatterns( conforming_type, dim )]( const size_t vector_component, const size_t tp_index ) {
+            return [component_1d_bases, index_pattern = getIndexPatterns( mConformingType, dim )]( const size_t vector_component, const size_t tp_index ) {
                 return component_1d_bases.at( tp_index ).at( index_pattern.at( vector_component ).at( tp_index ) );
             };
         }();
