@@ -61,6 +61,7 @@ add_my_test(SphereFoliation_test)
 target_link_libraries(SphereFoliation_test PUBLIC fitting)
 add_my_test(MultiPatchDecomposition_test)
 add_my_test(UnionFind_test)
+add_my_test(ParametricAtlas_test)
 
 add_test(
     NAME python_import_test
