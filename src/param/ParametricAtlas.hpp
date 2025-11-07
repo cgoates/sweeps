@@ -18,4 +18,6 @@ namespace param
     size_t parametricLengthIndexAlongEdge( const ParametricAtlas& atlas, const topology::Edge& e );
 
     topology::Vertex originVertex( const ParametricAtlas& atlas, const topology::Cell& c );
+
+    SmallVector<std::pair<size_t, bool>, 3> coordinateTransform( const ParametricAtlas& atlas, const topology::Cell& c );
 }

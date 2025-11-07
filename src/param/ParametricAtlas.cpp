@@ -1,5 +1,6 @@
 #include <ParametricAtlas.hpp>
 #include <CombinatorialMapMethods.hpp>
+#include <CommonUtils.hpp>
 
 namespace param
 {
@@ -88,5 +89,67 @@ namespace param
         } );
 
         return out.value();
+    }
+
+    SmallVector<ParentPoint, 4> getFrame( const ParametricAtlas& atlas, const topology::Cell& f, const bool reverse_dart = false )
+    {
+        if( atlas.cmap().dim() < 2 ) throw std::runtime_error( "Cannot get face frame from atlas with dimension less than 2" );
+
+        const param::ParentPoint ppt00 = atlas.parentPoint( f.dart() );
+        const param::ParentPoint ppt10 = atlas.parentPoint( phi( atlas.cmap(), 1, f.dart() ).value() );
+        const topology::Vertex third_corner(
+            phi( atlas.cmap(), reverse_dart ? std::vector<int>{ 1, 1 } : std::vector<int>{ -1 }, f.dart() ).value() );
+        const param::ParentPoint ppt01 = atlas.parentPoint( third_corner );
+
+        if( atlas.cmap().dim() == 2 )
+        {
+            return reverse_dart ? SmallVector<ParentPoint, 4>{ { ppt10, ppt00, ppt01 } }
+                                : SmallVector<ParentPoint, 4>{ { ppt00, ppt10, ppt01 } };
+        }
+        else
+        {
+            const topology::Vertex fourth_corner(
+                phi( atlas.cmap(), reverse_dart ? std::vector<int>{ 2, -1 } :std::vector<int>{ 2, 1, 1 }, f.dart() ).value() );
+            const param::ParentPoint ppt11 = atlas.parentPoint( fourth_corner );
+
+            return reverse_dart ? SmallVector<ParentPoint, 4>{ { ppt10, ppt00, ppt01, ppt11 } }
+                                : SmallVector<ParentPoint, 4>{ { ppt00, ppt10, ppt01, ppt11 } };
+        }
+    }
+
+    SmallVector<std::pair<size_t, bool>, 3> coordinateTransform( const ParametricAtlas& atlas, const topology::Cell& f )
+    {
+        if( f.dim() != atlas.cmap().dim() - 1 )
+        {
+            throw std::runtime_error( "coordinateTransform only supports cells of dimension dim-1" );
+        }
+        const auto frame = getFrame( atlas, f );
+        const size_t dim = atlas.cmap().dim();
+        const auto maybe_phidim = phi( atlas.cmap(), dim, f.dart() );
+        if( not maybe_phidim.has_value() )
+        {
+            throw std::runtime_error( "Face dart has no phi_dim neighbor" );
+        }
+        const auto other_frame = getFrame( atlas, topology::Face( maybe_phidim.value() ), true );
+
+        const auto find_change = [dim]( const param::ParentPoint& pt, const param::ParentPoint& origin ) -> std::pair<size_t, bool> {
+            for( size_t i = 0; i < dim; i++ )
+            {
+                if( not util::equals( pt.mPoint(i), origin.mPoint(i), 1e-10 ) )
+                    return {i, copysign( 1, pt.mPoint(i) - origin.mPoint(i) ) > 0};
+            }
+            throw std::runtime_error( "No changing coordinate found between points" );
+        };
+
+        SmallVector<std::pair<size_t, bool>, 3> transform( dim, {0, false} );
+        for( size_t coord = 0; coord < dim; coord++ )
+        {
+            const bool factor = ( coord != dim - 1 );
+            const auto coord_1 = find_change( frame.at( coord + 1 ), frame.at( 0 ) );
+            const auto coord_2 = find_change( other_frame.at( coord + 1 ), other_frame.at( 0 ) );
+            transform.at( coord_1.first ) = { coord_2.first, coord_1.second == ( coord_2.second == factor ) };
+        }
+
+        return transform;
     }
 }
