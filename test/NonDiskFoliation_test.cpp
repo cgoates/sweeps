@@ -632,11 +632,11 @@ TEST_CASE( "Flange" )
     io::outputSimplicialFieldToVTK( output4, "flange_traces.vtu" );
 }
 
-std::vector<Eigen::MatrixX3d> parseControlPoints( const std::string& filename )
+std::vector<Eigen::MatrixXd> parseControlPoints( const std::string& filename )
 {
     std::ifstream file( filename );
     std::string line;
-    std::vector<Eigen::MatrixX3d> control_points;
+    std::vector<Eigen::MatrixXd> control_points;
 
     std::getline( file, line );
     const size_t num_surfaces = 112; // FIXME: Read this from first line of file

@@ -49,6 +49,6 @@ namespace basis
     MultiPatchSplineSpace degreeRefineOrCoarsen( const MultiPatchSplineSpace& ss,
                                                  const std::function<DegreeAndKnotVector( const size_t )>& degree_and_kv_func );
 
-    Eigen::MatrixX3d multiPatchCoefficients( const MultiPatchSplineSpace& ss,
-                                             const std::vector<Eigen::MatrixX3d>& patch_coeffs );
+    Eigen::MatrixXd multiPatchCoefficients( const MultiPatchSplineSpace& ss,
+                                            const std::vector<Eigen::MatrixXd>& patch_coeffs );
 } // namespace basis

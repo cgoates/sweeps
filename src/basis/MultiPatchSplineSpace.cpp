@@ -317,22 +317,23 @@ namespace basis
         return basis::MultiPatchSplineSpace( bc, temp.subSpaces() );
     }
 
-    Eigen::MatrixX3d multiPatchCoefficients( const MultiPatchSplineSpace& ss,
-                                             const std::vector<Eigen::MatrixX3d>& patch_coeffs )
+    Eigen::MatrixXd multiPatchCoefficients( const MultiPatchSplineSpace& ss,
+                                            const std::vector<Eigen::MatrixXd>& patch_coeffs )
     {
-        Eigen::MatrixX3d out = Eigen::MatrixX3d::Zero( ss.numFunctions(), 3 );
-        std::vector<size_t> num_funcs( ss.numFunctions(), 0 );
-
         const auto& func_ids = ss.functionIdMap();
         if( patch_coeffs.size() != func_ids.size() )
             throw std::invalid_argument( "Wrong number of patch coefficients in multiPatchCoefficients" );
+
+        Eigen::MatrixXd out = Eigen::MatrixXd::Zero( ss.numFunctions(), patch_coeffs.at( 0 ).cols() );
+        std::vector<size_t> num_funcs( ss.numFunctions(), 0 );
 
         for( size_t patch_ii = 0; patch_ii < patch_coeffs.size(); patch_ii++ )
         {
             const auto& patch_coeff = patch_coeffs.at( patch_ii );
             const auto& patch_func_ids = func_ids.at( patch_ii );
             if( patch_coeff.rows() != (Eigen::Index)patch_func_ids.size() )
-                throw std::invalid_argument( "Wrong number of control points for patch " + std::to_string( patch_ii ) + " in multiPatchCoefficients" );
+                throw std::invalid_argument( "Wrong number of control points for patch " + std::to_string( patch_ii ) + " in multiPatchCoefficients. "
+                                              "Expected " + std::to_string( patch_func_ids.size() ) + ", got " + std::to_string( patch_coeff.rows() ) + "." );
 
             for( size_t func_ii = 0; func_ii < patch_func_ids.size(); func_ii++ )
             {
