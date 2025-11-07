@@ -102,7 +102,12 @@ namespace std
     auto operator<<(std::ostream& os, const std::variant<Ts...>& v)
         -> std::enable_if_t<(sizeof...(Ts) > 0), std::ostream&>
     {
-        std::visit([&](const auto& x) { os << "variant{type:" << v.index() << ", " << x << "}"; }, v);
+        std::visit([&](const auto& x) {
+            if constexpr (std::is_same_v<std::decay_t<decltype(x)>, bool>)
+                os << "variant{type:" << v.index() << ", " << (x ? "true" : "false") << "}";
+            else
+                os << "variant{type:" << v.index() << ", " << x << "}";
+        }, v);
         return os;
     }
 
