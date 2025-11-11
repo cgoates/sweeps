@@ -16,6 +16,7 @@ add_library( basis SHARED
   HierarchicalTPSplineSpace.cpp
   HierarchicalMultiPatchSplineSpace.cpp
   VectorConformingHierarchicalTPSplineSpace.cpp
+  VectorConformingMultiPatchSplineSpace.cpp
 )
 
 target_link_libraries( basis PUBLIC util topology param )

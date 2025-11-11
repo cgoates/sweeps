@@ -51,4 +51,9 @@ namespace basis
 
     Eigen::MatrixXd multiPatchCoefficients( const MultiPatchSplineSpace& ss,
                                             const std::vector<Eigen::MatrixXd>& patch_coeffs );
+
+    /// A helper function to get iteration variables for traversing the control points of a constituent TPSplineSpace
+    /// This allows for connection of control points between the patches.
+    std::tuple<util::IndexVec, util::IndexVec, SmallVector<std::variant<bool, size_t>, 3>>
+        getIterVars( const TPSplineSpace& constituent, const topology::Cell& corner, const bool reverse_dart = false );
 } // namespace basis

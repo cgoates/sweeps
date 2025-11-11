@@ -8,7 +8,7 @@
 namespace basis
 {
     std::tuple<util::IndexVec, util::IndexVec, SmallVector<std::variant<bool, size_t>, 3>>
-        getIterVars( const TPSplineSpace& constituent, const topology::Cell& corner, const bool reverse_dart = false )
+        getIterVars( const TPSplineSpace& constituent, const topology::Cell& corner, const bool reverse_dart )
     {
         const auto& param = constituent.basisComplex().parametricAtlas();
         const size_t param_dim = param.cmap().dim();
