@@ -20,4 +20,9 @@ namespace param
     topology::Vertex originVertex( const ParametricAtlas& atlas, const topology::Cell& c );
 
     SmallVector<std::pair<size_t, bool>, 3> coordinateTransform( const ParametricAtlas& atlas, const topology::Cell& c );
+
+    /// A coordinate frame is a triple of parent points corresponding to the (0,0), (1,0), and (0,1) corners of a face,
+    /// if the input dart is taken as aligned with the s+ direction.  If reverse_dart is true, then the dart is taken as
+    /// pointing in the s- direction instead.
+    SmallVector<ParentPoint, 4> getFrame( const ParametricAtlas& atlas, const topology::Cell& f, const bool reverse_dart = false );
 }

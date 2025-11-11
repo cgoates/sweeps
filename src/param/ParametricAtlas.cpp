@@ -91,9 +91,9 @@ namespace param
         return out.value();
     }
 
-    SmallVector<ParentPoint, 4> getFrame( const ParametricAtlas& atlas, const topology::Cell& f, const bool reverse_dart = false )
+    SmallVector<ParentPoint, 4> getFrame( const ParametricAtlas& atlas, const topology::Cell& f, const bool reverse_dart )
     {
-        if( atlas.cmap().dim() < 2 ) throw std::runtime_error( "Cannot get face frame from atlas with dimension less than 2" );
+        if( atlas.cmap().dim() < 2 ) throw std::runtime_error( "Cannot get frame from atlas with dimension less than 2" );
 
         const param::ParentPoint ppt00 = atlas.parentPoint( f.dart() );
         const param::ParentPoint ppt10 = atlas.parentPoint( phi( atlas.cmap(), 1, f.dart() ).value() );

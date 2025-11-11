@@ -7,22 +7,6 @@
 
 namespace basis
 {
-    /// A coordinate frame is a triple of parent points corresponding to the (0,0), (1,0), and (0,1) corners of a face,
-    /// if the input dart is taken as aligned with the s+ direction.  If reverse_dart is true, then the dart is taken as
-    /// pointing in the s- direction instead.
-    std::tuple<param::ParentPoint, param::ParentPoint, param::ParentPoint>
-        buildCoordinateFrame( const param::TPParametricAtlas& param, const topology::Face& f, const bool reverse_dart )
-    {
-        const param::ParentPoint ppt00 = param.parentPoint( f.dart() );
-        const param::ParentPoint ppt10 = param.parentPoint( phi( param.cmap(), 1, f.dart() ).value() );
-        const topology::Vertex third_corner(
-            phi( param.cmap(), reverse_dart ? std::vector<int>{ 1, 1 } : std::vector<int>{ -1 }, f.dart() ).value() );
-        const param::ParentPoint ppt01 = param.parentPoint( third_corner );
-
-        return reverse_dart ? std::make_tuple( ppt10, ppt00, ppt01 )
-                            : std::make_tuple( ppt00, ppt10, ppt01 );
-    }
-
     std::tuple<util::IndexVec, util::IndexVec, SmallVector<std::variant<bool, size_t>, 3>>
         getIterVars( const TPSplineSpace& constituent, const topology::Cell& corner, const bool reverse_dart = false )
     {
@@ -81,7 +65,7 @@ namespace basis
             case 2:
             {
                 // Build a coordinate frame
-                const auto [ppt00, ppt10, ppt01] = buildCoordinateFrame( param, corner, reverse_dart );
+                const SmallVector<param::ParentPoint, 4> frame_vec = param::getFrame( param, corner, reverse_dart );
 
                 const auto find_face_direction = [&]( const param::ParentPoint& ppt_a,
                                                       const param::ParentPoint& ppt_b,
@@ -102,13 +86,13 @@ namespace basis
                     return false;
                 };
 
-                iterateGroups( pd, [&, ppt00 = ppt00, ppt10 = ppt10, ppt01 = ppt01]( const size_t first_idx, const auto, const auto ){
+                iterateGroups( pd, [&]( const size_t first_idx, const auto, const auto ){
                     if( not handle_on_group_boundary( first_idx, 2 ) )
                     {
                         // Then the face runs along this group.
                         // Figure out which of the two face directions this group corresponds to.
-                        if( not find_face_direction( ppt00, ppt10, first_idx, 0 ) )
-                            find_face_direction( ppt00, ppt01, first_idx, 1 );
+                        if( not find_face_direction( frame_vec.at( 0 ), frame_vec.at( 1 ), first_idx, 0 ) )
+                            find_face_direction( frame_vec.at( 0 ), frame_vec.at( 2 ), first_idx, 1 );
                     }
                 } );
 
