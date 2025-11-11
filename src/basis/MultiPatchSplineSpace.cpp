@@ -103,13 +103,6 @@ namespace basis
         }
     }
 
-    bool onSameVertex( const topology::MultiPatchCombinatorialMap& cmap, const topology::Dart& d1, const topology::Dart& d2 )
-    {
-        topology::LocalCellMarker m( 0 );
-        m.mark( cmap, topology::Vertex( d1 ) );
-        return m.isMarked( topology::Vertex( d2 ) );
-    }
-
     MultiPatchSplineSpace::MultiPatchSplineSpace( const std::shared_ptr<const MultiPatchBasisComplex>& bc,
                                                   const std::vector<std::shared_ptr<const TPSplineSpace>>& constituents )
         : mBasisComplex( bc ), mSubSpaces( constituents )

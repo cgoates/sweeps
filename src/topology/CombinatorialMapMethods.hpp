@@ -96,4 +96,6 @@ namespace topology
     IndexingFunc indexingOrError( const CombinatorialMap& map, const uint cell_dim );
 
     int eulerCharacteristic( const CombinatorialMap& map );
+
+    bool onSameVertex( const topology::CombinatorialMap& cmap, const topology::Dart& d1, const topology::Dart& d2 );
 } // namespace topology

@@ -476,4 +476,11 @@ namespace topology
         }
         return out;
     }
+
+    bool onSameVertex( const topology::CombinatorialMap& cmap, const topology::Dart& d1, const topology::Dart& d2 )
+    {
+        topology::LocalCellMarker m( 0 );
+        m.mark( cmap, topology::Vertex( d1 ) );
+        return m.isMarked( topology::Vertex( d2 ) );
+    }
 } // namespace topology
