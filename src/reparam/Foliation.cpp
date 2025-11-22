@@ -103,7 +103,7 @@ namespace reparam
     }
 
 
-    std::map<topology::Vertex, Eigen::Vector2d>
+    std::map<size_t, Eigen::Vector2d>
         boundaryConstraints( const topology::CombinatorialMap& cut_cmap,
                              const VertexPositionsFunc& cut_cmap_positions,
                              const size_t n_cuts,
@@ -114,6 +114,7 @@ namespace reparam
         const topology::CombinatorialMapBoundary bdry( cut_cmap );
         const auto bdry_positions = boundaryVertexPositions( bdry, cut_cmap_positions );
         const auto bdry_vert_ids = indexingOrError( bdry, 0 );
+        const auto cut_vert_ids = indexingOrError( cut_cmap, 0 );
 
         const topology::Dart start_d = [&]() {
             std::optional<topology::Dart> d;
@@ -129,7 +130,7 @@ namespace reparam
             return d.value();
         }();
 
-        std::map<topology::Vertex, Eigen::Vector2d> out;
+        std::map<size_t, Eigen::Vector2d> out;
 
         topology::Dart d = start_d;
 
@@ -152,7 +153,7 @@ namespace reparam
             for( auto& pr : side_positions )
             {
                 const double s = pr.second * factor;
-                out.emplace( pr.first, ( 1.0 - s ) * ngon_verts.at( side_ii ) + s * ngon_verts.at( side_ii + 1 ) );
+                out.emplace( cut_vert_ids( pr.first ), ( 1.0 - s ) * ngon_verts.at( side_ii ) + s * ngon_verts.at( side_ii + 1 ) );
             }
         }
 

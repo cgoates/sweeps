@@ -105,18 +105,8 @@ reparam::FoliationLeaf
         return cmap_vert_ids( v ) == vert_id and onBoundary( cmap, phi( cmap, -1, v.dart() ).value() );
     };
 
-    const std::map<topology::Vertex, Eigen::Vector2d> bdry_constraints =
+    const std::map<size_t, Eigen::Vector2d> constraints_by_id =
         reparam::boundaryConstraints( *cut_cmap, positions, n_cuts, is_cut_extremity, is_start_vert );
-
-    // FIXME: This should be what we return from boundaryConstraints, maybe
-    const std::map<size_t, Eigen::Vector2d> constraints_by_id = [&]() {
-        std::map<size_t, Eigen::Vector2d> out;
-        for( const auto& pr : bdry_constraints )
-        {
-            out.insert( { cut_vert_ids( pr.first ), pr.second } );
-        }
-        return out;
-    }();
 
     const auto constraints_func = [&]( const topology::Vertex& v ) -> std::optional<Eigen::Vector2d> {
         if( boundaryAdjacent( *cut_cmap, v ) )
