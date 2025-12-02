@@ -11,6 +11,7 @@ namespace util
                  const double& tol );
 
     double normalizeAngle( double angle );
+    double normalizeAnglePositive( double angle );
 
     bool angleEquals( const double a, const double b, const double tol );
 

@@ -29,6 +29,13 @@ namespace util
         return angle;
     }
 
+    double normalizeAnglePositive( double angle )
+    {
+        while( angle < 0 ) angle += 2 * std::numbers::pi;
+        while( angle >= 2 * std::numbers::pi ) angle -= 2 * std::numbers::pi;
+        return angle;
+    }
+
     bool angleEquals( const double a, const double b, const double tol )
     {
         return equals( normalizeAngle( a ), normalizeAngle( b ), tol );
