@@ -672,4 +672,61 @@ namespace reparam
 
         return result;
     }
+
+    std::map<size_t, Eigen::Vector2d>
+        boundaryConstraints( const topology::CombinatorialMap& cut_cmap,
+                             const VertexPositionsFunc& cut_cmap_positions,
+                             const size_t n_cuts,
+                             const std::function<bool( const topology::Vertex& )>& is_cut_extremity,
+                             const std::function<bool( const topology::Vertex& )>& is_start_v )
+    {
+        if( cut_cmap.dim() != 2 ) throw std::invalid_argument( "boundaryConstraints only supports 2d cmaps" );
+        const topology::CombinatorialMapBoundary bdry( cut_cmap );
+        const auto bdry_positions = boundaryVertexPositions( bdry, cut_cmap_positions );
+        const auto bdry_vert_ids = indexingOrError( bdry, 0 );
+        const auto cut_vert_ids = indexingOrError( cut_cmap, 0 );
+
+        const topology::Dart start_d = [&]() {
+            std::optional<topology::Dart> d;
+            iterateDartsWhile( bdry, [&]( const topology::Dart& a ) {
+                if( is_start_v( bdry.toUnderlyingCell( topology::Vertex( a ) ) ) )
+                {
+                    d.emplace( a );
+                    return false;
+                }
+                return true;
+            } );
+            if( not d.has_value() ) throw std::invalid_argument( "No vertex found for which is_start_v is true" );
+            return d.value();
+        }();
+
+        std::map<size_t, Eigen::Vector2d> out;
+
+        topology::Dart d = start_d;
+
+        const size_t n_sides = n_cuts * 4;
+
+        const std::vector<Eigen::Vector2d> ngon_verts = util::regularNGonVertices( n_sides );
+
+        for( size_t side_ii = 0; side_ii < n_sides; side_ii++ )
+        {
+            std::map<topology::Vertex, double> side_positions;
+            double cumulative_length = 0.0;
+            do
+            {
+                side_positions.insert( { bdry.toUnderlyingCell( topology::Vertex( d ) ), cumulative_length } );
+                cumulative_length += edgeLength( bdry, bdry_positions, d );
+                d = phi( bdry, 1, d ).value();
+            } while( not is_cut_extremity( bdry.toUnderlyingCell( topology::Vertex( d ) ) ) );
+
+            const double factor = 1 / cumulative_length;
+            for( auto& pr : side_positions )
+            {
+                const double s = pr.second * factor;
+                out.emplace( cut_vert_ids( pr.first ), ( 1.0 - s ) * ngon_verts.at( side_ii ) + s * ngon_verts.at( side_ii + 1 ) );
+            }
+        }
+
+        return out;
+    }
 } // namespace reparam
