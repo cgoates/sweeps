@@ -7,6 +7,12 @@ It uses foliations and harmonic functions to extend quad layouts to sweepable vo
 By restriction to linear B-splines, it can also generate hex meshes.
 The input to the algorithm is a tet mesh on the sweepable geometry, an indication of which portions of the boundary the sweep runs from and to (the source and target surfaces), and a quad layout on the source surface of the sweep which will be swept through the volume.
 
+Papers
+---
+The following papers have been written based on the material in this codebase:
+
+C. B. Goates and K. M. Shepherd, "Harmonic-based sweeps need not yield volumetric parameterizations," *Computer-Aided Design* (2025). DOI: [10.1016/j.cad.2025.104007](https://doi.org/10.1016/j.cad.2025.104007)
+
 Presentations
 ---
 The following presentations have been given based on the material in this codebase:
@@ -35,7 +41,7 @@ To run tests, run `ctest -j10` in the build directory after building.
 
 Recreating Results
 ---
-To recreate the results published in the journal article (reference to be added once it is published), follow these steps:
+To recreate the results published in the journal article "Harmonic-based sweeps need not yield volumetric parameterizations" ([10.1016/j.cad.2025.104007](https://doi.org/10.1016/j.cad.2025.104007)), follow these steps:
 Once the code is built and the tests are passing, run the following command in the build directory to generate the results for the bordered surface counterexample that is a union of two cylinders:
 ```
 src/sweep output-laplace counter2 output-critical-points
