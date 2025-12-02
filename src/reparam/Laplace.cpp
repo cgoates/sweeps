@@ -414,6 +414,8 @@ namespace reparam
         {
             // We take phi1s, add the rows for the vertices on both sides of the boundary, repeat until
             // we get to the next cone vertex, skip that, and continue to the last cone vertex.
+            // Note that here we are using an interior dart as a boundary dart, so we're not constraining the
+            // cone vertex itself.
             topology::Dart curr_d = start_v.dart();
             SparseMatrixXd rot = sparse_rotation( -0.5 * std::numbers::pi );
             while( bdry_vertex_ids( topology::Vertex( curr_d ) ) != constrained_verts.at( 1 ).first )
@@ -571,8 +573,6 @@ namespace reparam
         const std::map<size_t, Eigen::Vector2d> bdry_constraints =
             reparam::boundaryConstraints( cut_cmap, vert_positions, cut_extremities.size(), is_cut_extremity, is_start_vert );
 
-        const size_t n_sides = cut_extremities.size() * 4;
-
         for( const auto& pr : bdry_constraints )
         {
             const auto find_it = constrained_verts.find( pr.first );
@@ -607,7 +607,7 @@ namespace reparam
             const Eigen::Vector2d pos2_ = bdry_constraints.at( cut_vert_ids( furthest_reachable( cmap, {-1,2}, cut_pair.second.dart() ) ) );
 
             angles.push_back( - std::atan2( pos2_( 1 ) - pos1_( 1 ), pos2_( 0 ) - pos1_( 0 ) ) +
-                                std::atan2( pos2( 1 ) - pos1( 1 ), pos2( 0 ) - pos1( 0 ) ) );
+                                std::atan2( pos2( 1 ) - pos1( 1 ), pos2( 0 ) - pos1( 0 ) ) );// NOTE: Could round to nearest 2pi/n_sides
         }
 
         return {out, angles};
