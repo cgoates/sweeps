@@ -14,6 +14,8 @@
 #include <Dijkstra.hpp>
 #include <CombinatorialMapRestriction.hpp>
 
+static constexpr bool LAPLACE_TESTS_OUTPUT_VTK = false;
+
 TEST_CASE( "Laplace patch test", "" )
 {
     SweepInput sweep_input = SweepInputTestCases::twelveTetCube();
@@ -106,9 +108,10 @@ TEST_CASE( "Tutte Orbifold embedding" )
 
     std::cout << tutte.row( 3 ) << std::endl;
 
-    io::outputCMap( cut_map, [&]( const topology::Vertex& v ) -> Eigen::Vector3d {
-        return Eigen::Vector3d( tutte( cut_indexing( v ), 0 ), tutte( cut_indexing( v ), 1 ), 0 );
-    }, "tutte_orbi.vtu" );
+    if( LAPLACE_TESTS_OUTPUT_VTK )
+        io::outputCMap( cut_map, [&]( const topology::Vertex& v ) -> Eigen::Vector3d {
+            return Eigen::Vector3d( tutte( cut_indexing( v ), 0 ), tutte( cut_indexing( v ), 1 ), 0 );
+        }, "tutte_orbi.vtu" );
 }
 
 std::function<bool( const topology::Vertex& )> testEqualVertices( const topology::IndexingFunc& vert_ids,
@@ -134,9 +137,10 @@ TEST_CASE( "Large sphere tutte orbifold embedding" )
     };
     const topology::CombinatorialMapRestriction target( bdry, keep_face_target, true );
 
-    io::outputCMap( target, [&]( const topology::Vertex& v ) -> Eigen::Vector3d {
-        return sweep.mesh.points.at( bdry_vert_ids( v ) );
-    }, "bdry.vtu" );
+    if( LAPLACE_TESTS_OUTPUT_VTK )
+        io::outputCMap( target, [&]( const topology::Vertex& v ) -> Eigen::Vector3d {
+            return sweep.mesh.points.at( bdry_vert_ids( v ) );
+        }, "bdry.vtu" );
 
 
     std::array<topology::Vertex, 3> cut_vertices;
@@ -158,7 +162,8 @@ TEST_CASE( "Large sphere tutte orbifold embedding" )
         return cut_marker.isMarked( e ) ? std::numeric_limits<double>::max() : edgeLength( bdry, positions, e );
     }, cut_vertices.at( 1 ), testEqualVertices( bdry_vert_ids, cut_vertices.at( 2 ) ) );
 
-    io::outputEdgeChain( bdry, positions, util::concatenate( cut1, cut2 ), "level_set_cut.vtu" );
+    if( LAPLACE_TESTS_OUTPUT_VTK )
+        io::outputEdgeChain( bdry, positions, util::concatenate( cut1, cut2 ), "level_set_cut.vtu" );
 
     std::set<topology::Cell> cuts;
     cuts.insert( cut1.begin(), cut1.end() );
@@ -170,9 +175,10 @@ TEST_CASE( "Large sphere tutte orbifold embedding" )
         return sweep.mesh.points.at( bdry_vert_ids( v ) );
     }, { cut_vertices.at( 0 ), cut_vertices.at( 1 ), cut_vertices.at( 2 ) }, reparam::Laplace2dEdgeWeights::InverseLength );
 
-    io::outputCMap( cut_cmap, [&]( const topology::Vertex& v ) -> Eigen::Vector3d {
-        return Eigen::Vector3d( tutte( cutmap_vert_ids( v ), 0 ), tutte( cutmap_vert_ids( v ), 1 ), 0 );
-    }, "tutte_orbi_large.vtu" );
+    if( LAPLACE_TESTS_OUTPUT_VTK )
+        io::outputCMap( cut_cmap, [&]( const topology::Vertex& v ) -> Eigen::Vector3d {
+            return Eigen::Vector3d( tutte( cutmap_vert_ids( v ), 0 ), tutte( cutmap_vert_ids( v ), 1 ), 0 );
+        }, "tutte_orbi_large.vtu" );
 }
 
 
@@ -187,9 +193,10 @@ TEST_CASE( "Sphere tutte orbifold embedding" )
     const topology::CombinatorialMapBoundary bdry( map );
     const topology::CombinatorialMapRestriction target( bdry, [&]( const auto& ) { return true; }, true );
 
-    io::outputCMap( bdry, [&]( const topology::Vertex& v ) -> Eigen::Vector3d {
-        return sweep.mesh.points.at( indexingOrError( bdry, 0 )( v ) );
-    }, "bdry.vtu" );
+    if( LAPLACE_TESTS_OUTPUT_VTK )
+        io::outputCMap( bdry, [&]( const topology::Vertex& v ) -> Eigen::Vector3d {
+            return sweep.mesh.points.at( indexingOrError( bdry, 0 )( v ) );
+        }, "bdry.vtu" );
 
     const auto bdry_vert_ids = indexingOrError( bdry, 0 );
     const auto target_vert_ids = indexingOrError( target, 0 );
@@ -213,7 +220,8 @@ TEST_CASE( "Sphere tutte orbifold embedding" )
         return cut_marker.isMarked( e ) ? std::numeric_limits<double>::max() : edgeLength( bdry, positions, e );
     }, cut_vertices.at( 1 ), testEqualVertices( bdry_vert_ids, cut_vertices.at( 2 ) ) );
 
-    io::outputEdgeChain( bdry, positions, util::concatenate( cut1, cut2 ), "level_set_cut.vtu" );
+    if( LAPLACE_TESTS_OUTPUT_VTK )
+        io::outputEdgeChain( bdry, positions, util::concatenate( cut1, cut2 ), "level_set_cut.vtu" );
 
     std::set<topology::Cell> cuts;
     cuts.insert( cut1.begin(), cut1.end() );
