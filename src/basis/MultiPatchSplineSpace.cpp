@@ -328,4 +328,28 @@ namespace basis
 
         return out;
     }
+
+    std::vector<Eigen::MatrixXd> splitMultiPatchCoefficients( const MultiPatchSplineSpace& ss,
+                                                              const Eigen::MatrixXd& global_coeffs )
+    {
+        const auto& func_ids = ss.functionIdMap();
+        std::vector<Eigen::MatrixXd> patch_coeffs;
+        patch_coeffs.reserve( func_ids.size() );
+
+        for( size_t patch_ii = 0; patch_ii < func_ids.size(); patch_ii++ )
+        {
+            const auto& patch_func_ids = func_ids.at( patch_ii );
+            Eigen::MatrixXd patch_coeff( patch_func_ids.size(), global_coeffs.cols() );
+
+            for( size_t func_ii = 0; func_ii < patch_func_ids.size(); func_ii++ )
+            {
+                const FunctionId global_fid = patch_func_ids.at( func_ii );
+                patch_coeff.row( func_ii ) = global_coeffs.row( global_fid );
+            }
+
+            patch_coeffs.push_back( patch_coeff );
+        }
+
+        return patch_coeffs;
+    }
 }
