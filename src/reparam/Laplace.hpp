@@ -52,6 +52,12 @@ namespace reparam
                                              const std::array<topology::Vertex, 3>& cone_vertices,
                                              const Laplace2dEdgeWeights& edge_weights_type = Laplace2dEdgeWeights::InverseLength );
 
+    std::pair<Eigen::MatrixX2d, std::vector<double>>
+        cutTutteEmbedding( const topology::CutCombinatorialMap& map,
+                           const VertexPositionsFunc& vert_positions,
+                           const std::vector<std::pair<topology::Vertex, topology::Vertex>>& cut_extremities,
+                           const Laplace2dEdgeWeights& edge_weights_type = Laplace2dEdgeWeights::InverseLength );
+
     Eigen::MatrixXd
         solveLaplaceSparse( const topology::CombinatorialMap& map,
                             const std::function<double( const topology::Edge& )>& edge_weights,

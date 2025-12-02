@@ -10,6 +10,7 @@
 #include <CutCombinatorialMap.hpp>
 #include <Eigen/Geometry>
 #include <Eigen/IterativeLinearSolvers>
+#include <CommonUtils.hpp>
 
 #define LOG_LAPLACE 0
 
@@ -545,6 +546,346 @@ namespace reparam
         return result;
         return Eigen::MatrixX2d();
     }
+
+    std::pair<Eigen::VectorXd, std::vector<double>> cutTutteBCsAndAngles( const topology::CutCombinatorialMap& cut_cmap,
+                                 const VertexPositionsFunc& vert_positions,
+                                 const std::map<size_t, Eigen::Index>& constrained_verts,
+                                 const std::vector<std::pair<topology::Vertex, topology::Vertex>>& cut_extremities )
+    {
+        Eigen::VectorXd out( 2 * constrained_verts.size() );
+        std::vector<double> angles;
+        angles.reserve( cut_extremities.size() );
+        const auto& cmap = cut_cmap.baseMap();
+        const auto vert_ids = indexingOrError( cmap, 0 );
+        const auto cut_vert_ids = indexingOrError( cut_cmap, 0 );
+
+        const auto is_cut_extremity = [&]( const topology::Vertex& v ) -> bool {
+            return std::any_of( cut_extremities.begin(), cut_extremities.end(), [&]( const auto& cut_ends ) {
+                return onSameVertex( cmap, v.dart(), cut_ends.first.dart() ) or onSameVertex( cmap, v.dart(), cut_ends.second.dart() );
+            } );
+        };
+
+        const auto is_start_vert = [&, vert_id = vert_ids( cut_extremities.front().first ) ]( const topology::Vertex& v ) {
+            return vert_ids( v ) == vert_id and onBoundary( cmap, phi( cmap, -1, v.dart() ).value() );
+        };
+        const std::map<size_t, Eigen::Vector2d> bdry_constraints =
+            reparam::boundaryConstraints( cut_cmap, vert_positions, cut_extremities.size(), is_cut_extremity, is_start_vert );
+
+        const size_t n_sides = cut_extremities.size() * 4;
+
+        for( const auto& pr : bdry_constraints )
+        {
+            const auto find_it = constrained_verts.find( pr.first );
+            if( find_it != constrained_verts.end() )
+            {
+                const Eigen::Index i = find_it->second;;
+                out( 2 * i ) = pr.second( 0 );
+                out( 2 * i + 1 ) = pr.second( 1 );
+            }
+        }
+
+        const auto furthest_reachable = []( const topology::CombinatorialMap& map, const std::vector<int>& ops, const topology::Dart start_d ) {
+            topology::Dart current_d = start_d;
+            topology::Dart next_d;
+            do
+            {
+                next_d = current_d;
+                const auto maybe_phi = phi( map, ops, next_d );
+                if( not maybe_phi.has_value() ) return topology::Vertex( current_d );
+                next_d = maybe_phi.value();
+                current_d = next_d;
+            } while( true );
+            return topology::Vertex( current_d );
+        };
+
+        for( const auto& cut_pair : cut_extremities )
+        {
+            const Eigen::Vector2d pos1 = bdry_constraints.at( cut_vert_ids( cut_pair.first ) );
+            const Eigen::Vector2d pos2 = bdry_constraints.at( cut_vert_ids( cut_pair.second ) );
+
+            const Eigen::Vector2d pos1_ = bdry_constraints.at( cut_vert_ids( furthest_reachable( cmap, {2,1}, cut_pair.first.dart() ) ) );
+            const Eigen::Vector2d pos2_ = bdry_constraints.at( cut_vert_ids( furthest_reachable( cmap, {-1,2}, cut_pair.second.dart() ) ) );
+
+            angles.push_back( - std::atan2( pos2_( 1 ) - pos1_( 1 ), pos2_( 0 ) - pos1_( 0 ) ) +
+                                std::atan2( pos2( 1 ) - pos1( 1 ), pos2( 0 ) - pos1( 0 ) ) );
+        }
+
+        return {out, angles};
+    }
+
+    std::pair<Eigen::MatrixX2d, std::vector<double>> cutTutteEmbedding( const topology::CutCombinatorialMap& map,
+                                        const VertexPositionsFunc& vert_positions,
+                                        const std::vector<std::pair<topology::Vertex, topology::Vertex>>& cut_extremities,
+                                        const Laplace2dEdgeWeights& edge_weights_type )
+    {
+        if( map.dim() != 2 ) throw std::runtime_error( "Tutte embedding only supports 2d maps" );
+
+        const auto edge_weights = [&]( const topology::Edge& e ) -> double {
+            return edgeWeightLaplace2d( map, vert_positions, edge_weights_type, e );
+        };
+
+        const topology::CombinatorialMapBoundary bdry( map );
+        const size_t n_bdry_verts = cellCount( bdry, 0 );
+        const auto bdry_vertex_ids = indexingOrError( bdry, 0 );
+
+        /*
+           - For all the interior vertices of map, use the normal laplaceOperatorRowSparse.
+           - For the cut vertices, use a modified laplaceOperatorRowSparse that
+             acts as if both copies of the vertices and their neighborhood are at the same place.
+             Also add another equation that constrains them to be the correct rotations of each other.
+           - For the boundary (noncut) vertices, use constraints.
+        */
+
+        t.start( 0 );
+
+        using SparseVectorXd = Eigen::SparseVector<double>;
+        using SparseMatrixXd = Eigen::SparseMatrix<double>;
+        std::map<size_t, Eigen::Index> unknown_verts;
+
+        const size_t n_verts = cellCount( map, 0 );
+
+        const auto vertex_ids = indexingOrError( map, 0 );
+        const topology::CombinatorialMap& uncut_map = map.baseMap();
+        const auto uncut_vertex_ids = indexingOrError( uncut_map, 0 );
+
+        const auto other_side_of_cut = [&]( const topology::Vertex& v ) -> std::optional<topology::Vertex> {
+            const topology::Vertex v_bdry = [&](){
+                const auto maybe = maybeBoundaryDart( map, v );
+                if( not maybe.has_value() )
+                {
+                    std::cerr << "Vertex " << v << " is not on the boundary!" << std::endl;
+                    std::cerr << vert_positions( v ).transpose() << std::endl;
+                }
+                return maybe.value();
+            }();
+
+            return phi( uncut_map, {2,1}, v_bdry.dart() ).transform( [&]( const topology::Dart d ){
+                return topology::Vertex( d );
+            } );
+        };
+
+        const std::map<size_t, Eigen::Index> constrained_verts = [&]() -> std::map<size_t, Eigen::Index> {
+            std::map<size_t, Eigen::Index> constrained;
+            iterateCellsWhile( bdry, 0, [&]( const topology::Vertex& v ) {
+                const topology::Vertex uncut_v = bdry.toUnderlyingCell( v );
+                if( boundaryAdjacent( uncut_map, uncut_v ) )
+                {
+                    constrained.emplace( vertex_ids( uncut_v ), constrained.size() );
+                }
+                return true;
+            } );
+            return constrained;
+        }();
+
+        const size_t n_constrained_verts = constrained_verts.size();
+
+        std::vector<Eigen::Triplet<double>> L_triplets;
+        L_triplets.reserve( 4 * cellCount( map, 1 ) + 2 * n_verts + 5 * ( n_bdry_verts - n_constrained_verts ) );//TODO: update this
+
+        const auto [BCs, cut_angles] = cutTutteBCsAndAngles( map, vert_positions, constrained_verts, cut_extremities );
+        LOG( LOG_LAPLACE ) << "Cut angles: " << cut_angles << std::endl;
+
+        const auto add_doubled_row = []( const SparseVectorXd& row, const Eigen::Index i, std::vector<Eigen::Triplet<double>>& triplets ) {
+            for( SparseVectorXd::InnerIterator it( row ); it; ++it )
+            {
+                triplets.emplace_back( 2 * i, 2 * it.index(), it.value() );
+                triplets.emplace_back( 2 * i + 1, 2 * it.index() + 1, it.value() );
+            }
+        };
+
+        const auto add_rotated_doubled_row = [&add_doubled_row]( const SparseVectorXd& row,
+                                                                 const SparseMatrixXd& rot,
+                                                                 const Eigen::Index i,
+                                                                 std::vector<Eigen::Triplet<double>>& triplets_out ) {
+            using SparseRowMatrixXd = Eigen::SparseMatrix<double, Eigen::RowMajor>;
+            SparseRowMatrixXd doubled_row( 2, 2 * row.size() );
+            std::vector<Eigen::Triplet<double>> row_triplets;
+            row_triplets.reserve( 2 * row.nonZeros() );
+            add_doubled_row( row, 0, row_triplets );
+            doubled_row.setFromTriplets( row_triplets.begin(), row_triplets.end() );
+            SparseRowMatrixXd rotated_row = rot * doubled_row;
+            for( SparseRowMatrixXd::InnerIterator it( rotated_row, 0 ); it; ++it )
+                triplets_out.emplace_back( 2 * i, it.index(), it.value() );
+            for( SparseRowMatrixXd::InnerIterator it( rotated_row, 1 ); it; ++it )
+                triplets_out.emplace_back( 2 * i + 1, it.index(), it.value() );
+        };
+
+        const auto add_constrain_rotation_rows = []( const SparseMatrixXd& rot,
+                                                     const Eigen::Index row,
+                                                     const Eigen::Index i_col,
+                                                     const Eigen::Index j_col,
+                                                     const Eigen::Index ref_vert_i_col,
+                                                     const Eigen::Index ref_vert_j_col,
+                                                     std::vector<Eigen::Triplet<double>>& triplets_out ) {
+            LOG( LOG_LAPLACE ) << "Adding constrain rotation rows between " << i_col << " and " << j_col
+                               << " with ref vert cols " << ref_vert_i_col << ", " << ref_vert_j_col << " at row "
+                               << row << std::endl;
+            triplets_out.emplace_back( row, 2 * i_col, -1 );
+            triplets_out.emplace_back( row + 1, 2 * i_col + 1, -1 );
+
+            triplets_out.emplace_back( row, 2 * j_col, rot.coeff( 0, 0 ) );
+            triplets_out.emplace_back( row, 2 * j_col + 1, rot.coeff( 0, 1 ) );
+            triplets_out.emplace_back( row + 1, 2 * j_col, rot.coeff( 1, 0 ) );
+            triplets_out.emplace_back( row + 1, 2 * j_col + 1, rot.coeff( 1, 1 ) );
+
+            triplets_out.emplace_back( row, 2 * ref_vert_i_col, 1 );
+            triplets_out.emplace_back( row + 1, 2 * ref_vert_i_col + 1, 1 );
+
+            triplets_out.emplace_back( row, 2 * ref_vert_j_col, - rot.coeff( 0, 0 ) );
+            triplets_out.emplace_back( row, 2 * ref_vert_j_col + 1, -rot.coeff( 0, 1 ) );
+            triplets_out.emplace_back( row + 1, 2 * ref_vert_j_col, -rot.coeff( 1, 0 ) );
+            triplets_out.emplace_back( row + 1, 2 * ref_vert_j_col + 1, - rot.coeff( 1, 1 ) );
+        };
+
+        t.start( 1 );
+        iterateCellsWhile( map, 0, [&]( const topology::Vertex& v ) {
+            const size_t vid = vertex_ids( v );
+            if( vid >= n_verts )
+                throw std::runtime_error( "Solving a Laplace system requires a contiguous zero based vertex indexing" );
+
+            if( not boundaryAdjacent( map, v ) )
+            {
+                t.start( 2 );
+                const SparseVectorXd row = laplaceOperatorRowSparse( map, v, edge_weights, n_verts );
+                t.stop( 2 );
+                const Eigen::Index i = unknown_verts.size();
+                add_doubled_row( row, i, L_triplets );
+                unknown_verts.emplace( vid, i );
+            }
+            return true;
+        } );
+        t.stop( 1 );
+
+        const auto sparse_rotation = []( const double angle ) -> SparseMatrixXd {
+            const Eigen::Matrix2d rot = Eigen::Rotation2Dd( angle ).toRotationMatrix();
+            SparseMatrixXd sparse_rot( 2, 2 );
+            if( std::abs( rot( 0, 0 ) ) > 1e-12 ) sparse_rot.insert( 0, 0 ) = rot( 0, 0 );
+            if( std::abs( rot( 0, 1 ) ) > 1e-12 ) sparse_rot.insert( 0, 1 ) = rot( 0, 1 );
+            if( std::abs( rot( 1, 0 ) ) > 1e-12 ) sparse_rot.insert( 1, 0 ) = rot( 1, 0 );
+            if( std::abs( rot( 1, 1 ) ) > 1e-12 ) sparse_rot.insert( 1, 1 ) = rot( 1, 1 );
+            sparse_rot.makeCompressed();
+            return sparse_rot;
+        };
+
+        t.start( 10 );
+        for( size_t cut_ii = 0; cut_ii < cut_extremities.size(); cut_ii++ )
+        {
+            const auto& [start_v, end_v] = cut_extremities.at( cut_ii );
+            // We take phi1s, add the rows for the vertices on both sides of the boundary, repeat until
+            // we get to the next cone vertex, skip that, and continue to the last cone vertex.
+
+            // Since we're treating these as boundary cmap darts, we don't actually process the cut starts, just the next vertex.
+            topology::Dart curr_d = start_v.dart();
+            SparseMatrixXd rot = sparse_rotation( cut_angles.at( cut_ii ) );
+
+            const size_t comparison_vertex_column_i = vertex_ids( start_v );
+            const size_t comparison_vertex_column_j = vertex_ids( other_side_of_cut( start_v ).value() );
+
+            while( true )
+            {
+                const topology::Vertex curr_v( bdry.toUnderlyingCell( topology::Vertex( curr_d ) ) );
+                if( boundaryAdjacent( uncut_map, curr_v ) ) break;
+
+                const auto maybe_other_v = other_side_of_cut( curr_v );
+                if( not maybe_other_v.has_value() ) throw std::runtime_error( "Expected other side of cut to exist" );
+                const topology::Vertex other_v = maybe_other_v.value();
+                const Eigen::Index i = unknown_verts.size();
+
+                t.start( 2 );
+                const SparseVectorXd row_1 = laplaceOperatorRowSparse( map, curr_v, edge_weights, n_verts );
+                const SparseVectorXd row_2 = laplaceOperatorRowSparse( map, other_v, edge_weights, n_verts );
+                t.stop( 2 );
+
+                add_doubled_row( row_1, i, L_triplets );
+                add_rotated_doubled_row( row_2, rot, i, L_triplets );
+                add_constrain_rotation_rows( rot, 2 * i + 2, vertex_ids( curr_v ), vertex_ids( other_v ), comparison_vertex_column_i, comparison_vertex_column_j, L_triplets );
+
+                unknown_verts.emplace( vertex_ids( curr_v ), i );
+                unknown_verts.emplace( vertex_ids( other_v ), i + 1 );
+                curr_d = phi( bdry, -1, curr_d ).value();
+            }
+        }
+        t.stop( 10 );
+
+        t.start( 3 );
+        std::vector<Eigen::Triplet<double>> L_II_triplets;
+        L_II_triplets.reserve( L_triplets.size() );
+        std::vector<Eigen::Triplet<double>> L_IB_triplets;
+        L_IB_triplets.reserve( L_triplets.size() );
+        for( const auto& t : L_triplets )
+        {
+            const size_t vert_id = t.col() / 2;
+            const auto find_it = std::find_if( constrained_verts.begin(), constrained_verts.end(), [&]( const auto& pr ) { return pr.first == (size_t)vert_id; } );
+            if( find_it != constrained_verts.end() )
+            {
+                L_IB_triplets.emplace_back( t.row(), 2 * find_it->second + t.col() % 2, t.value() );
+            }
+            else
+            {
+                L_II_triplets.emplace_back( t.row(), 2 * unknown_verts.at( vert_id ) + t.col() % 2, t.value() );
+            }
+        }
+        SparseMatrixXd L_II( 2 * ( n_verts - n_constrained_verts), 2 * ( n_verts - n_constrained_verts ) );
+        L_II.setFromTriplets( L_II_triplets.begin(), L_II_triplets.end() );
+
+        SparseMatrixXd L_IB( 2 * ( n_verts - n_constrained_verts ), 2 * n_constrained_verts );
+        L_IB.setFromTriplets( L_IB_triplets.begin(), L_IB_triplets.end() );
+
+        LOG( LOG_LAPLACE ) << "BCs: " << std::endl << BCs << std::endl << std::endl;
+
+        const Eigen::MatrixXd rhs = -L_IB * BCs;
+        t.stop( 3 );
+
+        LOG( LOG_LAPLACE ) << "L_II:\n" << Eigen::MatrixXd( L_II ) << std::endl << std::endl;
+        LOG( LOG_LAPLACE ) << "L_IB:\n" << Eigen::MatrixXd( L_IB ) << std::endl << std::endl;
+        LOG( LOG_LAPLACE ) << "rhs:\n" << rhs.transpose() << std::endl << std::endl;
+
+        LOG( LOG_LAPLACE ) << "About to solve\n";
+
+        t.start( 4 );
+        const Eigen::MatrixXd ans = [&]() -> Eigen::MatrixXd {
+            Eigen::SparseLU<SparseMatrixXd> solver( L_II );
+            return solver.solve( rhs );
+        }();
+
+        t.stop( 4 );
+
+        LOG( LOG_LAPLACE ) << "Solved\n" << ans.transpose() << std::endl;
+
+        LOG( LOG_LAPLACE ) << "Assembling result\n";
+
+        t.start( 5 );
+        Eigen::MatrixX2d result( n_verts, 2 );
+        for( const auto& pr : unknown_verts )
+        {
+            result( pr.first, 0 ) = ans( 2 * pr.second );
+            result( pr.first, 1 ) = ans( 2 * pr.second + 1 );
+        }
+        for( const auto& pr : constrained_verts )
+        {
+            result( pr.first, 0 ) = BCs( 2 * pr.second );
+            result( pr.first, 1 ) = BCs( 2 * pr.second + 1 );
+        }
+        t.stop( 5 );
+        t.stop( 0 );
+
+        LOG( LOG_LAPLACE ) << "returning result\n";
+
+        LOG( LOG_LAPLACE ) << "Total time: " << t.stop( 0 ) << std::endl;
+        LOG( LOG_LAPLACE ) << "| Weights time: " << t.stop( 9 ) << std::endl;
+        LOG( LOG_LAPLACE ) << "| | Edge length time: " << t.stop( 8 ) << std::endl;
+        LOG( LOG_LAPLACE ) << "| | cot time: " << t.stop( 6 ) << std::endl;
+        LOG( LOG_LAPLACE ) << "| Loop time: " << t.stop( 1 ) << std::endl;
+        LOG( LOG_LAPLACE ) << "| Boundary time: " << t.stop( 10 ) << std::endl;
+        LOG( LOG_LAPLACE ) << "| | Row time: " << t.stop( 2 ) << std::endl;
+        LOG( LOG_LAPLACE ) << "| | | Loop time: " << t.stop( 7 ) << std::endl;
+        LOG( LOG_LAPLACE ) << "| Assembly time: " << t.stop( 3 ) << std::endl;
+        LOG( LOG_LAPLACE ) << "| Solve time: " << t.stop( 4 ) << std::endl;
+        LOG( LOG_LAPLACE ) << "| Format time: " << t.stop( 5 ) << std::endl;
+
+        return {result, cut_angles};
+    }
+
 
     Eigen::MatrixXd
         solveLaplaceSparse( const topology::CombinatorialMap& map,
