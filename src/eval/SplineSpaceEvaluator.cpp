@@ -347,4 +347,127 @@ namespace eval
             return evaler.evaluateManifold( cpts );
         };
     }
+
+
+    Eigen::VectorXd NURBSSpaceEvaluator::evaluateManifold( const Eigen::MatrixXd& cpts ) const
+    {
+        const Eigen::VectorXd bsp_eval = cpts( Eigen::all, mConnect ) * SplineSpaceEvaluator::evaluateBasis();
+        return bsp_eval.head( bsp_eval.size() - 1 ).array() / bsp_eval( bsp_eval.size() - 1 );
+    }
+
+    Eigen::MatrixXd NURBSSpaceEvaluator::evaluateJacobian( const Eigen::MatrixXd& cpts ) const
+    {
+        const Eigen::MatrixXd bsp_jac = cpts( Eigen::all, mConnect ) * SplineSpaceEvaluator::evaluateFirstDerivatives();
+        const Eigen::VectorXd bsp_eval = cpts( Eigen::all, mConnect ) * SplineSpaceEvaluator::evaluateBasis();
+
+        const auto DX = bsp_jac.topRows( bsp_jac.rows() - 1 );
+        const auto DW = bsp_jac.bottomRows( 1 );
+        const auto X = bsp_eval.head( bsp_eval.size() - 1 );
+        const double w = bsp_eval( bsp_eval.size() - 1 );
+
+        return DX / w - ( X * DW ) / ( w * w );
+    }
+    Eigen::MatrixXd NURBSSpaceEvaluator::evaluateHessian( const Eigen::MatrixXd& cpts ) const
+    {
+        const size_t param_dim = splineSpace().basisComplex().parametricAtlas().cmap().dim();
+
+        const Eigen::MatrixXd bsp_hess = cpts( Eigen::all, mConnect ) * SplineSpaceEvaluator::evaluateSecondDerivatives();
+        const Eigen::MatrixXd bsp_jac = cpts( Eigen::all, mConnect ) * SplineSpaceEvaluator::evaluateFirstDerivatives();
+        const Eigen::VectorXd bsp_eval = cpts( Eigen::all, mConnect ) * SplineSpaceEvaluator::evaluateBasis();
+
+        const auto X = bsp_eval.head( bsp_eval.size() - 1 );
+        const double w = bsp_eval( bsp_eval.size() - 1 );
+        const auto DX = bsp_jac.topRows( bsp_jac.rows() - 1 );
+        const Eigen::VectorXd DW = bsp_jac.bottomRows( 1 ).reshaped();
+        const auto D2X = bsp_hess.topRows( bsp_hess.rows() - 1 );
+        const Eigen::VectorXd D2W = bsp_hess.bottomRows( 1 ).reshaped();
+
+        const double invw = 1.0 / w;
+        const double invw2 = invw * invw;
+        const double invw3 = invw2 * invw;
+
+        Eigen::MatrixXd hess( D2X.rows(), D2X.cols() );
+
+        const SmallVector<std::pair<size_t, size_t>, 6> index_map = param_dim == 2
+                                                                     ? SmallVector<std::pair<size_t, size_t>, 6>{
+                                                                           std::make_pair( 0, 0 ),
+                                                                           std::make_pair( 0, 1 ),
+                                                                           std::make_pair( 1, 1 ),
+                                                                       }
+                                                                     : SmallVector<std::pair<size_t, size_t>, 6>{
+                                                                           std::make_pair( 0, 0 ),
+                                                                           std::make_pair( 0, 1 ),
+                                                                           std::make_pair( 0, 2 ),
+                                                                           std::make_pair( 1, 1 ),
+                                                                           std::make_pair( 1, 2 ),
+                                                                           std::make_pair( 2, 2 ),
+                                                                       };
+
+        for( size_t i = 0; i < index_map.size(); ++i )
+        {
+            const size_t a = index_map[i].first;
+            const size_t b = index_map[i].second;
+
+            hess.col( i ) = D2X.col( i ) * invw - DX.col( a ) * DW( b ) * invw2 - DX.col( b ) * DW( a ) * invw2 -
+                            X * D2W( i ) * invw2 + 2.0 * X * DW( a ) * DW( b ) * invw3;
+        }
+
+        return hess;
+    }
+
+    Eigen::MatrixXd NURBSSpaceEvaluator::evaluateParamToSpatialJacobian( const Eigen::MatrixXd& cpts ) const
+    {
+        const auto jac = evaluateJacobian( cpts );
+        if( not param::isCartesian( mSpline.basisComplex().parametricAtlas().parentDomain( mCurrentCell.value() ) ) )
+            throw std::runtime_error( "ParamToSpatial not supported on non-square domains" );
+        return jac * mParametricLengths.array().inverse().matrix().asDiagonal();
+    }
+
+    Eigen::MatrixXd NURBSSpaceEvaluator::evaluateParamToSpatialHessian( const Eigen::MatrixXd& cpts ) const
+    {
+        const auto hess = evaluateHessian( cpts );
+        if( not param::isCartesian( mSpline.basisComplex().parametricAtlas().parentDomain( mCurrentCell.value() ) ) )
+            throw std::runtime_error( "ParamToSpatial not supported on non-square domains" );
+        if( mSpline.basisComplex().parametricAtlas().cmap().dim() == 2 )
+        {
+            return hess * Eigen::Vector3d( mParametricLengths( 0 ) * mParametricLengths( 0 ),
+                                           mParametricLengths( 0 ) * mParametricLengths( 1 ),
+                                           mParametricLengths( 1 ) * mParametricLengths( 1 ) )
+                              .array()
+                              .inverse()
+                              .matrix()
+                              .asDiagonal(); // ss, ts, tt
+        }
+        else
+        {
+            return hess * Vector6d( mParametricLengths( 0 ) * mParametricLengths( 0 ),
+                                    mParametricLengths( 0 ) * mParametricLengths( 1 ),
+                                    mParametricLengths( 0 ) * mParametricLengths( 2 ),
+                                    mParametricLengths( 1 ) * mParametricLengths( 1 ),
+                                    mParametricLengths( 1 ) * mParametricLengths( 2 ),
+                                    mParametricLengths( 2 ) * mParametricLengths( 2 ) )
+                              .array()
+                              .inverse()
+                              .matrix()
+                              .asDiagonal(); // ss, ts, us, tt, ut, uu
+        }
+    }
+
+    Eigen::MatrixXd NURBSSpaceEvaluator::evaluateBasis() const
+    {
+        throw std::runtime_error( "evaluateBasis not implemented for NURBSSpaceEvaluator" );
+    }
+    Eigen::MatrixXd NURBSSpaceEvaluator::evaluateFirstDerivatives() const
+    {
+        throw std::runtime_error( "evaluateFirstDerivatives not implemented for NURBSSpaceEvaluator" );
+    }
+    Eigen::MatrixXd NURBSSpaceEvaluator::evaluateSecondDerivatives() const
+    {
+        throw std::runtime_error( "evaluateSecondDerivatives not implemented for NURBSSpaceEvaluator" );
+    }
+
+    Eigen::MatrixXd NURBSSpaceEvaluator::evaluateFirstDerivativesFromParamToSpatial() const
+    {
+        throw std::runtime_error( "evaluateFirstDerivativesFromParamToSpatial not implemented for NURBSSpaceEvaluator" );
+    }
 }
