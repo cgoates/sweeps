@@ -19,6 +19,17 @@ const ParentDomain HierarchicalTPParametricAtlas::parentDomain( const topology::
     return mRefinementLevels.at( level )->parentDomain( topology::Cell( level_d, c.dim() ) );
 }
 
+const std::array<topology::CellOrEndVertex, 3> fullyUnflattenVertex( const topology::TPCombinatorialMap& dart_level_cmap, const topology::Dart& local_d )
+{
+    const auto unflat1 = unflattenCell( dart_level_cmap, topology::Vertex( local_d ) );
+    const std::shared_ptr<const topology::TPCombinatorialMap> source_primal =
+        std::dynamic_pointer_cast<const topology::TPCombinatorialMap>( dart_level_cmap.sourceCMapPtr() );
+    if( source_primal.get() == nullptr ) throw std::runtime_error( "HierarchicalTPParametricAtlas only supports tensor products of one dimensional parametric atlases" );
+    const auto unflat2 = unflattenCell( *source_primal, unflat1.first.value() );
+
+    return { unflat2.first, unflat2.second, unflat1.second };
+}
+
 ParentPoint HierarchicalTPParametricAtlas::parentPoint( const topology::Vertex& v ) const
 {
     if( mMap->dim() == 3 )
@@ -34,16 +45,8 @@ ParentPoint HierarchicalTPParametricAtlas::parentPoint( const topology::Vertex& 
         const SmallVector<std::shared_ptr<const ParametricAtlas1d>, 3> pa_1ds =
             tensorProductComponentAtlases( *mRefinementLevels.at( dart_level ) );
 
-        // If we fully unflatten using unflatten cell on the vertex, we will have three vertices.
-        const std::array<topology::CellOrEndVertex, 3> fully_unflat_verts = [&]() -> std::array<topology::CellOrEndVertex, 3> {
-            const auto unflat1 = unflattenCell( dart_level_cmap, topology::Vertex( local_d ) );
-            const std::shared_ptr<const topology::TPCombinatorialMap> source_primal =
-                std::dynamic_pointer_cast<const topology::TPCombinatorialMap>( dart_level_cmap.sourceCMapPtr() );
-            if( source_primal.get() == nullptr ) throw std::runtime_error( "HierarchicalTPParametricAtlas only supports tensor products of one dimensional parametric atlases" );
-            const auto unflat2 = unflattenCell( *source_primal, unflat1.first.value() );
-            
-            return { unflat2.first, unflat2.second, unflat1.second };
-        }();
+        const std::array<topology::CellOrEndVertex, 3> fully_unflat_verts = fullyUnflattenVertex( dart_level_cmap, local_d );
+        const topology::FullyUnflattenedDart fully_unflat_cell = unflattenFull( *mMap->refinementLevels().at( elem_level ), unrefined_d );
 
         const size_t ratio = [&](){
             size_t out = 1;
@@ -65,9 +68,18 @@ ParentPoint HierarchicalTPParametricAtlas::parentPoint( const topology::Vertex& 
             }
             else if( fully_unflat_verts.at( i ).value().dart().id() % ratio == 0 )
             {
-                pt( i ) = 0.0;
-                is_zero.push_back( false );
-                is_zero.push_back( true );
+                if( fully_unflat_verts.at( i ).value().dart().id() / ratio == fully_unflat_cell.unflat_darts.at( i ).id() )
+                {
+                    pt( i ) = 0.0;
+                    is_zero.push_back( false );
+                    is_zero.push_back( true );
+                }
+                else
+                {
+                    pt( i ) = 1.0;
+                    is_zero.push_back( true );
+                    is_zero.push_back( false );
+                }
             }
             else
             {
