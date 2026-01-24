@@ -425,27 +425,26 @@ namespace io
                      const VertexPositionsFunc& positions,
                      const std::string& filename )
     {
-        SimplicialComplex out;
+        std::vector<Eigen::Vector3d> points;
+        std::vector<std::vector<VertexId>> polygons;
         std::map<topology::Dart::IndexType, size_t> vert_ids;
         iterateCellsWhile( cmap, 0, [&]( const auto& vert ) {
-            vert_ids.emplace( lowestDartId( cmap, vert ), out.points.size() );
-            out.points.push_back( positions( vert ) );
+            vert_ids.emplace( lowestDartId( cmap, vert ), points.size() );
+            points.push_back( positions( vert ) );
             return true;
         } );
 
         iterateCellsWhile( cmap, 2, [&]( const auto& f ) {
-            const topology::Dart& d = f.dart();
-            const VertexId v1 = vert_ids.at( lowestDartId( cmap, topology::Vertex( d ) ) );
-            const VertexId v2 = vert_ids.at( lowestDartId( cmap, topology::Vertex( phi( cmap, 1, d ).value() ) ) );
-            const VertexId v3 = vert_ids.at( lowestDartId( cmap, topology::Vertex( phi( cmap, -1, d ).value() ) ) );
-            if( vert_ids.at( lowestDartId( cmap, topology::Vertex( phi( cmap, { 1, 1 }, d ).value() ) ) ) != v3 )
-                std::cerr << "Warning: outputCMap only supports triangular faces, but found a face with more than 3 vertices." << std::endl;
-            out.simplices.emplace_back( v1, v2, v3 );
+            polygons.push_back( {} );
+            iterateReachableWhile( cmap, f.dart(), {1}, [&]( const auto& d ) {
+                const VertexId v = vert_ids.at( lowestDartId( cmap, topology::Vertex( d ) ) );
+                polygons.back().push_back( v );
+                return true;
+            } );
             return true;
         } );
 
-        io::VTKOutputObject output( out );
-        io::outputSimplicialFieldToVTK( output, filename );
+        io::outputPolygonsToVTK( points, polygons, filename );
     }
 
     void outputDualFace( const topology::CombinatorialMap& cmap,
@@ -562,5 +561,80 @@ namespace io
         }
 
         outputSimplicialFieldToVTK( out, filename );
+    }
+
+    void outputPolygonsToVTK( const std::vector<Eigen::Vector3d>& points, const std::vector<std::vector<VertexId>>& polygons, const std::string& filename )
+    {
+        const size_t n_simplices = polygons.size();
+        const size_t n_points = points.size();
+
+        std::ofstream file;
+        file.open( filename );
+
+        file << pieceHeader( n_points, n_simplices ) << "\n<CellData>";
+
+        file << R"STRING(
+      </CellData>
+      <PointData>)STRING";
+
+        file << R"STRING(
+      </PointData>
+      <Points>
+        <DataArray type="Float64" Name="Points" NumberOfComponents="3" format="ascii">
+)STRING";
+
+        for( const Eigen::Vector3d& point : points )
+        {
+            file << std::format( "{:.16g} {:.16g} {:.16g} ", point( 0 ), point( 1 ), point( 2 ) );
+        }
+
+        file << R"STRING(
+        </DataArray>
+      </Points>
+      <Cells>
+        <DataArray type="Int64" Name="connectivity" format="ascii">
+)STRING";
+
+        for( const std::vector<VertexId>& polygon : polygons )
+        {
+            for( size_t vert_ii = 0; vert_ii < polygon.size(); vert_ii++ )
+            {
+                file << polygon.at( vert_ii ).id() << " ";
+            }
+        }
+
+        file << R"STRING(
+        </DataArray>
+        <DataArray type="Int64" Name="offsets" format="ascii">
+)STRING";
+
+        size_t offset = 0;
+        for( const std::vector<VertexId>& polygon : polygons )
+        {
+            offset += polygon.size();
+            file << offset << " ";
+        }
+        file << R"STRING(
+        </DataArray>
+        <DataArray type="UInt8" Name="types" format="ascii">
+)STRING";
+
+        for( const std::vector<VertexId>& polygon : polygons )
+        {
+            // See documentation at https://vtk.org/wp-content/uploads/2015/04/file-formats.pdf page 9
+            switch( polygon.size() )
+            {
+                case 3: file << "5 "; break; // VTK_TRIANGLE
+                case 4: file << "9 "; break; // VTK_QUAD
+                default: file << "7 "; break; // VTK_POLYGON
+            }
+        }
+
+        file << R"STRING(
+        </DataArray>
+      </Cells>
+)STRING" << pieceFooter();
+
+        file.close();
     }
 } // namespace io
