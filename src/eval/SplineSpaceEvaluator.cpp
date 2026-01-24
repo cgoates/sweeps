@@ -341,7 +341,7 @@ namespace eval
     VertexPositionsFunc vertexPositionsFromManifold( const basis::SplineSpace& ss, const Eigen::MatrixXd& cpts )
     {
         eval::SplineSpaceEvaluator evaler( ss, 0 );
-        return [evaler, cpts]( const topology::Vertex& v ) mutable -> Eigen::Vector3d {
+        return [evaler, cpts]( const topology::Vertex& v ) mutable -> Vector3dMax {
             evaler.localizeElement( topology::Cell( v.dart(), evaler.splineSpace().basisComplex().parametricAtlas().cmap().dim() ) );
             evaler.localizePoint( evaler.splineSpace().basisComplex().parametricAtlas().parentPoint( v ) );
             return evaler.evaluateManifold( cpts );

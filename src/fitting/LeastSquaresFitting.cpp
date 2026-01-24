@@ -20,7 +20,9 @@ namespace fitting
         Eigen::MatrixXd rhs( n_points, spatial_dim );
 
         size_t row = 0;
-        point_iterator( [&]( const topology::Cell& elem, const param::ParentPoint& ppt, const Eigen::Vector3d& field_pt ) {
+        point_iterator( [&]( const topology::Cell& elem, const param::ParentPoint& ppt, const Eigen::VectorXd& field_pt ) {
+            if( row > n_points )
+                throw std::runtime_error( "Number of points exceeded expected count." );
             evaler.localizeElement( elem ); // TODO: Move this and the connectivity out into a less hot part of the loop
             evaler.localizePoint( ppt );
             const std::vector<basis::FunctionId> conn = evaler.splineSpace().connectivity( elem );
