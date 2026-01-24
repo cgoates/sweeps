@@ -156,6 +156,7 @@ namespace topology
                                const uint cell_dim,
                                const std::function<bool( const Cell& )>& callback )
     {
+        if( c.dim() == cell_dim ) return callback( c );
         // We need an extra operation for edges of vertices in map.dim() < 3
         const bool edges_of_vert_in_lowD = c.dim() == 0 and cell_dim == 1 and map.dim() <= 2;
         const bool verts_of_edge_in_lowD = c.dim() == 1 and cell_dim == 0 and map.dim() <= 2;
