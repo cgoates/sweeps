@@ -473,4 +473,115 @@ namespace topology
             }
         }
     }
+
+    VertexPositionsFunc tensorProductVertexPositions( const TPCombinatorialMap& tp_map )
+    {
+        if( tp_map.dim() == 3 )
+        {
+            const auto comps = tensorProductComponentCMaps( tp_map );
+            std::array<size_t, 3> num_elems_1d;
+            std::transform( comps.begin(), comps.end(), num_elems_1d.begin(), []( const auto& comp ){
+                return comp->cellCount( 1 ).value();
+            } );
+            return [&tp_map, num_elems_1d]( const topology::Vertex& v ) -> Eigen::Vector3d {
+                // Unflatten the vertex dart to get the three component darts and positions
+                const auto unflat = unflattenFull( tp_map, v.dart() );
+
+                // Get the element indices from dart IDs
+                double x = static_cast<double>( unflat.unflat_darts.at(0).id() );
+                double y = static_cast<double>( unflat.unflat_darts.at(1).id() );
+                double z = static_cast<double>( unflat.unflat_darts.at(2).id() );
+
+                switch( v.dart().id() % 24 )
+                {
+                    case 0:
+                    case 19:
+                    case 2:
+                        break;
+                    case 1:
+                    case 6:
+                    case 8:
+                        x += 1;
+                        break;
+                    case 13:
+                    case 18:
+                    case 20:
+                        y += 1;
+                        break;
+                    case 7:
+                    case 12:
+                    case 14:
+                        x += 1;
+                        y += 1;
+                        break;
+                    case 3:
+                    case 22:
+                    case 23:
+                        z += 1;
+                        break;
+                    case 4:
+                    case 5:
+                    case 9:
+                        x += 1;
+                        z += 1;
+                        break;
+                    case 16:
+                    case 17:
+                    case 21:
+                        y += 1;
+                        z += 1;
+                        break;
+                    case 10:
+                    case 11:
+                    case 15:
+                        x += 1;
+                        y += 1;
+                        z += 1;
+                        break;
+                    default:
+                        break;
+                }
+
+                return Eigen::Vector3d( x / num_elems_1d.at(0), y / num_elems_1d.at(1), z / num_elems_1d.at(2) );
+            };
+        }
+        else if( tp_map.dim() == 2 )
+        {
+            const auto comps = tensorProductComponentCMaps( tp_map );
+            std::array<size_t, 2> num_elems_1d;
+            std::transform( comps.begin(), comps.end(), num_elems_1d.begin(), []( const auto& comp ){
+                return comp->cellCount( 1 ).value();
+            } );
+            return [&tp_map, num_elems_1d]( const topology::Vertex& v ) -> Eigen::Vector2d {
+                // Unflatten the vertex dart to get the two component darts and positions
+                const auto unflat = unflattenFull( tp_map, v.dart() );
+
+                // Get the element indices from dart IDs
+                double x = static_cast<double>( unflat.unflat_darts.at(0).id() );
+                double y = static_cast<double>( unflat.unflat_darts.at(1).id() );
+
+                switch( v.dart().id() % 8 )
+                {
+                    case 1:
+                        x += 1;
+                        break;
+                    case 2:
+                        x += 1;
+                        y += 1;
+                        break;
+                    case 3:
+                        y += 1;
+                        break;
+                    default:
+                        break;
+                }
+
+                return Eigen::Vector2d( x / num_elems_1d.at(0), y / num_elems_1d.at(1) );
+            };
+        }
+        else
+        {
+            throw std::runtime_error( "Unsupported TP map dimension" );
+        }
+    }
 }

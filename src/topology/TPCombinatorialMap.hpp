@@ -2,6 +2,7 @@
 #include <CombinatorialMap.hpp>
 #include <CombinatorialMap1d.hpp>
 #include <SmallVector.hpp>
+#include <VertexPositionsFunc.hpp>
 
 namespace topology
 {
@@ -85,6 +86,7 @@ namespace topology
 
     SmallVector<std::shared_ptr<const CombinatorialMap1d>, 3> tensorProductComponentCMaps( const TPCombinatorialMap& tp_map );
     TPCombinatorialMap tensorProductCMapFromComponents( const SmallVector<std::shared_ptr<const CombinatorialMap1d>, 3>& components );
+    VertexPositionsFunc tensorProductVertexPositions( const TPCombinatorialMap& tp_map );
 
     struct FullyUnflattenedDart
     {
