@@ -37,4 +37,6 @@ namespace basis
     HierarchicalMultiPatchSplineSpace
         buildHierarchicalSplineSpace( const std::vector<std::shared_ptr<const MultiPatchSplineSpace>>& refinement_levels,
                                       const std::vector<std::vector<topology::Cell>>& leaf_elements );
+
+    std::vector<std::pair<size_t, FunctionId>> fidsToRefinementLevelFids( const HierarchicalMultiPatchSplineSpace& ss );
 }

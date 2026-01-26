@@ -181,4 +181,35 @@ namespace basis
 
         return HierarchicalMultiPatchSplineSpace( bc, refinement_levels ); // NOTE: leaf_elements are recalculated here. Fix if this is a bottleneck.
     }
+
+    std::vector<std::pair<size_t, FunctionId>> fidsToRefinementLevelFids( const HierarchicalMultiPatchSplineSpace& ss )
+    {
+        const std::vector<std::vector<FunctionId>>& tph_to_mph = ss.functionIdMap();
+
+        std::vector<std::pair<size_t, FunctionId>> out( ss.numFunctions(), {std::numeric_limits<size_t>::max(), FunctionId(0)} );
+        for( size_t constituent_ii = 0; constituent_ii < tph_to_mph.size(); ++constituent_ii )
+        {
+            const auto& tp_active_funcs = ss.constituents().at(constituent_ii)->activeFunctions();
+            FunctionId tph_fid( 0 );
+            for( size_t level_ii = 0, num_levels = ss.refinementLevels().size(); level_ii < num_levels; ++level_ii )
+            {
+                const std::vector<std::vector<FunctionId>> tp_to_mp = ss.refinementLevels().at( level_ii )->functionIdMap();
+                for( const FunctionId& tp_fid : tp_active_funcs.at( level_ii ) )
+                {
+                    const FunctionId mp_fid = tp_to_mp.at( constituent_ii ).at( tp_fid.id() );
+                    out.at( tph_to_mph.at( constituent_ii ).at( tph_fid.id() ) ) = { level_ii, mp_fid };
+                    tph_fid = tph_fid.id() + 1;
+                }
+            }
+        }
+
+        for( const auto& pr : out )
+        {
+            if( pr.first == std::numeric_limits<size_t>::max() )
+            {
+                throw std::runtime_error( "Not all multi patch hierarchical functions have a corresponding refinement level function." );
+            }
+        }
+        return out;
+    }
 }
