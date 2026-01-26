@@ -19,6 +19,8 @@ using namespace basis;
 using namespace param;
 using namespace topology;
 
+constexpr bool LOG_EVALS = false;
+
 TEST_CASE( "TP Spline space evaluation" )
 {
     // Input info
@@ -89,6 +91,196 @@ TEST_CASE( "TP Spline space evaluation" )
                 }
             }
         }
+        return true;
+    } );
+}
+
+Eigen::MatrixXd quadballControlPoints()
+{
+    // See table 4 of "Tiling the Sphere with Rational Bezier Patches" (James E. Cobb, 1988)
+    // Available here: https://collections.lib.utah.edu/dl_files/4e/77/4e7746dd53c79f8557272b92b47d2d407da4931a.pdf
+
+    const double rt2 = std::sqrt(2.0);
+    const double rt3 = std::sqrt(3.0);
+    const double rt6 = std::sqrt(6.0);
+
+    Eigen::MatrixXd P(4,25);
+
+    P.row(0) = ( Eigen::RowVectorXd(25) <<
+        4*(1-rt3),
+        -rt2,
+        0,
+        rt2,
+        4*(rt3-1),
+
+        rt2*(rt3-4),
+        (2-3*rt3)/2.0,
+        0,
+        (3*rt3-2)/2.0,
+        rt2*(4-rt3),
+
+        4*(1-2*rt3)/3.0,
+        rt2*(2*rt3-7)/3.0,
+        0,
+        rt2*(7-2*rt3)/3.0,
+        4*(2*rt3-1)/3.0,
+
+        rt2*(rt3-4),
+        (2-3*rt3)/2.0,
+        0,
+        (3*rt3-2)/2.0,
+        rt2*(4-rt3),
+
+        4*(1-rt3),
+        -rt2,
+        0,
+        rt2,
+        4*(rt3-1)
+    ).finished();
+
+    P.row(1) = ( Eigen::RowVectorXd(25) <<
+        4*(1-rt3),
+        rt2*(rt3-4),
+        4*(1-2*rt3)/3.0,
+        rt2*(rt3-4),
+        4*(1-rt3),
+
+        -rt2,
+        (2-3*rt3)/2.0,
+        rt2*(2*rt3-7)/3.0,
+        (2-3*rt3)/2.0,
+        -rt2,
+
+        0,
+        0,
+        0,
+        0,
+        0,
+
+        rt2,
+        (3*rt3-2)/2.0,
+        rt2*(7-2*rt3)/3.0,
+        (3*rt3-2)/2.0,
+        rt2,
+
+        4*(rt3-1),
+        rt2*(4-rt3),
+        4*(2*rt3-1)/3.0,
+        rt2*(4-rt3),
+        4*(rt3-1)
+    ).finished();
+
+    P.row(2) = ( Eigen::RowVectorXd(25) <<
+        4*(1-rt3),
+        rt2*(rt3-4),
+        4*(1-2*rt3)/3.0,
+        rt2*(rt3-4),
+        4*(1-rt3),
+
+        rt2*(rt3-4),
+        -(rt3+6)/2.0,
+        -5*rt6/3.0,
+        -(rt3+6)/2.0,
+        rt2*(rt3-4),
+
+        4*(1-2*rt3)/3.0,
+        -5*rt6/3.0,
+        4*(rt3-5)/3.0,
+        -5*rt6/3.0,
+        4*(1-2*rt3)/3.0,
+
+        rt2*(rt3-4),
+        -(rt3+6)/2.0,
+        -5*rt6/3.0,
+        -(rt3+6)/2.0,
+        rt2*(rt3-4),
+
+        4*(1-rt3),
+        rt2*(rt3-4),
+        4*(1-2*rt3)/3.0,
+        rt2*(rt3-4),
+        4*(1-rt3)
+    ).finished();
+
+    P.row(3) = ( Eigen::RowVectorXd(25) <<
+        4*(3-rt3),
+        rt2*(3*rt3-2),
+        4*(5-rt3)/3.0,
+        rt2*(3*rt3-2),
+        4*(3-rt3),
+
+        rt2*(3*rt3-2),
+        (rt3+6)/2.0,
+        rt2*(rt3+6)/3.0,
+        (rt3+6)/2.0,
+        rt2*(3*rt3-2),
+
+        4*(5-rt3)/3.0,
+        rt2*(rt3+6)/3.0,
+        4*(5*rt3-1)/9.0,
+        rt2*(rt3+6)/3.0,
+        4*(5-rt3)/3.0,
+
+        rt2*(3*rt3-2),
+        (rt3+6)/2.0,
+        rt2*(rt3+6)/3.0,
+        (rt3+6)/2.0,
+        rt2*(3*rt3-2),
+
+        4*(3-rt3),
+        rt2*(3*rt3-2),
+        4*(5-rt3)/3.0,
+        rt2*(3*rt3-2),
+        4*(3-rt3)
+    ).finished();
+
+    return P;
+}
+
+
+TEST_CASE( "NURBS Spline space evaluation" )
+{
+    const KnotVector kv( {0,0,0,0,0,1,1,1,1,1}, 1e-10 );
+    const size_t degree = 4;
+
+    const auto cmap = std::make_shared<const CombinatorialMap1d>( numElements( kv ) );
+    const auto param = std::make_shared<const ParametricAtlas1d>( cmap, parametricLengths( kv ) );
+    const auto bc = std::make_shared<const BasisComplex1d>( param, degree );
+    const auto ss = std::make_shared<const BSplineSpace1d>( bc, kv );
+
+    const auto cmap_2d = std::make_shared<const TPCombinatorialMap>( cmap, cmap );
+    const auto param_2d = std::make_shared<const TPParametricAtlas>( cmap_2d, param, param );
+    const auto bc_2d = std::make_shared<const TPBasisComplex>( param_2d, bc, bc );
+    const TPSplineSpace ss_2d( bc_2d, ss, ss );
+
+    const Eigen::MatrixXd control_points = quadballControlPoints();
+
+    eval::NURBSSpaceEvaluator nurbs_evals( ss_2d , 2 );
+
+    iterateCellsWhile( *cmap_2d, 2, [&]( const topology::Face& f ) {
+        const ParentPoint ppt( param_2d->parentDomain( f ), Eigen::Vector2d(0.5,0.5), BaryCoordIsZeroVec{false,false,false,false} );
+        nurbs_evals.localizeElement( f );
+        nurbs_evals.localizePoint( ppt );
+        const Eigen::Vector3d eval = nurbs_evals.evaluateManifold( control_points );
+        const Eigen::MatrixXd jac = nurbs_evals.evaluateJacobian( control_points );
+        const Eigen::MatrixXd hess = nurbs_evals.evaluateHessian( control_points );
+
+        LOG( LOG_EVALS ) << "Evaluation at face " << f.dart() << ":\n";
+        LOG( LOG_EVALS ) << "  Point: " << eval.transpose() << "\n";
+        LOG( LOG_EVALS ) << "  Jacobian:\n" << jac << "\n";
+        LOG( LOG_EVALS ) << "  Hessian:\n" << hess << "\n";
+
+        CHECK( util::equals( eval.norm(), 1.0, 1e-14 ) );
+        CHECK( util::equals( jac.col(0).norm(), jac.col(1).norm(), 1e-14 ) );
+        CHECK( util::equals( jac.col(0).norm(), jac(0, 0), 1e-14 ) );
+        CHECK( util::equals( jac.col(1).norm(), jac(1, 1), 1e-14 ) );
+        CHECK( util::equals( jac.col(0).dot( jac.col(1) ), 0.0, 1e-14 ) );
+
+        // I don't have good intuition for why this should be true nor the time to check it,
+        // but it is true, so we'll check it just for the sake of regression prevention.
+        CHECK( util::equals(hess.col(0).norm(), hess.col(2).norm(), 1e-14 ) );
+        CHECK( util::equals(hess.col(1).norm(), 0, 1e-14 ) );
+        
         return true;
     } );
 }
