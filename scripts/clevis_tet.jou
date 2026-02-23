@@ -1,0 +1,17 @@
+reset
+import step "/Users/caleb/Downloads/bracket(1).step" noheal color
+surf all copy
+delete vol 1
+webcut body 3 4 with plane yplane offset -0.0127
+webcut body 2 3 4 5 14 15 16 17 18 19 with plane zplane offset 0.0254
+create volume surface all heal
+
+vol all scheme tet
+mesh vol all
+
+nodeset 1 add surface 26 27 28 39 40 41 42 53 54 55 56
+nodeset 1 name "start"
+nodeset 2 add surface 23 24 25 37 38 43 44
+nodeset 2 name "end"
+
+export abaqus "/Users/caleb/sweeps/attempt-sweep/test/data/clevis.inp"  mesh_only overwrite  everything 

@@ -1,0 +1,34 @@
+reset
+import step "/Users/caleb/Downloads/flange(1).step" noheal color 
+create surface rectangle width 8 height 9 xplane 
+move body 2 y 4 z 3.5
+imprint body all
+
+create surface rectangle width 9 height 2 xplane 
+move body 3 y -7 z 3.5
+imprint body 3 1
+rotate Surface 25 angle 45  about Z include_merged 
+imprint body 3 1
+rotate Surface 25 angle 45  about Z include_merged 
+imprint body 3 1
+rotate Surface 25 angle 45  about Z include_merged 
+imprint body 3 1
+rotate Surface 25 angle 90  about Z include_merged 
+imprint body 3 1
+rotate Surface 25 angle 45  about Z include_merged 
+imprint body 3 1
+rotate Surface 25 angle 45  about Z include_merged 
+imprint body 3 1
+
+delete body all except 1
+
+vol 1 scheme tet
+mesh vol 1
+
+nodeset 1 add surface 5 4 3 2 1  
+nodeset 1 name "end"
+
+nodeset 2 add surface 7  
+nodeset 2 name "start"
+
+export abaqus "/Users/caleb/sweeps/attempt-sweep/test/data/flange_imprinted.inp"  mesh_only overwrite  everything 

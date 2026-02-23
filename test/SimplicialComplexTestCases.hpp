@@ -229,6 +229,16 @@ class SweepInputTestCases
         return sweep_input;
     }
 
+    static SweepInput flange_imprinted()
+    {
+        return io::loadINPFile( SRC_HOME "/test/data/flange_imprinted.inp", "start", "end" );
+    }
+
+    static SweepInput clevis()
+    {
+        return io::loadINPFile( SRC_HOME "/test/data/clevis.inp", "start", "end" );
+    }
+
     static SweepInput bunny()
     {
         SweepInput sweep_input = io::loadINPFile( SRC_HOME "/test/data/stanford_bunny.inp", "SS1_S3", "SS2_S3" );

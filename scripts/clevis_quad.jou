@@ -1,0 +1,27 @@
+reset
+import step "/Users/caleb/Downloads/bracket(1).step" noheal color
+surf all copy
+delete vol 1
+webcut body 3 4 with plane yplane offset -0.0127
+webcut body 18 19 with plane zplane offset 0.0254
+create volume surface all heal
+
+surf 37 38 39 40 scheme polyhedron
+composite create surface 17 25 24 23 20  keep angle 15
+
+surf all size 0.005
+
+#curve 101 71 70 97 72 81 interval 1
+#curve 101 71 70 97 72 81 scheme equal
+#mesh curve 101 71 70 97 72 81
+
+mesh surface 37 33 38 26 27 28 39 40 35
+
+delete mesh surface 37  propagate
+copy mesh surface 38  onto  surface 37  source curve 146  source vertex 85  target curve 145  target vertex 58  
+
+delete mesh surface 40  propagate
+copy mesh surface 39  onto  surface 40  source curve 151  source vertex 49  target curve 150  target vertex 69 
+
+#vol 21 scheme sweep source surf 37 33 38 26 27 28 39 40 35 target surf 41
+#mesh vol all

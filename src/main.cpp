@@ -157,6 +157,83 @@ std::vector<int> verifyDelaunayTetrahedralization( const SimplicialComplex& mesh
     return failed_tetrahedra;
 }
 
+std::vector<double> computeEquallySpacedLevelSetValues( const topology::TetMeshCombinatorialMap& mesh,
+                                                        const Eigen::VectorXd& vertex_values,
+                                                        const double max_spacing )
+{
+    // 1. Compute gradient magnitude for each triangle (constant per triangle)
+    std::vector<double> gradient_magnitudes;
+    std::vector<std::pair<double, double>> triangle_value_ranges;
+
+    const topology::CombinatorialMapBoundary bdry( mesh );
+
+    const auto vert_ids = indexingOrError( bdry, 0 );
+
+    iterateCellsWhile( bdry, 2, [&]( const topology::Face& face ) {
+        const auto tri = triangleOfFace( mesh, face );
+
+        const double f0 = vertex_values( vert_ids( topology::Vertex( face.dart() ) ) );
+        const double f1 = vertex_values( vert_ids( topology::Vertex( phi( bdry, 1, face.dart() ).value() ) ) );
+        const double f2 = vertex_values( vert_ids( topology::Vertex( phi( bdry, -1, face.dart() ).value() ) ) );
+
+        const Eigen::Vector3d field_vals( f0, f1, f2 );
+        const Eigen::Vector3d grad = gradient( tri, field_vals );
+        const double grad_magnitude = grad.norm();
+
+        if( grad_magnitude < 1e-12 ) return true; // Skip degenerate/flat triangles
+
+        gradient_magnitudes.push_back( grad_magnitude );
+
+        const double f_min = std::min( { f0, f1, f2 } );
+        const double f_max = std::max( { f0, f1, f2 } );
+        triangle_value_ranges.push_back( { f_min, f_max } );
+        return true;
+    } );
+
+    // 2. Step through [0,1], at each step finding the minimum gradient
+    //    in the "active" triangles (those intersected by current level set)
+    std::vector<double> levels = { 0.0 };
+    double current_value = 0.0;
+
+    while( current_value < 1.0 - 1e-10 )
+    {
+        // Find min gradient among triangles that contain current_value
+        double min_grad = std::numeric_limits<double>::infinity();
+        for( size_t i = 0; i < gradient_magnitudes.size(); ++i )
+        {
+            if( triangle_value_ranges.at( i ).first <= current_value &&
+                current_value <= triangle_value_ranges.at( i ).second )
+            {
+                min_grad = std::min( min_grad, gradient_magnitudes.at( i ) );
+            }
+        }
+
+        if( std::isinf( min_grad ) || min_grad < 1e-12 )
+        {
+            // No active triangles or flat region
+            current_value = 1.0;
+        }
+        else
+        {
+            // To achieve max spacing d: dv = d * ||∇f||_min
+            const double dv = max_spacing * min_grad;
+            current_value += dv;
+        }
+
+        if( current_value < 1.0 )
+        {
+            levels.push_back( std::min( current_value, 1.0 ) );
+        }
+    }
+
+    if( levels.back() < 1.0 - 1e-10 )
+    {
+        levels.push_back( 1.0 );
+    }
+
+    return levels;
+}
+
 int main( int argc, char* argv[] )
 {
     const std::vector<std::string> input_args(argv + 1, argv + argc);
@@ -172,6 +249,10 @@ int main( int argc, char* argv[] )
                 return SweepInputTestCases::ventricle();
             else if( std::find( input_args.begin(), input_args.end(), "flange" ) != input_args.end() )
                 return SweepInputTestCases::flange();
+            else if( std::find( input_args.begin(), input_args.end(), "flange_imprinted" ) != input_args.end() )
+                return SweepInputTestCases::flange_imprinted();
+            else if( std::find( input_args.begin(), input_args.end(), "clevis" ) != input_args.end() )
+                return SweepInputTestCases::clevis();
             else if( std::find( input_args.begin(), input_args.end(), "cube" ) != input_args.end() )
                 return SweepInputTestCases::twelveTetCube();
             else if( std::find( input_args.begin(), input_args.end(), "bunny" ) != input_args.end() )
@@ -355,6 +436,9 @@ int main( int argc, char* argv[] )
         const Eigen::VectorXd ans =
             sweepEmbedding( map, sweep_input.zero_bcs, sweep_input.one_bcs, normals );
         std::cout << "Laplace time 2: " << t.stop( 4 ) << std::endl;
+
+        std::cout << "Level set values: " << computeEquallySpacedLevelSetValues( map, ans, 0.7 ) << std::endl;
+
 
         const Eigen::Matrix3Xd grad = gradientsWithBoundaryCorrection( map, sides, ans, normals );
 
