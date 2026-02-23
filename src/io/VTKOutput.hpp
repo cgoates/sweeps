@@ -74,7 +74,10 @@ namespace io
 
     void outputSimplicialFieldToVTK( const VTKOutputObject& output, const std::string& filename );
 
-    void outputPolygonsToVTK( const std::vector<Eigen::Vector3d>& points, const std::vector<std::vector<VertexId>>& polygons, const std::string& filename );
+    void outputPolygonsToVTK( const std::vector<Eigen::Vector3d>& points,
+                              const std::vector<std::vector<VertexId>>& polygons,
+                              const std::string& filename,
+                              const std::optional<std::vector<double>>& vert_data );
 
     /// @brief write out a spline as bezier cells to vtk
     /// @param ss  The spline space

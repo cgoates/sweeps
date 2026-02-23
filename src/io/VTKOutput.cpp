@@ -428,9 +428,13 @@ namespace io
         std::vector<Eigen::Vector3d> points;
         std::vector<std::vector<VertexId>> polygons;
         std::map<topology::Dart::IndexType, size_t> vert_ids;
+        std::vector<double> vert_labels;
+        const auto maybe_vert_ids = cmap.indexing( 0 );
         iterateCellsWhile( cmap, 0, [&]( const auto& vert ) {
             vert_ids.emplace( lowestDartId( cmap, vert ), points.size() );
             points.push_back( positions( vert ) );
+            if( maybe_vert_ids.has_value() )
+                vert_labels.push_back( static_cast<double>( maybe_vert_ids.value()( vert ) ) );
             return true;
         } );
 
@@ -444,7 +448,7 @@ namespace io
             return true;
         } );
 
-        io::outputPolygonsToVTK( points, polygons, filename );
+        io::outputPolygonsToVTK( points, polygons, filename, vert_labels.empty() ? std::nullopt : std::optional<std::vector<double>>(vert_labels) );
     }
 
     void outputDualFace( const topology::CombinatorialMap& cmap,
@@ -563,7 +567,10 @@ namespace io
         outputSimplicialFieldToVTK( out, filename );
     }
 
-    void outputPolygonsToVTK( const std::vector<Eigen::Vector3d>& points, const std::vector<std::vector<VertexId>>& polygons, const std::string& filename )
+    void outputPolygonsToVTK( const std::vector<Eigen::Vector3d>& points,
+                              const std::vector<std::vector<VertexId>>& polygons,
+                              const std::string& filename,
+                              const std::optional<std::vector<double>>& vert_data )
     {
         const size_t n_simplices = polygons.size();
         const size_t n_points = points.size();
@@ -576,6 +583,19 @@ namespace io
         file << R"STRING(
       </CellData>
       <PointData>)STRING";
+      if( vert_data.has_value() )
+      {
+          file << R"STRING(
+        <DataArray type="Float64" Name="VertexData" NumberOfComponents="1" format="ascii">
+)STRING";
+          for( const double& value : vert_data.value() )
+          {
+              file << std::format( "{:.16g} ", value );
+          }
+          file << R"STRING(
+        </DataArray>
+)STRING";
+      }
 
         file << R"STRING(
       </PointData>
