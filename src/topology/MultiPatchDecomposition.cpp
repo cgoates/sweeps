@@ -191,7 +191,9 @@ namespace topology
         const auto add_connected_pair = [&]( const size_t id1, const size_t id2, const Dart& dart1, const Dart& dart2 ) {
 
             std::pair<size_t, size_t> pair = std::make_pair( std::min( id1, id2 ), std::max( id1, id2 ) );
-            if( connected_constituents.find( pair ) == connected_constituents.end() )
+            // HACK: MultiPatchCMap doesn't care if it gets duplicates.
+            // If two patches are connected multiple times this chokes without the "true".
+            if( true or connected_constituents.find( pair ) == connected_constituents.end() )
             {
                 connections.emplace( std::make_pair( id1, dart1 ), std::make_pair( id2, dart2 ) );
                 connected_constituents.insert( pair );
