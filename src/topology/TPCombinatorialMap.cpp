@@ -332,6 +332,49 @@ namespace topology
         return out;
     }
 
+    size_t dartComponentDirection( const FullyUnflattenedDart& unflat_d )
+    {
+        if( unflat_d.dart_pos.size() == 1 )
+        {
+            switch( unflat_d.dart_pos.at(0) )
+            {
+                case TPCombinatorialMap::TPDartPos::DartPos0:
+                case TPCombinatorialMap::TPDartPos::DartPos2:
+                    return 0;
+                case TPCombinatorialMap::TPDartPos::DartPos1:
+                case TPCombinatorialMap::TPDartPos::DartPos3:
+                    return 1;
+                default:
+                    throw std::runtime_error( "Invalid TP Dart Position for 2d" );
+            }
+        }
+        else if( unflat_d.dart_pos.size() == 2 )
+        {
+            switch( unflat_d.dart_pos.at(1) )
+            {
+                case TPCombinatorialMap::TPDartPos::DartPos2:
+                case TPCombinatorialMap::TPDartPos::DartPos4:
+                    return 2;
+                default:
+                    switch( unflat_d.dart_pos.at(0) )
+                    {
+                        case TPCombinatorialMap::TPDartPos::DartPos0:
+                        case TPCombinatorialMap::TPDartPos::DartPos2:
+                            return 0;
+                        case TPCombinatorialMap::TPDartPos::DartPos1:
+                        case TPCombinatorialMap::TPDartPos::DartPos3:
+                            return 1;
+                        default:
+                            throw std::runtime_error( "Invalid TP Dart Position for 2d" );
+                    }
+            }
+        }
+        else
+        {
+            throw std::runtime_error( "Invalid TP Dart Position size" );
+        }
+    }
+
     TPCombinatorialMap tensorProductCMapFromComponents( const SmallVector<std::shared_ptr<const CombinatorialMap1d>, 3>& components )
     {
         if( components.size() == 2 )

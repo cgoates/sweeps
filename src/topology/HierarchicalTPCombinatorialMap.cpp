@@ -3,17 +3,16 @@
 #include <IndexOperations.hpp>
 #include <ranges>
 #include <numeric>
+#include <Logging.hpp>
 
 using namespace topology;
 
-namespace topology
-{
-bool checkForNoAncestor( const FullyUnflattenedDart& unflat, const size_t n_darts_per_ancestor )
+bool checkForNoAncestor( const FullyUnflattenedDart& unflat, const SmallVector<size_t, 3>& n_darts_per_ancestor )
 {
     using TPDartPos = TPCombinatorialMap::TPDartPos;
 
     const auto check_dart = [&]( const size_t idx, const bool add_one = false ) {
-        return ( unflat.unflat_darts.at( idx ).id() + ( add_one ? 1 : 0 ) ) % n_darts_per_ancestor != 0;
+        return ( unflat.unflat_darts.at( idx ).id() + ( add_one ? 1 : 0 ) ) % n_darts_per_ancestor.at( idx ) != 0;
     };
     constexpr bool add_one = true;
     if( unflat.unflat_darts.size() == 2 ) // 2D case
@@ -108,14 +107,6 @@ bool checkForNoAncestor( const FullyUnflattenedDart& unflat, const size_t n_dart
     throw std::invalid_argument( "Bad unflattened dart passed to checkForNoAncestor" );
 }
 
-bool checkForNoAncestor( const TPCombinatorialMap& tp_map, const Dart& d, const size_t n_darts_per_ancestor )
-{
-    if( n_darts_per_ancestor == 0 )
-        return true;
-    return checkForNoAncestor( unflattenFull( tp_map, d ), n_darts_per_ancestor );
-}
-}
-
 HierarchicalTPCombinatorialMap::HierarchicalTPCombinatorialMap(
     const std::vector<std::shared_ptr<const TPCombinatorialMap>>& refinement_levels,
     const std::vector<std::vector<Cell>>& leaf_elements )
@@ -136,16 +127,14 @@ HierarchicalTPCombinatorialMap::HierarchicalTPCombinatorialMap(
     for( size_t level = 1; level < refinement_levels.size(); level++ )
     {
         const util::IndexVec higher_sizes = get_tp_lengths( *refinement_levels.at( level ) );
-        mRefinementRatios.push_back( higher_sizes.front() / lower_sizes.front() );
-
-        if( higher_sizes.front() % lower_sizes.front() != 0 )
-            throw std::invalid_argument( "Refinement levels must be uniform refinements of each other." );
-
+        SmallVector<size_t, 3>& ratios = mRefinementRatios.emplace_back();
         for( size_t i = 0; i < lower_sizes.size(); i++ )
         {
-            if( higher_sizes.at( i ) / lower_sizes.at( i ) != mRefinementRatios.back() or higher_sizes.at( i ) % lower_sizes.at( i ) != 0 )
-                throw std::invalid_argument( "Refinement levels must be uniform refinements of each other." );
+            if( higher_sizes.at( i ) % lower_sizes.at( i ) != 0 )
+                throw std::invalid_argument( "Refinement levels must be nested refinements of each other." );
+            ratios.push_back( higher_sizes.at( i ) / lower_sizes.at( i ) );
         }
+
         lower_sizes = higher_sizes;
     }
 
@@ -446,24 +435,30 @@ bool HierarchicalTPCombinatorialMap::iterateDartLineage( const Dart& global_d,
 
     if( dart_level == ancestor_or_descendant_level ) return callback( global_d );
     
+    const FullyUnflattenedDart unflat = unflattenFull( *mRefinementLevels.at( dart_level ), local_d );
     if( dart_level > ancestor_or_descendant_level )
     {
         // Call back on a single ancestor dart
-        const size_t darts_per_ancestor_dart =
+        const SmallVector<size_t, 3> darts_per_ancestor_dart =
             std::reduce( std::next( mRefinementRatios.begin(), ancestor_or_descendant_level ),
                          std::next( mRefinementRatios.begin(), dart_level ),
-                         1, std::multiplies<>() );
-
-        const FullyUnflattenedDart unflat = unflattenFull( *mRefinementLevels.at( dart_level ), local_d );
+                         SmallVector<size_t, 3>( dim(), 1 ),
+                         [&]( const SmallVector<size_t, 3>& a, const SmallVector<size_t, 3>& b ) {
+                             SmallVector<size_t, 3> result( a.size() );
+                             std::transform( a.begin(), a.end(), b.begin(), result.begin(), [&]( const size_t x, const size_t y ) { return x * y; } );
+                             return result;
+                         } );
 
         if( checkForNoAncestor( unflat, darts_per_ancestor_dart ) ) return true;
 
         FullyUnflattenedDart ancestor_unflat( {}, unflat.dart_pos );
-        std::transform(
-            unflat.unflat_darts.begin(),
-            unflat.unflat_darts.end(),
-            std::back_inserter( ancestor_unflat.unflat_darts ),
-            [&darts_per_ancestor_dart]( const Dart& d ) { return Dart( d.id() / darts_per_ancestor_dart ); } );
+        std::transform( unflat.unflat_darts.begin(),
+                        unflat.unflat_darts.end(),
+                        darts_per_ancestor_dart.begin(),
+                        std::back_inserter( ancestor_unflat.unflat_darts ),
+                        []( const Dart& d, const size_t ratio ) {
+                            return Dart( d.id() / ratio );
+                        } );
 
         const Dart ancestor_dart = flattenFull( *mRefinementLevels.at( ancestor_or_descendant_level ), ancestor_unflat );
         return callback( mRanges.toGlobalDart( ancestor_or_descendant_level, ancestor_dart ) );
@@ -471,23 +466,26 @@ bool HierarchicalTPCombinatorialMap::iterateDartLineage( const Dart& global_d,
     else
     {
         // Iterate several descendants.
-        const size_t darts_per_ancestor_dart =
+        const SmallVector<size_t, 3> darts_per_ancestor_dart =
             std::reduce( std::next( mRefinementRatios.begin(), dart_level ),
                          std::next( mRefinementRatios.begin(), ancestor_or_descendant_level ),
-                         1, std::multiplies<>() );
-
-        const FullyUnflattenedDart unflat = unflattenFull( *mRefinementLevels.at( dart_level ), local_d );
+                         SmallVector<size_t, 3>( dim(), 1 ),
+                         [&]( const SmallVector<size_t, 3>& a, const SmallVector<size_t, 3>& b ) {
+                             SmallVector<size_t, 3> result( a.size() );
+                             std::transform( a.begin(), a.end(), b.begin(), result.begin(), [&]( const size_t x, const size_t y ) { return x * y; } );
+                             return result;
+                         } );
 
         FullyUnflattenedDart start_dart( {}, unflat.dart_pos );
         std::transform(
             unflat.unflat_darts.begin(),
             unflat.unflat_darts.end(),
+            darts_per_ancestor_dart.begin(),
             std::back_inserter( start_dart.unflat_darts ),
-            [&darts_per_ancestor_dart]( const Dart& d ) { return Dart( d.id() * darts_per_ancestor_dart ); } );
+            []( const Dart& d, const size_t ratio ) { return Dart( d.id() * ratio ); } );
 
         // Add a series of TP indices to the start_dart, flatten, and call back.
-        const util::IndexVec lengths( dim(), darts_per_ancestor_dart );
-        const SmallVector<std::variant<bool, size_t>, 3> direction = tpDirectionAlongTPDartPos( unflat.dart_pos, lengths );
+        const SmallVector<std::variant<bool, size_t>, 3> direction = tpDirectionAlongTPDartPos( unflat.dart_pos, darts_per_ancestor_dart );
         const util::IndexVec order = [this]() {
             util::IndexVec order( dim() );
             std::iota( order.begin(), order.end(), 0 );
@@ -495,7 +493,7 @@ bool HierarchicalTPCombinatorialMap::iterateDartLineage( const Dart& global_d,
         }();
 
         bool continue_iter = true;
-        util::iterateTensorProduct( lengths, order, direction, [&]( const util::IndexVec& iv ){
+        util::iterateTensorProduct( darts_per_ancestor_dart, order, direction, [&]( const util::IndexVec& iv ){
             if( not continue_iter ) return;
             FullyUnflattenedDart descendant_unflat = start_dart;
             std::transform( descendant_unflat.unflat_darts.begin(),
@@ -554,7 +552,7 @@ bool HierarchicalTPCombinatorialMap::iterateChildren( const Cell& local_cell,
     if( mRefinementLevels.size() <= descendant_level ) return true;
 
     // Iterate several descendants.
-    const size_t darts_per_ancestor_dart = mRefinementRatios.at( cell_level );
+    const auto darts_per_ancestor_dart = mRefinementRatios.at( cell_level );
 
     const FullyUnflattenedDart unflat = unflattenFull( *mRefinementLevels.at( cell_level ), local_cell.dart() );
 
@@ -562,14 +560,13 @@ bool HierarchicalTPCombinatorialMap::iterateChildren( const Cell& local_cell,
     std::transform(
         unflat.unflat_darts.begin(),
         unflat.unflat_darts.end(),
+        darts_per_ancestor_dart.begin(),
         std::back_inserter( start_dart.unflat_darts ),
-        [&darts_per_ancestor_dart]( const Dart& d ) { return Dart( d.id() * darts_per_ancestor_dart ); } );
+        []( const Dart& d, const size_t ratio ) { return Dart( d.id() * ratio ); } );
 
     // Add a series of TP indices to the start_dart, flatten, and call back.
-    const util::IndexVec lengths( dim(), darts_per_ancestor_dart );
-
     bool continue_iter = true;
-    util::iterateTensorProduct( lengths, [&]( const util::IndexVec& iv ){
+    util::iterateTensorProduct( darts_per_ancestor_dart, [&]( const util::IndexVec& iv ){
         if( not continue_iter ) return;
         FullyUnflattenedDart descendant_unflat = start_dart;
         std::transform( descendant_unflat.unflat_darts.begin(),

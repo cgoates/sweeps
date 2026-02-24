@@ -43,7 +43,7 @@ namespace topology
 
         bool iterateLeafDescendants( const Dart& global_d, const std::function<bool( const Dart& )>& callback ) const;
 
-        const std::vector<size_t>& refinementRatios() const { return mRefinementRatios; }
+        const std::vector<SmallVector<size_t, 3>>& refinementRatios() const { return mRefinementRatios; }
 
         bool isUnrefinedLeafDart( const Dart& d ) const
         {
@@ -65,7 +65,7 @@ namespace topology
         std::vector<bool> mUnrefinedDarts;
         std::map<Dart, Dart> mPhiOnes;
         std::map<Dart, Dart> mPhiMinusOnes;
-        std::vector<size_t> mRefinementRatios;
+        std::vector<SmallVector<size_t, 3>> mRefinementRatios;
     };
 
     /// @brief A mutable version of HierarchicalTPCombinatorialMap.
@@ -95,8 +95,6 @@ namespace topology
             return mLeafDarts.at( d.id() );
         }
 
-        size_t refinementRatio( const size_t level ) const { return mRefinementRatios.at( level ); }
-
         /// Expose a protected method from the base class for initialization purposes.
         bool iterateDartLineage( const Dart& global_d,
                                  const size_t ancestor_or_descendant_level,
@@ -123,8 +121,6 @@ namespace topology
             return std::shared_ptr<const HierarchicalTPCombinatorialMap>( self, static_cast<const HierarchicalTPCombinatorialMap*>( this ) );
         }
     };
-
-    bool checkForNoAncestor( const TPCombinatorialMap& tp_map, const Dart& d, const size_t n_darts_per_ancestor );
 
     std::vector<std::vector<Cell>> leafElements( const HierarchicalTPCombinatorialMap& cmap );
 }; // namespace topology

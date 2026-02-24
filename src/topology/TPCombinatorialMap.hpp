@@ -104,6 +104,8 @@ namespace topology
         SmallVector<TPCombinatorialMap::TPDartPos, 2> dart_pos;
     };
 
+    size_t dartComponentDirection( const FullyUnflattenedDart& unflat_d );
+
     FullyUnflattenedDart unflattenFull( const TPCombinatorialMap& cmap, const Dart& d );
     Dart flattenFull( const TPCombinatorialMap& cmap, const FullyUnflattenedDart& unflat_d );
 

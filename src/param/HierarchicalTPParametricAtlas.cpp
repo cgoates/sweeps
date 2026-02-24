@@ -48,10 +48,11 @@ ParentPoint HierarchicalTPParametricAtlas::parentPoint( const topology::Vertex& 
         const std::array<topology::CellOrEndVertex, 3> fully_unflat_verts = fullyUnflattenVertex( dart_level_cmap, local_d );
         const topology::FullyUnflattenedDart fully_unflat_cell = unflattenFull( *mMap->refinementLevels().at( elem_level ), unrefined_d );
 
+        const size_t dart_component = dartComponentDirection( unflattenFull( dart_level_cmap, local_d ) );
         const size_t ratio = [&](){
             size_t out = 1;
             for( size_t level_ii = elem_level; level_ii < dart_level; level_ii++ )
-                out *= mMap->refinementRatios().at( level_ii );
+                out *= mMap->refinementRatios().at( level_ii ).at( dart_component );
             return out;
         }();
         const Vector6dMax unrefined_lengths = mRefinementLevels.at( elem_level )->parametricLengths( topology::Cell( unrefined_d, mMap->dim() ) );
