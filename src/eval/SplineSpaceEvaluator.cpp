@@ -129,17 +129,14 @@ namespace eval
         return jac.determinant();
     }
 
-    Eigen::VectorXd paramToSpatialGradDeterminant( const SplineSpaceEvaluator& geom_evals, const Eigen::MatrixXd& cpts )
+    Eigen::VectorXd gradDeterminant( const Eigen::MatrixXd& J, const Eigen::MatrixXd& H, const size_t param_dim, const size_t spatial_dim )
     {
-        const Eigen::MatrixXd J = geom_evals.evaluateParamToSpatialJacobian( cpts );
-        const Eigen::MatrixXd H = geom_evals.evaluateParamToSpatialHessian( cpts );
-
-        if( geom_evals.splineSpace().basisComplex().parametricAtlas().cmap().dim() == 2 and cpts.rows() == 2 )
+        if( param_dim == 2 and spatial_dim == 2 )
         {
             return Eigen::Vector2d( H( 0, 0 ) * J( 1, 1 ) + J( 0, 0 ) * H( 1, 1 ) - H( 1, 0 ) * J( 0, 1 ) - J( 1, 0 ) * H( 0, 1 ),
                                     H( 0, 1 ) * J( 1, 1 ) + J( 0, 0 ) * H( 1, 2 ) - H( 1, 1 ) * J( 0, 1 ) - J( 1, 0 ) * H( 0, 2 ) );
         }
-        else if( geom_evals.splineSpace().basisComplex().parametricAtlas().cmap().dim() == 3 )
+        else if( param_dim == 3 )
         {
             const double& x_s = J(0,0), x_t = J(0,1), x_u = J(0,2);
             const double& y_s = J(1,0), y_t = J(1,1), y_u = J(1,2);
@@ -179,6 +176,14 @@ namespace eval
         }
     }
 
+    Eigen::VectorXd parentToSpatialGradDeterminant( const SplineSpaceEvaluator& geom_evals, const Eigen::MatrixXd& cpts )
+    {
+        return gradDeterminant( geom_evals.evaluateJacobian( cpts ),
+                                geom_evals.evaluateHessian( cpts ),
+                                geom_evals.splineSpace().basisComplex().parametricAtlas().cmap().dim(),
+                                cpts.rows() );
+    }
+
     Eigen::MatrixXd piolaTransformedH1FirstDerivatives( const SplineSpaceEvaluator& scalar_evals,
                                                         const SplineSpaceEvaluator& geom_evals,
                                                         const Eigen::MatrixXd& cpts )
@@ -192,7 +197,7 @@ namespace eval
                                                 const SplineSpaceEvaluator& geom_evals,
                                                 const Eigen::MatrixXd& cpts )
     {
-        const Eigen::MatrixXd jac_inverse = geom_evals.evaluateParamToSpatialJacobian( cpts ).inverse();
+        const Eigen::MatrixXd jac_inverse = geom_evals.evaluateJacobian( cpts ).inverse();
         return vec_evals.evaluateBasis() * jac_inverse;
     }
 
@@ -210,11 +215,11 @@ namespace eval
         const size_t param_dim = geom_evals.splineSpace().basisComplex().parametricAtlas().cmap().dim();
         const size_t spatial_dim = cpts.rows();
         const size_t n_funcs = vector_basis.cols();
-        const Eigen::MatrixXd jac = geom_evals.evaluateParamToSpatialJacobian( cpts );
+        const Eigen::MatrixXd jac = geom_evals.evaluateJacobian( cpts );
         const auto inverse_transpose_jacobian = jac.inverse().transpose();
 
         const auto modified_hessian = [&geom_evals, &cpts, &param_dim, &spatial_dim]() {
-            const Eigen::MatrixXd hess = geom_evals.evaluateParamToSpatialHessian( cpts );
+            const Eigen::MatrixXd hess = geom_evals.evaluateHessian( cpts );
             Eigen::MatrixXd out( spatial_dim * param_dim, param_dim );
             if( param_dim == 2 )
                 // FIXME: Make this work for 3d spatial/2d manifold
@@ -249,8 +254,7 @@ namespace eval
         }();
 
         return ( ( inverse_transpose_jacobian *
-                   vec_evals.evaluateFirstDerivativesFromParamToSpatial().transpose().reshaped( param_dim,
-                                                                                                n_funcs * param_dim ) )
+                   vec_evals.evaluateFirstDerivatives().transpose().reshaped( param_dim, n_funcs * param_dim ) )
                      .reshaped( spatial_dim * param_dim, n_funcs ) +
                  second_term )
                    .transpose() *
@@ -261,7 +265,7 @@ namespace eval
                                                const SplineSpaceEvaluator& geom_evals,
                                                const Eigen::MatrixXd& cpts )
     {
-        const auto jac = geom_evals.evaluateParamToSpatialJacobian( cpts );
+        const auto jac = geom_evals.evaluateJacobian( cpts );
         const double det = determinant( jac );
         return 1.0 / det * vec_evals.evaluateBasis() * jac.transpose();
     }
@@ -270,7 +274,7 @@ namespace eval
                                                           const SplineSpaceEvaluator& geom_evals,
                                                           const Eigen::MatrixXd& cpts )
     {
-        const Eigen::MatrixXd jac = geom_evals.evaluateParamToSpatialJacobian( cpts );
+        const Eigen::MatrixXd jac = geom_evals.evaluateJacobian( cpts );
         const double det_inverse = 1.0 / determinant( jac );
         const Eigen::MatrixXd vector_basis = vec_evals.evaluateBasis().transpose();
         const size_t n_funcs = vector_basis.cols();
@@ -282,11 +286,11 @@ namespace eval
 
         const Eigen::MatrixXd first_term =
             -det_inverse * det_inverse *
-            ( ( jac * vector_basis ).reshaped() * paramToSpatialGradDeterminant( geom_evals, cpts ).transpose() )
+            ( ( jac * vector_basis ).reshaped() * parentToSpatialGradDeterminant( geom_evals, cpts ).transpose() )
                 .reshaped( spatial_dim * param_dim, n_funcs );
 
         const auto modified_hessian = [&geom_evals, &cpts, &param_dim, &spatial_dim]() {
-            const Eigen::MatrixXd hess = geom_evals.evaluateParamToSpatialHessian( cpts );
+            const Eigen::MatrixXd hess = geom_evals.evaluateHessian( cpts );
             Eigen::MatrixXd out( spatial_dim * param_dim, param_dim );
             if( param_dim == 2 )
                 // FIXME: Make this work for 3d spatial/2d manifold
@@ -312,7 +316,7 @@ namespace eval
         const Eigen::MatrixXd second_term = det_inverse * modified_hessian() * vector_basis;
 
         const Eigen::MatrixXd third_term =
-            ( det_inverse * jac * vec_evals.evaluateFirstDerivativesFromParamToSpatial().transpose().reshaped( param_dim, n_funcs * param_dim ) )
+            ( det_inverse * jac * vec_evals.evaluateFirstDerivatives().transpose().reshaped( param_dim, n_funcs * param_dim ) )
                 .reshaped( spatial_dim * param_dim, n_funcs );
 
         return ( first_term + second_term + third_term ).transpose() *
@@ -323,17 +327,17 @@ namespace eval
                                              const SplineSpaceEvaluator& geom_evals,
                                              const Eigen::MatrixXd& cpts )
     {
-        return 1.0 / determinant( geom_evals.evaluateParamToSpatialJacobian( cpts ) ) * bivec_evals.evaluateBasis();
+        return 1.0 / determinant( geom_evals.evaluateJacobian( cpts ) ) * bivec_evals.evaluateBasis();
     }
     Eigen::MatrixXd piolaTransformedL2FirstDerivatives( const SplineSpaceEvaluator& bivec_evals,
                                                         const SplineSpaceEvaluator& geom_evals,
                                                         const Eigen::MatrixXd& cpts )
     {
-        const auto jac = geom_evals.evaluateParamToSpatialJacobian( cpts );
+        const auto jac = geom_evals.evaluateJacobian( cpts );
         const double det_inverse = 1.0 / determinant( jac );
         const auto jac_inverse_transpose = jac.inverse().transpose();
-        return ( det_inverse * jac_inverse_transpose * bivec_evals.evaluateFirstDerivativesFromParamToSpatial().transpose() -
-                 det_inverse * det_inverse * jac_inverse_transpose * paramToSpatialGradDeterminant( geom_evals, cpts ) *
+        return ( det_inverse * jac_inverse_transpose * bivec_evals.evaluateFirstDerivatives().transpose() -
+                 det_inverse * det_inverse * jac_inverse_transpose * parentToSpatialGradDeterminant( geom_evals, cpts ) *
                      bivec_evals.evaluateBasis().transpose() )
             .transpose() * jac.inverse(); // transform from ds denominator to dx
     }

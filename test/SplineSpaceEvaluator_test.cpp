@@ -95,6 +95,78 @@ TEST_CASE( "TP Spline space evaluation" )
     } );
 }
 
+TEST_CASE( "Piola transforms are invariant to parent-to-parametric interval scaling" )
+{
+    const double ptol = 1e-10;
+    const size_t degree = 1;
+
+    const auto build_discretization = [&]( const KnotVector& kv_s, const KnotVector& kv_t ) {
+        const TPSplineSpace h1 = buildBSpline( { kv_s, kv_t }, { degree, degree } );
+        const auto hdiv_bc = std::make_shared<const VectorConformingBasisComplex>( h1.basisComplexPtr() );
+        const VectorConformingTPSplineSpace hdiv( hdiv_bc, h1 );
+        const auto l2_bc =
+            std::make_shared<const TPBasisComplex>( h1.basisComplex().parametricAtlasPtr(),
+                                                   hdiv.reducedDegree1dBases().at( 0 )->basisComplexPtr(),
+                                                   hdiv.reducedDegree1dBases().at( 1 )->basisComplexPtr() );
+        const TPSplineSpace l2( l2_bc, hdiv.reducedDegree1dBases().at( 0 ), hdiv.reducedDegree1dBases().at( 1 ) );
+        return std::tuple<TPSplineSpace, VectorConformingTPSplineSpace, TPSplineSpace>( h1, hdiv, l2 );
+    };
+
+    const KnotVector kv_unit( { 0, 0, 1, 1 }, ptol );
+    const KnotVector kv_double( { 0, 0, 2, 2 }, ptol );
+
+    auto [h1_unit, hdiv_unit, l2_unit] = build_discretization( kv_unit, kv_unit );
+    auto [h1_scaled, hdiv_scaled, l2_scaled] = build_discretization( kv_double, kv_unit );
+
+    eval::SplineSpaceEvaluator h1_eval_unit( h1_unit, 2 );
+    eval::SplineSpaceEvaluator hdiv_eval_unit( hdiv_unit, 1 );
+    eval::SplineSpaceEvaluator l2_eval_unit( l2_unit, 1 );
+
+    eval::SplineSpaceEvaluator h1_eval_scaled( h1_scaled, 2 );
+    eval::SplineSpaceEvaluator hdiv_eval_scaled( hdiv_scaled, 1 );
+    eval::SplineSpaceEvaluator l2_eval_scaled( l2_scaled, 1 );
+
+    const topology::Face elem( topology::Dart( 0 ) );
+    const param::ParentPoint pt( param::cubeDomain( 2 ), Eigen::Vector2d( 0.37, 0.61 ), { false, false, false, false } );
+
+    h1_eval_unit.localizeElement( elem );
+    hdiv_eval_unit.localizeElement( elem );
+    l2_eval_unit.localizeElement( elem );
+    h1_eval_scaled.localizeElement( elem );
+    hdiv_eval_scaled.localizeElement( elem );
+    l2_eval_scaled.localizeElement( elem );
+
+    h1_eval_unit.localizePoint( pt );
+    hdiv_eval_unit.localizePoint( pt );
+    l2_eval_unit.localizePoint( pt );
+    h1_eval_scaled.localizePoint( pt );
+    hdiv_eval_scaled.localizePoint( pt );
+    l2_eval_scaled.localizePoint( pt );
+
+    Eigen::MatrixX2d unit_geom( 4, 2 );
+    unit_geom << 0.0, 0.0,
+                 1.0, 0.0,
+                 0.0, 1.0,
+                 1.0, 1.0;
+    const Eigen::MatrixX2d scaled_geom = unit_geom;
+
+    CHECK( ( eval::piolaTransformedH1FirstDerivatives( h1_eval_unit, h1_eval_unit, unit_geom.transpose() ) -
+             eval::piolaTransformedH1FirstDerivatives( h1_eval_scaled, h1_eval_scaled, scaled_geom.transpose() ) )
+               .norm() < 1e-12 );
+    CHECK( ( eval::piolaTransformedHDivBasis( hdiv_eval_unit, h1_eval_unit, unit_geom.transpose() ) -
+             eval::piolaTransformedHDivBasis( hdiv_eval_scaled, h1_eval_scaled, scaled_geom.transpose() ) )
+               .norm() < 1e-12 );
+    CHECK( ( eval::piolaTransformedHDivFirstDerivatives( hdiv_eval_unit, h1_eval_unit, unit_geom.transpose() ) -
+             eval::piolaTransformedHDivFirstDerivatives( hdiv_eval_scaled, h1_eval_scaled, scaled_geom.transpose() ) )
+               .norm() < 1e-12 );
+    CHECK( ( eval::piolaTransformedL2Basis( l2_eval_unit, h1_eval_unit, unit_geom.transpose() ) -
+             eval::piolaTransformedL2Basis( l2_eval_scaled, h1_eval_scaled, scaled_geom.transpose() ) )
+               .norm() < 1e-12 );
+    CHECK( ( eval::piolaTransformedL2FirstDerivatives( l2_eval_unit, h1_eval_unit, unit_geom.transpose() ) -
+             eval::piolaTransformedL2FirstDerivatives( l2_eval_scaled, h1_eval_scaled, scaled_geom.transpose() ) )
+               .norm() < 1e-12 );
+}
+
 Eigen::MatrixXd quadballControlPoints()
 {
     // See table 4 of "Tiling the Sphere with Rational Bezier Patches" (James E. Cobb, 1988)
