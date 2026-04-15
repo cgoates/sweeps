@@ -88,6 +88,9 @@ namespace eval
 
     Eigen::MatrixXd SplineSpaceEvaluator::evaluateFirstDerivativesFromParamToSpatial() const
     {
+        // NOTE THIS ISSUE and TODO: this function is actually from parent to parametric coordinates
+        throw std::runtime_error( "evaluateFirstDerivativesFromParamToSpatial not implemented for NURBSSpaceEvaluator" );
+
         const auto first_derivs = evaluateFirstDerivatives();
         if( not param::isCartesian( mSpline.basisComplex().parametricAtlas().parentDomain( mCurrentCell.value() ) ) )
             throw std::runtime_error( "ParamToSpatial not supported on non-square domains" );
