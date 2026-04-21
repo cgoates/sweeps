@@ -6,6 +6,17 @@
 
 namespace mapping
 {
+    double TriangleMeshCircleMapping::boundaryAngle( const topology::Vertex& v ) const
+    {
+        const auto vert_ids = indexingOrError( mAtlas->cmap(), 0 );
+        const size_t vid = vert_ids( v );
+        const auto it = mBoundaryAngles.find( vid );
+        if( it != mBoundaryAngles.end() ) return it->second;
+
+        const Eigen::Vector2d pos = mTriMapping.vertPositions()( v );
+        return atan2( pos( 1 ), pos( 0 ) );
+    }
+
     SmallVector<topology::Edge, 3> maybeBoundaryEdges( const topology::CombinatorialMap& cmap, const topology::Face& f )
     {
         SmallVector<topology::Edge, 3> out;
@@ -32,12 +43,17 @@ namespace mapping
         : mAtlas( atlas ), mTriMapping( atlas, vertex_positions, 2, false )
     {
         const auto vert_ids = indexingOrError( mAtlas->cmap(), 0 );
-        iterateCellsWhile( mAtlas->cmap(), 0, [&]( const topology::Vertex& v ) {
-            if( boundaryAdjacent( mAtlas->cmap(), v ) )
-            {
-                const Eigen::Vector2d pos = mTriMapping.vertPositions()( v );
-                mBoundaryAngles.emplace( vert_ids( v ), atan2( pos( 1 ), pos( 0 ) ) );
-            }
+        iterateCellsWhile( mAtlas->cmap(), 1, [&]( const topology::Edge& e ) {
+            if( !onBoundary( mAtlas->cmap(), e.dart() ) ) return true;
+
+            const topology::Vertex v0( e.dart() );
+            const topology::Vertex v1( phi( mAtlas->cmap(), 1, e.dart() ).value() );
+
+            const Eigen::Vector2d pos0 = mTriMapping.vertPositions()( v0 );
+            const Eigen::Vector2d pos1 = mTriMapping.vertPositions()( v1 );
+
+            mBoundaryAngles.try_emplace( vert_ids( v0 ), atan2( pos0( 1 ), pos0( 0 ) ) );
+            mBoundaryAngles.try_emplace( vert_ids( v1 ), atan2( pos1( 1 ), pos1( 0 ) ) );
             return true;
         } );
 
@@ -50,9 +66,9 @@ namespace mapping
 
             if( not boundary_edges.empty() )
             {
-                const double min_angle = mBoundaryAngles.at( vert_ids( topology::Vertex( boundary_edges.front().dart() ) ) );
-                const double max_angle = mBoundaryAngles.at(
-                    vert_ids( topology::Vertex( phi( mAtlas->cmap(), 1, boundary_edges.back().dart() ).value() ) ) );
+                const double min_angle = boundaryAngle( topology::Vertex( boundary_edges.front().dart() ) );
+                const double max_angle = boundaryAngle(
+                    topology::Vertex( phi( mAtlas->cmap(), 1, boundary_edges.back().dart() ).value() ) );
 
                 // NOTE: We are assuming that the topological normal is in the same direction as the circle normal by RHR.
                 // Nowhere do I check this, but that is how it is used so far. (4/2025)
@@ -99,7 +115,8 @@ namespace mapping
                 }
             }
 
-            mBoundingBoxes.emplace( f, AABB( mins - Eigen::Vector2d::Constant( 1e-15 ), maxs + Eigen::Vector2d::Constant( 1e-15 ) ) );
+            mBoundingBoxes.emplace( f, AABB( mins - Eigen::Vector2d::Constant( 1e-15 ),
+                                             maxs + Eigen::Vector2d::Constant( 1e-15 ) ) );
             return true;
         } );
     }
@@ -143,7 +160,6 @@ namespace mapping
             {
                 const topology::Edge& boundary_edge = boundary_edges.at( 0 );
                 const Vector6dMax expanded_coords = expandedCoordinates( pt );
-                const auto vert_ids = indexingOrError( mAtlas->cmap(), 0 );
                 const std::array<topology::Vertex, 3> vertices{
                     topology::Vertex( boundary_edge.dart() ),
                     topology::Vertex( phi( mAtlas->cmap(), 1, boundary_edge.dart() ).value() ),
@@ -160,8 +176,8 @@ namespace mapping
                     expanded_coords( vertex_ii( *mAtlas, vertices[1] ) ),
                     expanded_coords( vertex_ii( *mAtlas, vertices[2] ) )
                 };
-                const double theta0 = mBoundaryAngles.at( vert_ids( vertices[0] ) );
-                const double theta1 = mBoundaryAngles.at( vert_ids( vertices[1] ) );
+                const double theta0 = boundaryAngle( vertices[0] );
+                const double theta1 = boundaryAngle( vertices[1] );
 
                 if( pt.mBaryCoordIsZero.at( corner_ids[0] ) and pt.mBaryCoordIsZero.at( corner_ids[1] ) )
                     return mTriMapping.vertPositions()( vertices[2] );
@@ -171,7 +187,6 @@ namespace mapping
             case 2:
             {
                 const Vector6dMax expanded_coords = expandedCoordinates( pt );
-                const auto vert_ids = indexingOrError( mAtlas->cmap(), 0 );
                 const std::array<topology::Vertex, 3> vertices{
                     topology::Vertex( boundary_edges.at( 0 ).dart() ),
                     topology::Vertex( boundary_edges.at( 1 ).dart() ),
@@ -199,15 +214,15 @@ namespace mapping
                 if( expanded_coords( corner_ids[ 0 ] ) > expanded_coords( corner_ids[ 2 ] ) )
                 {
                     // right side triangle
-                    const double theta0 = mBoundaryAngles.at( vert_ids( vertices[0] ) );
-                    const double theta1 = mBoundaryAngles.at( vert_ids( vertices[1] ) );
+                    const double theta0 = boundaryAngle( vertices[0] );
+                    const double theta1 = boundaryAngle( vertices[1] );
                     return triangleWithArcEdgeEval( { bary[ 0 ] - bary[ 2 ], bary[ 1 ], 2 * bary[ 2 ] }, {theta0, theta1}, edge_midpoint );
                 }
                 else
                 {
                     // left side triangle
-                    const double theta1 = mBoundaryAngles.at( vert_ids( vertices[1] ) );
-                    const double theta2 = mBoundaryAngles.at( vert_ids( vertices[2] ) );
+                    const double theta1 = boundaryAngle( vertices[1] );
+                    const double theta2 = boundaryAngle( vertices[2] );
                     return triangleWithArcEdgeEval( { bary[ 1 ], bary[ 2 ] - bary[ 0 ], 2 * bary[ 0 ] }, {theta1, theta2}, edge_midpoint );
                 }
             }
@@ -288,9 +303,8 @@ namespace mapping
                 const Eigen::Vector2d one_bdry_vert_point = mTriMapping.vertPositions()( vertices[ 0 ] );
                 if( ( pt - non_bdry_point ).norm() < 1e-10 * ( one_bdry_vert_point - non_bdry_point ).norm() ) return mAtlas->parentPoint( vertices[ 2 ] );
 
-                const auto vert_ids = indexingOrError( mAtlas->cmap(), 0 );
-                const double theta0 = mBoundaryAngles.at( vert_ids( vertices[ 0 ] ) );
-                const double theta1 = mBoundaryAngles.at( vert_ids( vertices[ 1 ] ) );
+                const double theta0 = boundaryAngle( vertices[ 0 ] );
+                const double theta1 = boundaryAngle( vertices[ 1 ] );
 
                 return invertTriangleWithArcEdgeEval( pt, non_bdry_point, { theta0, theta1 } )
                     .transform( [&]( const Eigen::Vector3d& bary ) {
@@ -317,10 +331,9 @@ namespace mapping
                 if( ( pt - non_bdry_point ).norm() < 1e-10 * ( one_bdry_vert_point - non_bdry_point ).norm() )
                     return average( mAtlas->parentPoint( vertices[2] ), mAtlas->parentPoint( vertices[0] ) );
 
-                const auto vert_ids = indexingOrError( mAtlas->cmap(), 0 );
-                const double theta0 = mBoundaryAngles.at( vert_ids( vertices[ 0 ] ) );
-                const double theta1 = mBoundaryAngles.at( vert_ids( vertices[ 1 ] ) );
-                const double theta2 = mBoundaryAngles.at( vert_ids( vertices[ 2 ] ) );
+                const double theta0 = boundaryAngle( vertices[ 0 ] );
+                const double theta1 = boundaryAngle( vertices[ 1 ] );
+                const double theta2 = boundaryAngle( vertices[ 2 ] );
 
                 bool first_side = true;
                 return invertTriangleWithArcEdgeEval( pt, non_bdry_point, { theta0, theta1 } )

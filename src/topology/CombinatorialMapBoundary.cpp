@@ -119,8 +119,9 @@ namespace topology
     VertexPositionsFunc boundaryVertexPositions( const CombinatorialMapBoundary& bdry,
                                                  const VertexPositionsFunc& underlying_positions )
     {
-        return [underlying_positions,&bdry]( const Vertex& v ){
-            return underlying_positions( bdry.toUnderlyingCell( v ) );
+        const auto* bdry_ptr = &bdry;
+        return [underlying_positions, bdry_ptr]( const Vertex& v ){
+            return underlying_positions( bdry_ptr->toUnderlyingCell( v ) );
         };
     }
 }

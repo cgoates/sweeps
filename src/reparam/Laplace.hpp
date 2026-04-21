@@ -37,7 +37,8 @@ namespace reparam
         InverseAverageAdjacentArea,
         MeanValue,
         RegularizedInverseLength,
-        AverageInverseAdjacentArea
+        AverageInverseAdjacentArea,
+        IntrinsicDelaunayCotangent
     };
 
     Eigen::VectorXd sweepEmbedding( const topology::TetMeshCombinatorialMap& map,

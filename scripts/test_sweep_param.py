@@ -135,7 +135,7 @@ def parameterizeBunny():
         bunny, level_set_values, trace_points, "bunny")
 
 def compareTutteWeightsBunny():
-    level_set_values = np.concatenate((np.linspace(0, 0.01, 1000),
+    level_set_values = np.concatenate((np.linspace(0, 0.1, 1000),
                                       np.linspace(0.5, 1.0, 2))).tolist()
     # level_set_values = np.concatenate((np.linspace(0, 0.177, 35),
     #                                   np.linspace(0.177, 0.17904, 40),
@@ -158,7 +158,8 @@ def compareTutteWeightsBunny():
     bunny.source = new_source
     bunny.target = new_target
 
-    weight_types = ["InverseLength", "Cotangent", "BarycentricDual", "Uniform", "EdgeLength", "AverageAdjacentArea", "InverseAverageAdjacentArea", "AverageInverseAdjacentArea", "MeanValue", "RegularizedInverseLength"]
+    weight_types = ["IntrinsicDelaunayCotangent"]
+    # weight_types = ["InverseLength", "Cotangent", "BarycentricDual", "Uniform", "EdgeLength", "AverageAdjacentArea", "InverseAverageAdjacentArea", "AverageInverseAdjacentArea", "MeanValue", "RegularizedInverseLength", "IntrinsicDelaunayCotangent"]
     for weights in weight_types:
         print(f"Running with tutte_edge_weights={weights}...")
         sweeps.writeParameterizationToFile(

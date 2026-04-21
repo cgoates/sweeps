@@ -32,5 +32,7 @@ namespace mapping
         const TriangleMeshMapping mTriMapping;
         std::map<size_t, double> mBoundaryAngles;
         std::map<topology::Face, AABB> mBoundingBoxes;
+
+        double boundaryAngle( const topology::Vertex& v ) const;
     };
 }

@@ -46,11 +46,12 @@ namespace api
             { "MeanValue",                   reparam::Laplace2dEdgeWeights::MeanValue },
             { "RegularizedInverseLength",    reparam::Laplace2dEdgeWeights::RegularizedInverseLength },
             { "AverageInverseAdjacentArea",  reparam::Laplace2dEdgeWeights::AverageInverseAdjacentArea },
+            { "IntrinsicDelaunayCotangent",  reparam::Laplace2dEdgeWeights::IntrinsicDelaunayCotangent },
         };
         const auto weights_it = weights_map.find( tutte_edge_weights );
         if( weights_it == weights_map.end() )
             throw std::invalid_argument( "Unknown tutte_edge_weights value: " + tutte_edge_weights +
-                ". Valid options: Cotangent, InverseLength, BarycentricDual, Uniform, EdgeLength, AverageAdjacentArea, InverseAverageAdjacentArea, MeanValue, RegularizedInverseLength, AverageInverseAdjacentArea" );
+                ". Valid options: Cotangent, InverseLength, BarycentricDual, Uniform, EdgeLength, AverageAdjacentArea, InverseAverageAdjacentArea, MeanValue, RegularizedInverseLength, AverageInverseAdjacentArea, IntrinsicDelaunayCotangent" );
         const reparam::Laplace2dEdgeWeights weights_enum = weights_it->second;
 
         const SweepInput sweep_input = [&sweep]() {

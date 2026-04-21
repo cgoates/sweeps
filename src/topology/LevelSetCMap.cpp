@@ -191,11 +191,12 @@ namespace topology
     std::function<Eigen::Vector3d( const Vertex& )> levelSetVertexPositions(
         const LevelSetCMap& level, const std::function<Eigen::Vector3d( const Vertex& )>& underlying_positions )
     {
-        return [&, underlying_positions]( const Vertex& v ) -> Eigen::Vector3d {
-            const double s = level.intersectionPosition( v );
-            const Edge underlying_e = level.underlyingCell( v );
+        const auto* level_ptr = &level;
+        return [level_ptr, underlying_positions]( const Vertex& v ) -> Eigen::Vector3d {
+            const double s = level_ptr->intersectionPosition( v );
+            const Edge underlying_e = level_ptr->underlyingCell( v );
             const Vertex left_v( underlying_e.dart() );
-            const Vertex right_v( phi( level.underlyingMap(), 1, underlying_e.dart() ).value() );
+            const Vertex right_v( phi( level_ptr->underlyingMap(), 1, underlying_e.dart() ).value() );
             return ( 1 - s ) * underlying_positions( left_v ) + s * underlying_positions( right_v );
         };
     }

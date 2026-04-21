@@ -196,10 +196,11 @@ namespace topology
     VertexPositionsFunc delaunayTriangulationVertexPositions(
         const DelaunayTriangulation& dtri, const VertexPositionsFunc& underlying_positions )
     {
+        const auto* dtri_ptr = &dtri;
         Dart::IndexType largest_underlying_dart_id = dtri.baseMap().maxDartId();
-        return [&dtri, largest_underlying_dart_id, underlying_positions]( const Vertex& v ) -> Eigen::Vector3d {
+        return [dtri_ptr, largest_underlying_dart_id, underlying_positions]( const Vertex& v ) -> Eigen::Vector3d {
             Eigen::Vector3d out;
-            const bool found_it = not iterateDartsOfCell( dtri, v, [&]( const Dart& d ) {
+            const bool found_it = not iterateDartsOfCell( *dtri_ptr, v, [&]( const Dart& d ) {
                 if( d.id() <= largest_underlying_dart_id )
                 {
                     out = underlying_positions( Vertex( d ) );

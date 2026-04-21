@@ -10,6 +10,7 @@
 #include <TetMeshCombinatorialMap.hpp>
 #include <CombinatorialMapRestriction.hpp>
 #include <DelaunayTriangulation.hpp>
+#include <IntrinsicDelaunayTriangulation.hpp>
 #include <ReversedCombinatorialMap.hpp>
 #include <TriangleParametricAtlas.hpp>
 #include <TriangleMeshCircleMapping.hpp>
@@ -254,22 +255,15 @@ namespace reparam
         const auto process_param =
             [&]( const std::shared_ptr<const topology::CombinatorialMap>& cmap,
                  const auto& positions,
-                 const auto& thetas,
+                 const std::map<size_t, double>& thetas_by_id,
                  FoliationLeaf& leaf ) {
                 const auto base_vert_ids = indexingOrError( *cmap, 0 );
-                const std::map<size_t, double> thetas_by_id = [&]() {
-                    std::map<size_t, double> out;
-                    for( const auto& pr : thetas )
-                    {
-                        out.insert( { base_vert_ids( pr.first ), pr.second } );
-                    }
-                    return out;
-                }();
 
                 const auto constraints_func = [&]( const topology::Vertex& v ) -> std::optional<Eigen::Vector2d> {
-                    if( boundaryAdjacent( *cmap, v ) )
+                    const auto theta_it = thetas_by_id.find( base_vert_ids( v ) );
+                    if( theta_it != thetas_by_id.end() )
                     {
-                        const double theta = thetas_by_id.at( base_vert_ids( v ) );
+                        const double theta = theta_it->second;
                         return Eigen::Vector2d( cos( theta ), sin( theta ) );
                     }
                     else
@@ -297,9 +291,24 @@ namespace reparam
             };
             const std::map<topology::Vertex, double> thetas =
                 reparam::thetaValues( base, base_positions, face_ids_of_edge, intersections[0] );
+            const auto base_vert_ids = indexingOrError( base, 0 );
+            const std::map<size_t, double> thetas_by_id = [&]() {
+                std::map<size_t, double> out;
+                for( const auto& pr : thetas ) out.insert( { base_vert_ids( pr.first ), pr.second } );
+                return out;
+            }();
 
             leaves.push_back( {} );
-            process_param( base_ptr, base_positions, thetas, leaves.back() );
+            if( tutte_edge_weights == Laplace2dEdgeWeights::IntrinsicDelaunayCotangent )
+            {
+                const auto idtri = std::make_shared<topology::IntrinsicDelaunayTriangulation>( base_ptr, base_positions );
+                const auto idtri_pos = topology::intrinsicDelaunayVertexPositions( *idtri );
+                process_param( idtri, idtri_pos, thetas_by_id, leaves.back() );
+            }
+            else
+            {
+                process_param( base_ptr, base_positions, thetas_by_id, leaves.back() );
+            }
         }
 
         LOG( log_level_set_based_tracing ) << "FINISHED BASE\n\n";
@@ -317,13 +326,32 @@ namespace reparam
             };
             const std::map<topology::Vertex, double> thetas =
                 reparam::thetaValues( level_set, level_set_positions, face_ids_of_edge, intersections[level_ii] );
+            const auto level_set_vert_ids = indexingOrError( level_set, 0 );
+            const std::map<size_t, double> thetas_by_id = [&]() {
+                std::map<size_t, double> out;
+                for( const auto& pr : thetas ) out.insert( { level_set_vert_ids( pr.first ), pr.second } );
+                return out;
+            }();
 
-            const auto level_set_tri =
-                std::make_shared<topology::DelaunayTriangulation>( level_set_cmap, level_set_positions );
-            const auto tri_positions =
-                topology::delaunayTriangulationVertexPositions( *level_set_tri, level_set_positions );
-
-            process_param( level_set_tri, tri_positions, thetas, leaves.back() );
+            if( tutte_edge_weights == Laplace2dEdgeWeights::IntrinsicDelaunayCotangent )
+            {
+                const auto level_set_tri =
+                    std::make_shared<topology::DelaunayTriangulation>( level_set_cmap, level_set_positions );
+                const auto tri_positions =
+                    topology::delaunayTriangulationVertexPositions( *level_set_tri, level_set_positions );
+                const auto idtri = std::make_shared<topology::IntrinsicDelaunayTriangulation>(
+                    level_set_tri, tri_positions );
+                const auto idtri_pos = topology::intrinsicDelaunayVertexPositions( *idtri );
+                process_param( idtri, idtri_pos, thetas_by_id, leaves.back() );
+            }
+            else
+            {
+                const auto level_set_tri =
+                    std::make_shared<topology::DelaunayTriangulation>( level_set_cmap, level_set_positions );
+                const auto tri_positions =
+                    topology::delaunayTriangulationVertexPositions( *level_set_tri, level_set_positions );
+                process_param( level_set_tri, tri_positions, thetas_by_id, leaves.back() );
+            }
 
             LOG( log_level_set_based_tracing ) << "FINISHED LEVEL " << ( level_ii + 1 ) << std::endl << std::endl;
         }
@@ -340,8 +368,24 @@ namespace reparam
             };
             const std::map<topology::Vertex, double> thetas =
                 reparam::thetaValues( rev_map, rev_positions, face_ids_of_edge, intersections.back() );
+            const auto rev_vert_ids = indexingOrError( rev_map, 0 );
+            const std::map<size_t, double> thetas_by_id = [&]() {
+                std::map<size_t, double> out;
+                for( const auto& pr : thetas ) out.insert( { rev_vert_ids( pr.first ), pr.second } );
+                return out;
+            }();
 
-            process_param( reversed_cmap, rev_positions, thetas, leaves.back() );
+            if( tutte_edge_weights == Laplace2dEdgeWeights::IntrinsicDelaunayCotangent )
+            {
+                const auto idtri = std::make_shared<topology::IntrinsicDelaunayTriangulation>(
+                    reversed_cmap, rev_positions );
+                const auto idtri_pos = topology::intrinsicDelaunayVertexPositions( *idtri );
+                process_param( idtri, idtri_pos, thetas_by_id, leaves.back() );
+            }
+            else
+            {
+                process_param( reversed_cmap, rev_positions, thetas_by_id, leaves.back() );
+            }
         }
         LOG( log_level_set_based_tracing ) << "FINISHED TARGET\n\n";
 

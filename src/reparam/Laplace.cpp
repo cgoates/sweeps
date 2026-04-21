@@ -8,6 +8,7 @@
 #include <Eigen/Sparse>
 #include <numeric>
 #include <CutCombinatorialMap.hpp>
+#include <IntrinsicDelaunayTriangulation.hpp>
 #include <Eigen/Geometry>
 #include <Eigen/IterativeLinearSolvers>
 
@@ -225,6 +226,13 @@ namespace reparam
         switch( edge_weights )
         {
             case Laplace2dEdgeWeights::Cotangent: return cotanEdgeWeights2d( map, vertex_position, e );
+            case Laplace2dEdgeWeights::IntrinsicDelaunayCotangent:
+            {
+                const auto* intrinsic_map = dynamic_cast<const topology::IntrinsicDelaunayTriangulation*>( &map );
+                if( intrinsic_map == nullptr )
+                    throw std::runtime_error( "IntrinsicDelaunayCotangent requires an IntrinsicDelaunayTriangulation" );
+                return intrinsic_map->cotangentWeight( e );
+            }
             case Laplace2dEdgeWeights::InverseLength: return 1.0 / edgeLength( map, vertex_position, e );
             case Laplace2dEdgeWeights::BarycentricDual: return barycentricDualWeights2d( map, vertex_position, e );
             case Laplace2dEdgeWeights::Uniform: return 1.0;
@@ -251,6 +259,8 @@ namespace reparam
                 return 1.0 / std::sqrt( len * len + eps * eps );
             }
         }
+
+        throw std::runtime_error( "Unhandled Laplace2dEdgeWeights enum value" );
     }
 
     Eigen::SparseVector<double>
