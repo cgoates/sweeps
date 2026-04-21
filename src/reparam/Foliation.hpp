@@ -3,6 +3,7 @@
 #include <map>
 #include <VertexPositionsFunc.hpp>
 #include <memory>
+#include <Laplace.hpp>
 
 struct SweepInput;
 
@@ -78,7 +79,8 @@ namespace reparam
 
     void levelSetBasedTracing( const SweepInput& sweep_input,
                                const std::vector<double> level_set_values,
-                               const std::function<void( const std::vector<FoliationLeaf>& )>& callback );
+                               const std::function<void( const std::vector<FoliationLeaf>& )>& callback,
+                               Laplace2dEdgeWeights tutte_edge_weights = Laplace2dEdgeWeights::InverseLength );
 
     Eigen::MatrixXd fitLinearMeshToLeaves(
         const basis::SplineSpace& ss,

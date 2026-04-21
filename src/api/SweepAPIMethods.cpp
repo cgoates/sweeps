@@ -24,7 +24,9 @@ namespace api
     void outputLevelSetsAndTraces( const Sweep& sweep,
                                    const std::vector<double>& level_set_values,
                                    const std::vector<Eigen::Vector2d>& trace_points,
-                                   const std::string& output_prefix )
+                                   const std::string& output_prefix,
+                                   bool output_tutte,
+                                   const std::string& tutte_edge_weights )
     {
         if( sweep.source.size() == 0 or sweep.target.size() == 0 )
             throw std::invalid_argument( "No source or target surface specified" );
@@ -32,6 +34,24 @@ namespace api
             throw std::invalid_argument( "No tet mesh supplied" );
         if( level_set_values.size() < 2 )
             throw std::invalid_argument( "Insufficient level sets specified; please include at least two values." );
+
+        const std::map<std::string, reparam::Laplace2dEdgeWeights> weights_map = {
+            { "Cotangent",           reparam::Laplace2dEdgeWeights::Cotangent },
+            { "InverseLength",       reparam::Laplace2dEdgeWeights::InverseLength },
+            { "BarycentricDual",     reparam::Laplace2dEdgeWeights::BarycentricDual },
+            { "Uniform",             reparam::Laplace2dEdgeWeights::Uniform },
+            { "EdgeLength",                  reparam::Laplace2dEdgeWeights::EdgeLength },
+            { "AverageAdjacentArea",         reparam::Laplace2dEdgeWeights::AverageAdjacentArea },
+            { "InverseAverageAdjacentArea",  reparam::Laplace2dEdgeWeights::InverseAverageAdjacentArea },
+            { "MeanValue",                   reparam::Laplace2dEdgeWeights::MeanValue },
+            { "RegularizedInverseLength",    reparam::Laplace2dEdgeWeights::RegularizedInverseLength },
+            { "AverageInverseAdjacentArea",  reparam::Laplace2dEdgeWeights::AverageInverseAdjacentArea },
+        };
+        const auto weights_it = weights_map.find( tutte_edge_weights );
+        if( weights_it == weights_map.end() )
+            throw std::invalid_argument( "Unknown tutte_edge_weights value: " + tutte_edge_weights +
+                ". Valid options: Cotangent, InverseLength, BarycentricDual, Uniform, EdgeLength, AverageAdjacentArea, InverseAverageAdjacentArea, MeanValue, RegularizedInverseLength, AverageInverseAdjacentArea" );
+        const reparam::Laplace2dEdgeWeights weights_enum = weights_it->second;
 
         const SweepInput sweep_input = [&sweep]() {
             const auto& m = sweep.mesh;
@@ -93,7 +113,35 @@ namespace api
 
             io::VTKOutputObject output3( sweep.mesh );
             io::outputSimplicialFieldToVTK( output3, output_prefix + "_tet_mesh.vtu" );
-        } );
+
+            if( output_tutte )
+            {
+                for( size_t li = 0; li < leaves.size(); li++ )
+                {
+                    const auto& leaf = leaves[li];
+                    const auto& cmap = leaf.space_mapping->parametricAtlas().cmap();
+                    const auto vert_ids = indexingOrError( cmap, 0 );
+                    const auto& tutte = *leaf.tutte;
+
+                    SimplicialComplex tutte_out;
+                    iterateCellsWhile( cmap, 2, [&]( const topology::Face& f ) {
+                        topology::Dart d = f.dart();
+                        const size_t off = tutte_out.points.size();
+                        for( int k = 0; k < 3; k++ )
+                        {
+                            const size_t vid = vert_ids( topology::Vertex( d ) );
+                            tutte_out.points.push_back( Eigen::Vector3d( tutte( vid, 0 ), tutte( vid, 1 ), 0.0 ) );
+                            d = phi( cmap, 1, d ).value();
+                        }
+                        tutte_out.simplices.push_back( Simplex( off, off + 1, off + 2 ) );
+                        return true;
+                    } );
+
+                    io::VTKOutputObject tutte_vtk( tutte_out );
+                    io::outputSimplicialFieldToVTK( tutte_vtk, output_prefix + "_tutte_" + std::to_string( li ) + ".vtu" );
+                }
+            }
+        }, weights_enum );
     }
 
     HexMesh fitSinglePatchHexMeshToSweep( const api::Sweep& sweep, const size_t n_elems_st, const std::vector<double>& u_values, const bool debug )

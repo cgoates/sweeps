@@ -181,6 +181,43 @@ def writeConfigFile():
     f.write(output)
     f.close()
 
+def patchScaleUntrimCMake(cmake_path):
+    """
+    Patch ScaleUntrim/CMakeLists.txt to find OpenCASCADE via 'brew --prefix'
+    instead of the hardcoded /opt/homebrew path (which is Apple Silicon only).
+    """
+    import re
+
+    new_apple_block = (
+        'if(APPLE)\n'
+        '    # Detect homebrew opencascade prefix (Apple Silicon: /opt/homebrew, Intel: /usr/local)\n'
+        '    execute_process(COMMAND brew --prefix opencascade OUTPUT_VARIABLE OCC_PREFIX OUTPUT_STRIP_TRAILING_WHITESPACE)\n'
+        '    set(OpenCASCADE_INCLUDE_DIR "${OCC_PREFIX}/include/opencascade")\n'
+        '    file(GLOB OpenCASCADE_LIBRARIES "${OCC_PREFIX}/lib/libTK*.dylib")\n'
+        '    include_directories(${OpenCASCADE_INCLUDE_DIR})'
+    )
+
+    with open(cmake_path, "r") as f:
+        content = f.read()
+
+    # Match the entire if(APPLE) block up to (but not including) elseif/else/endif
+    pattern = re.compile(
+        r'if\(APPLE\).*?(?=elseif\(|else\(|endif\(\))',
+        re.DOTALL
+    )
+    if not pattern.search(content):
+        print("Could not find if(APPLE) block in CMakeLists.txt, skipping patch.")
+        return
+    if 'brew --prefix' in content:
+        print("CMakeLists.txt already patched, skipping.")
+        return
+
+    content = pattern.sub(new_apple_block + '\n', content)
+    with open(cmake_path, "w") as f:
+        f.write(content)
+    print("Patched ScaleUntrim/CMakeLists.txt for cross-architecture OpenCASCADE detection.")
+
+
 def buildScaleUntrim():
     os = findOS()
     manager = findPackageManager(os)
@@ -196,9 +233,19 @@ def buildScaleUntrim():
     else:
         installLibraries(manager, ["eigen", "boost", "OpenCascade"])
     cloneRepository("https://github.com/colbyj427/edited-scale-untrim.git", "ScaleUntrim")
+    patchScaleUntrimCMake("ScaleUntrim/CMakeLists.txt")
     makeDirectory("ScaleUntrim/build")
-    runCommand(["cmake", "-B", "ScaleUntrim/build", "-S", "ScaleUntrim", "-DCMAKE_CXX_COMPILER=g++"])
-    runCommand(["make", "-C", "ScaleUntrim/build"])
+    sdkroot = subprocess.check_output(["xcrun", "--sdk", "macosx", "--show-sdk-path"], text=True).strip()
+    cxx_headers = sdkroot + "/usr/include/c++/v1"
+    runCommand([
+        "cmake", "-B", "ScaleUntrim/build", "-S", "ScaleUntrim",
+        "-DCMAKE_C_COMPILER=/usr/bin/clang",
+        "-DCMAKE_CXX_COMPILER=/usr/bin/clang++",
+        f"-DCMAKE_OSX_SYSROOT={sdkroot}",
+        f"-DCMAKE_CXX_FLAGS=-I{cxx_headers} -stdlib=libc++",
+        "-DCMAKE_EXE_LINKER_FLAGS=-stdlib=libc++",
+    ])
+    runCommand(["make", "-C", "ScaleUntrim/build", f"-j{__import__('os').cpu_count()}"])
     makeDirectory("ScaleUntrim/build/tempDir")
     moveDirectoryFromSweeps("ScaleUntrim", "deps/", sourceFromSweeps=False)
     writeConfigFile()

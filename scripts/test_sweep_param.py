@@ -2,7 +2,7 @@ from math import sin, cos, pi
 import numpy as np
 import sys
 from pathlib import Path
-from quadMeshingFunctions import generateQuadMesh
+from quadMeshingFunctions import generateQuadMesh, saveTetMeshAsVtu, saveQuadMeshAsVtu
 
 path_to_api = Path(__file__).parent.parent / "build" / "src" / "api"
 sys.path.insert(0, str(path_to_api))
@@ -38,7 +38,7 @@ def generate_points_in_circle(n, seed=42):
 def parameterizeHook():
     # Load a tet mesh and the source and target surfaces from file. Surface12 is the source, and Surface10 is the target.
     hook = sweeps.loadFromFile(
-        "/Users/caleb/sweeps/attempt-sweep/test/data/hook.inp", "Surface12", "Surface10")
+        "/Users/kendrickshepherd/code/sweeps/sweeps_base_quad/test/data/hook.inp", "Surface12", "Surface10")
 
     # This is a set of values at which you want to create level sets for the tracing.
     # Try changing this to get an idea for what it does.  The values should all be between 0 and 1.
@@ -58,7 +58,7 @@ def parameterizeHook():
 def meshHook(single_patch=True):
     # Load a tet mesh and the source and target surfaces from file. Surface12 is the source, and Surface10 is the target.
     hook = sweeps.loadFromFile(
-        "/Users/caleb/sweeps/attempt-sweep/test/data/hook.inp", "Surface12", "Surface10")
+        "/Users/kendrickshepherd/code/sweeps/sweeps_base_quad/test/data/hook.inp", "Surface12", "Surface10")
 
     # This is a set of u values at which you want the mesh to have points.
     # Try changing this to get an idea for what it does.  The values should all be between 0 and 1.
@@ -79,10 +79,11 @@ def meshHook(single_patch=True):
 def meshHookWithQuadMesh():
     # Load a tet mesh and the source and target surfaces from file. Surface12 is the source, and Surface10 is the target.
     hook = sweeps.loadFromFile(
-        "/Users/caleb/sweeps/attempt-sweep/test/data/hook.inp", "Surface12", "Surface10")
-    
+        "/Users/kendrickshepherd/code/sweeps/sweeps_base_quad/test/data/hook.inp", "Surface12", "Surface10")
+    saveTetMeshAsVtu(hook.mesh, "tet_mesh.vtu")
+
     # Load in an OBJ file for the quad mesh
-    hook_base = sweeps.loadQuadMeshFromObjFile( "/Users/caleb/sweeps/attempt-sweep/test/data/hookBase.obj" );
+    hook_base = sweeps.loadQuadMeshFromObjFile( "/Users/kendrickshepherd/code/sweeps/sweeps_base_quad/test/data/hookBase.obj" );
 
     # This is a set of u values at which you want the mesh to have points.
     # Try changing this to get an idea for what it does.  The values should all be between 0 and 1.
@@ -108,7 +109,7 @@ def parameterizeBunny():
     trace_points = generate_points_in_circle(300)
 
     bunny = sweeps.loadFromFile(
-        "/Users/caleb/sweeps/attempt-sweep/test/data/stanford_bunny.inp", "placeholder", "placeholder")
+        "/Users/kendrickshepherd/code/sweeps/sweeps_base_quad/test/data/stanford_bunny.inp", "placeholder", "placeholder")
 
     # The bunny doesn't have source and target sets defined in the inp file, so we create our own here.
     # The source is a set of vertices on the surface we are tracing from, and the target is a set of vertices on the surface we are tracing to.
@@ -133,20 +134,56 @@ def parameterizeBunny():
     sweeps.writeParameterizationToFile(
         bunny, level_set_values, trace_points, "bunny")
 
+def compareTutteWeightsBunny():
+    level_set_values = np.concatenate((np.linspace(0, 0.01, 1000),
+                                      np.linspace(0.5, 1.0, 2))).tolist()
+    # level_set_values = np.concatenate((np.linspace(0, 0.177, 35),
+    #                                   np.linspace(0.177, 0.17904, 40),
+    #                                   np.linspace(0.17904, 0.17908, 40),
+    #                                   np.linspace(0.17908, 0.1796, 10),
+    #                                   np.linspace(0.1796, 1.0, 20))).tolist()
+
+    trace_points = generate_points_in_circle(300)
+
+    bunny = sweeps.loadFromFile(
+        "/Users/kendrickshepherd/code/sweeps/sweeps_base_quad/test/data/stanford_bunny.inp", "placeholder", "placeholder")
+
+    new_source = set()
+    new_target = set()
+    for [idx, pt] in enumerate(bunny.mesh.points):
+        if pt[0] > 0.053:
+            new_source.add(idx)
+        elif pt[2] < -0.055:
+            new_target.add(idx)
+    bunny.source = new_source
+    bunny.target = new_target
+
+    weight_types = ["InverseLength", "Cotangent", "BarycentricDual", "Uniform", "EdgeLength", "AverageAdjacentArea", "InverseAverageAdjacentArea", "AverageInverseAdjacentArea", "MeanValue", "RegularizedInverseLength"]
+    for weights in weight_types:
+        print(f"Running with tutte_edge_weights={weights}...")
+        sweeps.writeParameterizationToFile(
+            bunny, level_set_values, trace_points, f"bunny_{weights}",
+            output_tutte=True, tutte_edge_weights=weights)
+        print(f"  -> bunny_{weights}_level_sets.vtu, bunny_{weights}_tutte_*.vtu written.")
+
+
 def meshHookWithGeneratedQuadMesh():
     # Load a tet mesh and the source and target surfaces from file. Surface12 is the source, and Surface10 is the target.
     mesh = sweeps.loadFromFile(
-        "/Users/colbyjohnson/Desktop/work/sweeps/test/data/hook.inp", "Surface12", "Surface10")
+        "/Users/kendrickshepherd/code/sweeps/sweeps_base_quad/test/data/handle.inp", "base", "target")
+    saveTetMeshAsVtu(mesh.mesh, "tet_mesh.vtu")
         
     #This is a tri_mesh object that is the base of the hook.
     tri_mesh_base = sweeps.baseOfSweep(mesh)
     
     # Generate the quad mesh of the base and return a sweeps QuadMesh object.
-    quad_mesh = generateQuadMesh(tri_mesh_base)
+    quad_mesh = generateQuadMesh(tri_mesh_base, 20)
+    # Write out the tet mesh and quad mesh base for visualization alongside hex_mesh.vtu.
+    saveQuadMeshAsVtu(quad_mesh, "quad_mesh_base.vtu")
 
     # This is a set of u values at which you want the mesh to have points.
     # Try changing this to get an idea for what it does.  The values should all be between 0 and 1.
-    u_values = np.linspace(0.0, 1.0, 30)
+    u_values = np.linspace(0.0, 1.0, 5)
 
     # Setting the debug flag to True will check the mesh jacobians, and write out a vtk file to visualize the mesh and any elements with negative jacobians.
     mesh = sweeps.fitHexMeshToSweep(mesh, quad_mesh, u_values, debug=True)
@@ -157,11 +194,13 @@ def meshHookWithGeneratedQuadMesh():
     print( [ mesh.points[i] for i in mesh.hexes[0] ] )
 
 # Uncomment this to see what objects and functions are available from the sweeps module
-help( sweeps )
+#help( sweeps )
 
 # Comment/uncomment these to run the different examples.
 # parameterizeHook()
 # parameterizeBunny()
 # meshHook(single_patch=False)
 # meshHookWithQuadMesh()
+# meshHookWithGeneratedQuadMesh()
 # meshHookWithQuadMeshNew()
+compareTutteWeightsBunny()

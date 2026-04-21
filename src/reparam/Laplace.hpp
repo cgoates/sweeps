@@ -31,7 +31,13 @@ namespace reparam
         Cotangent,
         InverseLength,
         BarycentricDual,
-        Uniform
+        Uniform,
+        EdgeLength,
+        AverageAdjacentArea,
+        InverseAverageAdjacentArea,
+        MeanValue,
+        RegularizedInverseLength,
+        AverageInverseAdjacentArea
     };
 
     Eigen::VectorXd sweepEmbedding( const topology::TetMeshCombinatorialMap& map,

@@ -37,7 +37,9 @@ namespace api
     void outputLevelSetsAndTraces( const Sweep& sweep,
                                    const std::vector<double>& level_set_values,
                                    const std::vector<Eigen::Vector2d>& trace_points,
-                                   const std::string& output_prefix );
+                                   const std::string& output_prefix,
+                                   bool output_tutte = false,
+                                   const std::string& tutte_edge_weights = "InverseLength" );
 
     HexMesh fitSinglePatchHexMeshToSweep( const api::Sweep& sweep, const size_t n_elems_st, const std::vector<double>& u_values, const bool debug = false );
 

@@ -67,7 +67,10 @@ PYBIND11_MODULE( sweeps, m )
         "sweep"_a,
         "level_set_values"_a,
         "trace_points"_a,
-        "output_prefix"_a );
+        "output_prefix"_a,
+        py::kw_only(),
+        "output_tutte"_a = false,
+        "tutte_edge_weights"_a = "InverseLength" );
 
     m.def(
         "loadFromFile",

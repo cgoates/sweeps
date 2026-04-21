@@ -167,6 +167,56 @@ namespace reparam
         }
     }
 
+    double edgeLengthWeights2d( const topology::CombinatorialMap& map, const VertexPositionsFunc& vertex_position, const topology::Edge& e )
+    {
+        return edgeLength( map, vertex_position, e );
+    }
+
+    double averageAdjacentAreaWeights2d( const topology::CombinatorialMap& map, const VertexPositionsFunc& vertex_position, const topology::Edge& e )
+    {
+        const auto triangleArea = []( const Triangle<3>& tri ) {
+            return 0.5 * ( tri.v2 - tri.v1 ).cross( tri.v3 - tri.v1 ).norm();
+        };
+        const Triangle<3> face1 = triangleOfFace<3>( map, vertex_position, topology::Face( e.dart() ) );
+        const double area1 = triangleArea( face1 );
+        const auto maybe_adj = phi( map, 2, e.dart() );
+        if( not maybe_adj.has_value() )
+            return area1;
+        const Triangle<3> face2 = triangleOfFace<3>( map, vertex_position, topology::Face( maybe_adj.value() ) );
+        const double area2 = triangleArea( face2 );
+        return 0.5 * ( area1 + area2 );
+    }
+
+    double meanValueWeights2d( const topology::CombinatorialMap& map, const VertexPositionsFunc& vertex_position, const topology::Edge& e )
+    {
+        // solveLaplaceSparse uses one symmetric weight per edge regardless of which row is being
+        // assembled, so we symmetrize by averaging the mean-value contributions from both endpoints.
+        const Eigen::Vector3d v1 = vertex_position( topology::Vertex( e.dart() ) );
+        const Eigen::Vector3d v2 = vertex_position( topology::Vertex( phi( map, 1, e.dart() ).value() ) );
+        const Eigen::Vector3d v3 = vertex_position( topology::Vertex( phi( map, -1, e.dart() ).value() ) );
+
+        const double edge_len = ( v2 - v1 ).norm();
+
+        // Angles at v1 in each adjacent face
+        const double alpha1 = std::acos( std::clamp( ( v2 - v1 ).normalized().dot( ( v3 - v1 ).normalized() ), -1.0, 1.0 ) );
+
+        // Angles at v2 in each adjacent face
+        const double alpha2 = std::acos( std::clamp( ( v1 - v2 ).normalized().dot( ( v3 - v2 ).normalized() ), -1.0, 1.0 ) );
+
+        const auto maybe_adj = phi( map, 2, e.dart() );
+        if( not maybe_adj.has_value() )
+            return 0.5 * ( std::tan( alpha1 / 2.0 ) + std::tan( alpha2 / 2.0 ) ) / edge_len;
+
+        const Eigen::Vector3d v4 = vertex_position( topology::Vertex( phi( map, {2, -1}, e.dart() ).value() ) );
+
+        const double beta1 = std::acos( std::clamp( ( v2 - v1 ).normalized().dot( ( v4 - v1 ).normalized() ), -1.0, 1.0 ) );
+        const double beta2 = std::acos( std::clamp( ( v1 - v2 ).normalized().dot( ( v4 - v2 ).normalized() ), -1.0, 1.0 ) );
+
+        const double w1 = ( std::tan( alpha1 / 2.0 ) + std::tan( beta1 / 2.0 ) ) / edge_len;
+        const double w2 = ( std::tan( alpha2 / 2.0 ) + std::tan( beta2 / 2.0 ) ) / edge_len;
+        return 0.5 * ( w1 + w2 );
+    }
+
     double edgeWeightLaplace2d( const topology::CombinatorialMap& map,
                                 const VertexPositionsFunc& vertex_position,
                                 const Laplace2dEdgeWeights& edge_weights,
@@ -178,6 +228,28 @@ namespace reparam
             case Laplace2dEdgeWeights::InverseLength: return 1.0 / edgeLength( map, vertex_position, e );
             case Laplace2dEdgeWeights::BarycentricDual: return barycentricDualWeights2d( map, vertex_position, e );
             case Laplace2dEdgeWeights::Uniform: return 1.0;
+            case Laplace2dEdgeWeights::EdgeLength: return edgeLengthWeights2d( map, vertex_position, e );
+            case Laplace2dEdgeWeights::AverageAdjacentArea: return averageAdjacentAreaWeights2d( map, vertex_position, e );
+            case Laplace2dEdgeWeights::InverseAverageAdjacentArea: return 1.0 / averageAdjacentAreaWeights2d( map, vertex_position, e );
+            case Laplace2dEdgeWeights::MeanValue: return meanValueWeights2d( map, vertex_position, e );
+            case Laplace2dEdgeWeights::AverageInverseAdjacentArea:
+            {
+                const auto triangleArea = []( const Triangle<3>& tri ) {
+                    return 0.5 * ( tri.v2 - tri.v1 ).cross( tri.v3 - tri.v1 ).norm();
+                };
+                const double area1 = triangleArea( triangleOfFace<3>( map, vertex_position, topology::Face( e.dart() ) ) );
+                const auto maybe_adj = phi( map, 2, e.dart() );
+                if( not maybe_adj.has_value() )
+                    return 1.0 / area1;
+                const double area2 = triangleArea( triangleOfFace<3>( map, vertex_position, topology::Face( maybe_adj.value() ) ) );
+                return 0.5 * ( 1.0 / area1 + 1.0 / area2 );
+            }
+            case Laplace2dEdgeWeights::RegularizedInverseLength:
+            {
+                constexpr double eps = 1e-6;
+                const double len = edgeLength( map, vertex_position, e );
+                return 1.0 / std::sqrt( len * len + eps * eps );
+            }
         }
     }
 
