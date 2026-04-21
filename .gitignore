@@ -3,3 +3,4 @@ build
 deps
 .DS_Store
 scripts/*.vtu
+__pycache__/

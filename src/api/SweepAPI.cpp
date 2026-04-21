@@ -36,6 +36,8 @@ PYBIND11_MODULE( sweeps, m )
                  "(1,1,0), (0,0,1), (1,0,1), (0,1,1), (1,1,1).";
 
     py::class_<api::QuadMesh>( m, "QuadMesh" )
+        .def(py::init<>())
+        .def(py::init<const std::vector<Eigen::Vector3d>&, const std::vector<std::array<VertexId::Type, 4>>&>(), "points"_a, "quads"_a)
         .def_readwrite( "points", &api::QuadMesh::points )
         .def_readwrite( "quads", &api::QuadMesh::quads )
         .doc() = "A simple quad mesh, with a list of points, and a list of quads.  The vertices of the quads are "
@@ -65,7 +67,10 @@ PYBIND11_MODULE( sweeps, m )
         "sweep"_a,
         "level_set_values"_a,
         "trace_points"_a,
-        "output_prefix"_a );
+        "output_prefix"_a,
+        py::kw_only(),
+        "output_tutte"_a = false,
+        "tutte_edge_weights"_a = "InverseLength" );
 
     m.def(
         "loadFromFile",

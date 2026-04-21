@@ -105,7 +105,8 @@ namespace reparam
     constexpr bool log_level_set_based_tracing = false;
     void levelSetBasedTracing( const SweepInput& sweep_input,
                                const std::vector<double> level_set_values,
-                               const std::function<void( const std::vector<FoliationLeaf>& )>& callback )
+                               const std::function<void( const std::vector<FoliationLeaf>& )>& callback,
+                               Laplace2dEdgeWeights tutte_edge_weights )
     {
         const topology::TetMeshCombinatorialMap map( sweep_input.mesh );
         const std::vector<Normal> normals = faceNormals( map );
@@ -219,7 +220,7 @@ namespace reparam
                 };
 
                 leaf.tutte = std::make_shared<const Eigen::MatrixX2d>(
-                    reparam::tutteEmbedding( *cmap, positions, constraints_func, Laplace2dEdgeWeights::InverseLength ) );
+                    reparam::tutteEmbedding( *cmap, positions, constraints_func, tutte_edge_weights ) );
 
                 const auto atlas = std::make_shared<param::TriangleParametricAtlas>( cmap );
                 const auto vert_positions = [tutte = *( leaf.tutte ), base_vert_ids]( const topology::Vertex& v ) {

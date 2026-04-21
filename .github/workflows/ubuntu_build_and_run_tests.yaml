@@ -18,6 +18,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Install Python Dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install numpy
       - name: Setup Mold
         uses: rui314/setup-mold@v1
         with:
@@ -30,6 +34,15 @@ jobs:
           echo "CXX=g++-10" >> $GITHUB_ENV
           cmake .. -DCMAKE_BUILD_TYPE=Release
           make -j10
+      - name: Install Fortran
+        run: |
+          apt-get update
+          apt-get install -y gfortran-12
+          update-alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran-12 100
+      - name: Build ScaleUntrim
+        run : |
+          uname -a
+          python3 scripts/scaleUntrimBuilder.py
       - name: Run tests
         run: |
           cd build

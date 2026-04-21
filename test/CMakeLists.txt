@@ -69,3 +69,8 @@ add_test(
     COMMAND python3 -c "import sweeps; import splines; print('Import successful')"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/src/api
 )
+
+add_test(
+  NAME python_Quad_Mesh_test
+  COMMAND python3 ${CMAKE_SOURCE_DIR}/test/test_QuadMesh.py
+)
