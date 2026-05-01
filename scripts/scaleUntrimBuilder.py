@@ -235,16 +235,22 @@ def buildScaleUntrim():
     cloneRepository("https://github.com/colbyj427/edited-scale-untrim.git", "ScaleUntrim")
     patchScaleUntrimCMake("ScaleUntrim/CMakeLists.txt")
     makeDirectory("ScaleUntrim/build")
-    sdkroot = subprocess.check_output(["xcrun", "--sdk", "macosx", "--show-sdk-path"], text=True).strip()
-    cxx_headers = sdkroot + "/usr/include/c++/v1"
-    runCommand([
-        "cmake", "-B", "ScaleUntrim/build", "-S", "ScaleUntrim",
-        "-DCMAKE_C_COMPILER=/usr/bin/clang",
-        "-DCMAKE_CXX_COMPILER=/usr/bin/clang++",
-        f"-DCMAKE_OSX_SYSROOT={sdkroot}",
-        f"-DCMAKE_CXX_FLAGS=-I{cxx_headers} -stdlib=libc++",
-        "-DCMAKE_EXE_LINKER_FLAGS=-stdlib=libc++",
-    ])
+    if os == "darwin":
+        sdkroot = subprocess.check_output(["xcrun", "--sdk", "macosx", "--show-sdk-path"], text=True).strip()
+        cxx_headers = sdkroot + "/usr/include/c++/v1"
+        cmake_cmd = [
+            "cmake", "-B", "ScaleUntrim/build", "-S", "ScaleUntrim",
+            "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+            "-DCMAKE_C_COMPILER=/usr/bin/clang",
+            "-DCMAKE_CXX_COMPILER=/usr/bin/clang++",
+            f"-DCMAKE_OSX_SYSROOT={sdkroot}",
+            f"-DCMAKE_CXX_FLAGS=-I{cxx_headers} -stdlib=libc++",
+            "-DCMAKE_EXE_LINKER_FLAGS=-stdlib=libc++",
+        ]
+    else:
+        cmake_cmd = ["cmake", "-B", "ScaleUntrim/build", "-S", "ScaleUntrim",
+                     "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"]
+    runCommand(cmake_cmd)
     runCommand(["make", "-C", "ScaleUntrim/build", f"-j{__import__('os').cpu_count()}"])
     makeDirectory("ScaleUntrim/build/tempDir")
     moveDirectoryFromSweeps("ScaleUntrim", "deps/", sourceFromSweeps=False)
