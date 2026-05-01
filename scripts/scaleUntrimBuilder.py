@@ -220,18 +220,27 @@ def patchScaleUntrimCMake(cmake_path):
 
 def patchLemonCMake(cmake_path):
     """
-    Patch lemon's CMakeLists.txt to remove the explicit cmake_policy(SET CMP0048 OLD)
-    call, which newer CMake versions no longer allow.
+    Patch lemon's CMakeLists.txt to replace cmake_policy(SET CMP0048 OLD) with NEW,
+    which newer CMake versions require.
     """
+    import re
+
+    if not Path(cmake_path).exists():
+        print(f"lemon CMakeLists.txt not found at {cmake_path}, skipping patch.")
+        return
+
     with open(cmake_path, "r") as f:
         content = f.read()
 
-    patched = content.replace(
-        "cmake_policy(SET CMP0048 OLD)",
-        "cmake_policy(SET CMP0048 NEW)"
+    patched, n = re.subn(
+        r'(?i)cmake_policy\s*\(\s*SET\s+CMP0048\s+OLD\s*\)',
+        'cmake_policy(SET CMP0048 NEW)',
+        content
     )
-    if patched == content:
-        print("lemon CMakeLists.txt already patched or pattern not found, skipping.")
+    if n == 0:
+        print(f"CMP0048 pattern not found in {cmake_path}. First 20 lines:")
+        for line in content.splitlines()[:20]:
+            print("  " + line)
         return
 
     with open(cmake_path, "w") as f:
