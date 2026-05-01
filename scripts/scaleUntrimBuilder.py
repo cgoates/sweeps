@@ -218,6 +218,27 @@ def patchScaleUntrimCMake(cmake_path):
     print("Patched ScaleUntrim/CMakeLists.txt for cross-architecture OpenCASCADE detection.")
 
 
+def patchLemonCMake(cmake_path):
+    """
+    Patch lemon's CMakeLists.txt to remove the explicit cmake_policy(SET CMP0048 OLD)
+    call, which newer CMake versions no longer allow.
+    """
+    with open(cmake_path, "r") as f:
+        content = f.read()
+
+    patched = content.replace(
+        "cmake_policy(SET CMP0048 OLD)",
+        "cmake_policy(SET CMP0048 NEW)"
+    )
+    if patched == content:
+        print("lemon CMakeLists.txt already patched or pattern not found, skipping.")
+        return
+
+    with open(cmake_path, "w") as f:
+        f.write(patched)
+    print("Patched lemon CMakeLists.txt: CMP0048 OLD -> NEW.")
+
+
 def buildScaleUntrim():
     os = findOS()
     manager = findPackageManager(os)
@@ -234,6 +255,7 @@ def buildScaleUntrim():
         installLibraries(manager, ["eigen", "boost", "OpenCascade"])
     cloneRepository("https://github.com/colbyj427/edited-scale-untrim.git", "ScaleUntrim")
     patchScaleUntrimCMake("ScaleUntrim/CMakeLists.txt")
+    patchLemonCMake("ScaleUntrim/3rd/lemon-1.3.1/CMakeLists.txt")
     makeDirectory("ScaleUntrim/build")
     if os == "darwin":
         sdkroot = subprocess.check_output(["xcrun", "--sdk", "macosx", "--show-sdk-path"], text=True).strip()
@@ -249,7 +271,9 @@ def buildScaleUntrim():
         ]
     else:
         cmake_cmd = ["cmake", "-B", "ScaleUntrim/build", "-S", "ScaleUntrim",
-                     "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"]
+                     "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+                     "-DCMAKE_C_COMPILER=gcc",
+                     "-DCMAKE_CXX_COMPILER=g++"]
     runCommand(cmake_cmd)
     runCommand(["make", "-C", "ScaleUntrim/build", f"-j{__import__('os').cpu_count()}"])
     makeDirectory("ScaleUntrim/build/tempDir")
