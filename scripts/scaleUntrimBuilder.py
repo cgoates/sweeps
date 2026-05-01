@@ -1,7 +1,7 @@
 """
 This script is designed to successfully download and build the 
 ScaleUntrim library, which can be found at this link:
-https://github.com/colbyj427/edited-scale-untrim.git
+https://github.com/kendrickshepherd/edited-scale-untrim.git
 """
 
 import platform
@@ -262,7 +262,7 @@ def buildScaleUntrim():
         installLibraries(manager, ["libeigen3-dev", "gfortran", "libcoarrays-dev", "libcoarrays-openmpi-dev", "libboost-all-dev", "libtbb-dev"] + openCascade)
     else:
         installLibraries(manager, ["eigen", "boost", "OpenCascade"])
-    cloneRepository("https://github.com/colbyj427/edited-scale-untrim.git", "ScaleUntrim")
+    cloneRepository("https://github.com/kendrickshepherd/edited-scale-untrim.git", "ScaleUntrim")
     patchScaleUntrimCMake("ScaleUntrim/CMakeLists.txt")
     patchLemonCMake("ScaleUntrim/3rd/lemon-1.3.1/CMakeLists.txt")
     makeDirectory("ScaleUntrim/build")
