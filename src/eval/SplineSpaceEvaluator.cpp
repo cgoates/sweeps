@@ -88,9 +88,6 @@ namespace eval
 
     Eigen::MatrixXd SplineSpaceEvaluator::evaluateFirstDerivativesFromParamToSpatial() const
     {
-        // NOTE THIS ISSUE and TODO: this function is actually from parent to parametric coordinates
-        throw std::runtime_error( "evaluateFirstDerivativesFromParamToSpatial not implemented for NURBSSpaceEvaluator" );
-
         const auto first_derivs = evaluateFirstDerivatives();
         if( not param::isCartesian( mSpline.basisComplex().parametricAtlas().parentDomain( mCurrentCell.value() ) ) )
             throw std::runtime_error( "ParamToSpatial not supported on non-square domains" );
@@ -187,6 +184,16 @@ namespace eval
                                 cpts.rows() );
     }
 
+    // #ForNonUniKnot: gradient of det(J_param) in parametric coords; required so
+    // the H(div)/L2 Piola terms 1 & 2 are consistent with J_param, not J_parent.
+    Eigen::VectorXd paramToSpatialGradDeterminant( const SplineSpaceEvaluator& geom_evals, const Eigen::MatrixXd& cpts )
+    {
+        return gradDeterminant( geom_evals.evaluateParamToSpatialJacobian( cpts ),
+                                geom_evals.evaluateParamToSpatialHessian( cpts ),
+                                geom_evals.splineSpace().basisComplex().parametricAtlas().cmap().dim(),
+                                cpts.rows() );
+    }
+
     Eigen::MatrixXd piolaTransformedH1FirstDerivatives( const SplineSpaceEvaluator& scalar_evals,
                                                         const SplineSpaceEvaluator& geom_evals,
                                                         const Eigen::MatrixXd& cpts )
@@ -268,7 +275,7 @@ namespace eval
                                                const SplineSpaceEvaluator& geom_evals,
                                                const Eigen::MatrixXd& cpts )
     {
-        const auto jac = geom_evals.evaluateJacobian( cpts );
+        const auto jac = geom_evals.evaluateParamToSpatialJacobian( cpts ); // #ForNonUniKnot: J_param instead of J_parent; removes per-element L_xi/L_eta scaling from H(div) basis
         const double det = determinant( jac );
         return 1.0 / det * vec_evals.evaluateBasis() * jac.transpose();
     }
@@ -277,7 +284,7 @@ namespace eval
                                                           const SplineSpaceEvaluator& geom_evals,
                                                           const Eigen::MatrixXd& cpts )
     {
-        const Eigen::MatrixXd jac = geom_evals.evaluateJacobian( cpts );
+        const Eigen::MatrixXd jac = geom_evals.evaluateParamToSpatialJacobian( cpts ); // #ForNonUniKnot: J_param so all three product-rule terms are in parametric coords
         const double det_inverse = 1.0 / determinant( jac );
         const Eigen::MatrixXd vector_basis = vec_evals.evaluateBasis().transpose();
         const size_t n_funcs = vector_basis.cols();
@@ -289,11 +296,11 @@ namespace eval
 
         const Eigen::MatrixXd first_term =
             -det_inverse * det_inverse *
-            ( ( jac * vector_basis ).reshaped() * parentToSpatialGradDeterminant( geom_evals, cpts ).transpose() )
+            ( ( jac * vector_basis ).reshaped() * paramToSpatialGradDeterminant( geom_evals, cpts ).transpose() ) // #ForNonUniKnot: grad det uses J_param
                 .reshaped( spatial_dim * param_dim, n_funcs );
 
         const auto modified_hessian = [&geom_evals, &cpts, &param_dim, &spatial_dim]() {
-            const Eigen::MatrixXd hess = geom_evals.evaluateHessian( cpts );
+            const Eigen::MatrixXd hess = geom_evals.evaluateParamToSpatialHessian( cpts ); // #ForNonUniKnot: parametric hessian (d2x/dxi2), consistent with J_param
             Eigen::MatrixXd out( spatial_dim * param_dim, param_dim );
             if( param_dim == 2 )
                 // FIXME: Make this work for 3d spatial/2d manifold
@@ -318,31 +325,31 @@ namespace eval
 
         const Eigen::MatrixXd second_term = det_inverse * modified_hessian() * vector_basis;
 
-        const Eigen::MatrixXd third_term =
-            ( det_inverse * jac * vec_evals.evaluateFirstDerivatives().transpose().reshaped( param_dim, n_funcs * param_dim ) )
+        const Eigen::MatrixXd third_term = // #ForNonUniKnot: parametric-to-spatial derivs (dN/dxi) instead of parent derivs (dN/ds)
+            ( det_inverse * jac * vec_evals.evaluateFirstDerivativesFromParamToSpatial().transpose().reshaped( param_dim, n_funcs * param_dim ) )
                 .reshaped( spatial_dim * param_dim, n_funcs );
 
         return ( first_term + second_term + third_term ).transpose() *
-               doubledInverseJacobian( jac ); // transform from ds denominator to dx
+               doubledInverseJacobian( jac ); // transform from dxi denominator to dx; jac is now J_param
     }
 
     Eigen::MatrixXd piolaTransformedL2Basis( const SplineSpaceEvaluator& bivec_evals,
                                              const SplineSpaceEvaluator& geom_evals,
                                              const Eigen::MatrixXd& cpts )
     {
-        return 1.0 / determinant( geom_evals.evaluateJacobian( cpts ) ) * bivec_evals.evaluateBasis();
+        return 1.0 / determinant( geom_evals.evaluateParamToSpatialJacobian( cpts ) ) * bivec_evals.evaluateBasis(); // #ForNonUniKnot: det(J_param) instead of det(J_parent); removes L_xi*L_eta scaling from pressure functions
     }
     Eigen::MatrixXd piolaTransformedL2FirstDerivatives( const SplineSpaceEvaluator& bivec_evals,
                                                         const SplineSpaceEvaluator& geom_evals,
                                                         const Eigen::MatrixXd& cpts )
     {
-        const auto jac = geom_evals.evaluateJacobian( cpts );
+        const auto jac = geom_evals.evaluateParamToSpatialJacobian( cpts ); // #ForNonUniKnot: J_param for consistent L2 derivative transform
         const double det_inverse = 1.0 / determinant( jac );
         const auto jac_inverse_transpose = jac.inverse().transpose();
-        return ( det_inverse * jac_inverse_transpose * bivec_evals.evaluateFirstDerivatives().transpose() -
-                 det_inverse * det_inverse * jac_inverse_transpose * parentToSpatialGradDeterminant( geom_evals, cpts ) *
+        return ( det_inverse * jac_inverse_transpose * bivec_evals.evaluateFirstDerivativesFromParamToSpatial().transpose() - // #ForNonUniKnot: parametric derivs dN/dxi
+                 det_inverse * det_inverse * jac_inverse_transpose * paramToSpatialGradDeterminant( geom_evals, cpts ) * // #ForNonUniKnot: grad det uses J_param
                      bivec_evals.evaluateBasis().transpose() )
-            .transpose() * jac.inverse(); // transform from ds denominator to dx
+            .transpose() * jac.inverse(); // transform from dxi denominator to dx; jac is now J_param
     }
 
     VertexPositionsFunc vertexPositionsFromManifold( const basis::SplineSpace& ss, const Eigen::MatrixXd& cpts )
