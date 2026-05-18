@@ -2,6 +2,7 @@
 #include <BasisComplex.hpp>
 #include <ParentBasis.hpp>
 #include <ParametricAtlas.hpp>
+#include <array>
 #include <Eigen/Dense>
 #include <unsupported/Eigen/KroneckerProduct>
 
@@ -286,18 +287,64 @@ namespace eval
     {
         const Eigen::MatrixXd jac = geom_evals.evaluateParamToSpatialJacobian( cpts ); // #ForNonUniKnot: J_param so all three product-rule terms are in parametric coords
         const double det_inverse = 1.0 / determinant( jac );
-        const Eigen::MatrixXd vector_basis = vec_evals.evaluateBasis().transpose();
-        const size_t n_funcs = vector_basis.cols();
+        const Eigen::MatrixXd vector_basis_rows = vec_evals.evaluateBasis();
+        const Eigen::MatrixXd vector_basis = vector_basis_rows.transpose();
+        const size_t n_funcs = vector_basis_rows.rows();
         const size_t param_dim = geom_evals.splineSpace().basisComplex().parametricAtlas().cmap().dim();
         const size_t spatial_dim = cpts.rows();
 
         // The product rule on the derivative of the piola transform v = ( det J )^-1 J v'
         // yields three terms from the three factors. These are the first, second, third terms here.
 
-        const Eigen::MatrixXd first_term =
-            -det_inverse * det_inverse *
-            ( ( jac * vector_basis ).reshaped() * paramToSpatialGradDeterminant( geom_evals, cpts ).transpose() ) // #ForNonUniKnot: grad det uses J_param
-                .reshaped( spatial_dim * param_dim, n_funcs );
+        // NOTE: the 2D special-case branch is below for debugging, but has been
+        // commented to enable a uniform framework for higher dimensions
+        // if( param_dim == 2 and spatial_dim == 2 )
+        // {
+        //     const Eigen::MatrixXd hess = geom_evals.evaluateParamToSpatialHessian( cpts );
+        //     const Eigen::VectorXd grad_det = paramToSpatialGradDeterminant( geom_evals, cpts );
+        //     const Eigen::MatrixXd vector_derivs = vec_evals.evaluateFirstDerivativesFromParamToSpatial();
+        //     Eigen::Matrix2d jac_2d = jac;
+        //     const Eigen::Matrix2d jac_inverse = jac_2d.inverse();
+        //
+        //     std::array<Eigen::Matrix2d, 2> d_jac;
+        //     d_jac[0] << hess( 0, 0 ), hess( 0, 1 ),
+        //                 hess( 1, 0 ), hess( 1, 1 );
+        //     d_jac[1] << hess( 0, 1 ), hess( 0, 2 ),
+        //                 hess( 1, 1 ), hess( 1, 2 );
+        //
+        //     Eigen::MatrixXd out( n_funcs, spatial_dim * param_dim );
+        //     for( size_t i = 0; i < n_funcs; ++i )
+        //     {
+        //         const Eigen::Vector2d v_hat = vector_basis_rows.row( i ).transpose();
+        //
+        //         Eigen::Matrix2d d_v_hat;
+        //         d_v_hat.col( 0 ) = Eigen::Vector2d( vector_derivs( i, 0 ), vector_derivs( i, 1 ) );
+        //         d_v_hat.col( 1 ) = Eigen::Vector2d( vector_derivs( i, 2 ), vector_derivs( i, 3 ) );
+        //
+        //         Eigen::Matrix2d param_deriv;
+        //         for( size_t k = 0; k < param_dim; ++k )
+        //         {
+        //             param_deriv.col( k ) =
+        //                 -det_inverse * det_inverse * grad_det( k ) * jac * v_hat +
+        //                 det_inverse * d_jac[k] * v_hat +
+        //                 det_inverse * jac * d_v_hat.col( k );
+        //         }
+        //
+        //         const Eigen::Matrix2d spatial_grad = param_deriv * jac_inverse;
+        //         out( i, 0 ) = spatial_grad( 0, 0 );
+        //         out( i, 1 ) = spatial_grad( 1, 0 );
+        //         out( i, 2 ) = spatial_grad( 0, 1 );
+        //         out( i, 3 ) = spatial_grad( 1, 1 );
+        //     }
+        //     return out;
+        // }
+
+        const Eigen::MatrixXd Jv = jac * vector_basis; // spatial_dim x n_funcs
+        const Eigen::VectorXd grad_det = paramToSpatialGradDeterminant( geom_evals, cpts );
+        Eigen::MatrixXd first_term = Eigen::MatrixXd::Zero( spatial_dim * param_dim, n_funcs );
+        for( size_t k = 0; k < param_dim; ++k )
+            first_term.block( k * spatial_dim, 0, spatial_dim, n_funcs ) =
+                -det_inverse * det_inverse * grad_det( k ) * Jv;
 
         const auto modified_hessian = [&geom_evals, &cpts, &param_dim, &spatial_dim]() {
             const Eigen::MatrixXd hess = geom_evals.evaluateParamToSpatialHessian( cpts ); // #ForNonUniKnot: parametric hessian (d2x/dxi2), consistent with J_param
