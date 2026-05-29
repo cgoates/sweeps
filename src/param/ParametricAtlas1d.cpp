@@ -29,6 +29,12 @@ namespace param
         return Eigen::Matrix<double, 1, 1>( mLengths( c.dart().id() ) );
     }
 
+    Vector6dMax ParametricAtlas1d::parametricStarts( const topology::Cell& c ) const
+    {
+        if( c.dim() != 1 ) throw std::runtime_error( "invalid cell dimension" );
+        return Eigen::Matrix<double, 1, 1>( mLengths.head( c.dart().id() ).sum() );
+    }
+
     std::vector<std::pair<topology::Cell, param::ParentPoint>> parentPointsOfParamPoints(
         const std::vector<double>& values, const param::ParametricAtlas1d& pa, const double param_tol )
     {

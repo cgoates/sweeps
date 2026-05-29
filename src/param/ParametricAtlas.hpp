@@ -11,6 +11,10 @@ namespace param
         virtual const ParentDomain parentDomain( const topology::Cell& c ) const = 0;
         virtual ParentPoint parentPoint( const topology::Vertex& v ) const = 0;
         virtual Vector6dMax parametricLengths( const topology::Cell& c ) const = 0;
+        virtual Vector6dMax parametricStarts( [[maybe_unused]] const topology::Cell& c ) const
+        {
+            throw std::runtime_error( "parametricStarts not implemented for this atlas type" );
+        }
     };
 
     BaryCoordIsZeroVec parentDomainBoundary( const ParametricAtlas& atlas, const topology::Cell& cell );

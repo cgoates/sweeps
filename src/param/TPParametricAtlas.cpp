@@ -73,6 +73,14 @@ namespace param
         return ( Vector6dMax( source_lengths.size() + line_lengths.size() ) << source_lengths, line_lengths ).finished();
     }
 
+    Vector6dMax TPParametricAtlas::parametricStarts( const topology::Cell& c ) const
+    {
+        const auto [source_dart, line_dart, tp_pos] = mMap->unflatten( c.dart() );
+        const Vector6dMax source_starts = mSourceParam->parametricStarts( topology::Cell( source_dart, mSourceParam->cmap().dim() ) );
+        const Vector6dMax line_starts = mLineParam->parametricStarts( topology::Cell( line_dart, mLineParam->cmap().dim() ) );
+        return ( Vector6dMax( source_starts.size() + line_starts.size() ) << source_starts, line_starts ).finished();
+    }
+
     SmallVector<topology::Cell, 12> cornerCells( const TPParametricAtlas& atlas, const uint cell_dim )
     {
         using namespace topology;

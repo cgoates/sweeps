@@ -31,6 +31,8 @@ namespace eval
 
         virtual Eigen::MatrixXd evaluateFirstDerivativesFromParamToSpatial() const;
 
+        virtual Eigen::VectorXd evaluateParametricPoint() const;
+
         size_t numDerivatives() const { return mNumDerivs; }
 
         const basis::SplineSpace& splineSpace() const { return mSpline; }
@@ -40,9 +42,11 @@ namespace eval
         const basis::SplineSpace& mSpline;
         std::optional<topology::Cell> mCurrentCell;
         Vector6dMax mParametricLengths;
+        Vector6dMax mParametricStart;
         std::vector<basis::FunctionId> mConnect;
         Eigen::MatrixXd mExOp;
         std::optional<ParentBasisEval> mLocalEvals;
+        std::optional<Eigen::VectorXd> mLocalizedParentCoords;
     };
 
     Eigen::MatrixXd piolaTransformedH1FirstDerivatives( const SplineSpaceEvaluator& h1_evals, const SplineSpaceEvaluator& geom_evals, const Eigen::MatrixXd& cpts );

@@ -162,6 +162,11 @@ PYBIND11_MODULE( splines, m )
             "Evaluates the spatial position of the spline geometry at the parametric position from the latest calls to "
             "localizeElement and localizePoint." )
         .def(
+            "parametricPoint",
+            []( const api::NavierStokesDiscretization& nsd ) { return nsd.getH1().evaluateParametricPoint(); },
+            "Evaluates the parametric coordinates (knot-space) of the current quadrature point from the latest calls to "
+            "localizeElement and localizePoint." )
+        .def(
             "jacobian",
             []( const api::NavierStokesDiscretization& nsd ) { return nsd.getH1().evaluateJacobian( nsd.controlPoints() ); },
             "Evaluates the parent to spatial Jacobian of the spline geometry mapping at the parametric position "

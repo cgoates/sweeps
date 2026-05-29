@@ -18,6 +18,7 @@ namespace param
         virtual const ParentDomain parentDomain( const topology::Cell& c ) const override;
         virtual ParentPoint parentPoint( const topology::Vertex& v ) const override;
         virtual Vector6dMax parametricLengths( const topology::Cell& c ) const override;
+        virtual Vector6dMax parametricStarts( const topology::Cell& c ) const override;
 
         double totalLength() const { return mLengths.sum(); }
 

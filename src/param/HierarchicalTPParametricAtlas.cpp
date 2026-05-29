@@ -159,3 +159,11 @@ Vector6dMax HierarchicalTPParametricAtlas::parametricLengths( const topology::Ce
     const auto [ level, level_d ] = mMap->unrefinedAncestorDartOfCell( c );
     return mRefinementLevels.at( level )->parametricLengths( topology::Cell( level_d, c.dim() ) );
 }
+
+Vector6dMax HierarchicalTPParametricAtlas::parametricStarts( const topology::Cell& c ) const
+{
+    if( c.dim() != mMap->dim() )
+        throw std::invalid_argument( "HierarchicalTPParametricAtlas::parametricStarts only works for elements." );
+    const auto [ level, level_d ] = mMap->unrefinedAncestorDartOfCell( c );
+    return mRefinementLevels.at( level )->parametricStarts( topology::Cell( level_d, c.dim() ) );
+}

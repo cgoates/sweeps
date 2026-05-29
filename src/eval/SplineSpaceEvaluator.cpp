@@ -18,12 +18,21 @@ namespace eval
         mExOp = mSpline.extractionOperator( c );
         mCurrentCell.emplace( c );
         mParametricLengths = mSpline.basisComplex().parametricAtlas().parametricLengths( c );
+        mParametricStart = mSpline.basisComplex().parametricAtlas().parametricStarts( c );
     }
 
     void SplineSpaceEvaluator::localizePoint( const param::ParentPoint& ppt )
     {
         if( not mCurrentCell.has_value() ) throw std::runtime_error( "Must localize cell before locaizing point" );
         mLocalEvals.emplace( ParentBasisEval( mSpline.basisComplex().parentBasis( mCurrentCell.value() ), ppt, mNumDerivs ) );
+        mLocalizedParentCoords.emplace( ppt.mPoint.cast<double>() );
+    }
+
+    Eigen::VectorXd SplineSpaceEvaluator::evaluateParametricPoint() const
+    {
+        if( not mLocalizedParentCoords.has_value() ) throw std::runtime_error( "Must localize point before evaluating parametric point" );
+        const size_t param_dim = mSpline.basisComplex().parametricAtlas().cmap().dim();
+        return mParametricStart.head( param_dim ) + mLocalizedParentCoords->cwiseProduct( mParametricLengths.head( param_dim ) );
     }
 
     Eigen::VectorXd SplineSpaceEvaluator::evaluateManifold( const Eigen::MatrixXd& cpts ) const
