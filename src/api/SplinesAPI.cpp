@@ -120,9 +120,20 @@ PYBIND11_MODULE( splines, m )
             "The HDiv spline space, with two vector components." )
         .def_property_readonly(
             "L2", []( const api::NavierStokesDiscretization& d ) { return d.getL2(); }, "The L2 spline space." )
+        .def_property_readonly(
+            "geometry",
+            []( const api::NavierStokesDiscretization& d ) { return d.getGeometry(); },
+            "The spline-space evaluator used for geometry." )
         .def_property_readonly( "control_points",
                                 &api::NavierStokesDiscretization::controlPoints,
-                                "The control points which define the geometry along with the H1 space." )
+                                "The Euclidean control points for the geometry." )
+        .def_property_readonly( "geometry_control_points",
+                                &api::NavierStokesDiscretization::geometryControlPoints,
+                                "The coefficients used by the geometry evaluator. Rational geometries use homogeneous "
+                                "control points." )
+        .def_property_readonly( "is_rational",
+                                &api::NavierStokesDiscretization::hasRationalGeometry,
+                                "Whether the geometry is rational." )
         .def(
             "elements",
             []( const api::NavierStokesDiscretization& nsd ) {
@@ -142,6 +153,7 @@ PYBIND11_MODULE( splines, m )
                 nsd.getH1().localizeElement( elem );
                 nsd.getHDIV().localizeElement( elem );
                 nsd.getL2().localizeElement( elem );
+                nsd.getGeometry().localizeElement( elem );
             },
             "Sets all future evaluations of the spline spaces to be on element elem, until localizeElement is called "
             "again.",
@@ -153,36 +165,41 @@ PYBIND11_MODULE( splines, m )
                 nsd.getH1().localizePoint( ppt );
                 nsd.getHDIV().localizePoint( ppt );
                 nsd.getL2().localizePoint( ppt );
+                nsd.getGeometry().localizePoint( ppt );
             },
             "Sets all future evaluations of the spline spaces to be on point pt, until localizePoint is called again.",
             "pt"_a )
         .def(
             "mapping",
-            []( const api::NavierStokesDiscretization& nsd ) { return nsd.getH1().evaluateManifold( nsd.controlPoints() ); },
+            []( const api::NavierStokesDiscretization& nsd ) {
+                return nsd.getGeometry().evaluateManifold( nsd.geometryControlPoints() );
+            },
             "Evaluates the spatial position of the spline geometry at the parametric position from the latest calls to "
             "localizeElement and localizePoint." )
         .def(
             "parametricPoint",
-            []( const api::NavierStokesDiscretization& nsd ) { return nsd.getH1().evaluateParametricPoint(); },
+            []( const api::NavierStokesDiscretization& nsd ) { return nsd.getGeometry().evaluateParametricPoint(); },
             "Evaluates the parametric coordinates (knot-space) of the current quadrature point from the latest calls to "
             "localizeElement and localizePoint." )
         .def(
             "jacobian",
-            []( const api::NavierStokesDiscretization& nsd ) { return nsd.getH1().evaluateJacobian( nsd.controlPoints() ); },
+            []( const api::NavierStokesDiscretization& nsd ) {
+                return nsd.getGeometry().evaluateJacobian( nsd.geometryControlPoints() );
+            },
             "Evaluates the parent to spatial Jacobian of the spline geometry mapping at the parametric position "
             "specified "
             "in the latest calls to localizeElement and LocalizePoint." )
         .def(
             "jacobianDeterminant",
             []( const api::NavierStokesDiscretization& nsd ) {
-                return nsd.getH1().evaluateJacobian( nsd.controlPoints() ).determinant();
+                return nsd.getGeometry().evaluateJacobian( nsd.geometryControlPoints() ).determinant();
             },
             "Evaluates the Jacobian determinant of the spline geometry at the parametric position from the latest "
             "calls to localizeElement and LocalizePoint." )
         .def(
             "piolaTransformedHDIVBasis",
             []( const api::NavierStokesDiscretization& nsd ) {
-                return piolaTransformedHDivBasis( nsd.getHDIV(), nsd.getH1(), nsd.controlPoints() );
+                return piolaTransformedHDivBasis( nsd.getHDIV(), nsd.getGeometry(), nsd.geometryControlPoints() );
             },
             "Evaluates the Piola transformed HDiv basis at the parametric position from the latest calls to "
             "localizeElement and localizePoint. The basis is returned as a matrix with HDIV.numFunctions( elem ) rows "
@@ -191,7 +208,8 @@ PYBIND11_MODULE( splines, m )
         .def(
             "piolaTransformedHDIVFirstDerivatives",
             []( const api::NavierStokesDiscretization& nsd ) {
-                return piolaTransformedHDivFirstDerivatives( nsd.getHDIV(), nsd.getH1(), nsd.controlPoints() );
+                return piolaTransformedHDivFirstDerivatives(
+                    nsd.getHDIV(), nsd.getGeometry(), nsd.geometryControlPoints() );
             },
             "Evaluates the Piola transformed first derivatives of the HDiv basis at the parametric position from the "
             "latest calls to localizeElement and localizePoint. The basis is returned as a matrix with "
@@ -200,7 +218,7 @@ PYBIND11_MODULE( splines, m )
         .def(
             "piolaTransformedL2",
             []( const api::NavierStokesDiscretization& nsd ) {
-                return piolaTransformedL2Basis( nsd.getL2(), nsd.getH1(), nsd.controlPoints() );
+                return piolaTransformedL2Basis( nsd.getL2(), nsd.getGeometry(), nsd.geometryControlPoints() );
             },
             "Evaluates the Piola transformed L2 basis at the parametric position from the latest calls to "
             "localizeElement and localizePoint. The basis is returned as a matrix with L2.numFunctions( elem ) rows "
@@ -208,7 +226,8 @@ PYBIND11_MODULE( splines, m )
         .def(
             "piolaTransformedL2FirstDerivatives",
             []( const api::NavierStokesDiscretization& nsd ) {
-                return piolaTransformedL2FirstDerivatives( nsd.getL2(), nsd.getH1(), nsd.controlPoints() );
+                return piolaTransformedL2FirstDerivatives(
+                    nsd.getL2(), nsd.getGeometry(), nsd.geometryControlPoints() );
             },
             "Evaluates the piola transformed derivatives of the L2 basis at the parametric position from the latest "
             "calls to localizeElement and localizePoint. The basis is returned as a matrix with L2.numFunctions( elem "
@@ -220,11 +239,11 @@ PYBIND11_MODULE( splines, m )
                        const basis::KnotVector&,
                        const size_t,
                        const size_t,
-                       const Eigen::Matrix2Xd&>(),
+                       const Eigen::MatrixXd&>(),
               "Create a B-spline discretization for Navier Stokes problems, consisting of an H1 spline space with the "
               "given knot vectors, an HDiv spline space taking the H1 space as its primal basis, and an L2 spline "
               "space, which has reduced degree from H1 in both directions. The geometry is defined by the H1 space and "
-              "the provided control points."
+              "the provided control points.",
               "knot_vec_s"_a,
               "knot_vec_t"_a,
               "degree_s"_a,
@@ -336,17 +355,38 @@ PYBIND11_MODULE( splines, m )
             return std::vector<basis::KnotVector>{ comps.at( 0 )->knotVector(), comps.at( 1 )->knotVector() };
         } );
 
+    py::class_<api::NURBSNavierStokesTPDiscretization, api::NavierStokesTPDiscretization>(
+        m, "NURBSNavierStokesTPDiscretization" )
+        .def( py::init<const basis::KnotVector&,
+                       const basis::KnotVector&,
+                       const size_t,
+                       const size_t,
+                       const Eigen::MatrixXd&,
+                       const Eigen::VectorXd&>(),
+              "Create a tensor-product Navier-Stokes discretization with rational geometry. The analysis spaces remain "
+              "polynomial; geometry is evaluated with homogeneous NURBS control points built from the Euclidean control "
+              "points and weights.",
+              "knot_vec_s"_a,
+              "knot_vec_t"_a,
+              "degree_s"_a,
+              "degree_t"_a,
+              "control_points"_a,
+              "weights"_a )
+        .def_property_readonly( "weights",
+                                &api::NURBSNavierStokesTPDiscretization::weights,
+                                "The rational geometry weights." );
+
     py::class_<api::NavierStokesHierarchicalDiscretization, api::NavierStokesDiscretization>( m, "NavierStokesHierarchicalDiscretization" )
         .def( py::init<const basis::KnotVector&,
                        const basis::KnotVector&,
                        const size_t,
                        const size_t,
-                       const Eigen::Matrix2Xd&,
+                       const Eigen::MatrixXd&,
                        const std::vector<std::vector<std::pair<size_t, size_t>>>>(),
               "Create a B-spline discretization for Navier Stokes problems, consisting of an H1 spline space with the "
               "given knot vectors, an HDiv spline space taking the H1 space as its primal basis, and an L2 spline "
               "space, which has reduced degree from H1 in both directions. The geometry is defined by the H1 space and "
-              "the provided control points."
+              "the provided control points.",
               "knot_vec_s"_a,
               "knot_vec_t"_a,
               "degree_s"_a,
@@ -483,7 +523,7 @@ PYBIND11_MODULE( splines, m )
         },
         "Returns the greville points of the 2d B-spline patch defined by the given knot vectors and degrees.  These "
         "points, when used as control points, create a linear spatial spline geometry corresponding exactly to the "
-        "parametic domain."
+        "parametic domain.",
         "kv_s"_a,
         "kv_t"_a,
         "degree_s"_a,
@@ -491,7 +531,9 @@ PYBIND11_MODULE( splines, m )
 
     m.def(
         "globallyHRefine",
-        []( const api::NavierStokesTPDiscretization& coarse_nsd, const size_t num_divisions, const double param_tol ) {
+        []( const api::NavierStokesTPDiscretization& coarse_nsd,
+            const size_t num_divisions,
+            const double param_tol ) -> std::unique_ptr<api::NavierStokesTPDiscretization> {
             const auto component_bsplines = tensorProductComponentSplines( coarse_nsd.H1_ss );
             SmallVector<basis::KnotVector, 3> coarse_kvs;
             std::transform( component_bsplines.begin(),
@@ -513,7 +555,12 @@ PYBIND11_MODULE( splines, m )
                                 return comp->basisComplex().defaultParentBasis().mBasisGroups.at( 0 ).degrees.at( 0 );
                             } );
 
-            const Eigen::Matrix2Xd fine_cpts = coarse_nsd.controlPoints() * basis::refinementOp( coarse_kvs, fine_kvs, degrees, param_tol );
+            const Eigen::MatrixXd fine_cpts =
+                coarse_nsd.geometryControlPoints() * basis::refinementOp( coarse_kvs, fine_kvs, degrees, param_tol );
+
+            if( coarse_nsd.hasRationalGeometry() )
+                return std::make_unique<api::NURBSNavierStokesTPDiscretization>(
+                    fine_kvs.at( 0 ), fine_kvs.at( 1 ), degrees.at( 0 ), degrees.at( 1 ), fine_cpts );
 
             return std::make_unique<api::NavierStokesTPDiscretization>(
                 fine_kvs.at( 0 ), fine_kvs.at( 1 ), degrees.at( 0 ), degrees.at( 1 ), fine_cpts );
@@ -529,7 +576,7 @@ PYBIND11_MODULE( splines, m )
         []( const api::NavierStokesTPDiscretization& coarse_nsd,
             const size_t degree_increase_s,
             const size_t degree_increase_t,
-            const double param_tol ) {
+            const double param_tol ) -> std::unique_ptr<api::NavierStokesTPDiscretization> {
             const auto component_bsplines = basis::tensorProductComponentSplines( coarse_nsd.H1_ss );
             if( component_bsplines.size() != 2 )
                 throw std::runtime_error( "globallyPElevate currently supports only tensor-product surface splines." );
@@ -544,9 +591,13 @@ PYBIND11_MODULE( splines, m )
 
             const Eigen::SparseMatrix<double> elevation_op =
                 basis::degreeElevationOp( coarse_nsd.H1_ss, target_degrees, param_tol );
-            const Eigen::Matrix2Xd elevated_cpts = coarse_nsd.controlPoints() * elevation_op;
+            const Eigen::MatrixXd elevated_cpts = coarse_nsd.geometryControlPoints() * elevation_op;
             const SmallVector<basis::KnotVector, 3> elevated_kvs =
                 basis::degreeElevatedKnotVectors( coarse_nsd.H1_ss, target_degrees );
+
+            if( coarse_nsd.hasRationalGeometry() )
+                return std::make_unique<api::NURBSNavierStokesTPDiscretization>(
+                    elevated_kvs.at( 0 ), elevated_kvs.at( 1 ), target_degrees.at( 0 ), target_degrees.at( 1 ), elevated_cpts );
 
             return std::make_unique<api::NavierStokesTPDiscretization>(
                 elevated_kvs.at( 0 ), elevated_kvs.at( 1 ), target_degrees.at( 0 ), target_degrees.at( 1 ), elevated_cpts );

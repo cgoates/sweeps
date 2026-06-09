@@ -13,17 +13,21 @@ namespace api
 
         virtual ~NavierStokesDiscretization() = default;
 
-        virtual const Eigen::Matrix2Xd& controlPoints() const = 0;
+        virtual const Eigen::MatrixXd& geometryControlPoints() const = 0;
+        virtual const Eigen::MatrixXd& controlPoints() const { return geometryControlPoints(); }
+        virtual bool hasRationalGeometry() const { return false; }
 
         virtual const topology::CombinatorialMapBoundary& cmapBdry() const = 0;
 
         virtual eval::SplineSpaceEvaluator& getH1() = 0;
         virtual eval::SplineSpaceEvaluator& getHDIV() = 0;
         virtual eval::SplineSpaceEvaluator& getL2() = 0;
+        virtual eval::SplineSpaceEvaluator& getGeometry() { return getH1(); }
 
         virtual const eval::SplineSpaceEvaluator& getH1() const = 0;
         virtual const eval::SplineSpaceEvaluator& getHDIV() const = 0;
         virtual const eval::SplineSpaceEvaluator& getL2() const = 0;
+        virtual const eval::SplineSpaceEvaluator& getGeometry() const { return getH1(); }
     };
 
     class NavierStokesTPDiscretization : public NavierStokesDiscretization
@@ -33,11 +37,11 @@ namespace api
                                     const basis::KnotVector& kv_t,
                                     const size_t degree_s,
                                     const size_t degree_t,
-                                    const Eigen::Matrix2Xd& cpts );
+                                    const Eigen::MatrixXd& cpts );
 
         virtual ~NavierStokesTPDiscretization() = default;
 
-        virtual const Eigen::Matrix2Xd& controlPoints() const override { return cpts; }
+        virtual const Eigen::MatrixXd& geometryControlPoints() const override { return cpts; }
 
         virtual const topology::CombinatorialMapBoundary& cmapBdry() const override { return cmap_bdry; }
 
@@ -57,11 +61,43 @@ namespace api
 
         const topology::CombinatorialMapBoundary cmap_bdry;
 
-        const Eigen::Matrix2Xd cpts;
+        const Eigen::MatrixXd cpts;
 
         eval::SplineSpaceEvaluator H1;
         eval::SplineSpaceEvaluator HDIV;
         eval::SplineSpaceEvaluator L2;
+    };
+
+    class NURBSNavierStokesTPDiscretization : public NavierStokesTPDiscretization
+    {
+        public:
+        NURBSNavierStokesTPDiscretization( const basis::KnotVector& kv_s,
+                                           const basis::KnotVector& kv_t,
+                                           const size_t degree_s,
+                                           const size_t degree_t,
+                                           const Eigen::MatrixXd& control_points,
+                                           const Eigen::VectorXd& weights );
+
+        NURBSNavierStokesTPDiscretization( const basis::KnotVector& kv_s,
+                                           const basis::KnotVector& kv_t,
+                                           const size_t degree_s,
+                                           const size_t degree_t,
+                                           const Eigen::MatrixXd& homogeneous_cpts );
+
+        virtual ~NURBSNavierStokesTPDiscretization() = default;
+
+        virtual const Eigen::MatrixXd& controlPoints() const override { return euclidean_cpts; }
+        virtual bool hasRationalGeometry() const override { return true; }
+
+        virtual eval::SplineSpaceEvaluator& getGeometry() override { return Geometry; }
+        virtual const eval::SplineSpaceEvaluator& getGeometry() const override { return Geometry; }
+
+        const Eigen::VectorXd& weights() const { return cpt_weights; }
+
+        private:
+        const Eigen::MatrixXd euclidean_cpts;
+        const Eigen::VectorXd cpt_weights;
+        eval::NURBSSpaceEvaluator Geometry;
     };
 
     enum class PatchSide
@@ -79,12 +115,12 @@ namespace api
                                                 const basis::KnotVector& kv_t,
                                                 const size_t degree_s,
                                                 const size_t degree_t,
-                                                const Eigen::Matrix2Xd& unrefined_cpts,
+                                                const Eigen::MatrixXd& unrefined_cpts,
                                                 const std::vector<std::vector<std::pair<size_t, size_t>>>& elems_to_refine );
 
         virtual ~NavierStokesHierarchicalDiscretization() = default;
 
-        virtual const Eigen::Matrix2Xd& controlPoints() const override { return cpts; }
+        virtual const Eigen::MatrixXd& geometryControlPoints() const override { return cpts; }
 
         virtual const topology::CombinatorialMapBoundary& cmapBdry() const override { return cmap_bdry; }
 
@@ -104,7 +140,7 @@ namespace api
 
         const topology::CombinatorialMapBoundary cmap_bdry;
 
-        const Eigen::Matrix2Xd cpts;
+        const Eigen::MatrixXd cpts;
 
         eval::SplineSpaceEvaluator H1;
         eval::SplineSpaceEvaluator HDIV;

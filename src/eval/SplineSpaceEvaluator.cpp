@@ -188,20 +188,22 @@ namespace eval
 
     Eigen::VectorXd parentToSpatialGradDeterminant( const SplineSpaceEvaluator& geom_evals, const Eigen::MatrixXd& cpts )
     {
-        return gradDeterminant( geom_evals.evaluateJacobian( cpts ),
+        const Eigen::MatrixXd jac = geom_evals.evaluateJacobian( cpts );
+        return gradDeterminant( jac,
                                 geom_evals.evaluateHessian( cpts ),
                                 geom_evals.splineSpace().basisComplex().parametricAtlas().cmap().dim(),
-                                cpts.rows() );
+                                jac.rows() );
     }
 
     // #ForNonUniKnot: gradient of det(J_param) in parametric coords; required so
     // the H(div)/L2 Piola terms 1 & 2 are consistent with J_param, not J_parent.
     Eigen::VectorXd paramToSpatialGradDeterminant( const SplineSpaceEvaluator& geom_evals, const Eigen::MatrixXd& cpts )
     {
-        return gradDeterminant( geom_evals.evaluateParamToSpatialJacobian( cpts ),
+        const Eigen::MatrixXd jac = geom_evals.evaluateParamToSpatialJacobian( cpts );
+        return gradDeterminant( jac,
                                 geom_evals.evaluateParamToSpatialHessian( cpts ),
                                 geom_evals.splineSpace().basisComplex().parametricAtlas().cmap().dim(),
-                                cpts.rows() );
+                                jac.rows() );
     }
 
     Eigen::MatrixXd piolaTransformedH1FirstDerivatives( const SplineSpaceEvaluator& scalar_evals,
@@ -233,9 +235,9 @@ namespace eval
     {
         const Eigen::MatrixXd vector_basis = vec_evals.evaluateBasis().transpose();
         const size_t param_dim = geom_evals.splineSpace().basisComplex().parametricAtlas().cmap().dim();
-        const size_t spatial_dim = cpts.rows();
-        const size_t n_funcs = vector_basis.cols();
         const Eigen::MatrixXd jac = geom_evals.evaluateJacobian( cpts );
+        const size_t spatial_dim = jac.rows();
+        const size_t n_funcs = vector_basis.cols();
         const auto inverse_transpose_jacobian = jac.inverse().transpose();
 
         const auto modified_hessian = [&geom_evals, &cpts, &param_dim, &spatial_dim]() {
@@ -300,7 +302,7 @@ namespace eval
         const Eigen::MatrixXd vector_basis = vector_basis_rows.transpose();
         const size_t n_funcs = vector_basis_rows.rows();
         const size_t param_dim = geom_evals.splineSpace().basisComplex().parametricAtlas().cmap().dim();
-        const size_t spatial_dim = cpts.rows();
+        const size_t spatial_dim = jac.rows();
 
         // The product rule on the derivative of the piola transform v = ( det J )^-1 J v'
         // yields three terms from the three factors. These are the first, second, third terms here.

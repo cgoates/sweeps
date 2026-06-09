@@ -4,9 +4,64 @@
 #include <IndexOperations.hpp>
 #include <HierarchicalTPSplineSpace.hpp>
 #include <CombinatorialMapMethods.hpp>
+#include <cmath>
+#include <stdexcept>
 
 namespace api
 {
+    namespace
+    {
+        void checkGeometryColumnCount( const basis::SplineSpace& ss, const Eigen::MatrixXd& cpts )
+        {
+            if( cpts.cols() != static_cast<Eigen::Index>( ss.numFunctions() ) )
+                throw std::runtime_error( "Geometry control point count does not match the H1 spline space." );
+        }
+
+        Eigen::MatrixXd homogeneousControlPoints( const Eigen::MatrixXd& control_points,
+                                                  const Eigen::VectorXd& weights )
+        {
+            if( control_points.cols() != weights.size() )
+                throw std::runtime_error( "NURBS control point and weight counts must match." );
+            if( control_points.rows() == 0 )
+                throw std::runtime_error( "NURBS control points must have at least one spatial coordinate." );
+
+            Eigen::MatrixXd homogeneous( control_points.rows() + 1, control_points.cols() );
+            for( Eigen::Index i = 0; i < control_points.cols(); i++ )
+            {
+                const double weight = weights( i );
+                if( weight <= 0.0 or not std::isfinite( weight ) )
+                    throw std::runtime_error( "NURBS weights must be positive and finite." );
+                homogeneous.col( i ).head( control_points.rows() ) = weight * control_points.col( i );
+                homogeneous( control_points.rows(), i ) = weight;
+            }
+
+            return homogeneous;
+        }
+
+        Eigen::VectorXd weightsFromHomogeneousControlPoints( const Eigen::MatrixXd& homogeneous_cpts )
+        {
+            if( homogeneous_cpts.rows() < 2 )
+                throw std::runtime_error( "Homogeneous NURBS control points must have at least two rows." );
+
+            const Eigen::VectorXd weights = homogeneous_cpts.bottomRows( 1 ).transpose();
+            for( Eigen::Index i = 0; i < weights.size(); i++ )
+                if( weights( i ) <= 0.0 or not std::isfinite( weights( i ) ) )
+                    throw std::runtime_error( "Homogeneous NURBS weights must be positive and finite." );
+
+            return weights;
+        }
+
+        Eigen::MatrixXd dehomogenizedControlPoints( const Eigen::MatrixXd& homogeneous_cpts )
+        {
+            const Eigen::VectorXd weights = weightsFromHomogeneousControlPoints( homogeneous_cpts );
+            Eigen::MatrixXd control_points( homogeneous_cpts.rows() - 1, homogeneous_cpts.cols() );
+            for( Eigen::Index i = 0; i < homogeneous_cpts.cols(); i++ )
+                control_points.col( i ) = homogeneous_cpts.col( i ).head( homogeneous_cpts.rows() - 1 ) / weights( i );
+
+            return control_points;
+        }
+    }
+
     basis::VectorConformingTPSplineSpace buildHDIV( const basis::TPSplineSpace& H1 )
     {
         const auto HDIV_bc = std::make_shared<basis::VectorConformingBasisComplex>( H1.basisComplexPtr() );
@@ -27,7 +82,7 @@ namespace api
                                                                 const basis::KnotVector& kv_t,
                                                                 const size_t degree_s,
                                                                 const size_t degree_t,
-                                                                const Eigen::Matrix2Xd& cpts )
+                                                                const Eigen::MatrixXd& cpts )
         : H1_ss( basis::buildBSpline( { kv_s, kv_t }, { degree_s, degree_t } ) ),
           HDIV_ss( buildHDIV( H1_ss ) ),
           L2_ss( buildL2( H1_ss.basisComplex().parametricAtlasPtr(), HDIV_ss ) ),
@@ -36,6 +91,29 @@ namespace api
           H1( H1_ss, 2 ),
           HDIV( HDIV_ss, 1 ),
           L2( L2_ss, 1 )
+    {
+        checkGeometryColumnCount( H1_ss, cpts );
+    }
+
+    NURBSNavierStokesTPDiscretization::NURBSNavierStokesTPDiscretization( const basis::KnotVector& kv_s,
+                                                                          const basis::KnotVector& kv_t,
+                                                                          const size_t degree_s,
+                                                                          const size_t degree_t,
+                                                                          const Eigen::MatrixXd& control_points,
+                                                                          const Eigen::VectorXd& weights )
+        : NURBSNavierStokesTPDiscretization(
+              kv_s, kv_t, degree_s, degree_t, homogeneousControlPoints( control_points, weights ) )
+    {}
+
+    NURBSNavierStokesTPDiscretization::NURBSNavierStokesTPDiscretization( const basis::KnotVector& kv_s,
+                                                                          const basis::KnotVector& kv_t,
+                                                                          const size_t degree_s,
+                                                                          const size_t degree_t,
+                                                                          const Eigen::MatrixXd& homogeneous_cpts )
+        : NavierStokesTPDiscretization( kv_s, kv_t, degree_s, degree_t, homogeneous_cpts ),
+          euclidean_cpts( dehomogenizedControlPoints( homogeneous_cpts ) ),
+          cpt_weights( weightsFromHomogeneousControlPoints( homogeneous_cpts ) ),
+          Geometry( H1_ss, 2 )
     {}
 
     std::vector<std::vector<topology::Cell>>
@@ -157,7 +235,7 @@ namespace api
         const basis::KnotVector& kv_t,
         const size_t degree_s,
         const size_t degree_t,
-        const Eigen::Matrix2Xd& unrefined_cpts,
+        const Eigen::MatrixXd& unrefined_cpts,
         const std::vector<std::vector<std::pair<size_t, size_t>>>& elems_to_refine )
         : H1_ss( buildHierarchicalH1( kv_s, kv_t, degree_s, degree_t, elems_to_refine ) ),
           HDIV_ss( buildHDIV( H1_ss ) ),
@@ -167,5 +245,7 @@ namespace api
           H1( H1_ss, 2 ),
           HDIV( HDIV_ss, 1 ),
           L2( L2_ss, 1 )
-    {}
+    {
+        checkGeometryColumnCount( H1_ss, cpts );
+    }
 }
