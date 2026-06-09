@@ -1,4 +1,5 @@
 #include <TPSplineSpace.hpp>
+#include <BezierTransfer.hpp>
 #include <unsupported/Eigen/KroneckerProduct>
 #include <IndexOperations.hpp>
 
@@ -206,6 +207,63 @@ namespace basis
         std::transform( fine_comps.begin(), fine_comps.end(), std::back_inserter( kvs_fine ), []( const auto& comp ) { return comp->knotVector(); } );
 
         return refinementOp( kvs_coarse, kvs_fine, degrees, param_tol );
+    }
+
+    SmallVector<KnotVector, 3> degreeElevatedKnotVectors( const TPSplineSpace& ss,
+                                                          const SmallVector<size_t, 3>& target_degrees )
+    {
+        const SmallVector<std::shared_ptr<const BSplineSpace1d>, 3> comps = tensorProductComponentSplines( ss );
+        if( comps.size() == 0 )
+            throw std::runtime_error( "Degree elevation only available on tensor products of 1d splines." );
+        if( comps.size() != target_degrees.size() )
+            throw std::runtime_error( "Wrong number of target degrees for tensor-product degree elevation." );
+
+        SmallVector<KnotVector, 3> elevated_kvs;
+        for( size_t i = 0; i < comps.size(); i++ )
+        {
+            const size_t source_degree =
+                comps.at( i )->basisComplex().defaultParentBasis().mBasisGroups.at( 0 ).degrees.at( 0 );
+            if( target_degrees.at( i ) < source_degree )
+                throw std::invalid_argument( "Cannot degree elevate to a lower degree." );
+
+            elevated_kvs.push_back(
+                degreeElevatedKnotVector( comps.at( i )->knotVector(), target_degrees.at( i ) - source_degree ) );
+        }
+
+        return elevated_kvs;
+    }
+
+    TPSplineSpace degreeElevatedSpace( const TPSplineSpace& ss,
+                                       const SmallVector<size_t, 3>& target_degrees )
+    {
+        return buildBSpline( degreeElevatedKnotVectors( ss, target_degrees ), target_degrees );
+    }
+
+    Eigen::SparseMatrix<double> degreeElevationOp( const TPSplineSpace& ss,
+                                                   const SmallVector<size_t, 3>& target_degrees,
+                                                   const double param_tol )
+    {
+        const SmallVector<std::shared_ptr<const BSplineSpace1d>, 3> comps = tensorProductComponentSplines( ss );
+        if( comps.size() == 0 )
+            throw std::runtime_error( "Degree elevation only available on tensor products of 1d splines." );
+        if( comps.size() != target_degrees.size() )
+            throw std::runtime_error( "Wrong number of target degrees for tensor-product degree elevation." );
+
+        const auto component_op = [&]( const size_t i ) {
+            const size_t source_degree =
+                comps.at( i )->basisComplex().defaultParentBasis().mBasisGroups.at( 0 ).degrees.at( 0 );
+            return basis::degreeElevationOp(
+                comps.at( i )->knotVector(), source_degree, target_degrees.at( i ), param_tol );
+        };
+
+        Eigen::SparseMatrix<double> op = component_op( 0 );
+        for( size_t i = 1; i < comps.size(); i++ )
+        {
+            Eigen::SparseMatrix<double> temp = Eigen::kroneckerProduct( component_op( i ), op );
+            op.swap( temp );
+        }
+
+        return op;
     }
 
     Eigen::MatrixXd grevillePoints( const TPSplineSpace& ss )

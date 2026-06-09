@@ -5,6 +5,7 @@
 #include <sstream>
 #include <SplineSpace.hpp>
 #include <BasisComplex.hpp>
+#include <BezierTransfer.hpp>
 #include <ParametricAtlas.hpp>
 #include <CombinatorialMap.hpp>
 #include <CombinatorialMapMethods.hpp>
@@ -199,25 +200,6 @@ namespace io
         outputPartialBezierMeshToVTK( BezierOutputObject( ss, geom ), filename, cell_iterator );
     }
 
-    Eigen::MatrixXd degreeElevationMatrix( const size_t source_degree, const size_t target_degree )
-    {
-        if( target_degree < source_degree ) throw std::invalid_argument( "Cannot degree elevate to a lower degree" );
-
-        Eigen::MatrixXd out = Eigen::MatrixXd::Identity( source_degree + 1, source_degree + 1 );
-        for( size_t p = source_degree + 1; p <= target_degree; p++ )
-        {
-            Eigen::MatrixXd elev_p = Eigen::MatrixXd::Zero( p, p + 1 );
-            for( size_t n = 0; n < p; n++ )
-            {
-                elev_p( n, n ) = double( p - n ) / double( p );
-                elev_p( n, n + 1 ) = double( n + 1 ) / double( p );
-            }
-            out = out * elev_p;
-        }
-
-        return out;
-    }
-
     Eigen::MatrixXd degreeElevate( const Eigen::MatrixXd& in, const basis::ParentBasis& source_basis, const basis::ParentBasis& target_basis )
     {
         if( source_basis == target_basis ) return in;
@@ -248,7 +230,9 @@ namespace io
 
             for( size_t i = 0; i < source_degrees.size(); i++ )
             {
-                elevation_matrix = Eigen::kroneckerProduct( degreeElevationMatrix( source_degrees.at( i ), target_degrees.at( i ) ), elevation_matrix ).eval();
+                elevation_matrix = Eigen::kroneckerProduct(
+                    basis::bernsteinDegreeElevationMatrix( source_degrees.at( i ), target_degrees.at( i ) ),
+                    elevation_matrix ).eval();
             }
 
             return elevation_matrix.transpose() * in;

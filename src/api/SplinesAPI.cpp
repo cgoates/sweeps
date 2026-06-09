@@ -523,4 +523,37 @@ PYBIND11_MODULE( splines, m )
         "coarse_nsd"_a,
         "num_divisions"_a,
         "parametric_tolerance"_a );
+
+    m.def(
+        "globallyPElevate",
+        []( const api::NavierStokesTPDiscretization& coarse_nsd,
+            const size_t degree_increase_s,
+            const size_t degree_increase_t,
+            const double param_tol ) {
+            const auto component_bsplines = basis::tensorProductComponentSplines( coarse_nsd.H1_ss );
+            if( component_bsplines.size() != 2 )
+                throw std::runtime_error( "globallyPElevate currently supports only tensor-product surface splines." );
+
+            SmallVector<size_t, 3> target_degrees;
+            target_degrees.push_back(
+                component_bsplines.at( 0 )->basisComplex().defaultParentBasis().mBasisGroups.at( 0 ).degrees.at( 0 ) +
+                degree_increase_s );
+            target_degrees.push_back(
+                component_bsplines.at( 1 )->basisComplex().defaultParentBasis().mBasisGroups.at( 0 ).degrees.at( 0 ) +
+                degree_increase_t );
+
+            const Eigen::SparseMatrix<double> elevation_op =
+                basis::degreeElevationOp( coarse_nsd.H1_ss, target_degrees, param_tol );
+            const Eigen::Matrix2Xd elevated_cpts = coarse_nsd.controlPoints() * elevation_op;
+            const SmallVector<basis::KnotVector, 3> elevated_kvs =
+                basis::degreeElevatedKnotVectors( coarse_nsd.H1_ss, target_degrees );
+
+            return std::make_unique<api::NavierStokesTPDiscretization>(
+                elevated_kvs.at( 0 ), elevated_kvs.at( 1 ), target_degrees.at( 0 ), target_degrees.at( 1 ), elevated_cpts );
+        },
+        "Globally degree-elevates the H1 tensor-product spline space of the given Navier-Stokes discretization.",
+        "coarse_nsd"_a,
+        "degree_increase_s"_a,
+        "degree_increase_t"_a,
+        "parametric_tolerance"_a );
 }

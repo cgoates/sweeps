@@ -4,6 +4,7 @@
 #include <BasisComplex1d.hpp>
 #include <Eigen/Sparse>
 #include <KnotVector.hpp>
+#include <BezierTransfer.hpp>
 
 namespace basis
 {
@@ -16,45 +17,19 @@ namespace basis
 
         using SparseMatrixXd = Eigen::SparseMatrix<double>;
 
-        const SparseMatrixXd C = globalExtractionOp( kv, degree );
-
         const topology::CombinatorialMap1d& cmap = bc->parametricAtlas().cmap();
-
-        const auto get_elem_connectivity = [&degree, &C]( const size_t elem_ii ) {
-            std::set<FunctionId> unique_rows;
-            for( size_t col_ii = 0; col_ii <= degree; col_ii++ )
-            {
-                for( SparseMatrixXd::InnerIterator it( C, col_ii + elem_ii * degree ); it; ++it )
-                {
-                    unique_rows.insert( FunctionId( it.row() ) );
-                }
-            }
-            return std::vector<FunctionId>( unique_rows.begin(), unique_rows.end() );
-        };
-
-        const auto get_elem_operator = [&degree, &C]( const size_t elem_ii, const std::vector<FunctionId>& conn_elem ) {
-            Eigen::MatrixXd C_elem = Eigen::MatrixXd::Zero( degree + 1, degree + 1 );
-            for( size_t col = 0; col <= degree; col++ )
-            {
-                for( SparseMatrixXd::InnerIterator it( C, col + elem_ii * degree ); it; ++it )
-                {
-                    const Eigen::Index row =
-                        std::distance( conn_elem.begin(), std::find( conn_elem.begin(), conn_elem.end(), it.row() ) );
-                    C_elem( row, col ) = it.value();
-                }
-            }
-            return C_elem;
-        };
+        const std::vector<LocalExtraction> local_extractions = localExtractions( kv, degree );
 
         iterateCellsWhile( cmap, 1, [&]( const topology::Edge& e ) {
             const size_t elem_ii = e.dart().id();
-            const std::vector<FunctionId>& conn_elem =
-                mConnectivity.emplace( elem_ii, get_elem_connectivity( elem_ii ) ).first->second;
-            mExtractionOps.emplace( elem_ii, get_elem_operator( elem_ii, conn_elem ) );
+            const LocalExtraction& local_extraction = local_extractions.at( elem_ii );
+            mConnectivity.emplace( elem_ii, local_extraction.connectivity );
+            mExtractionOps.emplace( elem_ii, local_extraction.extraction );
             return true;
         } );
 
         /// Add vertex connectivity and operators
+        const SparseMatrixXd C = globalExtractionOp( kv, degree );
         const auto get_vertex_connectivity = [&degree, &C]( const size_t vertex_ii ) {
             std::vector<FunctionId> rows;
             for( SparseMatrixXd::InnerIterator it( C, vertex_ii * degree ); it; ++it )

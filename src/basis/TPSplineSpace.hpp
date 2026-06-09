@@ -45,5 +45,15 @@ namespace basis
 
     Eigen::SparseMatrix<double> refinementOp( const TPSplineSpace& coarse, const TPSplineSpace& fine, const double param_tol );
 
+    SmallVector<KnotVector, 3> degreeElevatedKnotVectors( const TPSplineSpace& ss,
+                                                          const SmallVector<size_t, 3>& target_degrees );
+
+    TPSplineSpace degreeElevatedSpace( const TPSplineSpace& ss,
+                                       const SmallVector<size_t, 3>& target_degrees );
+
+    Eigen::SparseMatrix<double> degreeElevationOp( const TPSplineSpace& ss,
+                                                   const SmallVector<size_t, 3>& target_degrees,
+                                                   const double param_tol );
+
     Eigen::MatrixXd grevillePoints( const TPSplineSpace& ss );
 }
