@@ -104,7 +104,8 @@ namespace basis
     }
 
     MultiPatchSplineSpace::MultiPatchSplineSpace( const std::shared_ptr<const MultiPatchBasisComplex>& bc,
-                                                  const std::vector<std::shared_ptr<const TPSplineSpace>>& constituents )
+                                                  const std::vector<std::shared_ptr<const TPSplineSpace>>& constituents,
+                                                  const bool connect_interfaces )
         : mBasisComplex( bc ), mSubSpaces( constituents )
     {
         const topology::MultiPatchCombinatorialMap& multi_cmap = bc->parametricAtlas().cmap();
@@ -121,62 +122,65 @@ namespace basis
             const TPSplineSpace& constituent = *constituents.at( patch_ii );
             auto& constituent_fids = mFuncIds.at( patch_ii );
 
-            // Iterate the corner cells to connect to neighboring patches
-            for( size_t cell_dim = 0; cell_dim < param_dim; cell_dim++ )
+            if( connect_interfaces )
             {
-                const auto corner_cells = param::cornerCells( constituent.basisComplex().parametricAtlas(), cell_dim );
-                for( const auto corner_cell : corner_cells )
+                // Iterate the corner cells to connect to neighboring patches
+                for( size_t cell_dim = 0; cell_dim < param_dim; cell_dim++ )
                 {
-                    const auto [this_lengths, this_order, this_direction] = getIterVars( constituent, corner_cell );
-                    const topology::Cell glob_corner_cell( multi_cmap.toGlobalDart( patch_ii, corner_cell.dart() ), corner_cell.dim() );
+                    const auto corner_cells = param::cornerCells( constituent.basisComplex().parametricAtlas(), cell_dim );
+                    for( const auto corner_cell : corner_cells )
+                    {
+                        const auto [this_lengths, this_order, this_direction] = getIterVars( constituent, corner_cell );
+                        const topology::Cell glob_corner_cell( multi_cmap.toGlobalDart( patch_ii, corner_cell.dart() ), corner_cell.dim() );
 
-                    // Iterate adjacent patches
-                    iterateAdjacentCells( multi_cmap, glob_corner_cell, param_dim, [&]( const topology::Cell& glob_neighbor_elem ) {
-                        const auto [other_patch_ii, other_corner_cell_dart] = multi_cmap.toLocalDart( glob_neighbor_elem.dart() );
+                        // Iterate adjacent patches
+                        iterateAdjacentCells( multi_cmap, glob_corner_cell, param_dim, [&]( const topology::Cell& glob_neighbor_elem ) {
+                            const auto [other_patch_ii, other_corner_cell_dart] = multi_cmap.toLocalDart( glob_neighbor_elem.dart() );
 
-                        const bool reverse =
-                            not onSameVertex( multi_cmap, glob_corner_cell.dart(), glob_neighbor_elem.dart() );
+                            const bool reverse =
+                                not onSameVertex( multi_cmap, glob_corner_cell.dart(), glob_neighbor_elem.dart() );
 
-                        const auto [other_lengths, other_order, other_direction] =
-                            getIterVars( *constituents.at( other_patch_ii ),
-                                         topology::Cell( other_corner_cell_dart, cell_dim ),
-                                         reverse );
+                            const auto [other_lengths, other_order, other_direction] =
+                                getIterVars( *constituents.at( other_patch_ii ),
+                                             topology::Cell( other_corner_cell_dart, cell_dim ),
+                                             reverse );
 
-                        std::vector<FunctionId>& other_constituent_fids = mFuncIds.at( other_patch_ii );
+                            std::vector<FunctionId>& other_constituent_fids = mFuncIds.at( other_patch_ii );
 
-                        // Connect the functions from neighboring patches
-                        util::iterateTensorProductSynchronized(
-                            this_lengths,
-                            other_lengths,
-                            this_order,
-                            other_order,
-                            this_direction,
-                            other_direction,
-                            [&, this_lengths = this_lengths, other_lengths = other_lengths](
-                                const util::IndexVec& this_iv, const util::IndexVec& other_iv ) {
-                                const FunctionId this_fid = util::flatten( this_iv, this_lengths );
-                                const FunctionId other_fid = util::flatten( other_iv, other_lengths );
+                            // Connect the functions from neighboring patches
+                            util::iterateTensorProductSynchronized(
+                                this_lengths,
+                                other_lengths,
+                                this_order,
+                                other_order,
+                                this_direction,
+                                other_direction,
+                                [&, this_lengths = this_lengths, other_lengths = other_lengths](
+                                    const util::IndexVec& this_iv, const util::IndexVec& other_iv ) {
+                                    const FunctionId this_fid = util::flatten( this_iv, this_lengths );
+                                    const FunctionId other_fid = util::flatten( other_iv, other_lengths );
 
-                                if( constituent_fids.at( this_fid ) == -1 )
-                                {
-                                    constituent_fids.at( this_fid ) = mNumFunctions;
-                                    mNumFunctions = mNumFunctions + 1;
-                                }
+                                    if( constituent_fids.at( this_fid ) == -1 )
+                                    {
+                                        constituent_fids.at( this_fid ) = mNumFunctions;
+                                        mNumFunctions = mNumFunctions + 1;
+                                    }
 
-                                if( other_constituent_fids.at( other_fid ) != -1 and
-                                    other_constituent_fids.at( other_fid ) != constituent_fids.at( this_fid ) )
-                                {
-                                    std::cerr << constituent_fids.at( this_fid ) << " vs " << other_constituent_fids.at( other_fid ) << std::endl;
-                                    throw std::runtime_error( "Problem connecting neighboring functions!" );
-                                }
+                                    if( other_constituent_fids.at( other_fid ) != -1 and
+                                        other_constituent_fids.at( other_fid ) != constituent_fids.at( this_fid ) )
+                                    {
+                                        std::cerr << constituent_fids.at( this_fid ) << " vs " << other_constituent_fids.at( other_fid ) << std::endl;
+                                        throw std::runtime_error( "Problem connecting neighboring functions!" );
+                                    }
 
-                                other_constituent_fids.at( other_fid ) = constituent_fids.at( this_fid );
+                                    other_constituent_fids.at( other_fid ) = constituent_fids.at( this_fid );
 
-                                return true;
-                            } );
+                                    return true;
+                                } );
 
-                        return true;
-                    } );
+                            return true;
+                        } );
+                    }
                 }
             }
 
@@ -227,54 +231,62 @@ namespace basis
         return mNumFunctions;
     }
 
+    namespace
+    {
+        template<typename ConnectionMap>
+        MultiPatchSplineSpace buildMultiPatchSplineSpaceImpl(
+            const std::vector<std::shared_ptr<const TPSplineSpace>>& patches,
+            const ConnectionMap& connections,
+            const bool connect_interfaces )
+        {
+            std::vector<std::shared_ptr<const TPBasisComplex>> bc_patches;
+            bc_patches.reserve( patches.size() );
+            std::vector<std::shared_ptr<const param::TPParametricAtlas>> atlas_patches;
+            atlas_patches.reserve( patches.size() );
+            std::vector<std::shared_ptr<const topology::TPCombinatorialMap>> cmap_patches;
+            cmap_patches.reserve( patches.size() );
+
+            for( const auto& ss : patches )
+            {
+                bc_patches.push_back( ss->basisComplexPtr() );
+                atlas_patches.push_back( bc_patches.back()->parametricAtlasPtr() );
+                cmap_patches.push_back( atlas_patches.back()->cmapPtr() );
+            }
+
+            const auto cmap = std::make_shared<const topology::MultiPatchCombinatorialMap>( cmap_patches, connections );
+            const auto atlas = std::make_shared<const param::MultiPatchParametricAtlas>( cmap, atlas_patches );
+            const auto bc = std::make_shared<const MultiPatchBasisComplex>( atlas, bc_patches );
+
+            return MultiPatchSplineSpace( bc, patches, connect_interfaces );
+        }
+    }
+
     MultiPatchSplineSpace buildMultiPatchSplineSpace(
         const std::vector<std::shared_ptr<const TPSplineSpace>>& patches,
         const std::map<std::pair<size_t, topology::Dart>, std::pair<size_t, topology::Dart>>& connections )
     {
-        std::vector<std::shared_ptr<const TPBasisComplex>> bc_patches;
-        bc_patches.reserve( patches.size() );
-        std::vector<std::shared_ptr<const param::TPParametricAtlas>> atlas_patches;
-        atlas_patches.reserve( patches.size() );
-        std::vector<std::shared_ptr<const topology::TPCombinatorialMap>> cmap_patches;
-        cmap_patches.reserve( patches.size() );
-
-        for( const auto& ss : patches )
-        {
-            bc_patches.push_back( ss->basisComplexPtr() );
-            atlas_patches.push_back( bc_patches.back()->parametricAtlasPtr() );
-            cmap_patches.push_back( atlas_patches.back()->cmapPtr() );
-        }
-
-        const auto cmap = std::make_shared<const topology::MultiPatchCombinatorialMap>( cmap_patches, connections );
-        const auto atlas = std::make_shared<const param::MultiPatchParametricAtlas>( cmap, atlas_patches );
-        const auto bc = std::make_shared<const MultiPatchBasisComplex>( atlas, bc_patches );
-
-        return MultiPatchSplineSpace( bc, patches );
+        return buildMultiPatchSplineSpaceImpl( patches, connections, true );
     }
 
     MultiPatchSplineSpace buildMultiPatchSplineSpace(
         const std::vector<std::shared_ptr<const TPSplineSpace>>& patches,
         const topology::MultiPatchCombinatorialMap::InternalConnectionsMap& connections )
     {
-        std::vector<std::shared_ptr<const TPBasisComplex>> bc_patches;
-        bc_patches.reserve( patches.size() );
-        std::vector<std::shared_ptr<const param::TPParametricAtlas>> atlas_patches;
-        atlas_patches.reserve( patches.size() );
-        std::vector<std::shared_ptr<const topology::TPCombinatorialMap>> cmap_patches;
-        cmap_patches.reserve( patches.size() );
+        return buildMultiPatchSplineSpaceImpl( patches, connections, true );
+    }
 
-        for( const auto& ss : patches )
-        {
-            bc_patches.push_back( ss->basisComplexPtr() );
-            atlas_patches.push_back( bc_patches.back()->parametricAtlasPtr() );
-            cmap_patches.push_back( atlas_patches.back()->cmapPtr() );
-        }
+    MultiPatchSplineSpace buildDiscontinuousMultiPatchSplineSpace(
+        const std::vector<std::shared_ptr<const TPSplineSpace>>& patches,
+        const std::map<std::pair<size_t, topology::Dart>, std::pair<size_t, topology::Dart>>& connections )
+    {
+        return buildMultiPatchSplineSpaceImpl( patches, connections, false );
+    }
 
-        const auto cmap = std::make_shared<const topology::MultiPatchCombinatorialMap>( cmap_patches, connections );
-        const auto atlas = std::make_shared<const param::MultiPatchParametricAtlas>( cmap, atlas_patches );
-        const auto bc = std::make_shared<const MultiPatchBasisComplex>( atlas, bc_patches );
-
-        return MultiPatchSplineSpace( bc, patches );
+    MultiPatchSplineSpace buildDiscontinuousMultiPatchSplineSpace(
+        const std::vector<std::shared_ptr<const TPSplineSpace>>& patches,
+        const topology::MultiPatchCombinatorialMap::InternalConnectionsMap& connections )
+    {
+        return buildMultiPatchSplineSpaceImpl( patches, connections, false );
     }
 
     MultiPatchSplineSpace degreeRefineOrCoarsen( const MultiPatchSplineSpace& ss,

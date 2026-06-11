@@ -53,3 +53,10 @@ Vector6dMax HierarchicalMultiPatchParametricAtlas::parametricLengths( const topo
     const topology::Cell constituent_c( constituent_d, c.dim() );
     return mConstituents.at( patch_ii )->parametricLengths( constituent_c );
 }
+
+Vector6dMax HierarchicalMultiPatchParametricAtlas::parametricStarts( const topology::Cell& c ) const
+{
+    const auto [patch_ii, constituent_d] = mMap->dartRanges().toLocalDart( c.dart() );
+    const topology::Cell constituent_c( constituent_d, c.dim() );
+    return mConstituents.at( patch_ii )->parametricStarts( constituent_c );
+}

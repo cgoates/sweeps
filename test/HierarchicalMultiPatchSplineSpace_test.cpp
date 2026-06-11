@@ -133,7 +133,7 @@ TEST_CASE( "Simple 3d multi patch hierarchical spline space" )
         }
         for( size_t i = 0; i < ss.functionIdMap().at( 1 ).size(); i++ )
         {
-            geom.row( ss.functionIdMap().at( 1 ).at( i ) ) = greville_2.row( i ) + Eigen::RowVector2d( 1, 0 );
+            geom.row( ss.functionIdMap().at( 1 ).at( i ) ) = greville_2.row( i ) + Eigen::RowVector3d( 1, 0, 0 );
         }
         return geom;
     }();

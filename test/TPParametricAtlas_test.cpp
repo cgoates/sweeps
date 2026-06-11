@@ -1,12 +1,31 @@
 #include <catch2/catch_test_macros.hpp>
 #include <TPCombinatorialMap.hpp>
 #include <TPParametricAtlas.hpp>
+#include <MultiPatchParametricAtlas.hpp>
 #include <CombinatorialMapMethods.hpp>
+#include <IndexOperations.hpp>
 #include <Logging.hpp>
 #include <CommonUtils.hpp>
 
 using namespace topology;
 using namespace param;
+
+namespace
+{
+    Cell topCellAt( const TPCombinatorialMap& cmap, const util::IndexVec& element_indices )
+    {
+        FullyUnflattenedDart unflat;
+        for( const size_t element_index : element_indices )
+        {
+            unflat.unflat_darts.push_back( Dart( element_index ) );
+        }
+        unflat.dart_pos =
+            SmallVector<TPCombinatorialMap::TPDartPos, 2>(
+                element_indices.size() - 1, TPCombinatorialMap::TPDartPos::DartPos0 );
+        return Cell( flattenFull( cmap, unflat ), cmap.dim() );
+    }
+}
+
 TEST_CASE( "3x4 TP combinatorial map" )
 {
     const auto source_topo = std::make_shared<const CombinatorialMap1d>( 3 );
@@ -42,6 +61,42 @@ TEST_CASE( "3x4 TP combinatorial map" )
     CHECK( util::equals( tp.parametricLengths( Cell( Dart( 20 ), 2 ) ), Eigen::Vector2d( 3.0, 0.2 ), 1e-10 ) );
     CHECK( util::equals( tp.parametricLengths( Cell( Dart( 37 ), 2 ) ), Eigen::Vector2d( 1.0, 0.4 ), 1e-10 ) );
     CHECK( util::equals( tp.parametricLengths( Cell( Dart( 30 ), 2 ) ), Eigen::Vector2d( 2.0, 0.3 ), 1e-10 ) );
+}
+
+TEST_CASE( "Multipatch parametric atlas delegates parametric starts to constituent patches" )
+{
+    const auto source_topo_0 = std::make_shared<const CombinatorialMap1d>( 2 );
+    const auto line_topo_0 = std::make_shared<const CombinatorialMap1d>( 3 );
+    const auto tp_topo_0 = std::make_shared<const TPCombinatorialMap>( source_topo_0, line_topo_0 );
+    const auto source_0 = std::make_shared<const ParametricAtlas1d>( source_topo_0, Eigen::Vector2d( 1.0, 2.0 ) );
+    const auto line_0 = std::make_shared<const ParametricAtlas1d>( line_topo_0, Eigen::Vector3d( 0.5, 0.25, 0.125 ) );
+    const auto tp_0 = std::make_shared<const TPParametricAtlas>( tp_topo_0, source_0, line_0 );
+
+    const auto source_topo_1 = std::make_shared<const CombinatorialMap1d>( 2 );
+    const auto line_topo_1 = std::make_shared<const CombinatorialMap1d>( 3 );
+    const auto tp_topo_1 = std::make_shared<const TPCombinatorialMap>( source_topo_1, line_topo_1 );
+    const auto source_1 = std::make_shared<const ParametricAtlas1d>( source_topo_1, Eigen::Vector2d( 4.0, 8.0 ) );
+    const auto line_1 = std::make_shared<const ParametricAtlas1d>( line_topo_1, Eigen::Vector3d( 0.75, 1.5, 3.0 ) );
+    const auto tp_1 = std::make_shared<const TPParametricAtlas>( tp_topo_1, source_1, line_1 );
+
+    const auto mp_cmap = std::make_shared<const MultiPatchCombinatorialMap>(
+        std::vector<std::shared_ptr<const TPCombinatorialMap>>{ tp_topo_0, tp_topo_1 },
+        MultiPatchCombinatorialMap::InternalConnectionsMap{} );
+    const MultiPatchParametricAtlas mp_atlas( mp_cmap, { tp_0, tp_1 } );
+
+    const Cell local_patch_0_cell = topCellAt( *tp_topo_0, { 1, 2 } );
+    const Cell global_patch_0_cell( mp_cmap->toGlobalDart( 0, local_patch_0_cell.dart() ), 2 );
+    CHECK( util::equals( mp_atlas.parametricStarts( global_patch_0_cell ),
+                         tp_0->parametricStarts( local_patch_0_cell ),
+                         1e-12 ) );
+    CHECK( util::equals( mp_atlas.parametricStarts( global_patch_0_cell ), Eigen::Vector2d( 1.0, 0.75 ), 1e-12 ) );
+
+    const Cell local_patch_1_cell = topCellAt( *tp_topo_1, { 1, 1 } );
+    const Cell global_patch_1_cell( mp_cmap->toGlobalDart( 1, local_patch_1_cell.dart() ), 2 );
+    CHECK( util::equals( mp_atlas.parametricStarts( global_patch_1_cell ),
+                         tp_1->parametricStarts( local_patch_1_cell ),
+                         1e-12 ) );
+    CHECK( util::equals( mp_atlas.parametricStarts( global_patch_1_cell ), Eigen::Vector2d( 4.0, 0.75 ), 1e-12 ) );
 }
 
 TEST_CASE( "corners" )

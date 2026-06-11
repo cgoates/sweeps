@@ -22,6 +22,7 @@ namespace param
         virtual const ParentDomain parentDomain( const topology::Cell& c ) const override;
         virtual ParentPoint parentPoint( const topology::Vertex& v ) const override;
         virtual Vector6dMax parametricLengths( const topology::Cell& c ) const override;
+        virtual Vector6dMax parametricStarts( const topology::Cell& c ) const override;
 
         const std::vector<std::shared_ptr<const MultiPatchParametricAtlas>>& refinementLevels() const { return mRefinementLevels; }
         const std::vector<std::shared_ptr<const HierarchicalTPParametricAtlas>>& constituents() const { return mConstituents; }

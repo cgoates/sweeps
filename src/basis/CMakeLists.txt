@@ -11,6 +11,7 @@ add_library( basis SHARED
   BSplineSpace1d.cpp
   TPSplineSpace.cpp
   MultiPatchSplineSpace.cpp
+  MultiPatchSplineFactory.cpp
   VectorConformingTPSplineSpace.cpp
   KnotVector.cpp
   HierarchicalTPBasisComplex.cpp

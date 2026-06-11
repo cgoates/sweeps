@@ -31,4 +31,11 @@ namespace param
         const topology::Cell local_c( local_d, c.dim() );
         return mSubAtlases.at( patch_id )->parametricLengths( local_c );
     }
+
+    Vector6dMax MultiPatchParametricAtlas::parametricStarts( const topology::Cell& c ) const
+    {
+        const auto [patch_id, local_d] = mCMap->toLocalDart( c.dart() );
+        const topology::Cell local_c( local_d, c.dim() );
+        return mSubAtlases.at( patch_id )->parametricStarts( local_c );
+    }
 }

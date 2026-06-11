@@ -8,7 +8,8 @@ namespace basis
     {
         public:
         MultiPatchSplineSpace( const std::shared_ptr<const MultiPatchBasisComplex>& bc,
-                               const std::vector<std::shared_ptr<const TPSplineSpace>>& constituents );
+                               const std::vector<std::shared_ptr<const TPSplineSpace>>& constituents,
+                               const bool connect_interfaces = true );
 
         virtual ~MultiPatchSplineSpace() = default;
 
@@ -37,6 +38,14 @@ namespace basis
         const std::map<std::pair<size_t, topology::Dart>, std::pair<size_t, topology::Dart>>& connections );
 
     MultiPatchSplineSpace buildMultiPatchSplineSpace(
+        const std::vector<std::shared_ptr<const TPSplineSpace>>& patches,
+        const topology::MultiPatchCombinatorialMap::InternalConnectionsMap& connections );
+
+    MultiPatchSplineSpace buildDiscontinuousMultiPatchSplineSpace(
+        const std::vector<std::shared_ptr<const TPSplineSpace>>& patches,
+        const std::map<std::pair<size_t, topology::Dart>, std::pair<size_t, topology::Dart>>& connections );
+
+    MultiPatchSplineSpace buildDiscontinuousMultiPatchSplineSpace(
         const std::vector<std::shared_ptr<const TPSplineSpace>>& patches,
         const topology::MultiPatchCombinatorialMap::InternalConnectionsMap& connections );
 

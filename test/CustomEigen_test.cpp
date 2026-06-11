@@ -14,5 +14,5 @@ TEST_CASE( "Write and read Eigen matrix to/from file" )
     REQUIRE( read.cols() == original.cols() );
     std::cout << "Original matrix:\n" << original << "\n";
     std::cout << "Read matrix:\n" << read << "\n";
-    REQUIRE( util::equals( original, read, 1e-10 ) );
+    REQUIRE( ( original - read ).norm() < 1e-10 );
 }
