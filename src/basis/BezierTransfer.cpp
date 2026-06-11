@@ -32,15 +32,19 @@ namespace basis
         using SparseMatrixXd = Eigen::SparseMatrix<double>;
 
         const SparseMatrixXd C = globalExtractionOp( kv, degree );
+        const std::vector<size_t> column_offsets = elementBezierColumnOffsets( kv, degree );
         std::vector<LocalExtraction> out;
         out.reserve( numElements( kv ) );
 
         for( size_t elem_ii = 0, n_elems = numElements( kv ); elem_ii < n_elems; elem_ii++ )
         {
+            if( column_offsets.at( elem_ii ) + degree >= static_cast<size_t>( C.cols() ) )
+                throw std::runtime_error( "Element Bezier column offset exceeds global extraction operator size." );
+
             std::set<FunctionId> unique_rows;
             for( size_t col_ii = 0; col_ii <= degree; col_ii++ )
             {
-                for( SparseMatrixXd::InnerIterator it( C, col_ii + elem_ii * degree ); it; ++it )
+                for( SparseMatrixXd::InnerIterator it( C, col_ii + column_offsets.at( elem_ii ) ); it; ++it )
                 {
                     unique_rows.insert( FunctionId( it.row() ) );
                 }
@@ -52,7 +56,7 @@ namespace basis
 
             for( size_t col = 0; col <= degree; col++ )
             {
-                for( SparseMatrixXd::InnerIterator it( C, col + elem_ii * degree ); it; ++it )
+                for( SparseMatrixXd::InnerIterator it( C, col + column_offsets.at( elem_ii ) ); it; ++it )
                 {
                     const auto row_it =
                         std::find( local.connectivity.begin(), local.connectivity.end(), FunctionId( it.row() ) );
@@ -68,6 +72,24 @@ namespace basis
         }
 
         return out;
+    }
+
+    std::vector<size_t> elementBezierColumnOffsets( const KnotVector& kv, const size_t degree )
+    {
+        const std::vector<std::pair<double, size_t>> knots = kv.uniqueKnotMultiplicities();
+        std::vector<size_t> offsets;
+        offsets.reserve( knots.size() > 0 ? knots.size() - 1 : 0 );
+        offsets.push_back( 0 );
+
+        for( size_t i = 1; i + 1 < knots.size(); i++ )
+        {
+            if( knots.at( i ).second > degree + 1 )
+                throw std::runtime_error( "Interior knot multiplicity exceeds degree + 1." );
+
+            offsets.push_back( offsets.back() + std::max( knots.at( i ).second, degree ) );
+        }
+
+        return offsets;
     }
 
     Eigen::MatrixXd bernsteinDegreeElevationMatrix( const size_t source_degree, const size_t target_degree )

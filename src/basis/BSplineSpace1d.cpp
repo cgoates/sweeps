@@ -30,6 +30,9 @@ namespace basis
 
         /// Add vertex connectivity and operators
         const SparseMatrixXd C = globalExtractionOp( kv, degree );
+        // Vertex extraction represents a single shared vertex value and is valid for C >= 0 continuity.
+        // For C^{-1} spaces, interior vertices have two one-sided traces that should be handled by the
+        // side-aware trace layer rather than this vertex extraction path.
         const auto get_vertex_connectivity = [&degree, &C]( const size_t vertex_ii ) {
             std::vector<FunctionId> rows;
             for( SparseMatrixXd::InnerIterator it( C, vertex_ii * degree ); it; ++it )

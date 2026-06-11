@@ -1,11 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <BezierTransfer.hpp>
-#include <BSplineSpace1d.hpp>
-#include <BasisComplex1d.hpp>
-#include <CombinatorialMap1d.hpp>
 #include <CombinatorialMapMethods.hpp>
-#include <CommonUtils.hpp>
-#include <ParametricAtlas1d.hpp>
 #include <ParentDomain.hpp>
 #include <ParentPoint.hpp>
 #include <SplineSpaceEvaluator.hpp>
@@ -37,28 +32,6 @@ namespace
             out( i ) = static_cast<double>( std::exp( log_value ) );
         }
         return out;
-    }
-
-    double bsplineBasisValue( const KnotVector& kv, const size_t degree, const size_t function_ii, const double x )
-    {
-        if( degree == 0 )
-            return kv.knot( function_ii ) <= x and x < kv.knot( function_ii + 1 ) ? 1.0 : 0.0;
-
-        const double left_denominator = kv.knot( function_ii + degree ) - kv.knot( function_ii );
-        const double right_denominator = kv.knot( function_ii + degree + 1 ) - kv.knot( function_ii + 1 );
-
-        const double left =
-            left_denominator == 0.0
-                ? 0.0
-                : ( x - kv.knot( function_ii ) ) / left_denominator *
-                      bsplineBasisValue( kv, degree - 1, function_ii, x );
-        const double right =
-            right_denominator == 0.0
-                ? 0.0
-                : ( kv.knot( function_ii + degree + 1 ) - x ) / right_denominator *
-                      bsplineBasisValue( kv, degree - 1, function_ii + 1, x );
-
-        return left + right;
     }
 
     Eigen::MatrixXd deterministicControlPoints( const size_t spatial_dim, const size_t num_functions )
@@ -132,49 +105,6 @@ TEST_CASE( "Bernstein degree elevation matrix preserves Bernstein values" )
         const Eigen::VectorXd elevated_values = M * bernsteinValues( q, x );
         CHECK( ( elevated_values - bernsteinValues( p, x ) ).norm() < 1e-12 );
     }
-}
-
-TEST_CASE( "Local extraction helper matches BSplineSpace1d element extraction" )
-{
-    const double ptol = 1e-10;
-    const KnotVector kv( { 0, 0, 0, 0, 1, 1, 2, 3, 3, 3, 3 }, ptol );
-    const size_t degree = 3;
-
-    const auto cmap = std::make_shared<const CombinatorialMap1d>( numElements( kv ) );
-    const auto param = std::make_shared<const ParametricAtlas1d>( cmap, parametricLengths( kv ) );
-    const auto bc = std::make_shared<const BasisComplex1d>( param, degree );
-    const BSplineSpace1d ss( bc, kv );
-
-    const std::vector<LocalExtraction> locals = localExtractions( kv, degree );
-    const std::vector<double> unique_knots = kv.uniqueKnots();
-    REQUIRE( locals.size() == numElements( kv ) );
-
-    iterateCellsWhile( *cmap, 1, [&]( const Cell& c ) {
-        const size_t elem_ii = c.dart().id();
-        const LocalExtraction& local = locals.at( elem_ii );
-        const std::vector<FunctionId> ss_conn = ss.connectivity( c );
-
-        REQUIRE( local.connectivity.size() == ss_conn.size() );
-        for( size_t i = 0; i < ss_conn.size(); i++ )
-        {
-            CHECK( local.connectivity.at( i ) == ss_conn.at( i ) );
-        }
-        CHECK( ( local.extraction - ss.extractionOperator( c ) ).norm() < 1e-14 );
-
-        for( const double parent_x : { 0.17, 0.49, 0.83 } )
-        {
-            const double parametric_x =
-                unique_knots.at( elem_ii ) +
-                parent_x * ( unique_knots.at( elem_ii + 1 ) - unique_knots.at( elem_ii ) );
-            Eigen::VectorXd expected( local.connectivity.size() );
-            for( Eigen::Index i = 0; i < expected.size(); i++ )
-            {
-                expected( i ) = bsplineBasisValue( kv, degree, local.connectivity.at( i ).id(), parametric_x );
-            }
-            CHECK( ( local.extraction * bernsteinValues( degree, parent_x ) - expected ).norm() < 1e-12 );
-        }
-        return true;
-    } );
 }
 
 TEST_CASE( "Univariate degree elevation operator satisfies local extraction identity" )

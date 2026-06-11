@@ -20,6 +20,13 @@ namespace basis
     /// local Bernstein functions on the interval.
     std::vector<LocalExtraction> localExtractions( const KnotVector& kv, const size_t degree );
 
+    /// @brief Gives the starting column in globalExtractionOp(kv, degree) for each element.
+    ///
+    /// globalExtractionOp inserts every interior knot until its multiplicity is at least degree, producing a C0-style
+    /// Bezier column layout for all spaces with interior multiplicity <= degree. Fully discontinuous C^{-1} spaces
+    /// already have interior multiplicity degree + 1, so adjacent elements do not share an endpoint column.
+    std::vector<size_t> elementBezierColumnOffsets( const KnotVector& kv, const size_t degree );
+
     /// @brief Gives the Bernstein degree elevation matrix from source_degree to target_degree.
     /// @return Matrix M such that B_source = M * B_target.
     Eigen::MatrixXd bernsteinDegreeElevationMatrix( const size_t source_degree, const size_t target_degree );
