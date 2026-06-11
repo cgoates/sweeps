@@ -7,6 +7,7 @@ add_library( basis SHARED
   VectorConformingBasisComplex.cpp
   SplineSpace.cpp
   BezierTransfer.cpp
+  TraceExtraction.cpp
   BSplineSpace1d.cpp
   TPSplineSpace.cpp
   MultiPatchSplineSpace.cpp
