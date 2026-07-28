@@ -1,9 +1,92 @@
 #include <VectorConformingHierarchicalTPSplineSpace.hpp>
 #include <VectorConformingTPSplineSpace.hpp>
+#include <HierarchicalTPParametricAtlas.hpp>
 #include <KnotVector.hpp>
+#include <algorithm>
 
 namespace basis
 {
+    SmallVector<std::vector<std::shared_ptr<const TPSplineSpace>>, 3>
+        scalarRefinementLevels( const std::vector<std::shared_ptr<const VectorConformingTPSplineSpace>>& refinement_levels )
+    {
+        if( refinement_levels.empty() )
+            throw std::invalid_argument( "VectorConformingHierarchicalTPSplineSpace requires at least one refinement level." );
+
+        const size_t num_components = refinement_levels.front()->numVectorComponents();
+        SmallVector<std::vector<std::shared_ptr<const TPSplineSpace>>, 3> scalar_level_bases(
+            num_components, std::vector<std::shared_ptr<const TPSplineSpace>>() );
+        for( auto& bases : scalar_level_bases ) bases.reserve( refinement_levels.size() );
+
+        for( const auto& level : refinement_levels )
+        {
+            if( level->numVectorComponents() != num_components )
+                throw std::invalid_argument(
+                    "All vector conforming refinement levels must have the same number of components." );
+
+            const SmallVector<std::shared_ptr<const TPSplineSpace>, 3>& scalar = level->scalarTPBases();
+            if( scalar.size() != num_components )
+                throw std::runtime_error( "Vector conforming level has inconsistent scalar component count." );
+
+            for( size_t component = 0; component < num_components; component++ )
+            {
+                scalar_level_bases.at( component ).push_back( scalar.at( component ) );
+            }
+        }
+
+        return scalar_level_bases;
+    }
+
+    std::vector<size_t> componentOffsets( const VectorConformingTPSplineSpace& level )
+    {
+        std::vector<size_t> offsets;
+        offsets.reserve( level.scalarTPBases().size() + 1 );
+        offsets.push_back( 0 );
+        for( const auto& scalar_basis : level.scalarTPBases() )
+        {
+            offsets.push_back( offsets.back() + scalar_basis->numFunctions() );
+        }
+        if( offsets.back() != level.numFunctions() )
+            throw std::runtime_error( "Vector conforming component offsets do not span the whole level." );
+        return offsets;
+    }
+
+    std::vector<std::vector<std::vector<FunctionId>>>
+        splitActiveVectorFunctionsByComponent(
+            const std::vector<std::shared_ptr<const VectorConformingTPSplineSpace>>& refinement_levels,
+            const std::vector<std::vector<FunctionId>>& active_funcs )
+    {
+        if( refinement_levels.size() != active_funcs.size() )
+            throw std::invalid_argument(
+                "Active vector function lists must have one entry per vector refinement level." );
+
+        const size_t num_components = refinement_levels.front()->numVectorComponents();
+        std::vector<std::vector<std::vector<FunctionId>>> scalar_active_funcs(
+            num_components, std::vector<std::vector<FunctionId>>( refinement_levels.size() ) );
+
+        for( size_t level_ii = 0; level_ii < refinement_levels.size(); level_ii++ )
+        {
+            const auto& level = *refinement_levels.at( level_ii );
+            const std::vector<size_t> offsets = componentOffsets( level );
+
+            for( const FunctionId& fid : active_funcs.at( level_ii ) )
+            {
+                if( static_cast<size_t>( fid.id() ) >= level.numFunctions() )
+                    throw std::invalid_argument( "Active vector function id is outside its refinement level." );
+
+                const auto upper =
+                    std::upper_bound( offsets.begin(), offsets.end(), static_cast<size_t>( fid.id() ) );
+                if( upper == offsets.begin() )
+                    throw std::runtime_error( "Could not locate component for active vector function." );
+
+                const size_t component = static_cast<size_t>( std::distance( offsets.begin(), upper ) - 1 );
+                scalar_active_funcs.at( component ).at( level_ii ).push_back(
+                    FunctionId( fid.id() - offsets.at( component ) ) );
+            }
+        }
+
+        return scalar_active_funcs;
+    }
+
     VectorConformingHierarchicalTPSplineSpace::VectorConformingHierarchicalTPSplineSpace(
         const std::shared_ptr<const VectorConformingBasisComplex>& bc, const HierarchicalTPSplineSpace& primal_basis )
         : mBasisComplex( bc )
@@ -46,6 +129,46 @@ namespace basis
         {
             const auto scalar_bc = std::make_shared<const HierarchicalTPBasisComplex>( param, scalar_level_bcs.at( i ) );
             mScalarTPBases.push_back( std::make_shared<const HierarchicalTPSplineSpace>( scalar_bc, scalar_level_bases.at( i ) ) );
+        }
+    }
+
+    VectorConformingHierarchicalTPSplineSpace::VectorConformingHierarchicalTPSplineSpace(
+        const std::shared_ptr<const VectorConformingBasisComplex>& bc,
+        const std::vector<std::shared_ptr<const VectorConformingTPSplineSpace>>& refinement_levels,
+        const std::vector<std::vector<FunctionId>>& active_funcs )
+        : mBasisComplex( bc )
+    {
+        if( refinement_levels.empty() )
+            throw std::invalid_argument( "VectorConformingHierarchicalTPSplineSpace requires refinement levels." );
+
+        const auto primal_hier_bc =
+            std::dynamic_pointer_cast<const HierarchicalTPBasisComplex>( bc->primalComplexPtr() );
+        if( primal_hier_bc == nullptr )
+            throw std::invalid_argument(
+                "Explicit active VectorConformingHierarchicalTPSplineSpace requires a HierarchicalTPBasisComplex." );
+
+        if( primal_hier_bc->parametricAtlas().cmap().numLevels() != refinement_levels.size() )
+            throw std::invalid_argument(
+                "VectorConformingHierarchicalTPSplineSpace basis complex and refinement levels disagree on level count." );
+
+        const auto scalar_level_bases = scalarRefinementLevels( refinement_levels );
+        const auto scalar_active_funcs = splitActiveVectorFunctionsByComponent( refinement_levels, active_funcs );
+
+        for( size_t component = 0; component < scalar_level_bases.size(); component++ )
+        {
+            std::vector<std::shared_ptr<const TPBasisComplex>> scalar_level_bcs;
+            scalar_level_bcs.reserve( scalar_level_bases.at( component ).size() );
+            for( const auto& level_basis : scalar_level_bases.at( component ) )
+            {
+                scalar_level_bcs.push_back( level_basis->basisComplexPtr() );
+            }
+
+            const auto scalar_bc =
+                std::make_shared<const HierarchicalTPBasisComplex>(
+                    primal_hier_bc->parametricAtlasPtr(), scalar_level_bcs );
+            mScalarTPBases.push_back(
+                std::make_shared<const HierarchicalTPSplineSpace>(
+                    scalar_bc, scalar_level_bases.at( component ), scalar_active_funcs.at( component ) ) );
         }
     }
 

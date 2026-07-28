@@ -1,0 +1,232 @@
+Outstanding Issues and Planned Work
+=====================================
+Branch: piolas
+Last updated: 2026-06-11
+
+
+-------------------------------------------------------------------------------
+HIGH PRIORITY — Blocking Phase 5B
+-------------------------------------------------------------------------------
+
+1. Piola Transform Invariance Bug
+   File(s): src/eval/SplineSpaceEvaluator.cpp
+   CTest:   "Piola transforms are invariant to parent-to-parametric interval
+            scaling" (currently #104 in this build; numbering may shift as tests
+            are added)
+
+   The functions piolaTransformedHDivBasis, piolaTransformedHDivFirstDerivatives,
+   and piolaTransformedL2Basis fail the scaling-invariance test. The test uses
+   kv_unit=[0,0,1,1] and kv_double=[0,0,2,2] with identical physical geometry
+   and asserts that the Piola transforms are unchanged.
+
+   The suspected root cause is in the coordinate-frame composition. The chain is:
+     parent coordinates
+       -> patch parametric coordinates  (scaled by parametricLengths)
+       -> physical coordinates           (via geometry Jacobian)
+   The parent-to-parametric scaling should cancel out of the physical H(div) and
+   L2 transforms tested here, but currently does not. H(curl) should be audited
+   under the same coordinate-frame convention before Phase 5B is considered
+   complete, even though this particular failing test does not currently exercise
+   the H(curl) transform. Commit 0033358 explicitly noted this as an open issue.
+
+   Action: Diagnose the exact point in the Jacobian chain where the parametric
+   scaling enters incorrectly. Do not patch empirically — previous attempts
+   (commits 6880440, 0d80ac0, b8df169) left partial fixes. Fix the root cause,
+   then ensure the invariance test passes before proceeding to Phase 5B physical
+   trace evaluation.
+
+
+-------------------------------------------------------------------------------
+MEDIUM PRIORITY — Architectural / Correctness
+-------------------------------------------------------------------------------
+
+2. validateMatchingInterfaces Is Overly Conservative for Same-Mesh Asymmetric
+   Leaf Selection
+   File(s): src/basis/VectorConformingHierarchicalMultiPatchSplineSpace.cpp
+            validateMatchingInterfaces()
+
+   The current implementation requires that the leaf element sets on both sides
+   of every patch interface match exactly at every refinement level. This rejects
+   the mathematically valid case where:
+     - Both patches have the same knot vectors at every level (conforming meshes)
+     - Only the leaf element selection is asymmetric at the interface
+
+   In a THB-spline basis, a merged interface function has support on both patches.
+   If one patch is not refined at the interface, the merged coarse function's
+   support is not fully covered, so it should remain active. The expected behavior
+   is that fine-level merged DOFs adjacent to an unrefined neighbor are pruned
+   while the coarse merged function remains active. The current activeFuncs()
+   logic appears structured to produce this behavior, but the vector-conforming
+   path rejects the configuration before it can be tested.
+
+   Action: Relax validateMatchingInterfaces to permit asymmetric leaf selection
+   when both patches share the same underlying mesh structure at all levels. Add
+   a test verifying: coarse merged interface DOF active, fine interior DOFs
+   active, correct DOF count, extraction operator includes coarse merged DOF
+   contribution on the fine patch's interface elements, and H(div)/H(curl)
+   trace conformity is preserved through the surviving coarse merged function.
+
+   Note: This change requires careful verification of the THB-spline extraction
+   across the asymmetric interface before merging.
+
+
+3. Per-Element DOF Alignment at Flipped Multi-Element Patch Interfaces
+   File(s): src/basis/MultiPatchSplineSpace.cpp
+            src/basis/VectorConformingMultiPatchSplineSpace.cpp
+            test/MultiPatchSplineFactory_test.cpp
+
+   For a Flip1d interface with multiple elements in the tangential direction, the
+   current multipatch H1 space shows correct aggregate DOF sharing across the
+   whole interface, but each topologically paired element does not exhibit
+   complete local DOF overlap. Element (t=0) on patch 0 is topologically paired
+   with element (t=N-1) on patch 1 under Flip1d. The corresponding H(div)/H(curl)
+   per-element behavior still needs to be verified explicitly.
+
+   This will matter for Phase 5B physical trace evaluation: when evaluating the
+   conforming flux at a flipped interface, quadrature points must be permuted
+   before comparing traces, and the DOF map must account for the flip at the
+   element level.
+
+   Action: Verify or fix per-element DOF alignment under Flip1d before writing
+   Phase 5B H(div)/H(curl) interface trace agreement tests.
+
+
+-------------------------------------------------------------------------------
+LOW PRIORITY — Maintenance / Cleanup
+-------------------------------------------------------------------------------
+
+4. componentOffsets() Duplicated Between Two Files
+   File(s): src/basis/VectorConformingHierarchicalTPSplineSpace.cpp
+            src/basis/VectorConformingHierarchicalMultiPatchSplineSpace.cpp
+
+   Both files define an identical componentOffsets() helper in their anonymous
+   namespaces. Extract to a shared internal header or utility function after
+   Phase 5 tests are green and provide sufficient coverage to make the refactor
+   mechanical.
+
+
+5. Active-Function Pruning Loop Duplicated Between Scalar and Vector Paths
+   File(s): src/basis/HierarchicalMultiPatchSplineSpace.cpp  (activeFuncs)
+            src/basis/VectorConformingHierarchicalMultiPatchSplineSpace.cpp
+            (vectorActiveFuncs)
+
+   The topology-driven leaf/prune logic is nearly identical in both functions,
+   differing only in the type of level_ss. A template or shared helper could
+   eliminate the duplication. Defer until Phase 5 tests provide guardrails.
+
+
+6. Raw Pointer Capture in to_space_cell Lambda
+   File(s): src/basis/TraceMesh.cpp  levelTraceMeshes()
+
+   The LevelTraceMesh struct captures hmp_cmap as a raw pointer in the
+   to_space_cell lambda. Safe for the current usage (the SplineSpace outlives
+   the LevelTraceMesh vector), but a shared_ptr capture would be safer.
+   Low risk, low urgency.
+
+
+7. traceHasBrokenRows Performance
+   File(s): src/basis/TraceMesh.cpp  interiorTraceMeshInterfaces()
+
+   The Broken mode filter calls traceSideData() (which calls extractionOperator())
+   for every interior face candidate. For large meshes this is O(n_faces) full
+   extraction operator evaluations. A more efficient approach would inspect knot
+   vector multiplicities directly to determine continuity statically.
+   Not a correctness issue; relevant for large Navier-Stokes convergence studies.
+
+
+8. Same-Patch Coarse-Fine Interior Trace Enumeration Is Deferred
+   File(s): src/basis/TraceMesh.cpp  interiorTraceMeshInterfaces()
+
+   Phase 5A enumerates same-patch, same-level leaf interfaces. It intentionally
+   skips coarse-fine same-patch subdivision. This is acceptable for the current
+   algebraic trace enumeration layer, but Phase 5B physical trace integration
+   will need explicit quadrature-side subdivision if weak terms are assembled on
+   coarse-fine interior faces.
+
+   Action: Before using TraceMesh for DG/Nitsche-style same-patch hierarchical
+   interior terms, add coarse-fine interface enumeration or a face-subdivision
+   layer that maps fine trace quadrature points into the neighboring coarse side.
+
+
+-------------------------------------------------------------------------------
+DEFERRED — Phase 5B and Beyond
+-------------------------------------------------------------------------------
+
+9. TraceSpaceEvaluator API Contract (Phase 5B prerequisite)
+   Before implementing Phase 5B, the C++ API contract for TraceSpaceEvaluator
+   must be written down explicitly:
+     caller provides:  TraceSideData or ElementSide, side-local parent point,
+                       geometry evaluator / control points
+     returns:          side basis values, optional Piola-transformed basis,
+                       normal/tangential trace components, outward normal,
+                       tangent frame, side measure / Jacobian
+     interface variant: paired side evaluations, mapped quadrature coordinates,
+                        orientation/permutation metadata
+   TraceSpaceEvaluator should wrap (not reimplement) SplineSpaceEvaluator.
+
+
+10. 3D Tangent Frame Convention for H(curl) Traces (Phase 5B)
+   In 3D, a face has one outward normal and two independent tangential directions.
+   For H(curl) conforming traces both tangential components must be handled. The
+   convention (ordering and normalization of the two tangent vectors, consistency
+   with TPPermutation across interfaces) must be documented before implementing
+   3D H(curl) physical trace tests.
+
+
+11. Nonmatching Interface / Mortar Framework (Long Term)
+    True asymmetric patch interface refinement where the two sides have different
+    mesh structures (not just different leaf selections) requires mortar/Nitsche
+    machinery: coarse-to-fine trace constraint matrices, Piola-aware trace
+    transfer, and hierarchical truncation across patch interfaces. This is out of
+    scope for the current strongly-conforming H(div)/H(curl) layer.
+
+
+12. NURBS Evaluator Gaps
+    File(s): src/eval/SplineSpaceEvaluator.cpp  NURBSSpaceEvaluator
+    NURBSSpaceEvaluator implements manifold/Jacobian/Hessian and
+    param-to-spatial Jacobian/Hessian evaluation, so polynomial analysis spaces
+    with rational geometry can still be viable. However, evaluateBasis,
+    evaluateFirstDerivatives, evaluateSecondDerivatives, and
+    evaluateFirstDerivativesFromParamToSpatial throw for NURBSSpaceEvaluator.
+    Any Phase 5B work that treats NURBS as the analysis basis, rather than only
+    as geometry, will hit these gaps.
+
+    Action: Keep Phase 5B NURBS tests scoped to rational geometry with polynomial
+    analysis unless/until rational basis evaluation is implemented.
+
+
+13. Python / API Exposure (Phase 6)
+    NavierStokesMultiPatchDiscretization, NavierStokesHierarchicalMultiPatchDiscretization,
+    buildL2MultiPatch, externalTraceDofs, interfaceTraceElements, and the new
+    TraceMesh enumeration functions are not yet exposed in SplinesAPI.cpp.
+    Defer until Phase 5B C++ layer and tests are stable.
+
+
+-------------------------------------------------------------------------------
+KNOWN NON-BLOCKING TEST-SUITE / ENVIRONMENT ITEMS
+-------------------------------------------------------------------------------
+
+14. Macaroni Tracing Tests
+    CTest: #30 "Tracing from all the vertices in the macaroni"
+           #32 "Tracing from all the interior faces in the macaroni" has also
+           timed out in recent full-suite runs under machine load.
+
+    These failures appear to be in the reparameterization / tracing algorithms,
+    not in the spline basis, degree-elevation, multipatch, or Phase 5A trace
+    enumeration work. Track separately unless changes touch tracing.
+
+
+15. Critical Points Test
+    CTest: #146 "Critical points test" in this build
+
+    Recent full-suite runs reported an Eigen comma-initializer assertion here.
+    This appears to be a pre-existing critical-points algorithm issue and is not
+    believed to be related to the basis-layer work.
+
+
+16. Python Import Test
+    CTest: #161 "python_import_test" in this build
+
+    Recent full-suite runs reported this as an environment / Python path issue.
+    Keep separate from C++ basis correctness unless Python packaging or API
+    exposure is being modified.

@@ -8,6 +8,7 @@ add_library( basis SHARED
   SplineSpace.cpp
   BezierTransfer.cpp
   TraceExtraction.cpp
+  TraceMesh.cpp
   BSplineSpace1d.cpp
   TPSplineSpace.cpp
   MultiPatchSplineSpace.cpp
@@ -19,6 +20,7 @@ add_library( basis SHARED
   HierarchicalTPSplineSpace.cpp
   HierarchicalMultiPatchSplineSpace.cpp
   VectorConformingHierarchicalTPSplineSpace.cpp
+  VectorConformingHierarchicalMultiPatchSplineSpace.cpp
   VectorConformingMultiPatchSplineSpace.cpp
 )
 
