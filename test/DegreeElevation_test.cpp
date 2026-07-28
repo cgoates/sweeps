@@ -148,13 +148,13 @@ TEST_CASE( "Tensor-product degree elevation preserves surface geometry and paren
     iterateCellsWhile( source.basisComplex().parametricAtlas().cmap(), 2, [&]( const Cell& c ) {
         source_evaler.localizeElement( c );
         target_evaler.localizeElement( c );
-        source_evaler.localizePoint( ppt );
-        target_evaler.localizePoint( ppt );
+        source_evaler.localizeParentPoint( ppt );
+        target_evaler.localizeParentPoint( ppt );
 
         CHECK( ( source_evaler.evaluateManifold( source_cpts ) -
                  target_evaler.evaluateManifold( target_cpts ) ).norm() < 1e-10 );
-        CHECK( ( source_evaler.evaluateJacobian( source_cpts ) -
-                 target_evaler.evaluateJacobian( target_cpts ) ).norm() < 1e-10 );
+        CHECK( ( source_evaler.evaluateParentToSpatialJacobian( source_cpts ) -
+                 target_evaler.evaluateParentToSpatialJacobian( target_cpts ) ).norm() < 1e-10 );
         return true;
     } );
 }
@@ -183,8 +183,8 @@ TEST_CASE( "Tensor-product degree elevation preserves volume geometry" )
     iterateCellsWhile( source.basisComplex().parametricAtlas().cmap(), 3, [&]( const Cell& c ) {
         source_evaler.localizeElement( c );
         target_evaler.localizeElement( c );
-        source_evaler.localizePoint( ppt );
-        target_evaler.localizePoint( ppt );
+        source_evaler.localizeParentPoint( ppt );
+        target_evaler.localizeParentPoint( ppt );
 
         CHECK( ( source_evaler.evaluateManifold( source_cpts ) -
                  target_evaler.evaluateManifold( target_cpts ) ).norm() < 1e-10 );

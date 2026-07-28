@@ -528,8 +528,8 @@ double checkJacobians( const basis::SplineSpace& ss, const Eigen::MatrixXd& cpts
     iterateCellsWhile( ss.basisComplex().parametricAtlas().cmap(), 3, [&]( const topology::Volume& vol ) {
         evaler.localizeElement( vol );
         iterateAdjacentCellsOfRestrictedCell( ss.basisComplex().parametricAtlas().cmap(), vol, 2, 0, [&]( const topology::Vertex& v ) {
-            evaler.localizePoint( ss.basisComplex().parametricAtlas().parentPoint( v ) );
-            const double val = evaler.evaluateJacobian( cpts.transpose() ).determinant();
+            evaler.localizeParentPoint( ss.basisComplex().parametricAtlas().parentPoint( v ) );
+            const double val = evaler.evaluateParentToSpatialJacobian( cpts.transpose() ).determinant();
             min_val = std::min( min_val, val );
             max_val = std::max( max_val, val );
             return true;
@@ -906,8 +906,8 @@ TEST_CASE( "Hex mesh on the capsule" )
             iterateCellsWhile( ss.basisComplex().parametricAtlas().cmap(), 3, [&]( const topology::Volume& vol ) {
                 evaler.localizeElement( vol );
                 iterateAdjacentCellsOfRestrictedCell( ss.basisComplex().parametricAtlas().cmap(), vol, 2, 0, [&]( const topology::Vertex& v ) {
-                    evaler.localizePoint( ss.basisComplex().parametricAtlas().parentPoint( v ) );
-                    const double val = evaler.evaluateJacobian( fit_cpts.transpose() ).determinant();
+                    evaler.localizeParentPoint( ss.basisComplex().parametricAtlas().parentPoint( v ) );
+                    const double val = evaler.evaluateParentToSpatialJacobian( fit_cpts.transpose() ).determinant();
                     min_val = std::min( min_val, val );
                     max_val = std::max( max_val, val );
                     if( val < 0 )

@@ -68,7 +68,7 @@ TEST_CASE( "Simple 2d multi patch hierarchical spline space 1" )
     const auto test_center_pt = [&]( const Face& v, const Eigen::Vector2d& expected ) {
         const ParentPoint ppt = pointOnBoundary( atlas.parentDomain( v ), parentDomainBoundary( atlas, v ) );
         evaler.localizeElement( v );
-        evaler.localizePoint( ppt );
+        evaler.localizeParentPoint( ppt );
 
         const Eigen::Vector2d pt = evaler.evaluateManifold( geom.transpose() );
 
@@ -146,7 +146,7 @@ TEST_CASE( "Simple 3d multi patch hierarchical spline space" )
     const auto test_center_pt = [&]( const Volume& v, const Eigen::Vector3d& expected ) {
         const ParentPoint ppt = pointOnBoundary( atlas.parentDomain( v ), parentDomainBoundary( atlas, v ) );
         evaler.localizeElement( v );
-        evaler.localizePoint( ppt );
+        evaler.localizeParentPoint( ppt );
 
         const Eigen::Vector3d pt = evaler.evaluateManifold( geom.transpose() );
 

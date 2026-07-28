@@ -793,7 +793,7 @@ TEST_CASE( "Flange spline" )
         std::map<topology::Dart::IndexType, Eigen::Vector3d> first_level_points;
         iterateCellsWhile( ss2d.basisComplex().parametricAtlas().cmap(), 0, [&]( const topology::Vertex& v ) {
             evaler_2d.localizeElement( topology::Face( v.dart() ) );
-            evaler_2d.localizePoint( ss2d.basisComplex().parametricAtlas().parentPoint( v ) );
+            evaler_2d.localizeParentPoint( ss2d.basisComplex().parametricAtlas().parentPoint( v ) );
 
             const auto pt = evaler_2d.evaluateManifold( cpts.transpose() );
 

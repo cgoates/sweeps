@@ -334,8 +334,8 @@ namespace
         eval::SplineSpaceEvaluator evaler( ss, 0 );
         iterateCellsWhile( ss.basisComplex().parametricAtlas().cmap(), ss.basisComplex().parametricAtlas().cmap().dim(), [&]( const Cell& c ) {
             evaler.localizeElement( c );
-            evaler.localizePoint( centerPoint( ss, c ) );
-            const Eigen::MatrixXd basis = evaler.evaluateBasis();
+            evaler.localizeParentPoint( centerPoint( ss, c ) );
+            const Eigen::MatrixXd basis = evaler.evaluateBasisValuesAtParentPoint();
             CHECK( basis.rows() == static_cast<Eigen::Index>( ss.connectivity( c ).size() ) );
             CHECK( basis.cols() == static_cast<Eigen::Index>( ss.numVectorComponents() ) );
             CHECK( basis.array().isFinite().all() );

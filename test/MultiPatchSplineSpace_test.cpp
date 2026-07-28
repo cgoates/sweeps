@@ -37,8 +37,8 @@ void test_c0( const MultiPatchSplineSpace& ss,
                 const ParentPoint one_side_ppt = pointOnBoundary( cubeDomain( cmap.dim() ), parentDomainBoundary( atlas, one_side_e ) );
 
                 evaler.localizeElement( one_side_f );
-                evaler.localizePoint( one_side_ppt );
-                const Eigen::MatrixXd one_side_evals = evaler.evaluateBasis();
+                evaler.localizeParentPoint( one_side_ppt );
+                const Eigen::MatrixXd one_side_evals = evaler.evaluateBasisValuesAtParentPoint();
                 const auto one_side_conn = ss.connectivity( one_side_f );
 
                 const Cell other_side_f( maybe_phi2.value(), cmap.dim() );
@@ -46,8 +46,8 @@ void test_c0( const MultiPatchSplineSpace& ss,
                 const ParentPoint other_side_ppt = pointOnBoundary( cubeDomain( cmap.dim() ), parentDomainBoundary( atlas, other_side_e ) );
 
                 evaler.localizeElement( other_side_f );
-                evaler.localizePoint( other_side_ppt );
-                const Eigen::MatrixXd other_side_evals = evaler.evaluateBasis();
+                evaler.localizeParentPoint( other_side_ppt );
+                const Eigen::MatrixXd other_side_evals = evaler.evaluateBasisValuesAtParentPoint();
                 const auto other_side_conn = ss.connectivity( other_side_f );
 
                 size_t n_overlapping_funcs = 0;

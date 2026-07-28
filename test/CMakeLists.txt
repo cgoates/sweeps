@@ -72,6 +72,6 @@ add_my_test(VectorConformingMultiPatchSplineSpace_test)
 
 add_test(
     NAME python_import_test
-    COMMAND python3 -c "import sweeps; import splines; print('Import successful')"
+    COMMAND ${Python_EXECUTABLE} -c "import sweeps; import splines; print('Import successful')"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/src/api
 )

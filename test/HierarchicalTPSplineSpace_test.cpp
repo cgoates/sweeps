@@ -54,7 +54,7 @@ TEST_CASE( "Simple hierarchical atlas 1" )
     const auto test_center_pt = [&]( const Face& f, const Eigen::Vector3d& expected ) {
         const ParentPoint ppt = pointOnBoundary( atlas.parentDomain( f ), parentDomainBoundary( atlas, f ) );
         evaler.localizeElement( f );
-        evaler.localizePoint( ppt );
+        evaler.localizeParentPoint( ppt );
 
         const Eigen::Vector3d pt = evaler.evaluateManifold( geom.transpose() );
 
@@ -106,7 +106,7 @@ TEST_CASE( "Simple hierarchical atlas 2" )
     const auto test_center_pt = [&]( const Face& f, const Eigen::Vector3d& expected ) {
         const ParentPoint ppt = pointOnBoundary( atlas.parentDomain( f ), parentDomainBoundary( atlas, f ) );
         evaler.localizeElement( f );
-        evaler.localizePoint( ppt );
+        evaler.localizeParentPoint( ppt );
 
         const Eigen::Vector3d pt = evaler.evaluateManifold( geom.transpose() );
 
@@ -161,7 +161,7 @@ TEST_CASE( "Simple hierarchical atlas 3" )
     const auto test_center_pt = [&]( const Face& f, const Eigen::Vector3d& expected ) {
         const ParentPoint ppt = pointOnBoundary( atlas.parentDomain( f ), parentDomainBoundary( atlas, f ) );
         evaler.localizeElement( f );
-        evaler.localizePoint( ppt );
+        evaler.localizeParentPoint( ppt );
 
         const Eigen::Vector3d pt = evaler.evaluateManifold( geom.transpose() );
         std::cout << pt.transpose() << std::endl;
@@ -217,7 +217,7 @@ TEST_CASE( "Simple 3d hierarchical atlas 1" )
     const auto test_center_pt = [&]( const Volume& v, const Eigen::Vector3d& expected ) {
         const ParentPoint ppt = pointOnBoundary( atlas.parentDomain( v ), parentDomainBoundary( atlas, v ) );
         evaler.localizeElement( v );
-        evaler.localizePoint( ppt );
+        evaler.localizeParentPoint( ppt );
 
         const Eigen::Vector3d pt = evaler.evaluateManifold( geom.transpose() );
 

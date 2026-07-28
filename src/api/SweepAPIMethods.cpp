@@ -179,8 +179,8 @@ namespace api
             iterateCellsWhile( ss.basisComplex().parametricAtlas().cmap(), 3, [&]( const topology::Volume& vol ) {
                 evaler.localizeElement( vol );
                 iterateAdjacentCellsOfRestrictedCell( ss.basisComplex().parametricAtlas().cmap(), vol, 2, 0, [&]( const topology::Vertex& v ) {
-                    evaler.localizePoint( ss.basisComplex().parametricAtlas().parentPoint( v ) );
-                    const double val = evaler.evaluateJacobian( fit_cpts.transpose() ).determinant();
+                    evaler.localizeParentPoint( ss.basisComplex().parametricAtlas().parentPoint( v ) );
+                    const double val = evaler.evaluateParentToSpatialJacobian( fit_cpts.transpose() ).determinant();
                     min_val = std::min( min_val, val );
                     max_val = std::max( max_val, val );
                     return true;
@@ -197,8 +197,8 @@ namespace api
                     evaler.localizeElement( vol );
                     double min_jac = std::numeric_limits<double>::infinity();
                     iterateAdjacentCellsOfRestrictedCell( ss.basisComplex().parametricAtlas().cmap(), vol, 2, 0, [&]( const topology::Vertex& v ) {
-                        evaler.localizePoint( ss.basisComplex().parametricAtlas().parentPoint( v ) );
-                        const double val = evaler.evaluateJacobian( fit_cpts.transpose() ).determinant();
+                        evaler.localizeParentPoint( ss.basisComplex().parametricAtlas().parentPoint( v ) );
+                        const double val = evaler.evaluateParentToSpatialJacobian( fit_cpts.transpose() ).determinant();
                         min_jac = std::min( min_jac, val );
                         return true;
                     } );
@@ -363,8 +363,8 @@ namespace api
             iterateCellsWhile( mp_ss.basisComplex().parametricAtlas().cmap(), 3, [&]( const topology::Volume& vol ) {
                 evaler.localizeElement( vol );
                 iterateAdjacentCellsOfRestrictedCell( mp_ss.basisComplex().parametricAtlas().cmap(), vol, 2, 0, [&]( const topology::Vertex& v ) {
-                    evaler.localizePoint( mp_ss.basisComplex().parametricAtlas().parentPoint( v ) );
-                    const double val = evaler.evaluateJacobian( fit_cpts.transpose() ).determinant();
+                    evaler.localizeParentPoint( mp_ss.basisComplex().parametricAtlas().parentPoint( v ) );
+                    const double val = evaler.evaluateParentToSpatialJacobian( fit_cpts.transpose() ).determinant();
                     min_val = std::min( min_val, val );
                     max_val = std::max( max_val, val );
                     return true;
@@ -381,8 +381,8 @@ namespace api
                     evaler.localizeElement( vol );
                     double min_jac = std::numeric_limits<double>::infinity();
                     iterateAdjacentCellsOfRestrictedCell( mp_ss.basisComplex().parametricAtlas().cmap(), vol, 2, 0, [&]( const topology::Vertex& v ) {
-                        evaler.localizePoint( mp_ss.basisComplex().parametricAtlas().parentPoint( v ) );
-                        const double val = evaler.evaluateJacobian( fit_cpts.transpose() ).determinant();
+                        evaler.localizeParentPoint( mp_ss.basisComplex().parametricAtlas().parentPoint( v ) );
+                        const double val = evaler.evaluateParentToSpatialJacobian( fit_cpts.transpose() ).determinant();
                         min_jac = std::min( min_jac, val );
                         return true;
                     } );
@@ -535,8 +535,8 @@ namespace api
                 iterateCellsWhile( ss.basisComplex().parametricAtlas().cmap(), 3, [&]( const topology::Volume& vol ) {
                     evaler.localizeElement( vol );
                     iterateAdjacentCellsOfRestrictedCell( ss.basisComplex().parametricAtlas().cmap(), vol, 2, 0, [&]( const topology::Vertex& v ) {
-                        evaler.localizePoint( ss.basisComplex().parametricAtlas().parentPoint( v ) );
-                        const double val = evaler.evaluateJacobian( fit_cpts.transpose() ).determinant();
+                        evaler.localizeParentPoint( ss.basisComplex().parametricAtlas().parentPoint( v ) );
+                        const double val = evaler.evaluateParentToSpatialJacobian( fit_cpts.transpose() ).determinant();
                         min_val = std::min( min_val, val );
                         max_val = std::max( max_val, val );
                         return true;
@@ -553,8 +553,8 @@ namespace api
                         evaler.localizeElement( vol );
                         double min_jac = std::numeric_limits<double>::infinity();
                         iterateAdjacentCellsOfRestrictedCell( ss.basisComplex().parametricAtlas().cmap(), vol, 2, 0, [&]( const topology::Vertex& v ) {
-                            evaler.localizePoint( ss.basisComplex().parametricAtlas().parentPoint( v ) );
-                            const double val = evaler.evaluateJacobian( fit_cpts.transpose() ).determinant();
+                            evaler.localizeParentPoint( ss.basisComplex().parametricAtlas().parentPoint( v ) );
+                            const double val = evaler.evaluateParentToSpatialJacobian( fit_cpts.transpose() ).determinant();
                             min_jac = std::min( min_jac, val );
                             return true;
                         } );

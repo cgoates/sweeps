@@ -96,20 +96,77 @@ PYBIND11_MODULE( splines, m )
             },
             "Returns the number of nonzero basis functions on the given element.",
             "elem"_a )
-        .def( "evaluateBasis",
-              &eval::SplineSpaceEvaluator::evaluateBasis,
-              "Evaluates the spline space basis at the element and point specified in the most recent calls to "
-              "localizeElement and localizePoint on the discretization.  The basis is returned as a matrix with "
-              "numFunctions( elem ) rows and numVectorComponents columns, with the nth row corresponding to the nth "
-              "global id in the connectivity." )
-        .def( "evaluateFirstDerivatives",
-              &eval::SplineSpaceEvaluator::evaluateFirstDerivatives,
-              "Evaluates the first derivatives of the spine space basis at the element and point specified in the most "
-              "recent calls to localizeElement and localizePoint on the discretization. The first derivatives are "
-              "returned as a matrix with numFunctions( elem ) rows and numVectorComponents()*2 columns, with the nth "
-              "row corresponding to the nth global id in the connectivity, and the columns ordered as the derivative "
-              "of all of the vector components with respect to s (one column for each component), followed by the "
-              "derivative of all of the vector components with respect to t (another column for each component)." );
+        .def(
+            "evaluateBasisValuesAtParentPoint",
+            &eval::SplineSpaceEvaluator::evaluateBasisValuesAtParentPoint,
+            "Evaluates the extracted spline components at the currently localized parent (element-local) point. "
+            "Vector-conforming and top-form components remain patch-parametric; no spatial Piola transformation is "
+            "applied. The result has numFunctions(elem) rows and numVectorComponents columns." )
+        .def(
+            "evaluateBasis",
+            &eval::SplineSpaceEvaluator::evaluateBasisValuesAtParentPoint,
+            "Alias for evaluateBasisValuesAtParentPoint. The evaluation point is parent-local, while vector and "
+            "top-form components remain patch-parametric." )
+        .def(
+            "evaluateBasisFirstDerivativesWrtParentCoordinates",
+            &eval::SplineSpaceEvaluator::evaluateBasisFirstDerivativesWrtParentCoordinates,
+            "Evaluates first derivatives of the extracted spline components with respect to parent coordinates. "
+            "Columns are grouped by parent-coordinate direction, with one column per vector component in each group." )
+        .def(
+            "evaluateBasisFirstDerivativesWrtParametricCoordinates",
+            &eval::SplineSpaceEvaluator::evaluateBasisFirstDerivativesWrtParametricCoordinates,
+            "Evaluates first derivatives of the extracted spline components with respect to patch-parametric "
+            "coordinates. Columns are grouped by parametric direction, with one column per vector component in each "
+            "group." )
+        .def(
+            "evaluateFirstDerivatives",
+            &eval::SplineSpaceEvaluator::evaluateBasisFirstDerivativesWrtParentCoordinates,
+            "Alias for evaluateBasisFirstDerivativesWrtParentCoordinates. Derivatives are taken with respect to parent "
+            "(element-local) coordinates." );
+
+    const auto localize_parent_point = []( api::NavierStokesDiscretization& nsd, const Eigen::Vector2d& pt ) {
+        const param::ParentPoint ppt( param::cubeDomain( 2 ), pt, { false, false, false, false } );
+        nsd.getH1().localizeParentPoint( ppt );
+        nsd.getHDIV().localizeParentPoint( ppt );
+        nsd.getL2().localizeParentPoint( ppt );
+        nsd.getGeometry().localizeParentPoint( ppt );
+    };
+
+    const auto parent_to_spatial_jacobian = []( const api::NavierStokesDiscretization& nsd ) {
+        return nsd.getGeometry().evaluateParentToSpatialJacobian( nsd.geometryControlPoints() );
+    };
+
+    const auto parent_to_spatial_jacobian_determinant = []( const api::NavierStokesDiscretization& nsd ) {
+        return nsd.getGeometry().evaluateParentToSpatialJacobian( nsd.geometryControlPoints() ).determinant();
+    };
+
+    const auto spatial_hdiv_basis = []( const api::NavierStokesDiscretization& nsd ) {
+        return evaluateSpatialHDivBasisValues(
+            nsd.getHDIV(),
+            nsd.getGeometry(),
+            nsd.geometryControlPoints() );
+    };
+
+    const auto spatial_hdiv_derivatives = []( const api::NavierStokesDiscretization& nsd ) {
+        return evaluateSpatialHDivBasisFirstDerivatives(
+            nsd.getHDIV(),
+            nsd.getGeometry(),
+            nsd.geometryControlPoints() );
+    };
+
+    const auto spatial_l2_basis = []( const api::NavierStokesDiscretization& nsd ) {
+        return evaluateSpatialL2BasisValues(
+            nsd.getL2(),
+            nsd.getGeometry(),
+            nsd.geometryControlPoints() );
+    };
+
+    const auto spatial_l2_derivatives = []( const api::NavierStokesDiscretization& nsd ) {
+        return evaluateSpatialL2BasisFirstDerivatives(
+            nsd.getL2(),
+            nsd.getGeometry(),
+            nsd.geometryControlPoints() );
+    };
 
     py::class_<api::NavierStokesDiscretization>( m, "NavierStokesDiscretization" )
         .def_property_readonly(
@@ -159,80 +216,83 @@ PYBIND11_MODULE( splines, m )
             "again.",
             "elem"_a )
         .def(
+            "localizeParentPoint",
+            localize_parent_point,
+            "Localizes all evaluators at the given parent (element-local) coordinates in the currently localized "
+            "element.",
+            "pt"_a )
+        .def(
             "localizePoint",
-            []( api::NavierStokesDiscretization& nsd, const Eigen::Vector2d& pt ) {
-                const param::ParentPoint ppt( param::cubeDomain( 2 ), pt, { false, false, false, false } );
-                nsd.getH1().localizePoint( ppt );
-                nsd.getHDIV().localizePoint( ppt );
-                nsd.getL2().localizePoint( ppt );
-                nsd.getGeometry().localizePoint( ppt );
-            },
-            "Sets all future evaluations of the spline spaces to be on point pt, until localizePoint is called again.",
+            localize_parent_point,
+            "Alias for localizeParentPoint. The input is a parent (element-local) point, not a knot-space parametric "
+            "point.",
             "pt"_a )
         .def(
             "mapping",
             []( const api::NavierStokesDiscretization& nsd ) {
                 return nsd.getGeometry().evaluateManifold( nsd.geometryControlPoints() );
             },
-            "Evaluates the spatial position of the spline geometry at the parametric position from the latest calls to "
-            "localizeElement and localizePoint." )
+            "Evaluates the geometric manifold map at the currently localized parent point and returns spatial "
+            "coordinates." )
         .def(
             "parametricPoint",
             []( const api::NavierStokesDiscretization& nsd ) { return nsd.getGeometry().evaluateParametricPoint(); },
-            "Evaluates the parametric coordinates (knot-space) of the current quadrature point from the latest calls to "
-            "localizeElement and localizePoint." )
+            "Returns the knot-space parametric coordinates corresponding to the currently localized parent point." )
+        .def(
+            "parentToSpatialJacobian",
+            parent_to_spatial_jacobian,
+            "Evaluates the parent-to-spatial geometry Jacobian dx/ds at the currently localized parent point." )
         .def(
             "jacobian",
-            []( const api::NavierStokesDiscretization& nsd ) {
-                return nsd.getGeometry().evaluateJacobian( nsd.geometryControlPoints() );
-            },
-            "Evaluates the parent to spatial Jacobian of the spline geometry mapping at the parametric position "
-            "specified "
-            "in the latest calls to localizeElement and LocalizePoint." )
+            parent_to_spatial_jacobian,
+            "Alias for parentToSpatialJacobian. Returns the parent-to-spatial geometry Jacobian dx/ds." )
+        .def(
+            "parentToSpatialJacobianDeterminant",
+            parent_to_spatial_jacobian_determinant,
+            "Evaluates det(dx/ds) for a square parent-to-spatial geometry Jacobian." )
         .def(
             "jacobianDeterminant",
-            []( const api::NavierStokesDiscretization& nsd ) {
-                return nsd.getGeometry().evaluateJacobian( nsd.geometryControlPoints() ).determinant();
-            },
-            "Evaluates the Jacobian determinant of the spline geometry at the parametric position from the latest "
-            "calls to localizeElement and LocalizePoint." )
+            parent_to_spatial_jacobian_determinant,
+            "Alias for parentToSpatialJacobianDeterminant. Returns det(dx/ds) for a square geometry Jacobian." )
+        .def(
+            "evaluateSpatialHDivBasisValues",
+            spatial_hdiv_basis,
+            "Evaluates the spatial H(div) basis using the contravariant Piola transformation from the patch-parametric "
+            "frame. The basis is "
+            "returned as a matrix with HDIV.numFunctions(elem) rows and two spatial-component columns, with each row "
+            "corresponding to the same position in HDIV.connectivity(elem)." )
         .def(
             "piolaTransformedHDIVBasis",
-            []( const api::NavierStokesDiscretization& nsd ) {
-                return piolaTransformedHDivBasis( nsd.getHDIV(), nsd.getGeometry(), nsd.geometryControlPoints() );
-            },
-            "Evaluates the Piola transformed HDiv basis at the parametric position from the latest calls to "
-            "localizeElement and localizePoint. The basis is returned as a matrix with HDIV.numFunctions( elem ) rows "
-            "and two columns, with the ith row corresponding to the ith global id in the connectivity, and the jth "
-            "column corresponding to the jth component of the vector valued basis." )
+            spatial_hdiv_basis,
+            "Compatibility alias for evaluateSpatialHDivBasisValues." )
+        .def(
+            "evaluateSpatialHDivBasisFirstDerivatives",
+            spatial_hdiv_derivatives,
+            "Evaluates spatial derivatives of the H(div) basis. The result has HDIV.numFunctions(elem) rows and "
+            "columns ordered as dv_x/dx, dv_y/dx, dv_x/dy, dv_y/dy." )
         .def(
             "piolaTransformedHDIVFirstDerivatives",
-            []( const api::NavierStokesDiscretization& nsd ) {
-                return piolaTransformedHDivFirstDerivatives(
-                    nsd.getHDIV(), nsd.getGeometry(), nsd.geometryControlPoints() );
-            },
-            "Evaluates the Piola transformed first derivatives of the HDiv basis at the parametric position from the "
-            "latest calls to localizeElement and localizePoint. The basis is returned as a matrix with "
-            "HDIV.numFunctions( elem ) rows and four columns, with the ith row corresponding to the ith global id in "
-            "the connectivity, and the columns ordered as dv_x/ds, dv_y/ds, dv_x/dt, dv_y/dt." )
+            spatial_hdiv_derivatives,
+            "Compatibility alias for evaluateSpatialHDivBasisFirstDerivatives." )
+        .def(
+            "evaluateSpatialL2BasisValues",
+            spatial_l2_basis,
+            "Evaluates the spatial L2 top-form basis using its parametric-to-spatial Piola transformation. The result has "
+            "L2.numFunctions(elem) rows and one column, with each row corresponding to the same position in "
+            "L2.connectivity(elem)." )
         .def(
             "piolaTransformedL2",
-            []( const api::NavierStokesDiscretization& nsd ) {
-                return piolaTransformedL2Basis( nsd.getL2(), nsd.getGeometry(), nsd.geometryControlPoints() );
-            },
-            "Evaluates the Piola transformed L2 basis at the parametric position from the latest calls to "
-            "localizeElement and localizePoint. The basis is returned as a matrix with L2.numFunctions( elem ) rows "
-            "and one column, with the ith row corresponding to the ith global id in the connectivity." )
+            spatial_l2_basis,
+            "Compatibility alias for evaluateSpatialL2BasisValues." )
+        .def(
+            "evaluateSpatialL2BasisFirstDerivatives",
+            spatial_l2_derivatives,
+            "Evaluates spatial derivatives of the L2 top-form basis. The result has L2.numFunctions(elem) rows and "
+            "columns ordered as dp/dx, dp/dy." )
         .def(
             "piolaTransformedL2FirstDerivatives",
-            []( const api::NavierStokesDiscretization& nsd ) {
-                return piolaTransformedL2FirstDerivatives(
-                    nsd.getL2(), nsd.getGeometry(), nsd.geometryControlPoints() );
-            },
-            "Evaluates the piola transformed derivatives of the L2 basis at the parametric position from the latest "
-            "calls to localizeElement and localizePoint. The basis is returned as a matrix with L2.numFunctions( elem "
-            ") rows and two columns, with the ith row corresponding to the ith global id in the connectivity, and the "
-            "columns ordered as dp/ds, dp/dt." );
+            spatial_l2_derivatives,
+            "Compatibility alias for evaluateSpatialL2BasisFirstDerivatives." );
 
     py::class_<api::NavierStokesTPDiscretization, api::NavierStokesDiscretization>( m, "NavierStokesTPDiscretization" )
         .def( py::init<const basis::KnotVector&,

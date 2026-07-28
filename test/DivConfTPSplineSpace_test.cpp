@@ -70,13 +70,14 @@ TEST_CASE( "Simple Div Conf TP Spline space" )
             const Eigen::Vector2d pt( points.at( indices.at( 0 ) ), points.at( indices.at( 1 ) ) );
             const ParentPoint ppt( pd, pt, {false, false, false, false} );
 
-            primal_evals.localizePoint( ppt );
-            vec_evals.localizePoint( ppt );
+            primal_evals.localizeParentPoint( ppt );
+            vec_evals.localizeParentPoint( ppt );
 
             const Eigen::VectorXd spatial_point = primal_evals.evaluateManifold( geom.transpose() );
-            const Eigen::MatrixXd spatial_vecs = eval::piolaTransformedHDivBasis( vec_evals, primal_evals, geom.transpose() );//primal_evals.evaluatePiola( geom.transpose() ) * vec_evals.evaluateBasis().transpose();
-            const Eigen::MatrixXd param_vecs = vec_evals.evaluateBasis();
-            const Eigen::MatrixXd spatial_vec_derivs = eval::piolaTransformedHDivFirstDerivatives( vec_evals, primal_evals, geom.transpose() );
+            const Eigen::MatrixXd spatial_vecs =
+                eval::evaluateSpatialHDivBasisValues( vec_evals, primal_evals, geom.transpose() );
+            const Eigen::MatrixXd parametric_vecs = vec_evals.evaluateBasisValuesAtParentPoint();
+            const Eigen::MatrixXd spatial_vec_derivs = eval::evaluateSpatialHDivBasisFirstDerivatives( vec_evals, primal_evals, geom.transpose() );
 
             output_points.simplices.push_back( { output_points.points.size() } );
             output_points.points.push_back( (Eigen::Vector3d() << spatial_point, 0 ).finished() );
@@ -86,7 +87,8 @@ TEST_CASE( "Simple Div Conf TP Spline space" )
             for( size_t j = 0; j < conn.size(); j++ )
             {
                 vecs.at( conn.at( j ) ).row( i ).head( spatial_vecs.cols() ) = spatial_vecs.row( j );
-                vec_dvec.at( conn.at( j ) ).row( i ).head( spatial_vecs.cols() ) = spatial_vec_derivs.row( j ).reshaped( 2, 2 ) * param_vecs.row( j ).transpose();
+                vec_dvec.at( conn.at( j ) ).row( i ).head( spatial_vecs.cols() ) =
+                    spatial_vec_derivs.row( j ).reshaped( 2, 2 ) * parametric_vecs.row( j ).transpose();
             }
             i++;
         } );
@@ -178,13 +180,14 @@ TEST_CASE( "Simple Hierarchical Div Conf TP Spline space" )
             const Eigen::Vector2d pt( points.at( indices.at( 0 ) ), points.at( indices.at( 1 ) ) );
             const ParentPoint ppt( pd, pt, {false, false, false, false} );
 
-            primal_evals.localizePoint( ppt );
-            vec_evals.localizePoint( ppt );
+            primal_evals.localizeParentPoint( ppt );
+            vec_evals.localizeParentPoint( ppt );
 
             const Eigen::VectorXd spatial_point = primal_evals.evaluateManifold( geom.transpose() );
-            const Eigen::MatrixXd spatial_vecs = eval::piolaTransformedHDivBasis( vec_evals, primal_evals, geom.transpose() );//primal_evals.evaluatePiola( geom.transpose() ) * vec_evals.evaluateBasis().transpose();
-            const Eigen::MatrixXd param_vecs = vec_evals.evaluateBasis();
-            const Eigen::MatrixXd spatial_vec_derivs = eval::piolaTransformedHDivFirstDerivatives( vec_evals, primal_evals, geom.transpose() );
+            const Eigen::MatrixXd spatial_vecs =
+                eval::evaluateSpatialHDivBasisValues( vec_evals, primal_evals, geom.transpose() );
+            const Eigen::MatrixXd parametric_vecs = vec_evals.evaluateBasisValuesAtParentPoint();
+            const Eigen::MatrixXd spatial_vec_derivs = eval::evaluateSpatialHDivBasisFirstDerivatives( vec_evals, primal_evals, geom.transpose() );
 
             output_points.simplices.push_back( { output_points.points.size() } );
             output_points.points.push_back( (Eigen::Vector3d() << spatial_point, 0 ).finished() );
@@ -194,7 +197,8 @@ TEST_CASE( "Simple Hierarchical Div Conf TP Spline space" )
             for( size_t j = 0; j < conn.size(); j++ )
             {
                 vecs.at( conn.at( j ) ).row( i ).head( spatial_vecs.cols() ) = spatial_vecs.row( j );
-                vec_dvec.at( conn.at( j ) ).row( i ).head( spatial_vecs.cols() ) = spatial_vec_derivs.row( j ).reshaped( 2, 2 ) * param_vecs.row( j ).normalized().transpose();
+                vec_dvec.at( conn.at( j ) ).row( i ).head( spatial_vecs.cols() ) =
+                    spatial_vec_derivs.row( j ).reshaped( 2, 2 ) * parametric_vecs.row( j ).normalized().transpose();
             }
             i++;
         } );
@@ -256,13 +260,14 @@ TEST_CASE( "Simple 3d Div Conf TP Spline space" )
             const Eigen::Vector3d pt( points.at( indices.at( 0 ) ), points.at( indices.at( 1 ) ), points.at( indices.at( 2 ) ) );
             const ParentPoint ppt( pd, pt, {false, false, false, false, false, false} );
 
-            primal_evals.localizePoint( ppt );
-            vec_evals.localizePoint( ppt );
+            primal_evals.localizeParentPoint( ppt );
+            vec_evals.localizeParentPoint( ppt );
 
             const Eigen::VectorXd spatial_point = primal_evals.evaluateManifold( geom.transpose() );
-            const Eigen::MatrixXd spatial_vecs = eval::piolaTransformedHDivBasis( vec_evals, primal_evals, geom.transpose() );//primal_evals.evaluatePiola( geom.transpose() ) * vec_evals.evaluateBasis().transpose();
-            const Eigen::MatrixXd param_vecs = vec_evals.evaluateBasis();
-            const Eigen::MatrixXd spatial_vec_derivs = eval::piolaTransformedHDivFirstDerivatives( vec_evals, primal_evals, geom.transpose() );
+            const Eigen::MatrixXd spatial_vecs =
+                eval::evaluateSpatialHDivBasisValues( vec_evals, primal_evals, geom.transpose() );
+            const Eigen::MatrixXd parametric_vecs = vec_evals.evaluateBasisValuesAtParentPoint();
+            const Eigen::MatrixXd spatial_vec_derivs = eval::evaluateSpatialHDivBasisFirstDerivatives( vec_evals, primal_evals, geom.transpose() );
 
             output_points.simplices.push_back( { output_points.points.size() } );
             output_points.points.push_back( spatial_point );
@@ -272,7 +277,8 @@ TEST_CASE( "Simple 3d Div Conf TP Spline space" )
             for( size_t j = 0; j < conn.size(); j++ )
             {
                 vecs.at( conn.at( j ) ).row( i ).head( spatial_vecs.cols() ) = spatial_vecs.row( j );
-                vec_dvec.at( conn.at( j ) ).row( i ).head( spatial_vecs.cols() ) = spatial_vec_derivs.row( j ).reshaped( 3, 3 ) * param_vecs.row( j ).transpose();
+                vec_dvec.at( conn.at( j ) ).row( i ).head( spatial_vecs.cols() ) =
+                    spatial_vec_derivs.row( j ).reshaped( 3, 3 ) * parametric_vecs.row( j ).transpose();
             }
             i++;
         } );
@@ -382,13 +388,13 @@ TEST_CASE( "Simple 3d Hierarchical Div Conf TP Spline space" )
             const Eigen::Vector3d pt( points.at( indices.at( 0 ) ), points.at( indices.at( 1 ) ), points.at( indices.at( 2 ) ) );
             const ParentPoint ppt( pd, pt, {false, false, false, false, false, false} );
 
-            primal_evals.localizePoint( ppt );
-            vec_evals.localizePoint( ppt );
+            primal_evals.localizeParentPoint( ppt );
+            vec_evals.localizeParentPoint( ppt );
 
             const Eigen::VectorXd spatial_point = primal_evals.evaluateManifold( geom );
-            const Eigen::MatrixXd spatial_vecs = eval::piolaTransformedHDivBasis( vec_evals, primal_evals, geom );
-            const Eigen::MatrixXd param_vecs = vec_evals.evaluateBasis();
-            const Eigen::MatrixXd spatial_vec_derivs = eval::piolaTransformedHDivFirstDerivatives( vec_evals, primal_evals, geom );
+            const Eigen::MatrixXd spatial_vecs = eval::evaluateSpatialHDivBasisValues( vec_evals, primal_evals, geom );
+            const Eigen::MatrixXd parametric_vecs = vec_evals.evaluateBasisValuesAtParentPoint();
+            const Eigen::MatrixXd spatial_vec_derivs = eval::evaluateSpatialHDivBasisFirstDerivatives( vec_evals, primal_evals, geom );
 
             output_points.simplices.push_back( { output_points.points.size() } );
             output_points.points.push_back( spatial_point );
@@ -398,7 +404,8 @@ TEST_CASE( "Simple 3d Hierarchical Div Conf TP Spline space" )
             for( size_t j = 0; j < conn.size(); j++ )
             {
                 vecs.at( conn.at( j ) ).row( i ).head( spatial_vecs.cols() ) = spatial_vecs.row( j );
-                vec_dvec.at( conn.at( j ) ).row( i ).head( spatial_vecs.cols() ) = spatial_vec_derivs.row( j ).reshaped( 3, 3 ) * param_vecs.row( j ).transpose();
+                vec_dvec.at( conn.at( j ) ).row( i ).head( spatial_vecs.cols() ) =
+                    spatial_vec_derivs.row( j ).reshaped( 3, 3 ) * parametric_vecs.row( j ).transpose();
             }
             i++;
         } );

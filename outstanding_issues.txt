@@ -4,43 +4,10 @@ Branch: piolas
 Last updated: 2026-06-11
 
 
--------------------------------------------------------------------------------
-HIGH PRIORITY — Blocking Phase 5B
--------------------------------------------------------------------------------
-
-1. Piola Transform Invariance Bug
-   File(s): src/eval/SplineSpaceEvaluator.cpp
-   CTest:   "Piola transforms are invariant to parent-to-parametric interval
-            scaling" (currently #104 in this build; numbering may shift as tests
-            are added)
-
-   The functions piolaTransformedHDivBasis, piolaTransformedHDivFirstDerivatives,
-   and piolaTransformedL2Basis fail the scaling-invariance test. The test uses
-   kv_unit=[0,0,1,1] and kv_double=[0,0,2,2] with identical physical geometry
-   and asserts that the Piola transforms are unchanged.
-
-   The suspected root cause is in the coordinate-frame composition. The chain is:
-     parent coordinates
-       -> patch parametric coordinates  (scaled by parametricLengths)
-       -> physical coordinates           (via geometry Jacobian)
-   The parent-to-parametric scaling should cancel out of the physical H(div) and
-   L2 transforms tested here, but currently does not. H(curl) should be audited
-   under the same coordinate-frame convention before Phase 5B is considered
-   complete, even though this particular failing test does not currently exercise
-   the H(curl) transform. Commit 0033358 explicitly noted this as an open issue.
-
-   Action: Diagnose the exact point in the Jacobian chain where the parametric
-   scaling enters incorrectly. Do not patch empirically — previous attempts
-   (commits 6880440, 0d80ac0, b8df169) left partial fixes. Fix the root cause,
-   then ensure the invariance test passes before proceeding to Phase 5B physical
-   trace evaluation.
-
-
--------------------------------------------------------------------------------
 MEDIUM PRIORITY — Architectural / Correctness
 -------------------------------------------------------------------------------
 
-2. validateMatchingInterfaces Is Overly Conservative for Same-Mesh Asymmetric
+1. validateMatchingInterfaces Is Overly Conservative for Same-Mesh Asymmetric
    Leaf Selection
    File(s): src/basis/VectorConformingHierarchicalMultiPatchSplineSpace.cpp
             validateMatchingInterfaces()
@@ -70,7 +37,7 @@ MEDIUM PRIORITY — Architectural / Correctness
    across the asymmetric interface before merging.
 
 
-3. Per-Element DOF Alignment at Flipped Multi-Element Patch Interfaces
+2. Per-Element DOF Alignment at Flipped Multi-Element Patch Interfaces
    File(s): src/basis/MultiPatchSplineSpace.cpp
             src/basis/VectorConformingMultiPatchSplineSpace.cpp
             test/MultiPatchSplineFactory_test.cpp
@@ -95,7 +62,7 @@ MEDIUM PRIORITY — Architectural / Correctness
 LOW PRIORITY — Maintenance / Cleanup
 -------------------------------------------------------------------------------
 
-4. componentOffsets() Duplicated Between Two Files
+3. componentOffsets() Duplicated Between Two Files
    File(s): src/basis/VectorConformingHierarchicalTPSplineSpace.cpp
             src/basis/VectorConformingHierarchicalMultiPatchSplineSpace.cpp
 
@@ -105,7 +72,7 @@ LOW PRIORITY — Maintenance / Cleanup
    mechanical.
 
 
-5. Active-Function Pruning Loop Duplicated Between Scalar and Vector Paths
+4. Active-Function Pruning Loop Duplicated Between Scalar and Vector Paths
    File(s): src/basis/HierarchicalMultiPatchSplineSpace.cpp  (activeFuncs)
             src/basis/VectorConformingHierarchicalMultiPatchSplineSpace.cpp
             (vectorActiveFuncs)
@@ -115,7 +82,7 @@ LOW PRIORITY — Maintenance / Cleanup
    eliminate the duplication. Defer until Phase 5 tests provide guardrails.
 
 
-6. Raw Pointer Capture in to_space_cell Lambda
+5. Raw Pointer Capture in to_space_cell Lambda
    File(s): src/basis/TraceMesh.cpp  levelTraceMeshes()
 
    The LevelTraceMesh struct captures hmp_cmap as a raw pointer in the
@@ -124,7 +91,7 @@ LOW PRIORITY — Maintenance / Cleanup
    Low risk, low urgency.
 
 
-7. traceHasBrokenRows Performance
+6. traceHasBrokenRows Performance
    File(s): src/basis/TraceMesh.cpp  interiorTraceMeshInterfaces()
 
    The Broken mode filter calls traceSideData() (which calls extractionOperator())
@@ -134,7 +101,7 @@ LOW PRIORITY — Maintenance / Cleanup
    Not a correctness issue; relevant for large Navier-Stokes convergence studies.
 
 
-8. Same-Patch Coarse-Fine Interior Trace Enumeration Is Deferred
+7. Same-Patch Coarse-Fine Interior Trace Enumeration Is Deferred
    File(s): src/basis/TraceMesh.cpp  interiorTraceMeshInterfaces()
 
    Phase 5A enumerates same-patch, same-level leaf interfaces. It intentionally
@@ -152,7 +119,7 @@ LOW PRIORITY — Maintenance / Cleanup
 DEFERRED — Phase 5B and Beyond
 -------------------------------------------------------------------------------
 
-9. TraceSpaceEvaluator API Contract (Phase 5B prerequisite)
+8. TraceSpaceEvaluator API Contract (Phase 5B prerequisite)
    Before implementing Phase 5B, the C++ API contract for TraceSpaceEvaluator
    must be written down explicitly:
      caller provides:  TraceSideData or ElementSide, side-local parent point,
@@ -165,7 +132,7 @@ DEFERRED — Phase 5B and Beyond
    TraceSpaceEvaluator should wrap (not reimplement) SplineSpaceEvaluator.
 
 
-10. 3D Tangent Frame Convention for H(curl) Traces (Phase 5B)
+9. 3D Tangent Frame Convention for H(curl) Traces (Phase 5B)
    In 3D, a face has one outward normal and two independent tangential directions.
    For H(curl) conforming traces both tangential components must be handled. The
    convention (ordering and normalization of the two tangent vectors, consistency
@@ -173,7 +140,7 @@ DEFERRED — Phase 5B and Beyond
    3D H(curl) physical trace tests.
 
 
-11. Nonmatching Interface / Mortar Framework (Long Term)
+10. Nonmatching Interface / Mortar Framework (Long Term)
     True asymmetric patch interface refinement where the two sides have different
     mesh structures (not just different leaf selections) requires mortar/Nitsche
     machinery: coarse-to-fine trace constraint matrices, Piola-aware trace
@@ -181,13 +148,13 @@ DEFERRED — Phase 5B and Beyond
     scope for the current strongly-conforming H(div)/H(curl) layer.
 
 
-12. NURBS Evaluator Gaps
+11. NURBS Evaluator Gaps
     File(s): src/eval/SplineSpaceEvaluator.cpp  NURBSSpaceEvaluator
     NURBSSpaceEvaluator implements manifold/Jacobian/Hessian and
     param-to-spatial Jacobian/Hessian evaluation, so polynomial analysis spaces
-    with rational geometry can still be viable. However, evaluateBasis,
-    evaluateFirstDerivatives, evaluateSecondDerivatives, and
-    evaluateFirstDerivativesFromParamToSpatial throw for NURBSSpaceEvaluator.
+    with rational geometry can still be viable. However, evaluateBasisValuesAtParentPoint,
+    evaluateBasisFirstDerivativesWrtParentCoordinates, evaluateBasisSecondDerivativesWrtParentCoordinates, and
+    evaluateBasisFirstDerivativesWrtParametricCoordinates throw for NURBSSpaceEvaluator.
     Any Phase 5B work that treats NURBS as the analysis basis, rather than only
     as geometry, will hit these gaps.
 
@@ -195,7 +162,7 @@ DEFERRED — Phase 5B and Beyond
     analysis unless/until rational basis evaluation is implemented.
 
 
-13. Python / API Exposure (Phase 6)
+12. Python / API Exposure (Phase 6)
     NavierStokesMultiPatchDiscretization, NavierStokesHierarchicalMultiPatchDiscretization,
     buildL2MultiPatch, externalTraceDofs, interfaceTraceElements, and the new
     TraceMesh enumeration functions are not yet exposed in SplinesAPI.cpp.
@@ -206,7 +173,7 @@ DEFERRED — Phase 5B and Beyond
 KNOWN NON-BLOCKING TEST-SUITE / ENVIRONMENT ITEMS
 -------------------------------------------------------------------------------
 
-14. Macaroni Tracing Tests
+13. Macaroni Tracing Tests
     CTest: #30 "Tracing from all the vertices in the macaroni"
            #32 "Tracing from all the interior faces in the macaroni" has also
            timed out in recent full-suite runs under machine load.
@@ -216,17 +183,9 @@ KNOWN NON-BLOCKING TEST-SUITE / ENVIRONMENT ITEMS
     enumeration work. Track separately unless changes touch tracing.
 
 
-15. Critical Points Test
-    CTest: #146 "Critical points test" in this build
+14. Critical Points Test
+    CTest: #152 "Critical points test" in this build
 
     Recent full-suite runs reported an Eigen comma-initializer assertion here.
     This appears to be a pre-existing critical-points algorithm issue and is not
     believed to be related to the basis-layer work.
-
-
-16. Python Import Test
-    CTest: #161 "python_import_test" in this build
-
-    Recent full-suite runs reported this as an environment / Python path issue.
-    Keep separate from C++ basis correctness unless Python packaging or API
-    exposure is being modified.

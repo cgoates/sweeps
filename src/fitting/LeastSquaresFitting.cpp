@@ -24,10 +24,10 @@ namespace fitting
             if( row > n_points )
                 throw std::runtime_error( "Number of points exceeded expected count." );
             evaler.localizeElement( elem ); // TODO: Move this and the connectivity out into a less hot part of the loop
-            evaler.localizePoint( ppt );
+            evaler.localizeParentPoint( ppt );
             const std::vector<basis::FunctionId> conn = evaler.splineSpace().connectivity( elem );
 
-            const Eigen::VectorXd basis = evaler.evaluateBasis();
+            const Eigen::VectorXd basis = evaler.evaluateBasisValuesAtParentPoint();
 
             for( size_t func_ii = 0; func_ii < conn.size(); func_ii++ )
             {
@@ -125,7 +125,7 @@ namespace fitting
                         const param::ParentPoint& ppt = cell_pt.second;
 
                         manifold_evaler.localizeElement( cell );
-                        manifold_evaler.localizePoint( ppt );
+                        manifold_evaler.localizeParentPoint( ppt );
 
                         const Eigen::VectorXd manifold_pt =
                             manifold_evaler.evaluateManifold( manifold_cpts_transposed );

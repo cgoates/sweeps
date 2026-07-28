@@ -20,11 +20,11 @@ Eigen::MatrixXd getTransformedEvals( const eval::SplineSpaceEvaluator& evaler,
 {
     if( conforming_type == ConformingType::Divergence )
     {
-        return eval::piolaTransformedHDivBasis( evaler, geom_evaler, geom );
+        return eval::evaluateSpatialHDivBasisValues( evaler, geom_evaler, geom );
     }
     else if( conforming_type == ConformingType::Curl )
     {
-        return eval::piolaTransformedHCurlBasis( evaler, geom_evaler, geom );
+        return eval::evaluateSpatialHCurlBasisValues( evaler, geom_evaler, geom );
     }
     else
     {
@@ -63,9 +63,9 @@ void test_c0( const VectorConformingMultiPatchSplineSpace& ss,
                     const ParentPoint one_side_ppt = pointOnBoundary( cubeDomain( cmap.dim() ), parentDomainBoundary( atlas, one_side_e ) );
 
                     evaler.localizeElement( one_side_f );
-                    evaler.localizePoint( one_side_ppt );
+                    evaler.localizeParentPoint( one_side_ppt );
                     geom_evaler.localizeElement( one_side_f );
-                    geom_evaler.localizePoint( one_side_ppt );
+                    geom_evaler.localizeParentPoint( one_side_ppt );
                     const Eigen::MatrixXd one_side_evals = getTransformedEvals( evaler, geom_evaler, geom, conforming_type );
                     const auto one_side_conn = ss.connectivity( one_side_f );
 
@@ -74,9 +74,9 @@ void test_c0( const VectorConformingMultiPatchSplineSpace& ss,
                     const ParentPoint other_side_ppt = pointOnBoundary( cubeDomain( cmap.dim() ), parentDomainBoundary( atlas, other_side_e ) );
 
                     evaler.localizeElement( other_side_f );
-                    evaler.localizePoint( other_side_ppt );
+                    evaler.localizeParentPoint( other_side_ppt );
                     geom_evaler.localizeElement( other_side_f );
-                    geom_evaler.localizePoint( other_side_ppt );
+                    geom_evaler.localizeParentPoint( other_side_ppt );
                     const Eigen::MatrixXd other_side_evals = getTransformedEvals( evaler, geom_evaler, geom, conforming_type );
                     const auto other_side_conn = ss.connectivity( other_side_f );
 
