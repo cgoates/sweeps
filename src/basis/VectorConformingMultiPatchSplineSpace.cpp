@@ -158,6 +158,12 @@ VectorConformingMultiPatchSplineSpace::VectorConformingMultiPatchSplineSpace(
     const std::vector<std::shared_ptr<const VectorConformingTPSplineSpace>>& constituents )
     : mBasisComplex( bc ), mSubSpaces( constituents ), mParametricAtlas( castAndCheck( bc->parametricAtlas() ) )
 {
+    std::vector<detail::TensorProductSplineComponents> component_splines;
+    component_splines.reserve( constituents.size() );
+    for( const auto& constituent : constituents )
+        component_splines.push_back( constituent->reducedDegree1dBases() );
+    detail::validateStrongInterfaceCompatibility( mParametricAtlas.cmap(), component_splines );
+
     std::vector<size_t> constituent_function_offsets;
     constituent_function_offsets.push_back( 0 );
     for( size_t i = 0; i < constituents.size(); i++ )

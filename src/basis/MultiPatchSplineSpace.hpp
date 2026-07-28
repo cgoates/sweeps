@@ -4,6 +4,16 @@
 
 namespace basis
 {
+    namespace detail
+    {
+        using TensorProductSplineComponents =
+            SmallVector<std::shared_ptr<const BSplineSpace1d>, 3>;
+
+        void validateStrongInterfaceCompatibility(
+            const topology::MultiPatchCombinatorialMap& cmap,
+            const std::vector<TensorProductSplineComponents>& constituents );
+    }
+
     class MultiPatchSplineSpace : public SplineSpace
     {
         public:

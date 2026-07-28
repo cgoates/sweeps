@@ -4,9 +4,150 @@
 #include <ranges>
 #include <GlobalCellMarker.hpp>
 #include <iostream>
+#include <algorithm>
+#include <cmath>
+#include <sstream>
 
 namespace basis
 {
+    namespace
+    {
+        using TPPermutation = topology::MultiPatchCombinatorialMap::TPPermutation;
+
+        struct TraceAxisTransform
+        {
+            size_t destination_axis;
+            bool aligned;
+        };
+
+        std::vector<TraceAxisTransform> traceAxisTransforms( const size_t dim, const TPPermutation permutation )
+        {
+            if( dim == 2 )
+            {
+                if( permutation != TPPermutation::Flip1d )
+                    throw std::invalid_argument( "A two-dimensional patch interface requires Flip1d permutation." );
+                return { { 0, false } };
+            }
+
+            if( dim != 3 )
+                throw std::invalid_argument( "Strong multipatch coupling is supported only in 2D and 3D." );
+
+            switch( permutation )
+            {
+                case TPPermutation::ZeroToZero: return { { 0, false }, { 1, true } };
+                case TPPermutation::ZeroToOne: return { { 1, false }, { 0, false } };
+                case TPPermutation::ZeroToTwo: return { { 0, true }, { 1, false } };
+                case TPPermutation::ZeroToThree: return { { 1, true }, { 0, true } };
+                case TPPermutation::Flip1d:
+                    throw std::invalid_argument( "A three-dimensional patch interface requires a face permutation." );
+            }
+            throw std::invalid_argument( "Unknown tensor-product interface permutation." );
+        }
+
+        std::vector<size_t> tangentialAxes( const size_t dim, const size_t side_id )
+        {
+            const size_t normal_axis = side_id / 2;
+            if( normal_axis >= dim ) throw std::invalid_argument( "Patch interface side is outside the patch dimension." );
+
+            std::vector<size_t> axes;
+            axes.reserve( dim - 1 );
+            for( size_t axis = 0; axis < dim; axis++ )
+                if( axis != normal_axis ) axes.push_back( axis );
+            return axes;
+        }
+
+        bool approximatelyEqual( const double first, const double second )
+        {
+            constexpr double relative_tol = 1e-10;
+            return std::abs( first - second ) <=
+                   relative_tol * std::max( { 1.0, std::abs( first ), std::abs( second ) } );
+        }
+
+        size_t splineDegree( const BSplineSpace1d& spline )
+        {
+            return degrees( spline.basisComplex().defaultParentBasis() ).at( 0 );
+        }
+
+        bool compatibleKnotPatterns( const BSplineSpace1d& first,
+                                     const BSplineSpace1d& second,
+                                     const bool aligned )
+        {
+            if( splineDegree( first ) != splineDegree( second ) ) return false;
+
+            const auto& first_knots = first.knotVector().uniqueKnotMultiplicities();
+            const auto& second_knots = second.knotVector().uniqueKnotMultiplicities();
+            if( first_knots.size() != second_knots.size() ) return false;
+
+            const double first_origin = first_knots.front().first;
+            const double second_origin = aligned ? second_knots.front().first : second_knots.back().first;
+            for( size_t i = 0; i < first_knots.size(); i++ )
+            {
+                const size_t second_i = aligned ? i : second_knots.size() - i - 1;
+                if( first_knots.at( i ).second != second_knots.at( second_i ).second ) return false;
+
+                const double first_relative_knot = first_knots.at( i ).first - first_origin;
+                const double second_relative_knot =
+                    aligned ? second_knots.at( second_i ).first - second_origin
+                            : second_origin - second_knots.at( second_i ).first;
+                if( not approximatelyEqual( first_relative_knot, second_relative_knot ) ) return false;
+            }
+            return true;
+        }
+
+        void validateStrongInterfaceCompatibilityImpl(
+            const topology::MultiPatchCombinatorialMap& cmap,
+            const std::vector<detail::TensorProductSplineComponents>& constituents )
+        {
+            if( constituents.size() != cmap.constituents().size() )
+                throw std::invalid_argument( "Multipatch spline constituents do not match the combinatorial map." );
+
+            const size_t dim = cmap.dim();
+            for( const auto& [first_side, connection] : cmap.connections() )
+            {
+                const auto& [permutation, second_side] = connection;
+                if( not( first_side < second_side ) ) continue;
+
+                const auto& first_components = constituents.at( first_side.constituent_id );
+                const auto& second_components = constituents.at( second_side.constituent_id );
+                if( first_components.size() != dim or second_components.size() != dim )
+                    throw std::invalid_argument( "Multipatch interface constituents must be tensor-product splines." );
+
+                const std::vector<size_t> first_axes = tangentialAxes( dim, first_side.side_id );
+                const std::vector<size_t> second_axes = tangentialAxes( dim, second_side.side_id );
+                const std::vector<TraceAxisTransform> transforms = traceAxisTransforms( dim, permutation );
+
+                for( size_t trace_axis = 0; trace_axis < transforms.size(); trace_axis++ )
+                {
+                    const TraceAxisTransform transform = transforms.at( trace_axis );
+                    const size_t first_axis = first_axes.at( trace_axis );
+                    const size_t second_axis = second_axes.at( transform.destination_axis );
+                    if( compatibleKnotPatterns(
+                            *first_components.at( first_axis ),
+                            *second_components.at( second_axis ),
+                            transform.aligned ) )
+                    {
+                        continue;
+                    }
+
+                    std::ostringstream msg;
+                    msg << "Strong multipatch coupling requires matching tangential spline parameterizations "
+                           "up to translation, permutation, and orientation reversal. Patch "
+                        << first_side.constituent_id << " axis " << first_axis << " is incompatible with patch "
+                        << second_side.constituent_id << " axis " << second_axis
+                        << "; scaled interfaces require a weighted coupling that is not supported.";
+                    throw std::invalid_argument( msg.str() );
+                }
+            }
+        }
+    }
+
+    void detail::validateStrongInterfaceCompatibility(
+        const topology::MultiPatchCombinatorialMap& cmap,
+        const std::vector<TensorProductSplineComponents>& constituents )
+    {
+        validateStrongInterfaceCompatibilityImpl( cmap, constituents );
+    }
+
     std::tuple<util::IndexVec, util::IndexVec, SmallVector<std::variant<bool, size_t>, 3>>
         getIterVars( const TPSplineSpace& constituent, const topology::Cell& corner, const bool reverse_dart )
     {
@@ -110,6 +251,15 @@ namespace basis
     {
         const topology::MultiPatchCombinatorialMap& multi_cmap = bc->parametricAtlas().cmap();
         const size_t param_dim = multi_cmap.dim();
+        if( connect_interfaces )
+        {
+            std::vector<detail::TensorProductSplineComponents> component_splines;
+            component_splines.reserve( constituents.size() );
+            for( const auto& constituent : constituents )
+                component_splines.push_back( tensorProductComponentSplines( *constituent ) );
+            detail::validateStrongInterfaceCompatibility( multi_cmap, component_splines );
+        }
+
         mFuncIds.reserve( constituents.size() );
         for( size_t i = 0; i < constituents.size(); i++ )
         {

@@ -324,3 +324,27 @@ TEST_CASE( "Phase 3 L2 factory keeps reduced C0 directions broken inside a patch
 
     CHECK( intersectionSize( first_ids, second_ids ) == 0 );
 }
+
+TEST_CASE( "Strong multipatch coupling rejects scaled interface coordinates" )
+{
+    const double ptol = 1e-10;
+    const KnotVector normal_kv( { 0, 0, 0, 1, 1, 1 }, ptol );
+    const KnotVector first_tangent_kv( { 0, 0, 0, 0.25, 1, 1, 1 }, ptol );
+    const KnotVector translated_reversed_tangent_kv( { 5, 5, 5, 5.75, 6, 6, 6 }, ptol );
+    const KnotVector scaled_tangent_kv( { 5, 5, 5, 6.5, 7, 7, 7 }, ptol );
+
+    const auto first_patch = makePatch( { normal_kv, first_tangent_kv }, { 2, 2 } );
+    const auto translated_patch =
+        makePatch( { normal_kv, translated_reversed_tangent_kv }, { 2, 2 } );
+    const auto scaled_patch = makePatch( { normal_kv, scaled_tangent_kv }, { 2, 2 } );
+
+    const InternalConnectionsMap connections =
+        twoPatchConnection( ElementSide( 0, false ), ElementSide( 0, true ), TPPermutation::Flip1d );
+
+    CHECK_NOTHROW( buildH1MultiPatchSplineSpace( { first_patch, translated_patch }, connections ) );
+    CHECK_THROWS_AS(
+        buildH1MultiPatchSplineSpace( { first_patch, scaled_patch }, connections ),
+        std::invalid_argument );
+    CHECK_NOTHROW(
+        buildDiscontinuousMultiPatchSplineSpace( { first_patch, scaled_patch }, connections ) );
+}
