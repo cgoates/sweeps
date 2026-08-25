@@ -1,0 +1,434 @@
+Multipatch Development Workflow
+===============================
+Last updated: 2026-07-29
+
+
+PURPOSE
+-------------------------------------------------------------------------------
+
+This document records the canonical development phases for the hierarchical
+multipatch conforming spline framework in sweeps. It distinguishes the numbered
+multipatch phases from supporting work such as degree elevation, NURBS geometry,
+and volume Piola evaluation.
+
+The canonical order is:
+
+  Phase 0: Architecture and contracts
+  Phase 1: Low-continuity local extraction
+  Phase 2: Algebraic element-side traces
+  Phase 3: Multipatch de Rham space factories
+  Phase 4: Hierarchical multipatch conforming spaces
+  Phase 5: Geometry-aware trace infrastructure
+      Phase 5A: Mesh-level algebraic trace enumeration
+      Piola gate: Volume spatial evaluation
+      Phase 5B: Physical trace evaluation
+  Phase 6: Python and application API exposure
+  Phase 7: PDE assembly workflows and end-to-end integration
+
+The current implementation is through Phase 5A and the Piola gate. Phase 5B is
+the next primary implementation phase.
+
+
+PHASE 0: ARCHITECTURE AND CONTRACTS
+Status: COMPLETE
+-------------------------------------------------------------------------------
+
+Goals:
+
+  - Preserve the existing separation among topology, parametric atlases, basis
+    complexes, spline spaces, evaluators, and application code.
+  - Use extraction operators as the common representation of element-local
+    basis behavior.
+  - Implement exact nested operations directly instead of using global
+    projection.
+  - Keep algebraic trace information independent of geometry-aware trace
+    evaluation and PDE-specific weak forms.
+  - Initially support strong coupling only for compatible patch interfaces.
+  - Reserve nonmatching, scaled, or otherwise incompatible interfaces for a
+    future weak, mortar, or projection-based coupling layer.
+  - Keep polynomial compatible analysis spaces separate from rational geometry.
+
+Result:
+
+The subsequent basis, trace, hierarchy, and evaluation layers share explicit
+contracts rather than introducing separate conventions for each feature.
+
+
+PHASE 1: LOW-CONTINUITY LOCAL EXTRACTION
+Status: COMPLETE
+-------------------------------------------------------------------------------
+
+Goals:
+
+  - Correctly construct local connectivity and extraction matrices for smooth,
+    C0, and broken C^-1 knot configurations.
+  - Correctly determine per-element Bernstein column offsets without assuming
+    endpoint sharing that does not exist in broken spaces.
+  - Share the extraction implementation between one-dimensional B-spline spaces
+    and Bezier-transfer operations.
+
+Capabilities:
+
+  - High-continuity tensor-product B-splines.
+  - C0 degree-p H1 spaces.
+  - Degree-(p-1) reduced directions that become C^-1 when the original interior
+    multiplicity is p.
+  - Local extraction required by low-continuity RT- and Nedelec-like spaces.
+  - Discontinuous L2 spaces within a single patch.
+
+Gate:
+
+The smooth, C0, and broken extraction tests must remain green. Every later
+phase depends on this local basis information.
+
+
+PHASE 2: ALGEBRAIC ELEMENT-SIDE TRACES
+Status: COMPLETE
+-------------------------------------------------------------------------------
+
+Goals:
+
+  - Define a dimension-generic element-side vocabulary.
+  - Restrict volume connectivity and extraction matrices to one-sided traces.
+  - Represent boundary and two-sided interface traces without geometry or PDE
+    dependencies.
+
+Core objects and operations:
+
+  - ElementSide
+  - TraceSideData
+  - TraceInterfaceElement
+  - trace column selection
+  - trace extraction matrices
+  - one-sided trace connectivity
+  - same-patch adjacent-element lookup
+
+Capabilities:
+
+  - Scalar and vector-valued traces.
+  - Smooth and broken one-sided traces.
+  - 2D edge and 3D face traces.
+  - Element-interior and patch-boundary trace data.
+
+Not included:
+
+  - Physical normals or tangents.
+  - Piola-transformed traces.
+  - Side measures.
+  - Jump, average, penalty, Nitsche, or DG terms.
+
+
+PHASE 3: MULTIPATCH DE RHAM SPACE FACTORIES
+Status: COMPLETE
+-------------------------------------------------------------------------------
+
+Goals:
+
+  - Provide semantic factory functions for compatible multipatch spaces.
+  - Merge only the degrees of freedom required by each conformity class.
+  - Preserve patch adjacency even for spaces whose interface DOFs are not
+    strongly merged.
+
+Capabilities:
+
+  - Multipatch H1 spaces with scalar trace continuity.
+  - Multipatch H(div) spaces with strongly coupled normal traces.
+  - Multipatch H(curl) spaces with strongly coupled tangential traces.
+  - Discontinuous multipatch L2 spaces.
+  - Generic vector-conforming factory selection.
+  - 2D and 3D constructions.
+  - Smooth compatible splines.
+  - Low-continuity RT- and Nedelec-like constructions obtained from C0 H1
+    spaces and reduced-degree directions.
+
+Important behavior:
+
+  - H(div) does not strongly couple tangential components.
+  - H(curl) does not strongly couple normal components.
+  - L2 does not merge pressure/top-form DOFs across patch interfaces.
+
+
+PHASE 4: HIERARCHICAL MULTIPATCH CONFORMING SPACES
+Status: COMPLETE WITH A CONSERVATIVE REFINEMENT RESTRICTION
+-------------------------------------------------------------------------------
+
+Goals:
+
+  - Extend the Phase 3 spaces to hierarchical leaf selections.
+  - Select and prune active functions using global multipatch vector IDs.
+  - Preserve vector component ordering and patch-local orientation signs.
+  - Build hierarchical H1, H(div), H(curl), and L2 spaces in 2D and 3D.
+
+Capabilities:
+
+  - Scalar hierarchical multipatch spaces.
+  - Explicit-active vector-conforming hierarchical tensor-product spaces.
+  - Vector-conforming hierarchical multipatch spaces.
+  - Component-major, level-minor connectivity.
+  - Orientation-aware extraction.
+  - Hierarchical discontinuous L2 construction.
+  - Mixed-level refinement away from patch interfaces.
+
+Current restriction:
+
+Strong vector-conforming interfaces currently require matching leaf-element
+selections on both patch sides at every level. This is more conservative than
+the THB mathematics requires when both patches have the same refinement meshes
+but select leaves asymmetrically.
+
+Planned extension:
+
+Relax the matching-leaf validator for same-mesh asymmetric leaf selection only
+after tests verify that:
+
+  - the coarse merged interface function remains active,
+  - incompatible fine interface functions are pruned,
+  - fine patch-interior functions remain active,
+  - extraction on the refined side includes the surviving coarse contribution,
+  - H(div) normal and H(curl) tangential conformity are preserved.
+
+Truly nonmatching patch meshes remain a future mortar or weak-coupling problem.
+
+
+PHASE 5: GEOMETRY-AWARE TRACE INFRASTRUCTURE
+Status: IN PROGRESS
+-------------------------------------------------------------------------------
+
+Phase 5 connects the algebraic multipatch hierarchy to geometry-aware trace
+evaluation. It remains PDE-neutral: it supplies physical trace quantities but
+does not prescribe a Stokes, Navier-Stokes, Maxwell, DG, or Nitsche formulation.
+
+
+PHASE 5A: MESH-LEVEL ALGEBRAIC TRACE ENUMERATION
+Status: COMPLETE
+-------------------------------------------------------------------------------
+
+Goals:
+
+  - Enumerate trace entities over complete tensor-product, multipatch, and
+    hierarchical spaces.
+  - Pair patch-interface sides using the multipatch topology.
+  - Record coordinate permutations independently from physical evaluation.
+  - Optionally enumerate only broken same-patch interior interfaces.
+
+Capabilities:
+
+  - External boundary-side enumeration.
+  - Cross-patch interface pairing.
+  - Same-patch, same-level interior-face enumeration.
+  - Broken-only interior filtering.
+  - Hierarchical patch-interface enumeration.
+  - 2D and 3D side-index permutations.
+  - Continuous side-point permutations.
+  - Conversion from a mesh-level trace interface to Phase 2 trace data.
+
+Current limitations:
+
+  - Same-patch hierarchical coarse-fine interior interfaces are not subdivided.
+    Physical weak integration across such interfaces will require fine-side
+    subdivision and mapping into the neighboring coarse side.
+  - Per-element alignment on flipped, multi-element patch interfaces requires
+    explicit verification before Phase 5B paired physical-trace tests.
+
+
+PIOLA GATE: VOLUME SPATIAL EVALUATION
+Status: COMPLETE
+-------------------------------------------------------------------------------
+
+Purpose:
+
+The volume evaluator had to be frame-correct and tested before it could be
+reused by a physical trace evaluator.
+
+Coordinate contract:
+
+  - Parent coordinates s localize a point within an element.
+  - Patch-parametric coordinates xi define the spline component frame.
+  - Spatial coordinates x are produced by the geometry map.
+  - D = d(xi)/d(s) is the diagonal parent-to-parametric element map.
+  - J_xi = d(x)/d(xi) is used for all physical basis/Piola transformations.
+  - J_s = d(x)/d(s) = J_xi D is used as the integration Jacobian for Gaussian
+    quadrature performed on the parent cell.
+
+Capabilities:
+
+  - Spatial H1 gradients.
+  - Spatial H(curl) basis values and first derivatives.
+  - Spatial H(div) basis values and first derivatives.
+  - Spatial L2 top-form values and first derivatives.
+  - 2D planar and 3D volumetric mappings.
+  - Curved B-spline and NURBS geometry.
+  - Nonuniform knot spans.
+  - Explicit parent- and parametric-coordinate evaluator names.
+
+Verification:
+
+  - Parent/parametric coordinate-contract identities.
+  - Parent-route versus parametric-route transform equivalence.
+  - Finite-difference geometry and basis derivative tests.
+  - Nonuniform H(div) normal and H(curl) tangential trace continuity.
+  - 2D and 3D tests.
+  - Flat and curved Python Stokes convergence checks.
+
+Current quadrature choice:
+
+Gaussian quadrature remains on the parent cell and uses det(J_s). Physical
+basis transformations use J_xi. A fully parametric integration interface would
+be equivalent but would require arbitrary localizeParametricPoint(xi), Python
+exposure of J_xi and det(J_xi), and quadrature points and weights documented on
+the knot cell.
+
+
+PHASE 5B: PHYSICAL TRACE EVALUATION
+Status: NEXT
+-------------------------------------------------------------------------------
+
+Goal:
+
+Implement a geometry-aware TraceSpaceEvaluator, or an equivalent API, by
+wrapping rather than duplicating SplineSpaceEvaluator.
+
+Proposed caller inputs:
+
+  - TraceSideData or ElementSide.
+  - A side-local parent point.
+  - Geometry evaluator and geometry control points.
+  - Optional paired-interface information and coordinate permutation.
+
+Proposed outputs:
+
+  - Side-restricted basis values.
+  - Spatial H(div) normal traces.
+  - Spatial H(curl) tangential traces.
+  - Outward physical unit normal.
+  - Tangent vector in 2D or an ordered tangent frame in 3D.
+  - Side Jacobian and integration measure.
+  - Paired-side point mapping.
+  - Orientation and permutation metadata.
+
+Prerequisites to finalize:
+
+  - Document the 3D H(curl) tangent-frame ordering and orientation convention.
+  - Verify flipped multi-element patch-interface DOF and element pairing.
+  - State whether each side quadrature routine uses parent-side or
+    parametric-side points and pair it with the corresponding side measure.
+
+Required tests:
+
+  - Boundary normals and side measures on affine geometry.
+  - Curved geometry normals, tangents, and side measures.
+  - H(div) normal-trace agreement on paired patch sides.
+  - H(curl) tangential-trace agreement on paired patch sides.
+  - Interface point permutations and orientation reversals.
+  - 2D and 3D cases.
+  - Low-continuity element-interior one-sided traces.
+
+
+PHASE 6: PYTHON AND APPLICATION API EXPOSURE
+Status: NOT STARTED AS A COMPLETE MULTIPATCH LAYER
+-------------------------------------------------------------------------------
+
+Goal:
+
+Expose the stable C++ multipatch, hierarchy, and physical trace concepts without
+requiring Python users to construct internal component offsets, function maps,
+or orientation data manually.
+
+Planned exposure:
+
+  - Multipatch geometry and patch-connection descriptions.
+  - Multipatch H1, H(div), H(curl), and L2 construction.
+  - Hierarchical leaf-selection inputs.
+  - Hierarchical multipatch discretizations.
+  - H(curl) spatial evaluation.
+  - Boundary, patch-interface, and interior trace queries.
+  - Physical TraceSpaceEvaluator outputs.
+  - Diagnostics for interface compatibility and shared DOFs.
+  - Refinement workflows that preserve rational geometry where appropriate.
+
+Already exposed independently:
+
+  - Single-patch tensor-product and hierarchical Navier-Stokes discretizations.
+  - NURBS geometry for polynomial compatible analysis spaces.
+  - Parent localization and parent quadrature Jacobians.
+  - Spatial H(div) and L2 values and derivatives through the patch-parametric
+    map.
+  - Two-dimensional global h-refinement and degree elevation.
+
+
+PHASE 7: PDE ASSEMBLY WORKFLOWS AND END-TO-END INTEGRATION
+Status: NOT STARTED
+-------------------------------------------------------------------------------
+
+Goal:
+
+Use the stable trace and API layers in actual weak formulations without placing
+PDE-specific behavior inside the spline-space classes.
+
+Planned capabilities:
+
+  - Patch-interface weak coupling.
+  - Same-patch low-continuity interior-face terms.
+  - Jump and average operators.
+  - Normal or tangential Nitsche enforcement.
+  - DG-like stabilization where required by the PDE.
+  - Weak RT-Nedelec coupling when a mixed formulation requires it.
+  - Mortar or projection coupling for truly nonmatching patch interfaces.
+  - End-to-end Stokes, Navier-Stokes, and Maxwell regression tests.
+  - Performance and caching work for repeated trace assembly.
+
+The spline and evaluator layers should expose the trace quantities needed by
+these formulations. They should not encode one particular interface bilinear
+form.
+
+
+SUPPORTING TRACKS
+-------------------------------------------------------------------------------
+
+Degree Elevation and Knot Insertion
+Status: CORE C++ FUNCTIONALITY COMPLETE; HIGH-LEVEL EXPOSURE PARTIAL
+
+  - Exact univariate degree elevation is implemented through local Bezier
+    extraction, Bernstein transfer, and reconstruction.
+  - Tensor-product degree elevation is implemented and tested for surfaces and
+    volumes.
+  - Nested knot insertion/refinement supports up to three tensor-product
+    directions in C++.
+  - Python globallyPElevate and globallyHRefine currently expose the
+    two-dimensional global cases.
+  - Multipatch/hierarchical p-elevation, arbitrary Python knot insertion,
+    degree reduction, knot removal, merging/coarsening, and
+    smoothing/roughing remain future work.
+
+Rational Geometry
+Status: SUPPORTED FOR GEOMETRY; INTENTIONALLY UNSUPPORTED FOR ANALYSIS
+
+  - NURBS geometry is available through homogeneous control points and a
+    dedicated geometry evaluator.
+  - Polynomial B-spline H1, H(curl), H(div), and L2 spaces form the compatible
+    analysis complex and are transported through the geometry map.
+  - Rational compatible analysis spaces of the Hiemstra type are not planned.
+
+
+CURRENT POSITION AND NEXT ACTION
+-------------------------------------------------------------------------------
+
+Current position:
+
+  - Phases 0 through 4 are complete.
+  - Phase 5A is complete.
+  - The volume Piola gate is complete.
+  - Phase 5B is the next implementation task.
+
+Recommended next sequence:
+
+  1. Finalize the Phase 5B TraceSpaceEvaluator contract.
+  2. Finalize the 3D tangent-frame convention.
+  3. Verify flipped multi-element interface alignment.
+  4. Implement physical boundary traces.
+  5. Implement paired patch-interface physical traces.
+  6. Add 2D, 3D, affine, curved, H(div), and H(curl) tests.
+  7. Address coarse-fine same-patch trace subdivision when required.
+  8. Proceed to Phase 6 Python exposure.
+  9. Build Phase 7 PDE-specific assembly workflows on the stable API.
+

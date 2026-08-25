@@ -1,7 +1,7 @@
 Outstanding Issues and Planned Work
 =====================================
 Branch: piolas
-Last updated: 2026-06-11
+Last updated: 2026-07-29
 
 
 MEDIUM PRIORITY — Architectural / Correctness
@@ -148,25 +148,106 @@ DEFERRED — Phase 5B and Beyond
     scope for the current strongly-conforming H(div)/H(curl) layer.
 
 
-11. NURBS Evaluator Gaps
-    File(s): src/eval/SplineSpaceEvaluator.cpp  NURBSSpaceEvaluator
-    NURBSSpaceEvaluator implements manifold/Jacobian/Hessian and
-    param-to-spatial Jacobian/Hessian evaluation, so polynomial analysis spaces
-    with rational geometry can still be viable. However, evaluateBasisValuesAtParentPoint,
-    evaluateBasisFirstDerivativesWrtParentCoordinates, evaluateBasisSecondDerivativesWrtParentCoordinates, and
-    evaluateBasisFirstDerivativesWrtParametricCoordinates throw for NURBSSpaceEvaluator.
-    Any Phase 5B work that treats NURBS as the analysis basis, rather than only
-    as geometry, will hit these gaps.
-
-    Action: Keep Phase 5B NURBS tests scoped to rational geometry with polynomial
-    analysis unless/until rational basis evaluation is implemented.
-
-
-12. Python / API Exposure (Phase 6)
+11. Python / API Exposure (Phase 6)
     NavierStokesMultiPatchDiscretization, NavierStokesHierarchicalMultiPatchDiscretization,
     buildL2MultiPatch, externalTraceDofs, interfaceTraceElements, and the new
     TraceMesh enumeration functions are not yet exposed in SplinesAPI.cpp.
-    Defer until Phase 5B C++ layer and tests are stable.
+    H(curl) spatial evaluation exists in C++ but likewise has no dedicated Python
+    discretization/API path. Defer these bindings until the Phase 5B C++ layer and
+    tests are stable.
+
+
+12. Degree-Elevation and Knot-Insertion Scope
+    Exact univariate and tensor-product transfer operators are implemented in C++.
+    Tensor-product degree elevation is tested for surfaces and volumes, and nested
+    knot insertion/refinement supports up to three tensor-product directions.
+
+    Current high-level limitations:
+      - globallyPElevate exposes only 2D tensor-product surfaces in Python.
+      - globallyHRefine exposes uniform n-adic refinement only for 2D
+        tensor-product surfaces in Python.
+      - Arbitrary nested knot insertion is available through the C++ refinement
+        operators but is not directly exposed as a Python transfer operation.
+      - Multipatch and hierarchical p-elevation are not implemented as high-level
+        operations.
+      - Degree reduction, knot removal, cell merging, coarsening, and
+        smoothing/roughing remain future Bezier-projection operations.
+
+    These limitations do not affect the currently tested exact global transfer
+    operations. Address them incrementally with the future Bezier-projection
+    framework rather than by adding unrelated special cases to the existing API.
+
+
+-------------------------------------------------------------------------------
+CURRENT CAPABILITY BOUNDARIES AND INTENTIONAL NON-GOALS
+-------------------------------------------------------------------------------
+
+A. Rational Analysis Spaces Are Intentionally Unsupported
+   File(s): src/eval/SplineSpaceEvaluator.cpp  NURBSSpaceEvaluator
+
+   The supported compatible-IGA formulation uses:
+     - Polynomial B-spline differential-form spaces for the parametric H1,
+       H(curl), H(div), and L2 de Rham sequence.
+     - A B-spline or NURBS geometry map.
+     - Pullbacks/Piola transformations to transport the polynomial analysis
+       complex to the physical domain.
+
+   NURBSSpaceEvaluator therefore implements manifold, Jacobian, Hessian, and
+   parametric-to-spatial geometry evaluation. Its generic analysis-basis methods
+   intentionally throw. This is a deliberate separation of geometry from
+   analysis, not an unfinished prerequisite for the current de Rham framework.
+
+   Compatible rational differential-form constructions do exist in the
+   literature, including the Hiemstra-Huijsmans-Gerritsma partition-of-unity
+   construction. That method derives weight-dependent rational edge, face, and
+   volume functions; it is not obtained by merely evaluating the ordinary NURBS
+   basis in every space. Supporting it would require a separate rational
+   compatible-space family, derivative/incidence operators, refinement rules,
+   and multipatch/hierarchical theory.
+
+   Decision: A Hiemstra-like rational compatible analysis framework is not
+   anticipated for sweeps. NURBS will remain a geometry representation, while
+   compatible analysis will use polynomial B-spline spaces. Do not treat the
+   intentionally throwing rational analysis methods as an outstanding defect.
+
+
+B. Piola Evaluation Assumes Equal Parametric and Spatial Dimensions
+   The implemented H1, H(curl), H(div), and L2 spatial values/first derivatives
+   are tested for 2D planar domains and 3D volumetric domains, including curved
+   geometry and nonuniform knot spans. They require a square
+   parametric-to-spatial Jacobian.
+
+   Embedded-manifold transforms, such as a two-dimensional analysis space mapped
+   into three-dimensional space, are not supported by these routines. Physical
+   normal/tangential trace values, side measures, and paired-interface
+   evaluations are also not supplied by the volume evaluator; those belong to
+   Phase 5B and the TraceSpaceEvaluator contract in items 8 and 9.
+
+
+C. Strong Multipatch Coupling Uses Matching, Unscaled Interface Charts
+   Current strong H1/H(curl)/H(div) merging supports compatible interface knot
+   structure together with coordinate permutations, orientation reversals, and
+   origin translations. Interface parameter scaling is rejected because the
+   union-find DOF identification can represent equality and orientation signs,
+   but not weighted constraints.
+
+   Same-mesh asymmetric hierarchical leaf selection is the valid extension in
+   item 1. Truly nonmatching interface meshes or scaled transition maps require
+   the weak/mortar framework in item 10 and are not defects in the current strong
+   coupling implementation.
+
+
+D. Broken L2 Spaces Work; Physical Interior-Face Assembly Is Deferred
+   Reducing a degree-p C0 H1 direction preserves interior multiplicity p while
+   reducing the degree to p-1, producing C-1 L2 connectivity. This is supported
+   within single patches and in multipatch/hierarchical constructions. The
+   corresponding RT/Nedelec mixed primal/reduced continuity patterns are also
+   supported.
+
+   Element-local evaluation and algebraic broken-face enumeration work now.
+   DG/Nitsche-style integration still requires Phase 5B physical trace evaluation;
+   hierarchical coarse-fine interior faces additionally require the subdivision
+   work in item 7.
 
 
 -------------------------------------------------------------------------------
