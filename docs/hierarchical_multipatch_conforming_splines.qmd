@@ -1,0 +1,1120 @@
+---
+title: "Hierarchical Multipatch Conforming Splines in Sweeps"
+subtitle: "Architecture, implementation path, and design rationale through Phase 4 and the geometry-aware evaluation layer"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+execute:
+  echo: false
+---
+
+# Purpose
+
+The long-term goal is to support a flexible spline framework for isogeometric
+analysis that can represent smooth tensor-product splines, low-continuity
+Raviart--Thomas and Nedelec-like spaces, hierarchical refinement, multipatch
+domains, rational geometry, and eventually weak interface or element-interface
+trace operations.
+
+The work completed so far establishes the algebraic and topological foundation
+for that framework. The emphasis has been on exact operations first:
+
+- exact degree elevation,
+- exact local extraction for smooth, $C^0$, and broken knot vectors,
+- algebraic trace extraction,
+- multipatch de Rham factories for $H^1$, $H(\mathrm{div})$,
+  $H(\mathrm{curl})$, and $L^2$ spaces,
+- hierarchical multipatch conforming vector spaces,
+- discontinuous hierarchical $L^2$ spaces built from the $H(\mathrm{div})$
+  complex,
+- physical ($H^1$, $H(\mathrm{curl})$, $H(\mathrm{div})$, $L^2$) basis
+  evaluation and Piola transformations through the patch-parametric geometry
+  map,
+- parent-cell Gaussian quadrature paired with parent-to-spatial integration
+  Jacobians, while analysis-space transformations remain patch-parametric.
+
+This document explains those changes, the architectural decisions behind them,
+and how they fit into the existing `sweeps` codebase. It is intentionally
+written as an architectural guide rather than as a line-by-line implementation
+record.
+
+# Target Framework
+
+The target framework is a dimension-generic, multipatch, hierarchical spline
+system with the following properties:
+
+1. Tensor-product B-spline and NURBS spaces remain the basic patch-level
+   building blocks.
+2. Multipatch spaces merge degrees of freedom only when the relevant conformity
+   requires it.
+3. Vector-conforming spaces are built from scalar tensor-product spaces through
+   the de Rham pattern rather than through special-purpose element code.
+4. Hierarchical spaces are assembled by selecting active functions level by
+   level, while pruning coarse functions whose support has been replaced by
+   refined leaf elements.
+5. Trace information is exposed algebraically first, independent of geometry,
+   normals, Piola maps, or PDE-specific interface terms.
+6. Strong multipatch conformity is supported only when the two sides of an
+   interface have matching leaf-element structure. Nonmatching interfaces are
+   rejected explicitly until a weak/nonmatching coupling layer is added.
+
+The framework is therefore organized around three separate concerns:
+
+- **Space construction**: which basis functions exist, which are active, and
+  which IDs are shared.
+- **Trace algebra**: which one-sided functions touch an element or patch side,
+  and how their extraction rows restrict to side Bernstein data.
+- **Geometry-aware evaluation**: physical normals, Piola-transformed traces,
+  and PDE-specific weak forms.
+
+Only the first two concerns are completed through Phase 4. Geometry-aware trace
+evaluation is the natural next layer.
+
+# Architectural Principles
+
+## Preserve Existing Building Blocks
+
+The existing codebase already has a useful separation between topology,
+parametric atlases, basis complexes, and spline spaces. The new work builds on
+that structure rather than replacing it.
+
+At a high level:
+
+- `topology` owns combinatorial maps, patch adjacency, tensor-product cell
+  structure, and hierarchy.
+- `param` owns parametric domains and coordinate localization.
+- `basis` owns parent bases, spline-space connectivity, extraction operators,
+  refinement operators, degree elevation, and multipatch/hierarchical function
+  maps.
+- `eval` owns basis evaluation and geometry-dependent transformations.
+
+The new code follows this division. For example, trace extraction lives in
+`basis` because it restricts extraction matrices algebraically; physical trace
+evaluation is not placed there because it requires geometry and belongs closer
+to `eval` or assembly code.
+
+## Prefer Exact Nested Operations Before Approximate Projection
+
+Degree elevation, h-refinement, and hierarchical activation are exact nested
+space operations. These should not be implemented through global least-squares
+or normal-equation projections. Exact nested operations are cheaper, preserve
+the geometry/function exactly up to floating-point precision, and give stronger
+unit-test identities.
+
+Approximate operations such as degree reduction, smoothing/roughing, and
+coarsening/cell merging are still important future goals. They should be added
+on top of the same extraction and trace vocabulary, but they should not force
+the exact nested operations into a global projection framework prematurely.
+
+## Keep Strong Coupling Conservative
+
+Strong DOF merging across patch interfaces is safe only when the two sides
+represent the same trace space and the same interface subdivision. If two
+patches have nonmatching hierarchical leaf elements on an interface, strong
+identification of DOFs becomes ambiguous or wrong.
+
+The current implementation therefore validates matching interface structure and
+throws if the hierarchy does not match. This is a deliberate restriction. It
+protects the correctness of the conforming space while leaving room for future
+weak coupling, mortar, Nitsche, DG, or projection-based interface methods.
+
+## Separate Orientation From Identity
+
+For scalar $H^1$ spaces, an interface DOF is shared by identity. For
+$H(\mathrm{div})$ and $H(\mathrm{curl})$, an interface DOF may be shared with an
+orientation sign. The global function ID represents the shared algebraic
+unknown; the orientation is patch-local information that determines how a local
+basis function contributes to that global unknown.
+
+This distinction is essential. A global hierarchical vector function has a
+level and a global level-space vector ID. Its sign is not universal; the sign is
+attached to the patch-local representation of that function.
+
+# Exact Degree Elevation
+
+Degree elevation was implemented first because it provides a clean example of
+an exact nested spline operation and because it is useful independently of
+hierarchical multipatch spaces.
+
+## Local Bernstein Transfer
+
+The central identity is local. On each element, an old B-spline basis and a new
+degree-elevated B-spline basis are both represented through Bernstein bases:
+
+$$
+B_\text{old} = C_\text{old} B^p,
+\qquad
+B_\text{new} = C_\text{new} B^q,
+\qquad q \ge p.
+$$
+
+The Bernstein degree-elevation matrix $M$ satisfies:
+
+$$
+B^p = M B^q.
+$$
+
+Therefore the element-local transfer from old spline coefficients to new spline
+coefficients is determined by:
+
+$$
+T_e C_\text{new} = C_\text{old} M.
+$$
+
+This produces an exact local operator for nested spaces. Global degree
+elevation is obtained by scattering these local operators into the global
+operator and asserting consistency when multiple elements contribute to the same
+target function.
+
+## Why Extraction-Based Degree Elevation Was Chosen
+
+The alternative would be to elevate control points through a curve/surface
+algorithm directly. That is useful in CAD contexts, but it is less natural for
+the `sweeps` codebase because `sweeps` already expresses spline spaces through
+connectivity and extraction operators.
+
+The extraction-based approach has several advantages:
+
+- It works uniformly for functions, curves, surfaces, and volumes.
+- It fits tensor-product assembly naturally.
+- It produces an explicit sparse transfer operator.
+- It can be tested locally through algebraic identities.
+- It composes naturally with rational control points by transferring
+  homogeneous coordinates.
+
+## Bernstein Matrix Implementation
+
+The Bernstein degree-elevation matrix is implemented using the direct binomial
+formula:
+
+$$
+M_{ij}
+=
+\frac{\binom{p}{i}\binom{q-p}{j-i}}{\binom{q}{j}},
+\qquad
+j=i,\ldots,i+q-p.
+$$
+
+The implementation avoids factorials and large integer products. This matters
+for high-order tests and prevents overflow-prone intermediate arithmetic. The
+typical spline degrees in this codebase are modest, but using a stable formula
+keeps the basis utility robust and avoids building avoidable numerical fragility
+into a core operation.
+
+## Tensor-Product Elevation
+
+Tensor-product degree elevation is assembled from the one-dimensional transfer
+operators through Kronecker products, following the same ordering conventions
+used by existing tensor-product refinement code. This makes surface and volume
+degree elevation a direct extension of the univariate operation.
+
+The public-level workflow is:
+
+1. Construct a degree-elevated knot vector by increasing interior and endpoint
+   multiplicities by the degree increase.
+2. Build the elevated tensor-product spline space.
+3. Assemble the sparse transfer operator.
+4. Transfer control points using the row-vector convention:
+
+$$
+P_\text{new} = P_\text{old} T.
+$$
+
+For rational geometry, the same operation is applied to homogeneous control
+points, which preserves the rational geometry exactly.
+
+# Related Geometry and Rational-Spline Separation
+
+Although degree elevation and hierarchical multipatch spaces are basis-level
+features, geometry still matters because most spline spaces in the application
+are used as geometric mappings.
+
+The codebase now separates the geometry evaluator from the analysis basis more
+explicitly:
+
+- polynomial geometries can continue to use the $H^1$ evaluator as geometry,
+- rational geometries use a NURBS evaluator,
+- control-point storage is allowed to be dimension-generic,
+- homogeneous control points are transferred in projective coordinates.
+
+This avoids a common architectural trap: using a boolean flag to make a single
+control-point matrix mean either Euclidean or homogeneous coordinates. Instead,
+the type and accessor structure make the distinction explicit. This is important
+because rational geometry is not just a different evaluation mode; it has
+different control data.
+
+The same separation will matter again in later phases, when trace evaluators
+need geometry-aware normals and Piola transformations.
+
+# Phase 0: Contracts and Scope
+
+Phase 0 established the contracts that later phases rely on.
+
+The main decisions were:
+
+- use extraction operators as the common representation of local basis behavior,
+- preserve the existing split between topology, parametric atlases, basis
+  complexes, spline spaces, and evaluators,
+- implement exact nested operations directly rather than through global
+  projection,
+- keep algebraic trace information independent from physical trace evaluation,
+- support strong coupling only for matching interfaces initially,
+- keep future weak/nonmatching interface coupling as a separate PDE-level layer.
+
+This phase is less visible as a single file or class, but it is the reason the
+subsequent implementation remains modular. Without these contracts, degree
+elevation, low-continuity extraction, multipatch vector spaces, and hierarchical
+activation would each tend to grow their own incompatible conventions.
+
+# Phase 1: Local Extraction for Low-Continuity Knot Vectors
+
+Phase 1 fixed the local extraction foundation.
+
+## The Issue
+
+Traditional high-continuity splines and low-continuity finite-element-like
+splines place different demands on local extraction. In particular, if repeated
+knots create $C^0$ or broken $C^{-1}$ behavior, adjacent elements may not share
+the same Bernstein endpoint column structure in the same way as smooth splines.
+
+This matters directly for:
+
+- comparing smooth splines against low-continuity RT/Nedelec-like spaces,
+- constructing reduced-degree components for $H(\mathrm{div})$ and
+  $H(\mathrm{curl})$ spaces,
+- building discontinuous $L^2$ spaces,
+- extracting one-sided traces.
+
+If extraction assumes too much sharing, the resulting local matrices can be
+silently wrong.
+
+## The Fix
+
+The local extraction logic was factored into reusable basis-level utilities.
+The key operation is to compute, for each element:
+
+- the local B-spline function connectivity,
+- the local extraction matrix,
+- the correct Bernstein-column offsets for the continuity pattern.
+
+This shared utility is then used by the one-dimensional B-spline space and by
+Bezier-transfer operations. The result is that smooth, $C^0$, and broken
+directions all follow the same tested path.
+
+## Why This Was the Right Foundation
+
+Every later phase depends on correct element-local basis data. If low-continuity
+extraction is wrong, multipatch $H(\mathrm{div})$, $H(\mathrm{curl})$, and $L^2$
+spaces may appear to have the correct number of DOFs while evaluating the wrong
+local functions.
+
+By making local extraction a first-class utility, the code avoids duplicating
+the same fragile indexing logic across degree elevation, B-spline spaces, trace
+extraction, and multipatch factories.
+
+# Phase 2: Algebraic Trace Extraction
+
+Phase 2 introduced trace vocabulary and side-local extraction data.
+
+## Core Objects
+
+The trace layer introduces three basic concepts:
+
+- `ElementSide`: identifies a side of a tensor-product element using the same
+  side convention as the multipatch topology.
+- `TraceSideData`: stores the one-sided trace data for a single element side:
+  the element, side, surviving connectivity rows, restricted extraction matrix,
+  and row indices into the volume extraction matrix.
+- `TraceInterfaceElement`: stores either one side for a boundary trace or two
+  sides for an interior/interface trace.
+
+This layer operates on extraction matrices. It does not compute physical
+normals, Piola transformations, jump terms, averages, or penalty terms.
+
+## Why Algebraic Trace Comes First
+
+Trace operations are needed in two different settings:
+
+1. **Space construction and validation**, where one needs to know which DOFs
+   touch a side and how their extraction rows restrict to the side.
+2. **PDE assembly**, where one needs physical normals, Jacobians, Piola maps,
+   fluxes, tangential traces, jumps, averages, and weak coupling terms.
+
+Mixing these two layers too early would make the basis code depend on geometry
+and PDE-specific concepts. Keeping Phase 2 algebraic makes it reusable for
+strong multipatch validation, future weak coupling, and diagnostic tests.
+
+## Element Traces and Patch Traces
+
+The trace layer can describe both:
+
+- traces between neighboring elements inside a tensor-product patch,
+- traces on patch boundaries that later participate in multipatch interfaces.
+
+For smooth spaces, many trace DOFs are shared across adjacent elements. For
+broken or reduced-degree spaces, one-sided traces may have no shared DOFs. Both
+cases are valid and both are represented by the same `TraceSideData` structure.
+
+This is important for eventual DG-like or weak tangential coupling terms, but
+the presence of trace data does not force DG terms into ordinary conforming
+assembly. Trace data is available when needed; it does not add cost to standard
+volume assembly unless requested.
+
+# Phase 3: Multipatch de Rham Factories
+
+Phase 3 added construction helpers for multipatch $H^1$,
+$H(\mathrm{div})$, $H(\mathrm{curl})$, and $L^2$ spaces.
+
+## Scalar Multipatch Spaces
+
+For scalar $H^1$ spaces, patch interfaces are coupled by merging scalar
+function IDs across connected sides. The existing multipatch machinery already
+supports this pattern, so Phase 3 provides a clear factory entry point:
+
+```cpp
+buildH1MultiPatchSplineSpace(...)
+```
+
+This gives client code a semantically meaningful name rather than asking it to
+know which generic multipatch constructor to call.
+
+## Vector-Conforming Multipatch Spaces
+
+The vector-conforming construction follows the de Rham pattern.
+
+For $H(\mathrm{div})$ in 2D, the normal component uses a primal direction
+normal to the interface and a reduced direction tangential to it. The normal
+trace is coupled across patch interfaces; the tangential component is not
+strongly coupled.
+
+For $H(\mathrm{curl})$, the pattern is dual: tangential traces are coupled and
+normal traces are not strongly coupled.
+
+The factories are:
+
+```cpp
+buildHDivMultiPatchSplineSpace(...)
+buildHCurlMultiPatchSplineSpace(...)
+buildVectorConformingMultiPatchSplineSpace(...)
+```
+
+The explicit conforming-type factory is useful for code paths that want to
+select the de Rham space programmatically, while the `HDiv` and `HCurl`
+factories provide clearer names for common use.
+
+## Low-Continuity RT/Nedelec-Like Spaces
+
+If the primal $H^1$ space has degree $p$ and interior multiplicity $p$, it is
+$C^0$. A reduced degree direction has degree $p-1$ with the same knot
+multiplicity. That multiplicity is then $(p-1)+1$, which is broken
+$C^{-1}$ for the reduced direction.
+
+This gives the expected low-continuity behavior:
+
+- $H(\mathrm{div})$: normal component is coupled, tangential component may be
+  broken.
+- $H(\mathrm{curl})$: tangential component is coupled, normal component may be
+  broken.
+- $L^2$: reduced-degree scalar space is discontinuous.
+
+This is the spline analog needed to compare smooth high-continuity splines
+against traditional high-order Raviart--Thomas and Nedelec-like discretizations.
+
+## Discontinuous Multipatch L2
+
+The $L^2$ factory intentionally builds a discontinuous multipatch space:
+
+```cpp
+buildL2MultiPatchSplineSpace(...)
+```
+
+The topology still knows patch adjacency, but DOFs are not merged across patch
+interfaces. This is the correct behavior for pressure-like or discontinuous
+scalar spaces and for reduced-degree spaces derived from $H(\mathrm{div})$.
+
+The important design choice is that discontinuity is expressed through the
+space construction, not by erasing topology. The patch connectivity remains
+available for future interface terms.
+
+# Phase 4: Hierarchical Multipatch Conforming Spaces
+
+Phase 4 extends the Phase 3 multipatch de Rham spaces to hierarchical
+refinement.
+
+## The Scalar Hierarchical Pattern
+
+The existing scalar hierarchical spaces already provide the main algorithm:
+
+1. Choose leaf elements on each refinement level.
+2. Mark basis functions active if they touch leaf elements.
+3. Prune coarse functions whose support is replaced by refined descendants.
+4. Build level-to-hierarchical extraction operators.
+
+For scalar multipatch spaces, this produces a global hierarchical scalar basis.
+
+The vector hierarchical multipatch construction reuses this same logic, but it
+must add vector components and interface orientations.
+
+## Explicit-Active Vector Hierarchical TP Spaces
+
+A key prerequisite was an explicit-active constructor for
+`VectorConformingHierarchicalTPSplineSpace`.
+
+The existing constructor could build a vector hierarchical TP space from a
+scalar hierarchical primal basis. That is useful for single-patch vector
+hierarchies, but it is not enough for multipatch vector hierarchies. In the
+multipatch case, active vector functions must be selected at the global
+multipatch level first, then split back into patch-local component spaces.
+
+The explicit-active constructor accepts:
+
+- the vector conforming hierarchical basis complex,
+- the vector conforming TP refinement levels,
+- the active vector function IDs on each level.
+
+It then splits active vector IDs into component scalar IDs using
+level-specific component offsets.
+
+This level-specific offset rule is essential because different refinement
+levels can have different numbers of functions per component.
+
+## Component-Major, Level-Minor Ordering
+
+Local hierarchical vector functions are ordered component-major, level-minor:
+
+1. all active functions for component 0 across all levels,
+2. then all active functions for component 1,
+3. then component 2 in 3D.
+
+This ordering matches `VectorConformingHierarchicalTPSplineSpace::connectivity`.
+The hierarchical multipatch vector map is built in the same order, which avoids
+patch-local/global ID mismatches.
+
+The ordering contract is explicitly documented because it is easy to produce a
+plausible but wrong level-major map.
+
+## Vector Active Functions
+
+The vector hierarchical multipatch active-function algorithm mirrors the scalar
+algorithm, with one important difference: active functions are tracked using
+level-global vector function IDs from the multipatch vector space.
+
+The pruning key is a bare `FunctionId`, not a patch-local ID and not a
+`(FunctionId, orientation)` pair. Orientation is metadata attached to the
+patch-local representation. It must not change which global function is active.
+
+The internal active-function data has three responsibilities:
+
+- active patch-local vector functions by patch and level,
+- patch-local hierarchical vector ID to global hierarchical ID and orientation,
+- total number of global active hierarchical vector functions.
+
+This is the vector analog of the scalar multipatch active-function map.
+
+## Orientation in Connectivity and Extraction
+
+The vector hierarchical multipatch space exposes two different views:
+
+- `connectivity(cell)` returns global hierarchical vector function IDs.
+- `extractionOperator(cell)` returns local extraction rows with orientation
+  signs already applied.
+
+The orientation is applied as a diagonal row sign matrix:
+
+```cpp
+oriented_extraction = orientations.asDiagonal() * local_extraction;
+```
+
+This is the same convention used by the non-hierarchical vector multipatch
+space. Keeping the convention identical is important because assembly code
+should not need separate sign-handling rules for hierarchical and
+non-hierarchical vector spaces.
+
+## Refinement-Level Mapping Helpers
+
+Two mapping helpers are provided:
+
+```cpp
+vectorFidsToRefinementLevelFids(...)
+patchVectorFidsToRefinementLevelFids(...)
+```
+
+The global helper maps:
+
+$$
+\text{global hierarchical vector ID}
+\mapsto
+(\text{level}, \text{global level vector ID}).
+$$
+
+It intentionally does not return an orientation.
+
+The patch-local helper maps:
+
+$$
+\text{patch-local hierarchical vector ID}
+\mapsto
+(\text{level}, \text{global level vector ID}, \text{orientation}).
+$$
+
+This split is important because orientation is patch-local. A global vector
+function can appear with different local signs on different patches.
+
+## Matching-Interface Validation
+
+Strong hierarchical multipatch coupling is currently allowed only when leaf
+elements match across every connected patch interface at every refinement level.
+
+The validator:
+
+1. iterates connected patch sides,
+2. collects leaf elements touching each side,
+3. projects element indices to side-local coordinates,
+4. applies the multipatch side permutation,
+5. compares the side-local leaf-element sets,
+6. throws if the sets do not match.
+
+This is conservative by design. If a nonmatching interface is accepted
+silently, the resulting strongly coupled space can be mathematically wrong.
+Rejecting such cases forces nonmatching coupling to be handled by a future weak
+or projection-based interface method.
+
+## Hierarchical L2
+
+Phase 4 also adds a compact hierarchical $L^2$ factory:
+
+```cpp
+buildL2HierarchicalMultiPatchSplineSpace(...)
+```
+
+It is built from a hierarchical $H(\mathrm{div})$ space by applying the Phase 3
+$L^2$ construction on each refinement level, preserving the same hierarchical
+leaf structure, and using discontinuous multipatch spaces at every level.
+
+This keeps the de Rham sequence coherent:
+
+$$
+H^1
+\rightarrow
+H(\mathrm{div}) \text{ or } H(\mathrm{curl})
+\rightarrow
+L^2.
+$$
+
+It also ensures pressure-like or scalar discontinuous spaces are available in
+the same hierarchical multipatch setting as the velocity/vector spaces.
+
+# Geometry-Aware Evaluation: Coordinate Frames and Piola Transformations
+
+Phases 0--4 are deliberately algebraic: spaces and traces are built without
+reference to geometry, normals, or Piola maps. The evaluator layer adds the
+first geometry-aware operations, and it is organized around a strict separation
+of three coordinate frames. Keeping those frames distinct in the *names* of the
+operations, not only in comments, is what prevents the frame-mixing errors this
+layer was built to eliminate.
+
+The central fact is that the raw components produced by extraction are
+**patch-parametric** objects sampled *through* a parent-local point. Every
+physical transformation must therefore be built on the **parametric-to-spatial**
+geometry map. Choosing the parent-to-spatial map silently replaces the globally
+supported spline with a cell-normalized element and breaks conformity exactly
+where hierarchical refinement and multipatch interfaces need it.
+
+## Three Frames
+
+Parent coordinates $s\in[0,1]^d$ are element-local; a quadrature point is
+localized here (`localizeParentPoint`), and Bernstein evaluation and extraction
+operate in these coordinates. Parametric coordinates $\xi$ are knot-space
+coordinates, where the spline functions are *defined*; the element map is affine
+and axis-aligned,
+$$
+\xi = \xi_0 + D\,s,\qquad D=\operatorname{diag}(L_1,\dots,L_d),\ L_i>0,
+$$
+with $L_i$ the element's knot-span lengths (`evaluateParametricPoint`). Spatial
+coordinates $x$ are physical, produced from control points; the derivative of
+the geometry map is the parametric-to-spatial Jacobian
+$J_\xi=\partial x/\partial\xi$ (`evaluateParametricToSpatialJacobian`).
+
+Two Jacobians recur, and interchanging them is the failure mode the layer
+prevents:
+$$
+J_s=\frac{\partial x}{\partial s}=J_\xi\,D,\qquad
+\det J_s=\det J_\xi\,\det D,
+$$
+so $J_s$ (`evaluateParentToSpatialJacobian`) differs from $J_\xi$ by the diagonal
+element map. $D$ is diagonal by construction, but $J_\xi$ is dense for curved
+geometry and must always be inverted as a matrix.
+
+## Current Evaluation and Integration Contract
+
+The current implementation uses the two frames for different, compatible
+purposes:
+
+1. `localizeParentPoint` accepts a parent-cell point $s$. Bernstein basis
+   evaluation and extraction are performed at that point.
+2. `evaluateParametricPoint` reports the corresponding knot-space point
+   $\xi=\xi_0+Ds$.
+3. Raw vector-conforming and top-form components are interpreted in the
+   patch-parametric frame, and all physical basis values and derivatives are
+   transformed with $J_\xi$.
+4. Gaussian quadrature points and weights are defined on the parent cell, so
+   volume integration uses $J_s$ and $\det J_s$.
+
+Thus the physical analysis quantities are patch-parametric-to-spatial, while
+the default quadrature rule and its integration Jacobian are
+parent-to-spatial. This is not an inconsistent mixed-frame basis operation.
+It is the ordinary composition of two changes of variables:
+$$
+\int_{\Omega_e} f(x)\,dx
+=
+\int_{\widehat e} f(x(s))\,\lvert\det J_s\rvert\,ds
+=
+\int_{\widehat e} f(x(\xi(s)))\,
+  \lvert\det J_\xi\rvert\,\det D\,ds.
+$$
+Because $\det J_s=\det J_\xi\det D$, the parent-cell measure includes the
+knot-span scaling that would otherwise have to be carried by parametric-cell
+quadrature weights.
+
+The Python names make this contract explicit:
+
+| Operation | Canonical Python name | Compatibility alias | Frame |
+|---|---|---|---|
+| Point localization | `localizeParentPoint` | `localizePoint` | Input $s$ |
+| Raw basis sampling | `evaluateBasisValuesAtParentPoint` | `evaluateBasis` | Sampled at $s$; components remain patch-parametric |
+| Raw first derivatives | `evaluateBasisFirstDerivativesWrtParentCoordinates` | `evaluateFirstDerivatives` | Denominator $s$ |
+| Raw parametric derivatives | `evaluateBasisFirstDerivativesWrtParametricCoordinates` | -- | Denominator $\xi$ |
+| Integration Jacobian | `parentToSpatialJacobian` | `jacobian` | $J_s$ |
+| Integration determinant | `parentToSpatialJacobianDeterminant` | `jacobianDeterminant` | $\det J_s$ |
+| Physical $H(\mathrm{div})$ values | `evaluateSpatialHDivBasisValues` | `piolaTransformedHDIVBasis` | Uses $J_\xi$ |
+| Physical $L^2$ values | `evaluateSpatialL2BasisValues` | `piolaTransformedL2` | Uses $J_\xi$ |
+
+The same rule applies to boundary integration: a side quadrature rule posed in
+parent-side coordinates must use the parent-to-spatial tangent or surface
+measure, while the traced $H(\mathrm{div})$ or $H(\mathrm{curl})$ field is still
+obtained from the patch-parametric Piola map.
+
+## Why Parent-Cell Quadrature Is Retained
+
+Parent-cell quadrature is retained because it matches the existing evaluator
+and Gaussian-rule infrastructure:
+
+- one reference Gaussian rule can be reused on every element,
+- Bernstein polynomials are naturally evaluated on the parent cell,
+- element-specific knot-span scaling is included automatically in $\det J_s$,
+- nonuniform and hierarchical cells require no special quadrature family, and
+- the physical Piola transformations remain independent of this integration
+  choice.
+
+This choice is not less accurate than integrating directly in knot space, and
+it does not prevent local or hierarchical refinement. The earlier refinement
+problem came from using $J_s$ in a Piola transformation of patch-parametric
+components, not from using $J_s$ as the measure for parent-cell quadrature.
+
+## Fully Parametric Quadrature Is an Equivalent Alternative
+
+The entire integration loop could instead be posed on the element's parametric
+knot cell $K_e$:
+$$
+\int_{\Omega_e} f(x)\,dx
+=
+\int_{K_e} f(x(\xi))\,\lvert\det J_\xi\rvert\,d\xi.
+$$
+A Gaussian rule mapped from $\widehat e$ to $K_e$ has weights
+$w_\xi=(\det D)w_s$, so it produces exactly the same discrete integral as the
+current parent rule:
+$$
+w_\xi\,\lvert\det J_\xi\rvert
+=
+w_s\,\lvert\det J_s\rvert.
+$$
+No unusual quadrature rule is required; the affine map merely moves the
+knot-span factor from the geometry determinant into the quadrature weights.
+
+Supporting this formulation cleanly in the Python API would require:
+
+- `localizeParametricPoint(xi)`, which would use the already-localized cell's
+  `parametricStarts` and `parametricLengths` to compute
+  $s=D^{-1}(\xi-\xi_0)$ before delegating to parent-basis evaluation,
+- Python exposure of `parametricToSpatialJacobian` and its determinant, and
+- quadrature routines whose points and weights are explicitly documented as
+  belonging to $K_e$ rather than $\widehat e$.
+
+The existing `parametricPoint()` method is only the forward query
+$s\mapsto\xi$ after parent localization; it does not localize an arbitrary
+parametric point. Likewise, `ParametricAtlas::parentPoint(vertex)` provides
+parent coordinates for topological vertices, not general parametric-point
+localization.
+
+A future fully parametric interface would be mathematically sound and may be
+more intuitive for users who want every integration quantity expressed in knot
+coordinates. It would not change the Piola formulas or the represented spline
+spaces. The current parent-quadrature formulation is retained because it is
+already exact, efficient, and consistent with the parent-basis implementation.
+
+## The Raw Basis Is Patch-Parametric
+
+Vector-conforming components are scalar tensor-product splines over the patch
+parametric atlas; extraction samples them at a parent point but does not
+transform their components. Hence
+$$
+\texttt{evaluateBasisValuesAtParentPoint()} = v_\xi
+$$
+is parametric components sampled through a parent-localized point. "Parent"
+names *where* the functions are sampled, not the component frame -- which is why
+the parametric-denominator derivative is named for its coordinate,
+$$
+\texttt{evaluateBasisFirstDerivativesWrtParametricCoordinates()}
+=\frac{\partial v}{\partial s}\,D^{-1}.
+$$
+The diagonal $D^{-1}$ conversion is exact and inexpensive.
+
+## Differential Forms and Push-Forwards
+
+The four spaces differ by form degree, and each pushes to physical space through
+$J_\xi$ accordingly:
+
+| Space | Form | Push-forward $v_x$ | Function |
+|---|---|---|---|
+| $H^1$ | $0$-form | $\nabla_\xi N\,J_\xi^{-1}$ | `evaluateSpatialH1BasisFirstDerivatives` |
+| $H(\mathrm{curl})$ | $1$-form (covariant) | $J_\xi^{-\mathsf T}v_\xi$ | `evaluateSpatialHCurlBasisValues` |
+| $H(\mathrm{div})$ | $(d{-}1)$-form (contravariant) | $\tfrac{1}{\det J_\xi}J_\xi v_\xi$ | `evaluateSpatialHDivBasisValues` |
+| $L^2$ | $d$-form (density) | $\tfrac{1}{\det J_\xi}q_\xi$ | `evaluateSpatialL2BasisValues` |
+
+In the codebase's row convention (one basis function per row) these read
+$V_\xi J_\xi^{-1}$ and $\tfrac{1}{\det J_\xi}V_\xi J_\xi^{\mathsf T}$; every one
+draws its Jacobian from `evaluateParametricToSpatialJacobian`, never the parent
+map.
+
+The derivative transforms differentiate these with respect to $\xi$ and convert
+the denominator once with $J_\xi^{-1}$. They rely on $\partial J_\xi/\partial
+\xi_k$ (`evaluateParametricToSpatialJacobianFirstDerivatives`) and the
+determinant gradient by Jacobi's formula,
+$$
+\frac{\partial}{\partial\xi_k}\det J_\xi
+=\det J_\xi\,\operatorname{tr}\!\Big(J_\xi^{-1}\tfrac{\partial J_\xi}{\partial\xi_k}\Big),
+$$
+(`evaluateParametricToSpatialJacobianDeterminantFirstDerivatives`) -- a single
+dimension-generic expression that replaces the earlier hand-expanded formulas.
+The $H(\mathrm{curl})$ and $H(\mathrm{div})$ derivatives are dimension-explicit
+product-rule loops; the $L^2$ derivative applies **exactly one** inverse Jacobian
+(an earlier implementation applied two, and that density-gradient error is
+removed here).
+
+## Why the Parametric Frame Is Required
+
+A basis function whose support spans several elements must have one physical
+push-forward across that support. Parent coordinates reset to $[0,1]^d$ per cell
+with a different $D$, so a parent-normalized push-forward makes a function's
+physical value depend on which cell samples it. A coarse hierarchical function
+would then be discontinuous inside its own support, and multipatch normal or
+tangential traces would fail to match across interfaces with differing knot
+spans. The cell-normalized parent construction is a valid single-element
+Raviart--Thomas / Nedelec basis, but a *different space* from the globally
+parametric spline these factories build; the difference is invisible on uniform
+meshes (a global rescaling is absorbed) and appears on exactly the nonuniform,
+hierarchical, and multipatch cases the framework targets.
+
+## Verification
+
+$J_s=J_\xi D$ makes the consistent parametric push-forward equal to a
+parent-frame reference computation; for $H(\mathrm{curl})$, for instance,
+$J_s^{-\mathsf T}D^{\mathsf T}v_\xi=J_\xi^{-\mathsf T}v_\xi$ since
+$D^{-\mathsf T}D^{\mathsf T}=I$ for any invertible $D$. Two complementary oracles
+use this. A *parent-vs-parametric equivalence* test converts the raw components
+to the parent frame, pushes through $J_s$, and requires agreement with the
+$J_\xi$ route; it is algebraically guaranteed whenever both routes share a
+transform, so it catches frame and inverse errors but not a physically wrong
+formula. *Finite-difference* tests are the independent physical oracle, checking
+the intermediate $\partial J_\xi/\partial\xi_k$ and $\partial_{\xi_k}\det J_\xi$
+directly as well as the assembled 2D and 3D derivatives. A coordinate-contract
+test fixes $\xi=\xi_0+Ds$ and $J_s=J_\xi D$, and trace tests confirm nonuniform
+$H(\mathrm{div})$ normal and $H(\mathrm{curl})$ tangential continuity. An earlier
+cross-discretization invariance test was removed as asserting a property that is
+false for globally parametric bases.
+
+## Interface Transitions and Scaling
+
+The evaluator works within one patch chart; there is no single global parametric
+coordinate across a multipatch domain, so conformity across an interface is a
+transition map between charts. Because the element map $D$ is diagonal and
+rectangular, supported transitions compose axis permutation, orientation
+reversal, and origin translation, with **no scaling**. This is enforced at
+construction by `validateStrongInterfaceCompatibility`, which compares tangential
+knot sequences up to translation and reversal and rejects a scaled interface with
+`std::invalid_argument`. The restriction is structural: strong coupling merges
+degrees of freedom through a union--find that can only identify functions (with a
+sign), not apply the weighted coupling a scaled interface would require. Such
+interfaces are deferred to a future weak/mortar layer rather than silently
+mishandled.
+
+# How the Pieces Fit Into the Code
+
+The current implementation is concentrated in the following areas.
+
+## Degree Elevation and Bezier Transfer
+
+- `src/basis/BezierTransfer.hpp`
+- `src/basis/BezierTransfer.cpp`
+- `src/basis/KnotVector.hpp`
+- `src/basis/KnotVector.cpp`
+- `src/basis/TPSplineSpace.hpp`
+- `src/basis/TPSplineSpace.cpp`
+- Python/API wrappers for global p-elevation where applicable
+
+These files provide Bernstein elevation, local extraction, univariate transfer,
+and tensor-product transfer.
+
+## Extraction Foundation
+
+- `src/basis/BSplineSpace1d.cpp`
+- `src/basis/BezierTransfer.cpp`
+- `src/basis/KnotVector.cpp`
+
+These provide the local extraction utilities and ensure smooth, $C^0$, and
+broken knot vectors use consistent element-local data.
+
+## Trace Algebra
+
+- `src/basis/TraceExtraction.hpp`
+- `src/basis/TraceExtraction.cpp`
+
+These define `ElementSide`, `TraceSideData`, `TraceInterfaceElement`, trace
+column selection, and one-sided trace extraction.
+
+## Multipatch Factories
+
+- `src/basis/MultiPatchSplineFactory.hpp`
+- `src/basis/MultiPatchSplineFactory.cpp`
+- `src/basis/MultiPatchSplineSpace.hpp`
+- `src/basis/MultiPatchSplineSpace.cpp`
+- `src/basis/VectorConformingMultiPatchSplineSpace.hpp`
+- `src/basis/VectorConformingMultiPatchSplineSpace.cpp`
+
+These provide $H^1$, $H(\mathrm{div})$, $H(\mathrm{curl})$, and discontinuous
+$L^2$ multipatch spaces.
+
+## Hierarchical Multipatch Vector Spaces
+
+- `src/basis/VectorConformingHierarchicalTPSplineSpace.hpp`
+- `src/basis/VectorConformingHierarchicalTPSplineSpace.cpp`
+- `src/basis/VectorConformingHierarchicalMultiPatchSplineSpace.hpp`
+- `src/basis/VectorConformingHierarchicalMultiPatchSplineSpace.cpp`
+- `src/basis/VectorConformingBasisComplex.hpp`
+
+These provide explicit-active hierarchical vector patch spaces, hierarchical
+multipatch vector spaces, orientation-aware extraction, mapping helpers, and
+hierarchical $L^2$ construction.
+
+## Coordinate Frames and Piola Evaluation
+
+- `src/eval/SplineSpaceEvaluator.hpp`
+- `src/eval/SplineSpaceEvaluator.cpp`
+
+These provide frame-explicit basis evaluation
+(`evaluateBasisValuesAtParentPoint`,
+`evaluateBasisFirstDerivativesWrtParametricCoordinates`), the parent- and
+parametric-to-spatial Jacobians and Hessians, and the spatial $H^1$,
+$H(\mathrm{curl})$, $H(\mathrm{div})$, and $L^2$ push-forwards and their
+derivatives. Strong-interface scaling rejection lives with the multipatch
+factories in `src/basis/MultiPatchSplineSpace.cpp`
+(`validateStrongInterfaceCompatibility`).
+
+## Tests
+
+The tests are an important part of the architecture because most of the risk is
+in indexing, orientation, and hidden continuity assumptions.
+
+Representative test areas include:
+
+- local extraction for smooth, $C^0$, and broken knot vectors,
+- Bezier transfer and degree elevation identities,
+- trace side extraction for scalar and vector spaces,
+- multipatch DOF sharing for $H^1$, $H(\mathrm{div})$, $H(\mathrm{curl})$,
+  and $L^2$,
+- hierarchical vector multipatch construction,
+- orientation-through-extraction checks,
+- matching-interface rejection,
+- hierarchical $L^2$ construction.
+
+# Why These Choices Were Appropriate
+
+## The Design Matches the Mathematical Structure
+
+The code now follows the mathematical layering:
+
+1. local spline extraction,
+2. tensor-product spaces,
+3. multipatch coupling,
+4. vector-conforming de Rham spaces,
+5. hierarchical activation,
+6. trace extraction,
+7. geometry-aware trace evaluation and PDE assembly.
+
+This is the natural order of dependency. Lower layers do not depend on upper
+layers, and later features can reuse earlier abstractions.
+
+## The Design Avoids Premature Generalization
+
+It would be tempting to implement one large "Bezier projection" framework and
+force degree elevation, coarsening, smoothing, reduction, and merging through
+that single abstraction. That is not the best first move.
+
+Exact nested operations deserve exact implementations. Approximate projection
+operations can be added later, using the same extraction and trace vocabulary.
+This keeps the current code reliable while still moving toward the broader
+Bezier-projection framework.
+
+## The Design Keeps Future Weak Coupling Possible
+
+Strong coupling is currently implemented only for matching interfaces, but the
+code does not erase nonmatching topology or trace information. Patch adjacency
+and one-sided traces remain available.
+
+That means future weak coupling can be added without undoing the current
+strong-conforming work. For example, a later interface assembly layer can query
+one-sided trace data, compute physical normals, apply Piola transformations,
+and assemble Nitsche, mortar, DG, or other weak terms.
+
+## The Design Supports Low-Continuity Comparisons
+
+One of the motivating use cases is comparing high-continuity spline spaces
+against low-continuity RT/Nedelec-like spaces. The current design supports that
+because:
+
+- repeated knots can create $C^0$ primal spaces,
+- reduced directions become broken when appropriate,
+- $H(\mathrm{div})$ and $H(\mathrm{curl})$ factories merge only the conforming
+  trace components,
+- $L^2$ spaces remain discontinuous,
+- trace information is available for future weak tangential or jump terms.
+
+This enables meaningful comparisons between smooth IGA discretizations and
+traditional high-order finite-element-like spaces within the same framework.
+
+# Current Limitations
+
+The current work intentionally does not solve every future problem.
+
+## Nonmatching Strong Interfaces Are Not Supported
+
+Hierarchical patch interfaces must match for strong coupling. This is a
+correctness restriction, not a missing optimization. Nonmatching interfaces
+should be handled later by weak or projection-based coupling.
+
+## Trace Extraction Is Algebraic, Not Physical
+
+The trace layer knows how extraction matrices restrict to sides. It does not yet
+compute:
+
+- physical normals,
+- tangential directions,
+- Piola-transformed normal or tangential traces,
+- jumps or averages,
+- interface quadrature pairing,
+- penalty scaling.
+
+Those belong in the next layer.
+
+## Degree Reduction, Coarsening, and Cell Merging Are Future Work
+
+The exact transfer infrastructure prepares the codebase for approximate
+operations, but degree reduction and cell merging require additional choices:
+
+- local projection spaces,
+- norm or seminorm choice,
+- smoothing or roughing operators,
+- constraints for preserving geometry or boundary conditions,
+- error indicators and accept/reject criteria.
+
+These should be built deliberately rather than folded into degree elevation.
+
+## Python/API Exposure Is Not Complete for the New Hierarchical Multipatch Layer
+
+The current work is primarily C++ basis infrastructure. Python exposure should
+follow once the C++ contracts are stable and after the geometry-aware trace layer
+has a clear user-facing shape.
+
+# Path Toward Phases 5--7
+
+The next phases should build upward from the completed algebraic foundation.
+
+## Phase 5: Geometry-Aware Evaluation
+
+The volumetric part of this phase is realized (see *Geometry-Aware Evaluation:
+Coordinate Frames and Piola Transformations*): physical $H^1$,
+$H(\mathrm{curl})$, $H(\mathrm{div})$, and $L^2$ basis values and derivatives are
+available through the patch-parametric geometry map, and strong-interface scaling
+is validated at construction.
+
+What remains is the *trace* counterpart -- evaluating those transformed
+quantities on element and patch sides -- combining:
+
+- `TraceSideData`,
+- side quadrature with an explicit parent- or parametric-coordinate measure
+  contract,
+- physical geometry evaluation,
+- normals and tangents,
+- Jacobians and side measures,
+- Piola-transformed $H(\mathrm{div})$ and $H(\mathrm{curl})$ traces.
+
+This phase remains PDE-neutral: it provides trace quantities, not a particular
+weak form. The outstanding integration check for the volumetric transforms is
+the nonuniform-knot Stokes convergence regression.
+
+## Phase 6: Interface and Element-Face Assembly Support
+
+Phase 6 should use the Phase 5 trace evaluators to support weak terms:
+
+- patch-interface coupling,
+- interior element-face terms when continuity is low enough,
+- DG-like jump/average terms,
+- tangential or normal weak enforcement depending on the space,
+- nonmatching interface coupling if a projection/mortar/Nitsche strategy is
+  chosen.
+
+This is where RT--Nedelec weak coupling, if needed, naturally belongs. It should
+not require redefining the spline spaces; it should use the trace quantities
+exposed by the spline and evaluator layers.
+
+## Phase 7: Higher-Level API and Workflow Integration
+
+Phase 7 should expose the stable pieces to Python and application code:
+
+- multipatch construction,
+- hierarchical refinement inputs,
+- vector-conforming space selection,
+- rational geometry,
+- trace queries,
+- assembly hooks for weak interface terms,
+- diagnostics for DOF sharing and interface compatibility.
+
+The API should expose concepts, not implementation details. For example, users
+should ask for an $H(\mathrm{div})$ hierarchical multipatch space, not manually
+assemble component offsets and orientation maps.
+
+# Summary
+
+The work through Phase 4 establishes a coherent foundation for hierarchical
+multipatch conforming splines in `sweeps`.
+
+The most important decisions are:
+
+- use extraction as the common local basis representation,
+- implement exact nested operations exactly,
+- support degree elevation through local Bezier transfer,
+- fix low-continuity extraction before building vector spaces,
+- expose algebraic trace data before physical trace evaluation,
+- build multipatch de Rham spaces through factories,
+- keep $L^2$ discontinuous while preserving topology,
+- construct hierarchical vector multipatch spaces from global active vector IDs,
+- store orientation as patch-local metadata,
+- reject nonmatching strong interfaces explicitly.
+
+Together these choices keep the implementation mathematically faithful,
+testable, and extensible. They also leave the right openings for the next major
+features: geometry-aware traces, weak interface coupling, nonmatching
+interfaces, degree reduction, coarsening, smoothing/roughing, and Python-facing
+workflow tools.

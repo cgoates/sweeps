@@ -5,3 +5,9 @@ deps
 scripts/*.vtu
 
 StokesFlow/
+
+build_*/
+
+docs/*.html
+docs/*_files/
+.quarto/
